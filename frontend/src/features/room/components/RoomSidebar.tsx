@@ -5,10 +5,15 @@ import {
   useTracks,
 } from "@livekit/components-react";
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { Track } from "livekit-client";
 import { type SidebarTab } from "../hooks/useRoomControls";
 import { Icons } from "../../../lib/constants/icons";
-import { Strings } from "../../../lib/constants/strings";
 import { cn } from "../../../lib/utils";
+import { Tooltip } from "../../../components/ui/Tooltip";
+import InviteModal from "./InviteModal";
+import { useChatStore } from "../store/chatStore";
+import { useRoomStore } from "../store/roomStore";
 
 interface RoomSidebarProps {
   activeTab: SidebarTab;
@@ -40,10 +45,10 @@ function getAvatarGradient(identity: string): string {
 // ── Participants Tab ──
 
 function ParticipantsTab() {
+  const { t } = useTranslation("room");
   const participants = useParticipants();
   const { localParticipant } = useLocalParticipant();
   const [showInvite, setShowInvite] = useState(false);
-  const s = Strings.room;
 
   const host =
     participants.find((p) => p.permissions?.canPublish) || localParticipant;
@@ -66,7 +71,7 @@ function ParticipantsTab() {
       { source: Track.Source.Microphone, withPlaceholder: true },
     ]);
     const micTrack = tracks.find(
-      (t) => t.participant.identity === participant.identity,
+      (tr) => tr.participant.identity === participant.identity,
     );
     const isMicMuted =
       isMutedByHost || (micTrack?.publication?.isMuted ?? false);
@@ -88,7 +93,7 @@ function ParticipantsTab() {
           )}
         </div>
         <span className="text-xs font-medium text-[var(--t1)] flex-1 truncate">
-          {isLocal ? `${name} (You)` : name}
+          {isLocal ? `${name} ${t("tile.you")}` : name}
         </span>
         <div className="flex gap-1 items-center">
           <span
@@ -119,17 +124,17 @@ function ParticipantsTab() {
         className="flex items-center justify-center gap-2 w-full py-2 mb-2 bg-[var(--brand-soft)] hover:bg-[var(--brand)]/15 text-[var(--brand-text)] text-xs font-semibold rounded-lg border-none cursor-pointer transition-all"
       >
         <span>+</span>
-        Add People
+        {t("sidebar.addPeople")}
       </button>
       <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider px-2 py-1.5">
-        {s.host}
+        {t("sidebar.host")}
       </div>
       <ParticipantRow participant={localParticipant} isLocal />
 
       {others.length > 0 && (
         <>
           <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider px-2 py-1.5 mt-2">
-            {s.students} ({others.length})
+            {t("sidebar.students", { count: others.length })}
           </div>
           {others.map((p) => (
             <ParticipantRow key={p.identity} participant={p} />
@@ -164,8 +169,10 @@ function ChatListener({ roomCode }: { roomCode: string }) {
 
   return null;
 }
+
 // ── Chat Tab ──
 function ChatTab({ roomCode }: { roomCode: string }) {
+  const { t } = useTranslation("room");
   const { send } = useChat();
   const { getMessages } = useChatStore();
   const { localParticipant } = useLocalParticipant();
@@ -218,7 +225,9 @@ function ChatTab({ roomCode }: { roomCode: string }) {
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
             <span className="text-2xl">💬</span>
-            <p className="text-xs text-[var(--t3)]">No messages yet</p>
+            <p className="text-xs text-[var(--t3)]">
+              {t("sidebar.noMessages")}
+            </p>
           </div>
         ) : (
           messages.map((msg, i) => {
@@ -305,7 +314,7 @@ function ChatTab({ roomCode }: { roomCode: string }) {
               handleSend();
             }
           }}
-          placeholder="Message..."
+          placeholder={t("sidebar.messagePlaceholder")}
           className="flex-1 bg-[var(--s2)] border border-[var(--b)] rounded-lg px-3 py-2 text-xs text-[var(--t1)] placeholder-[var(--t3)] outline-none focus:border-[var(--brand)] transition-colors min-w-0"
         />
         <button
@@ -322,37 +331,37 @@ function ChatTab({ roomCode }: { roomCode: string }) {
 
 // ── Tools Tab ──
 function ToolsTab() {
-  const s = Strings.tools;
+  const { t } = useTranslation(["room", "common"]);
 
   const tools = [
     {
       icon: "🎮",
-      name: s.launchGame,
-      desc: s.launchGameDesc,
+      name: t("tools.launchGame"),
+      desc: t("tools.launchGameDesc"),
       status: "ready" as const,
     },
     {
       icon: "📋",
-      name: s.whiteboard,
-      desc: s.whiteboardDesc,
+      name: t("tools.whiteboard"),
+      desc: t("tools.whiteboardDesc"),
       status: "ready" as const,
     },
     {
       icon: "📝",
-      name: s.quickExam,
-      desc: s.quickExamDesc,
+      name: t("tools.quickExam"),
+      desc: t("tools.quickExamDesc"),
       status: "ready" as const,
     },
     {
       icon: "🤖",
-      name: s.aiSummary,
-      desc: s.aiSummaryDesc,
+      name: t("tools.aiSummary"),
+      desc: t("tools.aiSummaryDesc"),
       status: "soon" as const,
     },
     {
       icon: "📁",
-      name: s.fileShare,
-      desc: s.fileShareDesc,
+      name: t("tools.fileShare"),
+      desc: t("tools.fileShareDesc"),
       status: "soon" as const,
     },
   ];
@@ -391,11 +400,11 @@ function ToolsTab() {
           </div>
           {tool.status === "soon" ? (
             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-[rgba(245,158,11,0.1)] text-[var(--amber)] flex-shrink-0">
-              {Strings.common.soon}
+              {t("common:actions.soon")}
             </span>
           ) : (
             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-[rgba(34,197,94,0.1)] text-[var(--green)] flex-shrink-0">
-              Ready
+              {t("tools.ready")}
             </span>
           )}
         </button>
@@ -404,30 +413,23 @@ function ToolsTab() {
   );
 }
 
-// ── Sidebar Tabs ──
-const tabs: { id: SidebarTab; icon: React.ReactNode; tooltip: string }[] = [
-  {
-    id: "participants",
-    icon: Icons.people,
-    tooltip: Strings.room.tooltips.participants,
-  },
-  { id: "chat", icon: Icons.chat, tooltip: Strings.room.tooltips.chat },
-  { id: "tools", icon: Icons.tools, tooltip: Strings.room.tooltips.tools },
-];
-
-import { Tooltip } from "../../../components/ui/Tooltip";
-import React from "react";
-import InviteModal from "./InviteModal";
-import { useChatStore } from "../store/chatStore";
-import { useRoomStore } from "../store/roomStore";
-import { Track } from "livekit-client";
-
 export default function RoomSidebar({
   activeTab,
   onTabChange,
   roomCode,
 }: RoomSidebarProps) {
+  const { t } = useTranslation("room");
   if (!activeTab) return null;
+
+  const tabs: { id: SidebarTab; icon: React.ReactNode; tooltip: string }[] = [
+    {
+      id: "participants",
+      icon: Icons.people,
+      tooltip: t("tooltips.participants"),
+    },
+    { id: "chat", icon: Icons.chat, tooltip: t("tooltips.chat") },
+    { id: "tools", icon: Icons.tools, tooltip: t("tooltips.tools") },
+  ];
 
   return (
     <div className="w-[272px] bg-[var(--s1)] border-l border-[var(--b)] flex flex-col flex-shrink-0 fade-in">

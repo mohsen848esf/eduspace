@@ -1,11 +1,13 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useLogin } from "../hooks/useLogin";
 import { usePasswordToggle } from "../hooks/usePasswordToggle";
 import Input from "../../../components/ui/Input";
 import Button from "../../../components/ui/Button";
 
 export default function LoginPage() {
+  const { t } = useTranslation(["auth", "common"]);
   const { form, onSubmit, isLoading, error, clearError } = useLogin();
   const { inputType, icon, toggle } = usePasswordToggle();
   const {
@@ -26,9 +28,11 @@ export default function LoginPage() {
             E
           </div>
           <div className="text-center">
-            <h1 className="text-xl font-bold text-[var(--t1)]">EduSpace</h1>
+            <h1 className="text-xl font-bold text-[var(--t1)]">
+              {t("common:app.name")}
+            </h1>
             <p className="text-sm text-[var(--t3)] mt-0.5">
-              Sign in to your account
+              {t("login.title")}
             </p>
           </div>
         </div>
@@ -45,17 +49,17 @@ export default function LoginPage() {
 
           <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
             <Input
-              label="Username"
-              placeholder="Enter your username"
+              label={t("fields.username")}
+              placeholder={t("placeholders.username")}
               autoFocus
               error={errors.username?.message}
               {...register("username")}
             />
 
             <Input
-              label="Password"
+              label={t("fields.password")}
               type={inputType}
-              placeholder="Enter your password"
+              placeholder={t("placeholders.password")}
               error={errors.password?.message}
               rightIcon={<span>{icon}</span>}
               onRightIconClick={toggle}
@@ -68,17 +72,17 @@ export default function LoginPage() {
               loading={isLoading}
               className="mt-1"
             >
-              Sign In
+              {t("login.submit")}
             </Button>
           </form>
 
           <p className="text-center text-xs text-[var(--t3)] mt-4">
-            Don't have an account?{" "}
+            {t("login.noAccount")}{" "}
             <Link
               to="/register"
               className="text-[var(--brand-text)] hover:underline font-medium"
             >
-              Create one
+              {t("login.createOne")}
             </Link>
           </p>
         </div>

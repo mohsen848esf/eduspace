@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 interface Player {
   userId: string;
@@ -41,7 +42,6 @@ type GameStatus =
 export default function GameContainer({
   gameUrl,
   gameName,
-  gameId,
   mode = "solo",
   players = [],
   settings = {},
@@ -51,6 +51,7 @@ export default function GameContainer({
   onGameOver,
   onNeedNext,
 }: GameContainerProps) {
+  const { t } = useTranslation("games");
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [status, setStatus] = useState<GameStatus>("splash");
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -158,10 +159,14 @@ export default function GameContainer({
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-gray-950 animate-fade-in">
           <div className="flex flex-col items-center gap-4">
             <div className="text-xs font-semibold tracking-widest text-gray-500 uppercase">
-              Powered by
+              {t("container.poweredBy")}
             </div>
-            <div className="text-3xl font-bold text-white">EduSpace</div>
-            <div className="text-sm text-gray-400">Loading {gameName}...</div>
+            <div className="text-3xl font-bold text-white">
+              {t("container.branding")}
+            </div>
+            <div className="text-sm text-gray-400">
+              {t("container.loading", { name: gameName })}
+            </div>
             <div className="w-32 h-1 bg-gray-800 rounded-full overflow-hidden mt-2">
               <div className="h-full bg-indigo-500 rounded-full animate-loading-bar" />
             </div>
@@ -174,7 +179,9 @@ export default function GameContainer({
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-950">
           <div className="flex flex-col items-center gap-3">
             <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm text-gray-400">Loading game...</span>
+            <span className="text-sm text-gray-400">
+              {t("container.loadingGame")}
+            </span>
           </div>
         </div>
       )}
@@ -186,37 +193,37 @@ export default function GameContainer({
           {isHost && status === "ready" && (
             <button
               onClick={startGame}
-              title="Start game"
+              title={t("container.start")}
               className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-all active:scale-95"
             >
-              Start
+              {t("container.start")}
             </button>
           )}
           {isHost && status === "playing" && (
             <button
               onClick={pauseGame}
-              title="Pause game"
+              title={t("container.pause")}
               className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 text-white text-sm font-semibold rounded-lg transition-all active:scale-95"
             >
-              Pause
+              {t("container.pause")}
             </button>
           )}
           {isHost && status === "paused" && (
             <>
               <button
                 onClick={resumeGame}
-                title="Resume game"
+                title={t("container.resume")}
                 className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-lg transition-all active:scale-95"
               >
-                Resume
+                {t("container.resume")}
               </button>
               {mode === "class" && (
                 <button
                   onClick={nextQuestion}
-                  title="Next question"
+                  title={t("container.next")}
                   className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-all active:scale-95"
                 >
-                  Next →
+                  {t("container.next")}
                 </button>
               )}
             </>
@@ -225,7 +232,11 @@ export default function GameContainer({
           {/* Fullscreen toggle */}
           <button
             onClick={toggleFullscreen}
-            title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            title={
+              isFullscreen
+                ? t("container.exitFullscreen")
+                : t("container.fullscreen")
+            }
             className="p-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-all active:scale-95"
           >
             {isFullscreen ? (
@@ -274,7 +285,9 @@ export default function GameContainer({
       {/* ── EduSpace branding watermark ── */}
       {(status === "playing" || status === "paused") && (
         <div className="absolute bottom-3 left-3 z-30">
-          <span className="text-xs text-gray-600 font-medium">EduSpace</span>
+          <span className="text-xs text-gray-600 font-medium">
+            {t("container.branding")}
+          </span>
         </div>
       )}
     </div>

@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createLocalVideoTrack, LocalVideoTrack } from "livekit-client";
-import {
-  BackgroundProcessor,
-  supportsBackgroundProcessors,
-} from "@livekit/track-processors";
+import { supportsBackgroundProcessors } from "@livekit/track-processors";
 import type { BackgroundType } from "./useBackgroundBlur";
 import { useBackgroundStore } from "../store/backgroundStore";
 

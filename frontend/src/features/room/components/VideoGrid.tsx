@@ -8,6 +8,7 @@ import {
 } from "@livekit/components-react";
 import { RemoteParticipant, Track, type Participant } from "livekit-client";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Icons } from "../../../lib/constants/icons";
 import { Tooltip } from "../../../components/ui/Tooltip";
 import { cn } from "../../../lib/utils";
@@ -65,7 +66,6 @@ function ParticipantTile({
   participant,
   camTrackRef,
   screenTrackRef,
-  isLocal,
   compact = false,
   localIdentity,
   isHost,
@@ -84,6 +84,7 @@ function ParticipantTile({
   onKick?: (p: RemoteParticipant) => void;
   mutedByHost?: Set<string>;
 }) {
+  const { t } = useTranslation("room");
   const isSpeaking = useIsSpeaking(participant);
   const [hovered, setHovered] = useState(false);
   const [pinned, setPinned] = useState(false);
@@ -118,13 +119,6 @@ function ParticipantTile({
       onMouseLeave={() => setHovered(false)}
     >
       {primaryTrack ? (
-        // <VideoTrack
-        //   trackRef={primaryTrack}
-        //   className={cn(
-        //     "absolute inset-0 w-full h-full object-cover",
-        //     isLocalParticipant && !hasScreen && "scale-x-[-1]",
-        //   )}
-        // />
         <VideoTrack
           trackRef={primaryTrack}
           className={cn("absolute inset-0 w-full h-full object-cover")}
@@ -161,7 +155,7 @@ function ParticipantTile({
       {hasScreen && !compact && (
         <div className="absolute top-2 left-2 bg-[var(--brand)]/80 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
           {Icons.screenShare}
-          <span>Sharing</span>
+          <span>{t("tile.sharing")}</span>
         </div>
       )}
 
@@ -186,43 +180,14 @@ function ParticipantTile({
         </div>
       )}
 
-      {/* {hovered && !compact && (
-        <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px] flex items-center justify-center gap-2 fade-in">
-          <Tooltip content="Zoom in">
-            <button className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 border-none cursor-pointer text-white text-base flex items-center justify-center transition-all active:scale-95">
-              🔍
-            </button>
-          </Tooltip>
-          <Tooltip content={pinned ? "Unpin" : "Pin"}>
-            <button
-              className={cn(
-                "w-9 h-9 rounded-full border-none cursor-pointer text-white text-base flex items-center justify-center transition-all active:scale-95",
-                pinned
-                  ? "bg-[var(--brand)]/60 hover:bg-[var(--brand)]/80"
-                  : "bg-white/15 hover:bg-white/25",
-              )}
-              onClick={() => setPinned((p) => !p)}
-            >
-              📌
-            </button>
-          </Tooltip>
-          {!isLocalParticipant && (
-            <Tooltip content="Mute">
-              <button className="w-9 h-9 rounded-full bg-white/15 hover:bg-[var(--red)]/50 border-none cursor-pointer text-white text-base flex items-center justify-center transition-all active:scale-95">
-                🔇
-              </button>
-            </Tooltip>
-          )}
-        </div>
-      )} */}
       {hovered && !compact && (
         <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px] flex items-center justify-center gap-2 fade-in">
-          <Tooltip content="Zoom in">
+          <Tooltip content={t("tile.zoomIn")}>
             <button className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 border-none cursor-pointer text-white text-base flex items-center justify-center transition-all active:scale-95">
               🔍
             </button>
           </Tooltip>
-          <Tooltip content={pinned ? "Unpin" : "Pin"}>
+          <Tooltip content={pinned ? t("tile.unpin") : t("tile.pin")}>
             <button
               className={cn(
                 "w-9 h-9 rounded-full border-none cursor-pointer text-white text-base flex items-center justify-center transition-all active:scale-95",
@@ -239,7 +204,9 @@ function ParticipantTile({
             <>
               <Tooltip
                 content={
-                  mutedByHost?.has(participant.identity) ? "Unmute" : "Mute"
+                  mutedByHost?.has(participant.identity)
+                    ? t("tile.unmute")
+                    : t("tile.mute")
                 }
               >
                 <button
@@ -254,7 +221,7 @@ function ParticipantTile({
                   {mutedByHost?.has(participant.identity) ? "🎙" : "🔇"}
                 </button>
               </Tooltip>
-              <Tooltip content="Remove from call">
+              <Tooltip content={t("tile.remove")}>
                 <button
                   className="w-9 h-9 rounded-full bg-white/15 hover:bg-[var(--red)]/50 border-none cursor-pointer text-white text-base flex items-center justify-center transition-all active:scale-95"
                   onClick={() => onKick?.(participant as RemoteParticipant)}
@@ -273,7 +240,7 @@ function ParticipantTile({
             compact ? "text-[9px]" : "text-[11px]",
           )}
         >
-          {isLocalParticipant ? `${name} (You)` : name}
+          {isLocalParticipant ? `${name} ${t("tile.you")}` : name}
         </span>
       </div>
     </div>
@@ -459,7 +426,7 @@ interface VideoGridProps {
   onLayoutChange: (l: LayoutMode) => void;
 }
 
-export default function VideoGrid({ layout, onLayoutChange }: VideoGridProps) {
+export default function VideoGrid({ layout }: VideoGridProps) {
   const { localParticipant } = useLocalParticipant();
   const remoteParticipants = useParticipants();
   const { isHost, muteParticipant, kickParticipant } = useHostControls();

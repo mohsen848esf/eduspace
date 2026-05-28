@@ -1,25 +1,26 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "../../lib/utils";
 import { Tooltip } from "../ui/Tooltip";
 
 interface NavItem {
   icon: string;
-  label: string;
+  labelKey: string;
   badge?: number;
   id: string;
 }
 
 const mainNav: NavItem[] = [
-  { icon: "⊞", label: "Dashboard", id: "dashboard" },
-  { icon: "📹", label: "Video Calls", id: "calls" },
-  { icon: "🎮", label: "Games", id: "games" },
-  { icon: "📝", label: "Exams", id: "exams" },
+  { icon: "⊞", labelKey: "nav.dashboard", id: "dashboard" },
+  { icon: "📹", labelKey: "nav.videoCalls", id: "calls" },
+  { icon: "🎮", labelKey: "nav.games", id: "games" },
+  { icon: "📝", labelKey: "nav.exams", id: "exams" },
 ];
 
 const manageNav: NavItem[] = [
-  { icon: "👥", label: "Students", id: "students", badge: 3 },
-  { icon: "📊", label: "Reports", id: "reports" },
-  { icon: "🎬", label: "Recordings", id: "recordings" },
+  { icon: "👥", labelKey: "nav.students", id: "students", badge: 3 },
+  { icon: "📊", labelKey: "nav.reports", id: "reports" },
+  { icon: "🎬", labelKey: "nav.recordings", id: "recordings" },
 ];
 
 interface SidebarProps {
@@ -31,10 +32,12 @@ export default function Sidebar({
   activeId = "dashboard",
   onNavigate,
 }: SidebarProps) {
+  const { t } = useTranslation(["dashboard", "common"]);
   const [collapsed, setCollapsed] = useState(false);
 
   const NavButton = ({ item }: { item: NavItem }) => {
     const isActive = activeId === item.id;
+    const label = t(item.labelKey);
     const btn = (
       <button
         onClick={() => onNavigate?.(item.id)}
@@ -57,7 +60,7 @@ export default function Sidebar({
               isActive && "font-semibold",
             )}
           >
-            {item.label}
+            {label}
           </span>
         )}
         {!collapsed && item.badge && (
@@ -70,7 +73,7 @@ export default function Sidebar({
 
     return collapsed ? (
       <Tooltip
-        content={item.badge ? `${item.label} · ${item.badge} new` : item.label}
+        content={item.badge ? `${label} · ${item.badge} new` : label}
         side="right"
       >
         {btn}
@@ -97,7 +100,9 @@ export default function Sidebar({
         )}
       >
         <Tooltip
-          content={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          content={
+            collapsed ? t("nav.expandSidebar") : t("nav.collapseSidebar")
+          }
           side="right"
         >
           <button
@@ -112,7 +117,7 @@ export default function Sidebar({
             </div>
             {!collapsed && (
               <span className="text-[15px] font-bold text-[var(--t1)] whitespace-nowrap">
-                EduSpace
+                {t("common:app.name")}
               </span>
             )}
           </button>
@@ -123,7 +128,7 @@ export default function Sidebar({
       <nav className="flex-1 p-2 flex flex-col gap-0.5 overflow-hidden">
         {!collapsed && (
           <span className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-[0.8px] px-2.5 py-2">
-            Main
+            {t("nav.main")}
           </span>
         )}
         {mainNav.map((item) => (
@@ -132,7 +137,7 @@ export default function Sidebar({
 
         {!collapsed && (
           <span className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-[0.8px] px-2.5 py-2 mt-2">
-            Manage
+            {t("nav.manage")}
           </span>
         )}
         {manageNav.map((item) => (
@@ -142,7 +147,7 @@ export default function Sidebar({
 
       {/* User */}
       <div className="p-2 border-t border-[var(--b)]">
-        <Tooltip content="Your profile" side="right">
+        <Tooltip content={t("nav.yourProfile")} side="right">
           <button
             className={cn(
               "flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg",
@@ -163,7 +168,7 @@ export default function Sidebar({
                   Ali Rezaei
                 </div>
                 <div className="text-[10px] text-[var(--t3)] whitespace-nowrap">
-                  Teacher
+                  {t("auth:register.teacher", { ns: "auth" })}
                 </div>
               </div>
             )}

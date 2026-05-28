@@ -1,11 +1,14 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { roomApi } from "../api/room.api";
 import { useRoomStore } from "../store/roomStore";
 import type { CreateRoomInput } from "../schemas/room.schema";
 import { useBackgroundStore } from "../store/backgroundStore";
+
 export function useRoom() {
   const navigate = useNavigate();
+  const { t } = useTranslation("room");
   const { setRoom, clearRoom } = useRoomStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +19,6 @@ export function useRoom() {
       setError(null);
       try {
         const res = await roomApi.create(data);
-        //console.log("roome res", res);
         setRoom({
           token: res.token,
           livekitUrl: res.livekit_url,
@@ -26,12 +28,12 @@ export function useRoom() {
         });
         navigate(`/room/${res.room_code}`);
       } catch (err: any) {
-        setError(err.response?.data?.error || "Failed to create room");
+        setError(err.response?.data?.error || t("join.createFailed"));
       } finally {
         setIsLoading(false);
       }
     },
-    [navigate, setRoom],
+    [navigate, setRoom, t],
   );
 
   const joinRoom = useCallback(
@@ -49,12 +51,12 @@ export function useRoom() {
         });
         navigate(`/room/${res.room_code}`);
       } catch (err: any) {
-        setError(err.response?.data?.error || "Failed to join room");
+        setError(err.response?.data?.error || t("join.joinFailed"));
       } finally {
         setIsLoading(false);
       }
     },
-    [navigate, setRoom],
+    [navigate, setRoom, t],
   );
 
   const leaveRoom = useCallback(async () => {
@@ -74,7 +76,9 @@ export function useRoom() {
           track.enabled = false;
         });
       }
-    } catch {}
+    } catch {
+      /* swallow */
+    }
 
     // Reset background
     useBackgroundStore.getState().setBackground("none");
@@ -83,7 +87,9 @@ export function useRoom() {
     if (roomCode) {
       try {
         await roomApi.leave(roomCode);
-      } catch {}
+      } catch {
+        /* swallow */
+      }
     }
 
     clearRoom();

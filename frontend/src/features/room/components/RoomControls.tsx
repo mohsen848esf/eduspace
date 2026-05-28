@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useRoom } from "../hooks/useRoom";
+import { useTranslation } from "react-i18next";
 import { type SidebarTab } from "../hooks/useRoomControls";
 import { Tooltip } from "../../../components/ui/Tooltip";
 import { Icons } from "../../../lib/constants/icons";
-import { Strings } from "../../../lib/constants/strings";
 import { cn } from "../../../lib/utils";
 import {
   useBackgroundBlur,
@@ -41,24 +40,25 @@ function LayoutPopover({
   onChange: (l: LayoutMode) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation("room");
   const layouts = [
     {
       id: "grid" as LayoutMode,
       icon: "⊞",
-      label: "Grid",
-      desc: "All participants equal size",
+      label: t("layouts.grid"),
+      desc: t("layouts.gridDesc"),
     },
     {
       id: "spotlight" as LayoutMode,
       icon: "□",
-      label: "Spotlight",
-      desc: "One large, others small",
+      label: t("layouts.spotlight"),
+      desc: t("layouts.spotlightDesc"),
     },
     {
       id: "sidebar" as LayoutMode,
       icon: "▤",
-      label: "Sidebar",
-      desc: "Main view with sidebar strip",
+      label: t("layouts.sidebar"),
+      desc: t("layouts.sidebarDesc"),
     },
   ];
 
@@ -67,7 +67,7 @@ function LayoutPopover({
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div className="absolute bottom-[76px] left-1/2 -translate-x-1/2 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-52 fade-in">
         <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2 px-1">
-          Layout
+          {t("layouts.title")}
         </div>
         {layouts.map((l) => (
           <button
@@ -201,9 +201,9 @@ function SplitBtn({
   );
 }
 
-// ── Mic Settings Popover ──
-
+// ── Audio Visualizer ──
 function AudioVisualizer({ isMicOn }: { isMicOn: boolean }) {
+  const { t } = useTranslation("room");
   const [bars, setBars] = useState(Array(20).fill(10));
   const animRef = useRef<number>(0);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -259,13 +259,16 @@ function AudioVisualizer({ isMicOn }: { isMicOn: boolean }) {
       ))}
       {!isMicOn && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[10px] text-[var(--t3)]">Microphone muted</span>
+          <span className="text-[10px] text-[var(--t3)]">
+            {t("audioVisualizer.muted")}
+          </span>
         </div>
       )}
     </div>
   );
 }
 
+// ── Mic Settings Popover ──
 function MicSettingsPopover({
   onClose,
   isMicOn,
@@ -273,6 +276,7 @@ function MicSettingsPopover({
   onClose: () => void;
   isMicOn: boolean;
 }) {
+  const { t } = useTranslation("room");
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedInput, setSelectedInput] = useState("");
   const [selectedOutput, setSelectedOutput] = useState("");
@@ -299,7 +303,7 @@ function MicSettingsPopover({
         </div>
 
         <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-1.5">
-          Microphone
+          {t("preJoin.microphone")}
         </div>
         <select
           value={selectedInput}
@@ -308,13 +312,13 @@ function MicSettingsPopover({
         >
           {inputs.map((d) => (
             <option key={d.deviceId} value={d.deviceId}>
-              {d.label || "Microphone"}
+              {d.label || t("preJoin.deviceLabels.microphone")}
             </option>
           ))}
         </select>
 
         <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-1.5">
-          Speaker
+          {t("preJoin.speaker")}
         </div>
         <select
           value={selectedOutput}
@@ -323,7 +327,7 @@ function MicSettingsPopover({
         >
           {outputs.map((d) => (
             <option key={d.deviceId} value={d.deviceId}>
-              {d.label || "Speaker"}
+              {d.label || t("preJoin.deviceLabels.speaker")}
             </option>
           ))}
         </select>
@@ -334,6 +338,7 @@ function MicSettingsPopover({
 
 // ── Camera Settings Popover ──
 function CamSettingsPopover({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation("room");
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedCam, setSelectedCam] = useState("");
   const { background, isSupported, changeBackground } = useBackgroundBlur();
@@ -348,9 +353,10 @@ function CamSettingsPopover({ onClose }: { onClose: () => void }) {
 
   const cameras = devices.filter((d) => d.kind === "videoinput");
 
+  // Background labels are visual identifiers; reuse keys from preJoin
   const backgrounds: { id: BackgroundType; label: string; preview: string }[] =
     [
-      { id: "none", label: "None", preview: "" },
+      { id: "none", label: t("preJoin.background"), preview: "" },
       { id: "blur", label: "Blur", preview: "" },
       {
         id: "office",
@@ -384,7 +390,7 @@ function CamSettingsPopover({ onClose }: { onClose: () => void }) {
       <div className="absolute bottom-[76px] left-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-64 fade-in">
         {/* Camera device */}
         <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-1.5">
-          Camera
+          {t("preJoin.camera")}
         </div>
         <select
           value={selectedCam}
@@ -393,19 +399,19 @@ function CamSettingsPopover({ onClose }: { onClose: () => void }) {
         >
           {cameras.map((d) => (
             <option key={d.deviceId} value={d.deviceId}>
-              {d.label || "Camera"}
+              {d.label || t("preJoin.deviceLabels.camera")}
             </option>
           ))}
         </select>
 
         {/* Background */}
         <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2">
-          Background
+          {t("preJoin.background")}
         </div>
 
         {!isSupported ? (
           <p className="text-xs text-[var(--t3)] px-1">
-            Background effects not supported in this browser.
+            {t("preJoin.bgNotSupported")}
           </p>
         ) : (
           <div className="grid grid-cols-3 gap-1.5">
@@ -468,8 +474,7 @@ export default function RoomControls({
   onTogglePushToTalk,
   onLeave,
 }: RoomControlsProps) {
-  const { leaveRoom } = useRoom();
-  const s = Strings.room;
+  const { t } = useTranslation("room");
   const [micPopoverOpen, setMicPopoverOpen] = useState(false);
   const [camPopoverOpen, setCamPopoverOpen] = useState(false);
   const [layoutPopoverOpen, setLayoutPopoverOpen] = useState(false);
@@ -487,9 +492,11 @@ export default function RoomControls({
         <SplitBtn
           iconOn={Icons.mic}
           iconOff={Icons.micOff}
-          label={s.mic}
-          tooltipMain={isMicOn ? "Mute · Ctrl+D" : "Unmute · Ctrl+D"}
-          tooltipArrow="Microphone settings"
+          label={t("controls.mic")}
+          tooltipMain={
+            isMicOn ? t("tooltips.muteOn") : t("tooltips.muteOff")
+          }
+          tooltipArrow={t("tooltips.micSettings")}
           onMain={onToggleMic}
           onArrow={() => {
             setMicPopoverOpen((p) => !p);
@@ -508,11 +515,11 @@ export default function RoomControls({
         <SplitBtn
           iconOn={Icons.camera}
           iconOff={Icons.cameraOff}
-          label={s.camera}
+          label={t("controls.camera")}
           tooltipMain={
-            isCamOn ? "Turn off camera · Ctrl+E" : "Turn on camera · Ctrl+E"
+            isCamOn ? t("tooltips.cameraOn") : t("tooltips.cameraOff")
           }
-          tooltipArrow="Camera settings & background"
+          tooltipArrow={t("tooltips.camSettings")}
           onMain={onToggleCam}
           onArrow={() => {
             setCamPopoverOpen((p) => !p);
@@ -527,8 +534,8 @@ export default function RoomControls({
         />
         <CtrlBtn
           icon={Icons.screenShare}
-          label={s.share}
-          tooltip={s.tooltips.screenShare}
+          label={t("controls.share")}
+          tooltip={t("tooltips.screenShare")}
           onClick={onToggleScreenShare}
           isOn={isScreenSharing}
         />
@@ -538,22 +545,22 @@ export default function RoomControls({
       <div className="flex items-center gap-1.5">
         <CtrlBtn
           icon={Icons.people}
-          label={s.people}
-          tooltip={s.tooltips.participants}
+          label={t("controls.people")}
+          tooltip={t("tooltips.participants")}
           onClick={() => onToggleSidebar("participants")}
           isOn={sidebarTab === "participants"}
         />
         <CtrlBtn
           icon={Icons.chat}
-          label={s.chat}
-          tooltip={s.tooltips.chat}
+          label={t("controls.chat")}
+          tooltip={t("tooltips.chat")}
           onClick={() => onToggleSidebar("chat")}
           isOn={sidebarTab === "chat"}
         />
         <CtrlBtn
           icon={Icons.tools}
-          label={s.tools}
-          tooltip={s.tooltips.tools}
+          label={t("controls.tools")}
+          tooltip={t("tooltips.tools")}
           onClick={() => onToggleSidebar("tools")}
           isOn={sidebarTab === "tools"}
         />
@@ -567,8 +574,8 @@ export default function RoomControls({
                 {layout === "grid" ? "⊞" : layout === "spotlight" ? "□" : "▤"}
               </span>
             }
-            label="Layout"
-            tooltip="Change layout"
+            label={t("controls.layout")}
+            tooltip={t("tooltips.layout")}
             onClick={() => {
               setLayoutPopoverOpen((p) => !p);
             }}
@@ -585,25 +592,23 @@ export default function RoomControls({
 
         <CtrlBtn
           icon={Icons.settings}
-          label={s.settings}
-          tooltip="General settings"
+          label={t("controls.settings")}
+          tooltip={t("tooltips.settings")}
           onClick={onToggleSettings}
           isOn={settingsOpen}
         />
       </div>
 
       {/* Right — leave */}
-      <Tooltip content={s.tooltips.leave}>
+      <Tooltip content={t("tooltips.leave")}>
         <button
           onClick={onLeave}
           className="flex items-center gap-2 px-4 h-[52px] bg-[var(--red)] hover:bg-red-500 active:scale-[0.97] text-white font-semibold text-sm rounded-xl border-none cursor-pointer transition-all duration-150"
         >
           {Icons.leave}
-          {s.leave}
+          {t("controls.leave")}
         </button>
       </Tooltip>
     </div>
   );
 }
-
-import React from "react";

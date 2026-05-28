@@ -1,27 +1,39 @@
 import { z } from "zod";
+import type { TFunction } from "i18next";
 
-export const loginSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
+/**
+ * Schema factories — accept a translator so validation messages
+ * are localized through the i18n layer.
+ *
+ * Usage in hooks:
+ *   const { t } = useTranslation("auth");
+ *   const schema = useMemo(() => buildLoginSchema(t), [t]);
+ */
 
-export const registerSchema = z
-  .object({
-    full_name: z.string().min(2, "Full name must be at least 2 characters"),
-    username: z
-      .string()
-      .min(3, "Username must be at least 3 characters")
-      .max(20, "Username must be under 20 characters")
-      .regex(/^[a-zA-Z0-9_]+$/, "Only letters, numbers and underscores"),
-    email: z.email("Enter a valid email address"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
-    confirmPassword: z.string(),
-    role: z.enum(["student", "teacher"]),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
+export const buildLoginSchema = (t: TFunction) =>
+  z.object({
+    username: z.string().min(3, t("validation.usernameMin")),
+    password: z.string().min(6, t("validation.passwordMin6")),
   });
+
+export const buildRegisterSchema = (t: TFunction) =>
+  z
+    .object({
+      full_name: z.string().min(2, t("validation.fullNameMin")),
+      username: z
+        .string()
+        .min(3, t("validation.usernameMin"))
+        .max(20, t("validation.usernameMax"))
+        .regex(/^[a-zA-Z0-9_]+$/, t("validation.usernamePattern")),
+      email: z.email(t("validation.emailInvalid")),
+      password: z.string().min(8, t("validation.passwordMin8")),
+      confirmPassword: z.string(),
+      role: z.enum(["student", "teacher"]),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: t("validation.passwordsMismatch"),
+      path: ["confirmPassword"],
+    });
 
 export const updateProfileSchema = z.object({
   full_name: z.string().min(2).optional(),
@@ -29,10 +41,13 @@ export const updateProfileSchema = z.object({
   avatar: z.instanceof(File).optional(),
 });
 
-// Types — automatically derived from schemas
-export type LoginInput = z.infer<typeof loginSchema>;
-export type RegisterInput = z.infer<typeof registerSchema>;
+// Types — derived from the schemas (use a placeholder translator to infer types)
+type LoginSchema = ReturnType<typeof buildLoginSchema>;
+type RegisterSchema = ReturnType<typeof buildRegisterSchema>;
+
+export type LoginInput = z.infer<LoginSchema>;
+export type RegisterInput = z.infer<RegisterSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 
-// API payload type — بدون confirmPassword
+// API payload type — without confirmPassword
 export type RegisterPayload = Omit<RegisterInput, "confirmPassword">;

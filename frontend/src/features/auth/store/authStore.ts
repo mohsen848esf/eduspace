@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import i18n from "../../../i18n/config";
 import { authApi, type User } from "../api/auth.api";
 import type { LoginInput, RegisterPayload } from "../schemas/auth.schema";
 
@@ -32,7 +33,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ user: res.user, isAuthenticated: true, isLoading: false });
     } catch (err: any) {
       set({
-        error: err.response?.data?.error || "Login failed",
+        error: err.response?.data?.error || i18n.t("auth:errors.loginFailed"),
         isLoading: false,
       });
     }
@@ -49,7 +50,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const errors = err.response?.data;
       const message = errors
         ? Object.values(errors).flat().join(" ")
-        : "Registration failed";
+        : i18n.t("auth:errors.registerFailed");
       set({ error: message, isLoading: false });
     }
   },
@@ -58,7 +59,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true });
     try {
       await authApi.logout();
-    } catch {}
+    } catch {
+      /* swallow */
+    }
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     set({
