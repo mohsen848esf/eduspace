@@ -1,11 +1,13 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useRegister } from "../hooks/useRegister";
 import { usePasswordToggle } from "../hooks/usePasswordToggle";
 import Input from "../../../components/ui/Input";
 import Button from "../../../components/ui/Button";
 
 export default function RegisterPage() {
+  const { t } = useTranslation(["auth", "common"]);
   const { form, onSubmit, isLoading, error, clearError } = useRegister();
   const { inputType, icon, toggle } = usePasswordToggle();
   const {
@@ -29,9 +31,11 @@ export default function RegisterPage() {
             E
           </div>
           <div className="text-center">
-            <h1 className="text-xl font-bold text-[var(--t1)]">EduSpace</h1>
+            <h1 className="text-xl font-bold text-[var(--t1)]">
+              {t("common:app.name")}
+            </h1>
             <p className="text-sm text-[var(--t3)] mt-0.5">
-              Create your account
+              {t("register.title")}
             </p>
           </div>
         </div>
@@ -50,7 +54,7 @@ export default function RegisterPage() {
             {/* Role selector */}
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
-                I am a
+                {t("register.iAmA")}
               </span>
               <div className="grid grid-cols-2 gap-2">
                 {(["student", "teacher"] as const).map((role) => (
@@ -69,8 +73,8 @@ export default function RegisterPage() {
                       {...register("role")}
                     />
                     <span>{role === "student" ? "🎓" : "👨‍🏫"}</span>
-                    <span className="text-sm font-medium capitalize">
-                      {role}
+                    <span className="text-sm font-medium">
+                      {t(`register.${role}`)}
                     </span>
                   </label>
                 ))}
@@ -78,33 +82,33 @@ export default function RegisterPage() {
             </div>
 
             <Input
-              label="Full Name"
-              placeholder="Your full name"
+              label={t("fields.fullName")}
+              placeholder={t("placeholders.fullName")}
               autoFocus
               error={errors.full_name?.message}
               {...register("full_name")}
             />
 
             <Input
-              label="Username"
-              placeholder="e.g. ali_rezaei"
-              hint="Letters, numbers and underscores only"
+              label={t("fields.username")}
+              placeholder={t("placeholders.usernameRegister")}
+              hint={t("hints.username")}
               error={errors.username?.message}
               {...register("username")}
             />
 
             <Input
-              label="Email"
+              label={t("fields.email")}
               type="email"
-              placeholder="you@example.com"
+              placeholder={t("placeholders.email")}
               error={errors.email?.message}
               {...register("email")}
             />
 
             <Input
-              label="Password"
+              label={t("fields.password")}
               type={inputType}
-              placeholder="Min 8 characters"
+              placeholder={t("placeholders.passwordRegister")}
               error={errors.password?.message}
               rightIcon={<span>{icon}</span>}
               onRightIconClick={toggle}
@@ -112,9 +116,9 @@ export default function RegisterPage() {
             />
 
             <Input
-              label="Confirm Password"
+              label={t("fields.confirmPassword")}
               type={inputType}
-              placeholder="Repeat your password"
+              placeholder={t("placeholders.confirmPassword")}
               error={errors.confirmPassword?.message}
               {...register("confirmPassword")}
             />
@@ -125,17 +129,17 @@ export default function RegisterPage() {
               loading={isLoading}
               className="mt-1"
             >
-              Create Account
+              {t("register.submit")}
             </Button>
           </form>
 
           <p className="text-center text-xs text-[var(--t3)] mt-4">
-            Already have an account?{" "}
+            {t("register.hasAccount")}{" "}
             <Link
               to="/login"
               className="text-[var(--brand-text)] hover:underline font-medium"
             >
-              Sign in
+              {t("register.signIn")}
             </Link>
           </p>
         </div>

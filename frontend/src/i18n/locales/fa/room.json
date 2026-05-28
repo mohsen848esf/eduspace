@@ -1,0 +1,157 @@
+{
+  "preJoin": {
+    "roomCodeLabel": "کد اتاق:",
+    "join": "ورود به اتاق",
+    "cancel": "لغو",
+    "tabCamera": "📹 دوربین",
+    "tabAudio": "🎙 صدا",
+    "cameraOff": "دوربین خاموش است",
+    "muteMic": "بستن میکروفون",
+    "unmuteMic": "باز کردن میکروفون",
+    "turnOffCamera": "خاموش کردن دوربین",
+    "turnOnCamera": "روشن کردن دوربین",
+    "background": "پس‌زمینه",
+    "bgNotSupported": "این مرورگر از افکت پس‌زمینه پشتیبانی نمی‌کند.",
+    "bgApplying": "در حال اعمال پس‌زمینه...",
+    "camera": "دوربین",
+    "microphone": "میکروفون",
+    "speaker": "اسپیکر",
+    "micLevel": "سطح میکروفون",
+    "deviceLabels": {
+      "camera": "دوربین",
+      "microphone": "میکروفون",
+      "speaker": "اسپیکر"
+    }
+  },
+  "controls": {
+    "mic": "میکروفون",
+    "camera": "دوربین",
+    "share": "اشتراک",
+    "people": "افراد",
+    "chat": "گفتگو",
+    "tools": "ابزارها",
+    "settings": "تنظیمات",
+    "leave": "خروج",
+    "layout": "چیدمان"
+  },
+  "tooltips": {
+    "muteOn": "بستن میکروفون · Ctrl+D",
+    "muteOff": "باز کردن میکروفون · Ctrl+D",
+    "cameraOn": "خاموش کردن دوربین · Ctrl+E",
+    "cameraOff": "روشن کردن دوربین · Ctrl+E",
+    "micSettings": "تنظیمات میکروفون",
+    "camSettings": "تنظیمات دوربین و پس‌زمینه",
+    "screenShare": "اشتراک‌گذاری صفحه",
+    "participants": "افراد حاضر",
+    "chat": "گفتگو",
+    "tools": "ابزارهای جلسه",
+    "layout": "تغییر چیدمان",
+    "settings": "تنظیمات کلی",
+    "leave": "خروج از جلسه"
+  },
+  "layouts": {
+    "title": "چیدمان",
+    "grid": "شبکه‌ای",
+    "gridDesc": "همه شرکت‌کنندگان با اندازه برابر",
+    "spotlight": "نقطه‌ی کانون",
+    "spotlightDesc": "یک نفر بزرگ، بقیه کوچک",
+    "sidebar": "نواری",
+    "sidebarDesc": "نمای اصلی با نوار کناری"
+  },
+  "topbar": {
+    "defaultRoomName": "اتاق EduSpace",
+    "host": "میزبان",
+    "copy": "کپی لینک دعوت",
+    "copied": "کپی شد!",
+    "copiedToast": "لینک دعوت کپی شد!",
+    "rec": "ضبط",
+    "participantOne": "{{count}} نفر",
+    "participantOther": "{{count}} نفر",
+    "info": "اطلاعات اتاق",
+    "infoTitle": "اطلاعات اتاق",
+    "infoName": "نام",
+    "infoCode": "کد",
+    "infoDuration": "مدت زمان",
+    "infoParticipants": "شرکت‌کنندگان",
+    "infoYourRole": "نقش شما",
+    "roleHost": "میزبان",
+    "roleParticipant": "شرکت‌کننده"
+  },
+  "tile": {
+    "you": "(شما)",
+    "sharing": "در حال اشتراک",
+    "zoomIn": "بزرگ‌نمایی",
+    "pin": "سنجاق کن",
+    "unpin": "حذف سنجاق",
+    "mute": "بستن صدا",
+    "unmute": "باز کردن صدا",
+    "remove": "حذف از تماس"
+  },
+  "audioVisualizer": {
+    "muted": "میکروفون بسته است"
+  },
+  "settings": {
+    "title": "تنظیمات",
+    "pushToTalk": "فشار-برای-صحبت",
+    "pttHold": "Space را برای باز کردن میکروفون نگه دارید",
+    "pttDisabled": "کلید Space غیرفعال است",
+    "shortcuts": "میانبرها",
+    "shortcutMicLabel": "تغییر وضعیت میکروفون",
+    "shortcutMicSub": "بستن / باز کردن",
+    "shortcutCamLabel": "تغییر وضعیت دوربین",
+    "shortcutCamSub": "روشن / خاموش",
+    "noiseCancellation": "حذف نویز",
+    "hdVideo": "ویدیوی HD"
+  },
+  "sidebar": {
+    "addPeople": "افزودن افراد",
+    "host": "میزبان",
+    "students": "دانش‌آموزان ({{count}})",
+    "noMessages": "هنوز پیامی نیست",
+    "messagePlaceholder": "پیام..."
+  },
+  "invite": {
+    "title": "افزودن افراد",
+    "shareLink": "اشتراک لینک",
+    "copy": "کپی",
+    "copied": "✓ کپی شد",
+    "copiedToast": "لینک کپی شد!",
+    "inviteByUsername": "دعوت با نام کاربری",
+    "searchPlaceholder": "جست‌وجو با نام کاربری یا نام...",
+    "noUsers": "کاربری یافت نشد",
+    "invite": "دعوت",
+    "invited": "✓ ارسال شد",
+    "invitedToast": "{{username}} دعوت شد",
+    "failed": "ارسال دعوت ناموفق بود"
+  },
+  "tools": {
+    "launchGame": "اجرای بازی",
+    "launchGameDesc": "افزودن بازی به جلسه",
+    "whiteboard": "وایت‌بورد",
+    "whiteboardDesc": "نقاشی مشترک",
+    "quickExam": "آزمون سریع",
+    "quickExamDesc": "شروع آزمون در جلسه",
+    "aiSummary": "خلاصه‌ی هوش مصنوعی",
+    "aiSummaryDesc": "خلاصه‌سازی خودکار جلسه",
+    "fileShare": "اشتراک فایل",
+    "fileShareDesc": "اشتراک ارائه‌ها",
+    "ready": "آماده"
+  },
+  "host": {
+    "muted": "{{name}} بسته شد",
+    "unmuted": "{{name}} باز شد",
+    "muteFailed": "به‌روزرسانی شرکت‌کننده ناموفق بود",
+    "removed": "{{name}} حذف شد",
+    "removeFailed": "حذف شرکت‌کننده ناموفق بود",
+    "screenShareGranted": "اجازه‌ی اشتراک صفحه به {{name}} داده شد",
+    "screenShareFailed": "اعطای دسترسی ناموفق بود",
+    "youWereMuted": "میزبان میکروفون شما را بست",
+    "hostUnmuted": "میزبان میکروفون شما را باز کرد",
+    "hostTurnedOffCamera": "میزبان دوربین شما را خاموش کرد"
+  },
+  "join": {
+    "joining": "در حال ورود به اتاق...",
+    "createFailed": "ساخت اتاق ناموفق بود",
+    "joinFailed": "ورود به اتاق ناموفق بود"
+  }
+}

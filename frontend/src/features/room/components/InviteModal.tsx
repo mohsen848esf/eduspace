@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Icons } from "../../../lib/constants/icons";
 import { Tooltip } from "../../../components/ui/Tooltip";
 import { cn } from "../../../lib/utils";
@@ -18,6 +19,7 @@ interface InviteModalProps {
 }
 
 export default function InviteModal({ onClose }: InviteModalProps) {
+  const { t } = useTranslation("room");
   const { roomCode } = useRoomStore();
   const [search, setSearch] = useState("");
   const [users, setUsers] = useState<User[]>([]);
@@ -53,7 +55,7 @@ export default function InviteModal({ onClose }: InviteModalProps) {
 
   const copyLink = async () => {
     await navigator.clipboard.writeText(inviteLink);
-    toast.success("Link copied!");
+    toast.success(t("invite.copiedToast"));
 
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
@@ -65,13 +67,12 @@ export default function InviteModal({ onClose }: InviteModalProps) {
     setError(null);
     try {
       await client.post(`/rooms/${roomCode}/invite/`, { user_id: userId });
-      toast.success(`Invited ${user.username}`);
+      toast.success(t("invite.invitedToast", { username: user.username }));
 
       setInvited((prev) => new Set(prev).add(userId));
     } catch (err: any) {
-      toast.error("Failed to send invite");
-
-      setError(err.response?.data?.error || "Failed to send invite");
+      toast.error(t("invite.failed"));
+      setError(err.response?.data?.error || t("invite.failed"));
     } finally {
       setInviting(null);
     }
@@ -107,7 +108,7 @@ export default function InviteModal({ onClose }: InviteModalProps) {
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--b)]">
             <span className="text-sm font-semibold text-[var(--t1)]">
-              Add People
+              {t("invite.title")}
             </span>
             <button
               onClick={onClose}
@@ -121,13 +122,17 @@ export default function InviteModal({ onClose }: InviteModalProps) {
             {/* Share link */}
             <div>
               <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2">
-                Share Link
+                {t("invite.shareLink")}
               </div>
               <div className="flex gap-2">
                 <div className="flex-1 bg-[var(--s3)] rounded-lg px-3 py-2 text-xs text-[var(--t2)] font-mono truncate">
                   {inviteLink}
                 </div>
-                <Tooltip content={linkCopied ? "Copied!" : "Copy link"}>
+                <Tooltip
+                  content={
+                    linkCopied ? t("invite.copied") : t("invite.copy")
+                  }
+                >
                   <button
                     onClick={copyLink}
                     className={cn(
@@ -137,7 +142,7 @@ export default function InviteModal({ onClose }: InviteModalProps) {
                         : "bg-[var(--brand)] text-white hover:bg-[var(--brand-h)]",
                     )}
                   >
-                    {linkCopied ? "✓ Copied" : "Copy"}
+                    {linkCopied ? t("invite.copied") : t("invite.copy")}
                   </button>
                 </Tooltip>
               </div>
@@ -146,7 +151,7 @@ export default function InviteModal({ onClose }: InviteModalProps) {
             {/* Search */}
             <div>
               <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2">
-                Invite by Username
+                {t("invite.inviteByUsername")}
               </div>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--t3)]">
@@ -156,7 +161,7 @@ export default function InviteModal({ onClose }: InviteModalProps) {
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search by username or name..."
+                  placeholder={t("invite.searchPlaceholder")}
                   autoFocus
                   className="w-full bg-[var(--s3)] border border-[var(--b)] rounded-lg pl-8 pr-3 py-2 text-xs text-[var(--t1)] placeholder-[var(--t3)] outline-none focus:border-[var(--brand)] transition-colors"
                 />
@@ -207,9 +212,9 @@ export default function InviteModal({ onClose }: InviteModalProps) {
                         {inviting === user.id ? (
                           <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         ) : invited.has(user.id) ? (
-                          "✓ Sent"
+                          t("invite.invited")
                         ) : (
-                          "Invite"
+                          t("invite.invite")
                         )}
                       </button>
                     </div>
@@ -219,7 +224,9 @@ export default function InviteModal({ onClose }: InviteModalProps) {
 
               {search.trim() && !isSearching && users.length === 0 && (
                 <div className="mt-2 text-center py-4">
-                  <p className="text-xs text-[var(--t3)]">No users found</p>
+                  <p className="text-xs text-[var(--t3)]">
+                    {t("invite.noUsers")}
+                  </p>
                 </div>
               )}
             </div>

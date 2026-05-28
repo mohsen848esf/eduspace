@@ -1,0 +1,51 @@
+{
+  "title": "داشبورد",
+  "greeting": {
+    "morning": "صبح بخیر",
+    "afternoon": "ظهر بخیر",
+    "evening": "عصر بخیر"
+  },
+  "role": "نقش",
+  "actions": {
+    "startCall": "شروع تماس",
+    "launchGame": "اجرای بازی",
+    "newExam": "آزمون جدید",
+    "recordings": "ضبط‌ها"
+  },
+  "stats": {
+    "sessionsThisWeek": "جلسات این هفته",
+    "activeStudents": "دانش‌آموزان فعال",
+    "avgAttendance": "میانگین حضور"
+  },
+  "sessions": {
+    "title": "جلسات اخیر",
+    "seeAll": "مشاهده همه ←",
+    "empty": "هنوز جلسه‌ای ندارید",
+    "startFirst": "اولین جلسه‌ی خود را شروع کنید",
+    "statusLive": "● زنده",
+    "statusSoon": "به‌زودی",
+    "statusDone": "تمام شده"
+  },
+  "nav": {
+    "main": "اصلی",
+    "manage": "مدیریت",
+    "dashboard": "داشبورد",
+    "videoCalls": "تماس‌های ویدیویی",
+    "games": "بازی‌ها",
+    "exams": "آزمون‌ها",
+    "students": "دانش‌آموزان",
+    "reports": "گزارش‌ها",
+    "recordings": "ضبط‌ها",
+    "yourProfile": "پروفایل شما",
+    "expandSidebar": "باز کردن منوی کناری",
+    "collapseSidebar": "بستن منوی کناری"
+  },
+  "topbar": {
+    "switchToLight": "تغییر به حالت روشن",
+    "switchToDark": "تغییر به حالت تیره",
+    "search": "جست‌وجو",
+    "notifications": "اعلان‌ها · {{count}} جدید",
+    "settings": "تنظیمات"
+  },
+  "roomDefault": "اتاق {{name}}"
+}

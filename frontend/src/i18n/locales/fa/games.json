@@ -1,0 +1,23 @@
+{
+  "container": {
+    "poweredBy": "ارائه‌شده توسط",
+    "loading": "در حال بارگذاری {{name}}...",
+    "loadingGame": "در حال بارگذاری بازی...",
+    "start": "شروع",
+    "pause": "توقف",
+    "resume": "ادامه",
+    "next": "بعدی ←",
+    "fullscreen": "تمام صفحه",
+    "exitFullscreen": "خروج از تمام صفحه",
+    "branding": "EduSpace"
+  },
+  "board": {
+    "playersOne": "{{count}} بازیکن",
+    "playersOther": "{{count}} بازیکن",
+    "endGame": "پایان بازی",
+    "endGameTooltip": "پایان بازی",
+    "endedByHost": "میزبان بازی را پایان داد",
+    "ended": "بازی پایان یافت",
+    "launched": "بازی «{{title}}» شروع شد!"
+  }
+}

@@ -1,6 +1,7 @@
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocalParticipant, useRoomContext } from "@livekit/components-react";
-import { DataPacket_Kind, type RemoteParticipant } from "livekit-client";
+import { type RemoteParticipant } from "livekit-client";
 import { useRoomStore } from "../store/roomStore";
 import client from "../../../lib/api/client";
 import toast from "react-hot-toast";
@@ -11,8 +12,10 @@ const CONTROL_MESSAGES = {
 } as const;
 
 export function useHostControls() {
+  const { t } = useTranslation("room");
   const room = useRoomContext();
-  const { localParticipant } = useLocalParticipant();
+  // localParticipant is needed for publishing data; reading from room context.
+  useLocalParticipant();
   const { isHost, roomCode } = useRoomStore();
 
   const sendControlMessage = useCallback(
@@ -40,16 +43,17 @@ export function useHostControls() {
           isMuted ? "UNMUTE_AUDIO" : CONTROL_MESSAGES.MUTE_AUDIO,
         );
         useRoomStore.getState().setMutedByHost(participant.identity, !isMuted);
+        const name = participant.name || participant.identity;
         toast.success(
           isMuted
-            ? `Unmuted ${participant.name || participant.identity}`
-            : `Muted ${participant.name || participant.identity}`,
+            ? t("host.unmuted", { name })
+            : t("host.muted", { name }),
         );
       } catch {
-        toast.error("Failed to update participant");
+        toast.error(t("host.muteFailed"));
       }
     },
-    [isHost, sendControlMessage],
+    [isHost, sendControlMessage, t],
   );
 
   const kickParticipant = useCallback(
@@ -59,12 +63,13 @@ export function useHostControls() {
         await client.post(`/rooms/${roomCode}/kick/`, {
           identity: participant.identity,
         });
-        toast.success(`Removed ${participant.name || participant.identity}`);
+        const name = participant.name || participant.identity;
+        toast.success(t("host.removed", { name }));
       } catch {
-        toast.error("Failed to remove participant");
+        toast.error(t("host.removeFailed"));
       }
     },
-    [isHost, roomCode],
+    [isHost, roomCode, t],
   );
 
   const grantScreenShare = useCallback(
@@ -74,14 +79,13 @@ export function useHostControls() {
         await client.post(`/rooms/${roomCode}/grant-screen-share/`, {
           identity: participant.identity,
         });
-        toast.success(
-          `Granted screen share to ${participant.name || participant.identity}`,
-        );
+        const name = participant.name || participant.identity;
+        toast.success(t("host.screenShareGranted", { name }));
       } catch {
-        toast.error("Failed to grant permission");
+        toast.error(t("host.screenShareFailed"));
       }
     },
-    [isHost, roomCode],
+    [isHost, roomCode, t],
   );
 
   return { isHost, muteParticipant, kickParticipant, grantScreenShare };

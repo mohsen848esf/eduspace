@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useParticipants,
   useLocalParticipant,
@@ -28,6 +29,7 @@ function useDuration() {
 }
 
 export default function RoomTopbar({ isRecording = false }: RoomTopbarProps) {
+  const { t } = useTranslation("room");
   const { roomCode, roomName, isHost } = useRoomStore();
   const remoteParticipants = useParticipants();
 
@@ -44,11 +46,17 @@ export default function RoomTopbar({ isRecording = false }: RoomTopbarProps) {
     await navigator.clipboard.writeText(
       `${window.location.origin}/room/${roomCode}`,
     );
-    toast.success("Invite link copied!");
+    toast.success(t("topbar.copiedToast"));
 
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const participantsLabel =
+    totalParticipants === 1
+      ? t("topbar.participantOne", { count: totalParticipants })
+      : t("topbar.participantOther", { count: totalParticipants });
+
   return (
     <div className="h-12 flex-shrink-0 flex items-center justify-between px-4 bg-[var(--s1)] border-b border-[var(--b)]">
       {/* Left */}
@@ -56,16 +64,16 @@ export default function RoomTopbar({ isRecording = false }: RoomTopbarProps) {
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-full bg-[var(--green)] shadow-[0_0_6px_rgba(34,197,94,0.6)]" />
           <span className="text-sm font-semibold text-[var(--t1)]">
-            {roomName || "EduSpace Room"}
+            {roomName || t("topbar.defaultRoomName")}
           </span>
           {isHost && (
             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-[var(--brand-soft)] text-[var(--brand-text)]">
-              Host
+              {t("topbar.host")}
             </span>
           )}
         </div>
 
-        <Tooltip content={copied ? "Copied!" : "Copy invite link"}>
+        <Tooltip content={copied ? t("topbar.copied") : t("topbar.copy")}>
           <button
             onClick={copyRoomCode}
             className={cn(
@@ -86,21 +94,18 @@ export default function RoomTopbar({ isRecording = false }: RoomTopbarProps) {
         {isRecording && (
           <div className="flex items-center gap-1.5 text-[var(--red)] text-xs font-semibold">
             <div className="w-1.5 h-1.5 rounded-full bg-[var(--red)] animate-pulse" />
-            REC
+            {t("topbar.rec")}
           </div>
         )}
         <span className="text-sm font-mono text-[var(--green)] font-semibold">
           {duration}
         </span>
-        <span className="text-xs text-[var(--t3)]">
-          {totalParticipants}{" "}
-          {totalParticipants === 1 ? "participant" : "participants"}
-        </span>
+        <span className="text-xs text-[var(--t3)]">{participantsLabel}</span>
       </div>
 
       {/* Right */}
       <div className="flex items-center gap-1 relative">
-        <Tooltip content="Room info">
+        <Tooltip content={t("topbar.info")}>
           <button
             onClick={() => setShowInfo((p) => !p)}
             className={cn(
@@ -122,37 +127,49 @@ export default function RoomTopbar({ isRecording = false }: RoomTopbarProps) {
             />
             <div className="absolute top-10 right-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-56 fade-in">
               <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2">
-                Room Info
+                {t("topbar.infoTitle")}
               </div>
               <div className="flex flex-col gap-2">
                 <div className="flex justify-between">
-                  <span className="text-xs text-[var(--t3)]">Name</span>
+                  <span className="text-xs text-[var(--t3)]">
+                    {t("topbar.infoName")}
+                  </span>
                   <span className="text-sm font-semibold text-[var(--t1)]">
-                    {roomName || roomCode || "EduSpace Room"}
+                    {roomName || roomCode || t("topbar.defaultRoomName")}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-xs text-[var(--t3)]">Code</span>
+                  <span className="text-xs text-[var(--t3)]">
+                    {t("topbar.infoCode")}
+                  </span>
                   <span className="text-xs font-mono text-[var(--brand-text)]">
                     {roomCode}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-xs text-[var(--t3)]">Duration</span>
+                  <span className="text-xs text-[var(--t3)]">
+                    {t("topbar.infoDuration")}
+                  </span>
                   <span className="text-xs font-mono text-[var(--green)]">
                     {duration}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-xs text-[var(--t3)]">Participants</span>
+                  <span className="text-xs text-[var(--t3)]">
+                    {t("topbar.infoParticipants")}
+                  </span>
                   <span className="text-xs font-medium text-[var(--t1)]">
                     {totalParticipants}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-xs text-[var(--t3)]">Your role</span>
+                  <span className="text-xs text-[var(--t3)]">
+                    {t("topbar.infoYourRole")}
+                  </span>
                   <span className="text-xs font-medium text-[var(--brand-text)]">
-                    {isHost ? "Host" : "Participant"}
+                    {isHost
+                      ? t("topbar.roleHost")
+                      : t("topbar.roleParticipant")}
                   </span>
                 </div>
               </div>

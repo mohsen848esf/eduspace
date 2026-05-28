@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
   useLocalParticipant,
-  useRoomContext,
 } from "@livekit/components-react";
+import { Track } from "livekit-client";
 import { useRoomStore } from "../store/roomStore";
 import { useRoom } from "../hooks/useRoom";
 import { useRoomControls } from "../hooks/useRoomControls";
@@ -14,11 +15,9 @@ import RoomSidebar from "./RoomSidebar";
 import RoomControls from "./RoomControls";
 import PreJoinScreen, { type PreJoinSettings } from "./prejoin/PreJoinScreen";
 import Spinner from "../../../components/ui/Spinner";
-import { Strings } from "../../../lib/constants/strings";
 import RoomTopbar from "./RoomTopbar";
 import { useRoomDisconnect } from "../hooks/useRoomDisconnect";
 import { useBackgroundStore } from "../store/backgroundStore";
-import { Track } from "livekit-client";
 import { useBackgroundBlur } from "../hooks/useBackgroundBlur";
 
 type LayoutMode = "grid" | "spotlight" | "sidebar";
@@ -28,8 +27,6 @@ function RoomContent({
 }: {
   preJoinSettings: PreJoinSettings | null;
 }) {
-  const hasBg =
-    preJoinSettings?.background && preJoinSettings.background !== "none";
   const controls = useRoomControls(
     preJoinSettings?.camEnabled ?? true,
     preJoinSettings?.micEnabled ?? true,
@@ -40,6 +37,7 @@ function RoomContent({
   const { disconnect } = useRoomDisconnect();
   const { roomCode } = useRoomStore();
   const { changeBackground } = useBackgroundBlur();
+
   useEffect(() => {
     if (setupDone.current) return;
     if (!localParticipant) return;
@@ -52,7 +50,7 @@ function RoomContent({
 
         if (!camEnabled) return;
 
-        // صبر کن track live بشه
+        // Wait for the camera track to go live before applying processors.
         const waitForLive = async (attempts = 0): Promise<boolean> => {
           const camPub = localParticipant.getTrackPublication(
             Track.Source.Camera,
@@ -73,7 +71,6 @@ function RoomContent({
         }
 
         if (bg !== "none") {
-          // همون تابعی که تو settings کار میکنه
           await changeBackground(bg);
         }
 
@@ -86,104 +83,6 @@ function RoomContent({
 
     setup();
   }, [localParticipant]);
-  // useEffect(() => {
-  //   if (setupDone.current) return;
-  //   if (!localParticipant) return;
-  //   if (!preJoinSettings?.camEnabled) return;
-  //   console.log("creating video track with bg...", hasBg);
-
-  //   if (!hasBg) return; // بدون background نیازی به setup نیست
-  //   setupDone.current = true;
-
-  //   const setup = async () => {
-  //     console.log("setup started, hasBg:", hasBg);
-  //     console.log("preJoinSettings:", preJoinSettings);
-  //     try {
-  //       // صبر کن track زنده بشه
-  //       const waitForLive = async (attempts = 0): Promise<boolean> => {
-  //         const camPub = localParticipant.getTrackPublication(
-  //           Track.Source.Camera,
-  //         );
-  //         if (camPub?.track?.mediaStreamTrack?.readyState === "live")
-  //           return true;
-  //         if (attempts < 20) {
-  //           await new Promise((r) => setTimeout(r, 200));
-  //           return waitForLive(attempts + 1);
-  //         }
-  //         return false;
-  //       };
-
-  //       // Mute کن تا processor آماده بشه
-  //       await localParticipant.setCameraEnabled(false);
-
-  //       // Track جدید بساز با processor
-  //       const { createLocalVideoTrack } = await import("livekit-client");
-  //       const { BackgroundProcessor } =
-  //         await import("@livekit/track-processors");
-
-  //       const videoTrack = await createLocalVideoTrack({ facingMode: "user" });
-
-  //       let processor;
-  //       const BG_IMAGES: Record<string, string> = {
-  //         office:
-  //           "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1280&q=80",
-  //         nature:
-  //           "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=1280&q=80",
-  //         studio:
-  //           "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=1280&q=80",
-  //         minimal:
-  //           "https://images.unsplash.com/photo-1557683316-973673baf926?w=1280&q=80",
-  //       };
-
-  //       if (preJoinSettings!.background === "blur") {
-  //         processor = BackgroundProcessor({
-  //           mode: "background-blur",
-  //           blurRadius: 10,
-  //         });
-  //       } else {
-  //         const imageUrl = BG_IMAGES[preJoinSettings!.background];
-  //         if (imageUrl) {
-  //           processor = BackgroundProcessor({
-  //             mode: "virtual-background",
-  //             imagePath: imageUrl,
-  //           });
-  //         }
-  //         console.log(
-  //           "preJoinSettings!.background...",
-  //           preJoinSettings!.background,
-  //         );
-  //         console.log("imageUrl...", imageUrl);
-  //         console.log("processor...", processor);
-  //       }
-
-  //       if (processor) {
-  //         await videoTrack.setProcessor(processor);
-  //       }
-
-  //       // Unpublish track قبلی و publish جدید
-  //       const oldPub = localParticipant.getTrackPublication(
-  //         Track.Source.Camera,
-  //       );
-  //       if (oldPub) {
-  //         await localParticipant.unpublishTrack(oldPub.track!);
-  //       }
-
-  //       await localParticipant.publishTrack(videoTrack);
-  //       useBackgroundStore
-  //         .getState()
-  //         .setBackground(preJoinSettings!.background);
-  //       controls.setIsCamOn(true);
-  //     } catch (err) {
-  //       console.error("Camera setup error:", err);
-  //       await localParticipant.setCameraEnabled(true).catch(() => {});
-  //       useBackgroundStore.getState().setBackground("none");
-
-  //       controls.setIsCamOn(true);
-  //     }
-  //   };
-
-  //   setup();
-  // }, [localParticipant]);
 
   return (
     <div className="flex flex-col w-full h-full">
@@ -216,15 +115,15 @@ function RoomContent({
     </div>
   );
 }
+
 export default function RoomPage() {
+  const { t } = useTranslation(["room", "common"]);
   const { roomCode } = useParams<{ roomCode: string }>();
   const { token, livekitUrl, roomName } = useRoomStore();
   const { joinRoom, leaveRoom, isLoading, error } = useRoom();
   const [preJoinDone, setPreJoinDone] = useState(false);
   const [preJoinSettings, setPreJoinSettings] =
     useState<PreJoinSettings | null>(null);
-  const hasBg =
-    preJoinSettings?.background && preJoinSettings.background !== "none";
 
   useEffect(() => {
     if (!token && roomCode && preJoinDone) {
@@ -236,7 +135,7 @@ export default function RoomPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--s0)] gap-4">
         <Spinner size="lg" />
-        <p className="text-sm text-[var(--t2)]">Joining room...</p>
+        <p className="text-sm text-[var(--t2)]">{t("join.joining")}</p>
       </div>
     );
   }
@@ -250,7 +149,7 @@ export default function RoomPage() {
           onClick={leaveRoom}
           className="text-[var(--brand-text)] hover:underline text-sm bg-transparent border-none cursor-pointer"
         >
-          ← {Strings.common.back}
+          ← {t("common:actions.back")}
         </button>
       </div>
     );
@@ -259,7 +158,7 @@ export default function RoomPage() {
   if (!preJoinDone) {
     return (
       <PreJoinScreen
-        roomName={roomName || "EduSpace Room"}
+        roomName={roomName || t("topbar.defaultRoomName")}
         roomCode={roomCode || ""}
         onJoin={(settings) => {
           setPreJoinSettings(settings);
@@ -280,27 +179,6 @@ export default function RoomPage() {
 
   return (
     <div className="w-screen h-screen bg-[var(--s0)] overflow-hidden">
-      {/* <LiveKitRoom
-        token={token}
-        serverUrl={livekitUrl}
-        connect={true}
-        video={false}
-        audio={preJoinSettings?.micEnabled ?? true}
-        onDisconnected={leaveRoom}
-        style={{ height: "100vh", display: "flex", flexDirection: "column" }}
-      > */}
-      {/* <LiveKitRoom
-        token={token}
-        serverUrl={livekitUrl}
-        connect={true}
-        video={false}
-        audio={preJoinSettings?.micEnabled ?? true}
-        onDisconnected={() => {
-          useBackgroundStore.getState().setBackground("none");
-          leaveRoom();
-        }}
-        style={{ height: "100vh", display: "flex", flexDirection: "column" }}
-      > */}
       <LiveKitRoom
         token={token}
         serverUrl={livekitUrl}

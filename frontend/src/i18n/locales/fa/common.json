@@ -1,0 +1,34 @@
+{
+  "app": {
+    "name": "EduSpace",
+    "tagline": "پلتفرم آموزشی شما"
+  },
+  "actions": {
+    "loading": "در حال بارگذاری...",
+    "error": "مشکلی پیش آمد",
+    "retry": "تلاش دوباره",
+    "cancel": "لغو",
+    "confirm": "تایید",
+    "save": "ذخیره",
+    "delete": "حذف",
+    "close": "بستن",
+    "back": "بازگشت",
+    "next": "بعدی",
+    "done": "انجام شد",
+    "soon": "به‌زودی",
+    "live": "● زنده",
+    "copied": "کپی شد!",
+    "copy": "کپی"
+  },
+  "language": {
+    "label": "زبان",
+    "english": "English",
+    "persian": "فارسی",
+    "switchTo": "تغییر به {{language}}"
+  },
+  "errors": {
+    "generic": "مشکلی پیش آمد",
+    "accessDenied": "دسترسی مجاز نیست",
+    "noPermission": "اجازه‌ی مشاهده‌ی این صفحه را ندارید."
+  }
+}

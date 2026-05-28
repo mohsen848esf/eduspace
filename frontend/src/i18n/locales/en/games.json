@@ -1,0 +1,23 @@
+{
+  "container": {
+    "poweredBy": "Powered by",
+    "loading": "Loading {{name}}...",
+    "loadingGame": "Loading game...",
+    "start": "Start",
+    "pause": "Pause",
+    "resume": "Resume",
+    "next": "Next →",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "branding": "EduSpace"
+  },
+  "board": {
+    "playersOne": "{{count}} player",
+    "playersOther": "{{count}} players",
+    "endGame": "End Game",
+    "endGameTooltip": "End game",
+    "endedByHost": "Game ended by host",
+    "ended": "Game ended",
+    "launched": "Game \"{{title}}\" launched!"
+  }
+}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocalParticipant, useRoomContext } from "@livekit/components-react";
 import { Track } from "livekit-client";
 import toast from "react-hot-toast";
@@ -6,6 +7,7 @@ import toast from "react-hot-toast";
 export type SidebarTab = "participants" | "chat" | "tools" | null;
 
 export function useRoomControls(initialCamOn = true, initialMicOn = true) {
+  const { t } = useTranslation("room");
   const { localParticipant } = useLocalParticipant();
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("participants");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -22,12 +24,10 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
   useEffect(() => {
     if (!localParticipant) return;
     if (!initialCamOn) {
-      // mute publication بدون stop کردن track
       const camPub = localParticipant.getTrackPublication(Track.Source.Camera);
       if (camPub) {
         camPub.mute();
       } else {
-        // اگه هنوز publish نشده، صبر کن
         const handler = () => {
           const pub = localParticipant.getTrackPublication(Track.Source.Camera);
           if (pub) {
@@ -90,27 +90,23 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
       )
         return;
 
-      // Ctrl+D — toggle mic
       if (e.ctrlKey && e.code === "KeyD") {
         e.preventDefault();
         toggleMic();
         return;
       }
 
-      // Ctrl+E — toggle camera
       if (e.ctrlKey && e.code === "KeyE") {
         e.preventDefault();
         toggleCam();
         return;
       }
 
-      // Space — Push to Talk (hold to unmute)
       if (e.code === "Space" && isPushToTalk && !e.repeat) {
         e.preventDefault();
         if (!pttActive.current) {
           pttActive.current = true;
           micBeforePTT.current = isMicOn;
-          // unmute while holding
           if (!isMicOn && localParticipant) {
             await localParticipant.setMicrophoneEnabled(true);
             setIsMicOn(true);
@@ -127,11 +123,9 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
       )
         return;
 
-      // Space released — restore mic state
       if (e.code === "Space" && isPushToTalk && pttActive.current) {
         e.preventDefault();
         pttActive.current = false;
-        // restore to state before PTT
         if (!micBeforePTT.current && localParticipant) {
           await localParticipant.setMicrophoneEnabled(false);
           setIsMicOn(false);
@@ -156,28 +150,30 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
         if (data.type === "MUTE_AUDIO" && localParticipant) {
           localParticipant.setMicrophoneEnabled(false);
           setIsMicOn(false);
-          toast("You were muted by the host", { icon: "🔇" });
+          toast(t("host.youWereMuted"), { icon: "🔇" });
         }
 
         if (data.type === "UNMUTE_AUDIO" && localParticipant) {
           localParticipant.setMicrophoneEnabled(true);
           setIsMicOn(true);
-          toast("Host unmuted your microphone", { icon: "🎙" });
+          toast(t("host.hostUnmuted"), { icon: "🎙" });
         }
 
         if (data.type === "MUTE_VIDEO" && localParticipant) {
           localParticipant.setCameraEnabled(false);
           setIsCamOn(false);
-          toast("Your camera was turned off by the host", { icon: "📵" });
+          toast(t("host.hostTurnedOffCamera"), { icon: "📵" });
         }
-      } catch {}
+      } catch {
+        /* swallow */
+      }
     };
 
     room.on("dataReceived", handleData);
     return () => {
       room.off("dataReceived", handleData);
     };
-  }, [room, localParticipant]);
+  }, [room, localParticipant, t]);
   return {
     isMicOn,
     isCamOn,

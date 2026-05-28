@@ -1,0 +1,51 @@
+{
+  "title": "Dashboard",
+  "greeting": {
+    "morning": "Good morning",
+    "afternoon": "Good afternoon",
+    "evening": "Good evening"
+  },
+  "role": "Role",
+  "actions": {
+    "startCall": "Start Call",
+    "launchGame": "Launch Game",
+    "newExam": "New Exam",
+    "recordings": "Recordings"
+  },
+  "stats": {
+    "sessionsThisWeek": "Sessions this week",
+    "activeStudents": "Active students",
+    "avgAttendance": "Avg attendance"
+  },
+  "sessions": {
+    "title": "Recent Sessions",
+    "seeAll": "See all →",
+    "empty": "No sessions yet",
+    "startFirst": "Start your first session",
+    "statusLive": "● Live",
+    "statusSoon": "Soon",
+    "statusDone": "Done"
+  },
+  "nav": {
+    "main": "Main",
+    "manage": "Manage",
+    "dashboard": "Dashboard",
+    "videoCalls": "Video Calls",
+    "games": "Games",
+    "exams": "Exams",
+    "students": "Students",
+    "reports": "Reports",
+    "recordings": "Recordings",
+    "yourProfile": "Your profile",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar"
+  },
+  "topbar": {
+    "switchToLight": "Switch to light mode",
+    "switchToDark": "Switch to dark mode",
+    "search": "Search",
+    "notifications": "Notifications · {{count}} new",
+    "settings": "Settings"
+  },
+  "roomDefault": "{{name}}'s Room"
+}
