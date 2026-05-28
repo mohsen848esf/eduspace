@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>EduSpace — Responsive Design Mockups</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          bg: {
+            base: '#0b0b13',
+            panel: '#13131c',
+            elev: '#1a1a25',
+            soft: '#202030',
+          },
+          line: '#2a2a3a',
+          accent: {
+            DEFAULT: '#6366f1',
+            soft: '#4f46e5',
+          },
+          ink: {
+            DEFAULT: '#f1f1f5',
+            mute: '#9a9aa8',
+            dim:  '#6b6b7a',
+          }
+        },
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui'],
+        }
+      }
+    }
+  }
+</script>
+<style>
+  body { background:#06060a; color:#e5e5ee; font-family:Inter,system-ui,sans-serif }
+  .device {
+    background:#0b0b13;
+    border-radius:24px;
+    border:1px solid #2a2a3a;
+    box-shadow: 0 20px 60px -10px rgba(0,0,0,0.6);
+    overflow:hidden;
+  }
+  .device-mobile  { width:375px; height:740px; }
+  .device-tablet  { width:768px; height:900px; }
+  .device-desktop { width:1280px; height:760px; }
+  .label-pill { background:#13131c; border:1px solid #2a2a3a; }
+  .scrollarea { overflow-y:auto }
+  .scrollarea::-webkit-scrollbar { width:6px }
+  .scrollarea::-webkit-scrollbar-thumb { background:#2a2a3a; border-radius:3px }
+  /* tab focus */
+  .tab.active { background:#1a1a25; color:#fff }
+  .tab { color:#9a9aa8 }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- ============== TOP NAV ============== -->
+<header class="sticky top-0 z-30 backdrop-blur bg-[#06060a]/90 border-b border-line">
+  <div class="max-w-[1600px] mx-auto px-6 py-4 flex items-center gap-6">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-accent flex items-center justify-center font-bold">E</div>
+      <div>
+        <div class="font-semibold">EduSpace · Design Mockups</div>
+        <div class="text-xs text-ink-mute">Responsive proposal — Mobile / Tablet / Desktop</div>
+      </div>
+    </div>
+    <nav class="ml-auto flex flex-wrap gap-1 text-sm">
+      <button data-tab="dashboard" class="tab active px-3 py-1.5 rounded-md">Dashboard</button>
+      <button data-tab="login"     class="tab px-3 py-1.5 rounded-md">Sign In</button>
+      <button data-tab="register"  class="tab px-3 py-1.5 rounded-md">Sign Up</button>
+      <button data-tab="prejoin"   class="tab px-3 py-1.5 rounded-md">Pre-Join</button>
+      <button data-tab="room"      class="tab px-3 py-1.5 rounded-md">In-Call</button>
+      <button data-tab="room-chat" class="tab px-3 py-1.5 rounded-md">In-Call · Chat</button>
+      <button data-tab="room-tools" class="tab px-3 py-1.5 rounded-md">In-Call · Tools</button>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-[1600px] mx-auto px-6 py-10 space-y-16">
+
+<!-- ============================================================ -->
+<!-- DASHBOARD                                                    -->
+<!-- ============================================================ -->
+<section data-page="dashboard" class="space-y-10">
+  <div>
+    <h2 class="text-2xl font-bold">Dashboard</h2>
+    <p class="text-ink-mute">سایدبار → Drawer در موبایل، Collapsed در تبلت، Full در دسکتاپ. Bottom Nav در موبایل.</p>
+  </div>
+
+  <div class="flex flex-wrap gap-10 items-start justify-center">
+
+    <!-- ========== MOBILE — Dashboard ========== -->
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Mobile · 375px</div>
+      <div class="device device-mobile flex flex-col">
+        <!-- Topbar -->
+        <div class="h-14 flex items-center px-4 gap-3 border-b border-line shrink-0">
+          <button class="w-9 h-9 rounded-lg hover:bg-bg-elev flex items-center justify-center">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </button>
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-md bg-accent flex items-center justify-center text-xs font-bold">E</div>
+            <span class="font-semibold text-sm">EduSpace</span>
+          </div>
+          <div class="ml-auto flex gap-1">
+            <button class="w-9 h-9 rounded-lg hover:bg-bg-elev flex items-center justify-center text-ink-mute">🔔</button>
+            <button class="w-9 h-9 rounded-lg hover:bg-bg-elev flex items-center justify-center">
+              <div class="w-7 h-7 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-xs font-bold">A</div>
+            </button>
+          </div>
+        </div>
+        <!-- Content -->
+        <div class="flex-1 scrollarea p-4 space-y-4">
+          <div>
+            <div class="text-xs text-ink-mute">Thursday, May 28</div>
+            <div class="text-xl font-bold mt-0.5">Good afternoon, mohsen 👋</div>
+            <div class="text-sm mt-1">Role: <span class="text-accent">Student</span></div>
+          </div>
+
+          <!-- Quick actions: 2 col -->
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-bg-panel border border-line rounded-xl p-4 flex flex-col items-center gap-2">
+              <span class="text-2xl">📹</span>
+              <span class="text-xs font-medium">Start Call</span>
+            </div>
+            <div class="bg-bg-panel border border-line rounded-xl p-4 flex flex-col items-center gap-2">
+              <span class="text-2xl">🎮</span>
+              <span class="text-xs font-medium">Launch Game</span>
+            </div>
+            <div class="bg-bg-panel border border-line rounded-xl p-4 flex flex-col items-center gap-2">
+              <span class="text-2xl">📝</span>
+              <span class="text-xs font-medium">New Exam</span>
+            </div>
+            <div class="bg-bg-panel border border-line rounded-xl p-4 flex flex-col items-center gap-2">
+              <span class="text-2xl">🎬</span>
+              <span class="text-xs font-medium">Recordings</span>
+            </div>
+          </div>
+
+          <!-- Stats: 1 col stacked -->
+          <div class="space-y-2">
+            <div class="bg-bg-panel border border-line rounded-xl px-4 py-3">
+              <div class="text-2xl font-bold">14</div>
+              <div class="text-xs text-ink-mute">Sessions this week</div>
+            </div>
+            <div class="bg-bg-panel border border-line rounded-xl px-4 py-3">
+              <div class="text-2xl font-bold">87</div>
+              <div class="text-xs text-ink-mute">Active students</div>
+            </div>
+            <div class="bg-bg-panel border border-line rounded-xl px-4 py-3">
+              <div class="text-2xl font-bold text-emerald-400">94%</div>
+              <div class="text-xs text-ink-mute">Avg attendance</div>
+            </div>
+          </div>
+
+          <!-- Recent Sessions -->
+          <div class="bg-bg-panel border border-line rounded-xl p-3">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs font-bold tracking-wider text-ink-mute">RECENT SESSIONS</div>
+              <a class="text-xs text-accent">See all →</a>
+            </div>
+            <div class="space-y-2">
+              <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-bg-elev">
+                <div class="w-9 h-9 bg-emerald-900/40 rounded-md flex items-center justify-center">📗</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-semibold truncate">Advanced English — Group A</div>
+                  <div class="text-[11px] text-ink-mute truncate">8 students · Word Quest active</div>
+                </div>
+                <div class="text-right">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/40 text-emerald-400">● LIVE</span>
+                  <div class="text-[10px] text-ink-mute mt-1">12m</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-bg-elev">
+                <div class="w-9 h-9 bg-blue-900/40 rounded-md flex items-center justify-center">📘</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-semibold truncate">Grammar B1 — Group C</div>
+                  <div class="text-[11px] text-ink-mute truncate">12 students · Exam scheduled</div>
+                </div>
+                <div class="text-right">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-orange-900/40 text-orange-400">SOON</span>
+                  <div class="text-[10px] text-ink-mute mt-1">25m</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="h-4"></div>
+        </div>
+        <!-- Bottom Nav -->
+        <div class="h-16 border-t border-line shrink-0 grid grid-cols-4 px-2">
+          <button class="flex flex-col items-center justify-center gap-0.5 text-accent">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            <span class="text-[10px] font-medium">Home</span>
+          </button>
+          <button class="flex flex-col items-center justify-center gap-0.5 text-ink-mute">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+            <span class="text-[10px]">Calls</span>
+          </button>
+          <button class="flex flex-col items-center justify-center gap-0.5 text-ink-mute relative">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="11" x2="10" y2="11"/><line x1="8" y1="9" x2="8" y2="13"/><line x1="15" y1="12" x2="15.01" y2="12"/><line x1="18" y1="10" x2="18.01" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.103-.017.155C2.604 9.5 2 13.532 2 14a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 14h4.344a2 2 0 0 1 1.414.586L17 16c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-.468-.604-4.5-.685-5.255A4 4 0 0 0 17.32 5z"/></svg>
+            <span class="text-[10px]">Games</span>
+          </button>
+          <button class="flex flex-col items-center justify-center gap-0.5 text-ink-mute">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+            <span class="text-[10px]">More</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== TABLET — Dashboard ========== -->
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Tablet · 768px (sidebar collapsed)</div>
+      <div class="device device-tablet flex">
+        <!-- Collapsed sidebar -->
+        <div class="w-14 border-r border-line flex flex-col items-center py-3 gap-2 shrink-0">
+          <div class="w-9 h-9 rounded-md bg-accent flex items-center justify-center text-xs font-bold">E</div>
+          <div class="h-px w-8 bg-line my-2"></div>
+          <button class="w-10 h-10 rounded-lg bg-bg-elev text-accent flex items-center justify-center">⊞</button>
+          <button class="w-10 h-10 rounded-lg hover:bg-bg-elev text-ink-mute flex items-center justify-center">📹</button>
+          <button class="w-10 h-10 rounded-lg hover:bg-bg-elev text-ink-mute flex items-center justify-center">🎮</button>
+          <button class="w-10 h-10 rounded-lg hover:bg-bg-elev text-ink-mute flex items-center justify-center">📝</button>
+          <div class="h-px w-8 bg-line my-2"></div>
+          <button class="w-10 h-10 rounded-lg hover:bg-bg-elev text-ink-mute flex items-center justify-center relative">
+            👥<span class="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-[9px] rounded-full flex items-center justify-center">3</span>
+          </button>
+          <button class="w-10 h-10 rounded-lg hover:bg-bg-elev text-ink-mute flex items-center justify-center">📊</button>
+          <button class="w-10 h-10 rounded-lg hover:bg-bg-elev text-ink-mute flex items-center justify-center">🎬</button>
+          <div class="mt-auto">
+            <button class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-sm font-bold">A</button>
+          </div>
+        </div>
+        <!-- Main -->
+        <div class="flex-1 flex flex-col">
+          <!-- Topbar -->
+          <div class="h-14 border-b border-line flex items-center px-5 shrink-0">
+            <div>
+              <div class="text-sm font-semibold">Dashboard</div>
+              <div class="text-[11px] text-ink-mute">Thursday, May 28, 2026</div>
+            </div>
+            <div class="ml-auto flex gap-1.5 text-ink-mute">
+              <button class="w-9 h-9 rounded-lg hover:bg-bg-elev flex items-center justify-center">🌙</button>
+              <button class="w-9 h-9 rounded-lg hover:bg-bg-elev flex items-center justify-center">🔍</button>
+              <button class="w-9 h-9 rounded-lg hover:bg-bg-elev flex items-center justify-center">🔔</button>
+              <button class="w-9 h-9 rounded-lg hover:bg-bg-elev flex items-center justify-center">⚙</button>
+              <button class="w-9 h-9 rounded-lg hover:bg-bg-elev flex items-center justify-center">→</button>
+            </div>
+          </div>
+          <!-- Content -->
+          <div class="flex-1 scrollarea p-6 space-y-5">
+            <div>
+              <div class="text-xl font-bold">Good afternoon, mohsen 👋</div>
+              <div class="text-sm mt-1">Role: <span class="text-accent">Student</span></div>
+            </div>
+
+            <div class="grid grid-cols-4 gap-3">
+              <div class="bg-bg-panel border border-line rounded-xl p-4 flex flex-col items-center gap-2"><span class="text-2xl">📹</span><span class="text-xs">Start Call</span></div>
+              <div class="bg-bg-panel border border-line rounded-xl p-4 flex flex-col items-center gap-2"><span class="text-2xl">🎮</span><span class="text-xs">Launch Game</span></div>
+              <div class="bg-bg-panel border border-line rounded-xl p-4 flex flex-col items-center gap-2"><span class="text-2xl">📝</span><span class="text-xs">New Exam</span></div>
+              <div class="bg-bg-panel border border-line rounded-xl p-4 flex flex-col items-center gap-2"><span class="text-2xl">🎬</span><span class="text-xs">Recordings</span></div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+              <div class="bg-bg-panel border border-line rounded-xl p-4">
+                <div class="text-2xl font-bold">14</div>
+                <div class="text-xs text-ink-mute">Sessions this week</div>
+              </div>
+              <div class="bg-bg-panel border border-line rounded-xl p-4">
+                <div class="text-2xl font-bold">87</div>
+                <div class="text-xs text-ink-mute">Active students</div>
+              </div>
+              <div class="bg-bg-panel border border-line rounded-xl p-4">
+                <div class="text-2xl font-bold text-emerald-400">94%</div>
+                <div class="text-xs text-ink-mute">Avg attendance</div>
+              </div>
+            </div>
+
+            <div class="bg-bg-panel border border-line rounded-xl p-4">
+              <div class="flex items-center justify-between mb-3">
+                <div class="text-xs font-bold tracking-wider text-ink-mute">RECENT SESSIONS</div>
+                <a class="text-xs text-accent">See all →</a>
+              </div>
+              <div class="space-y-1">
+                <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-bg-elev">
+                  <div class="w-9 h-9 bg-emerald-900/40 rounded-md flex items-center justify-center">📗</div>
+                  <div class="flex-1"><div class="text-sm font-semibold">Advanced English — Group A</div><div class="text-xs text-ink-mute">8 students · Word Quest active</div></div>
+                  <div class="text-right"><span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/40 text-emerald-400">● LIVE</span><div class="text-[10px] text-ink-mute mt-1">12m ago</div></div>
+                </div>
+                <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-bg-elev">
+                  <div class="w-9 h-9 bg-blue-900/40 rounded-md flex items-center justify-center">📘</div>
+                  <div class="flex-1"><div class="text-sm font-semibold">Grammar B1 — Group C</div><div class="text-xs text-ink-mute">12 students · Exam scheduled</div></div>
+                  <div class="text-right"><span class="text-[10px] px-1.5 py-0.5 rounded bg-orange-900/40 text-orange-400">SOON</span><div class="text-[10px] text-ink-mute mt-1">In 25 min</div></div>
+                </div>
+                <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-bg-elev">
+                  <div class="w-9 h-9 bg-violet-900/40 rounded-md flex items-center justify-center">💻</div>
+                  <div class="flex-1"><div class="text-sm font-semibold">Python Basics — Beginners</div><div class="text-xs text-ink-mute">6 students · Recording ready</div></div>
+                  <div class="text-right"><span class="text-[10px] px-1.5 py-0.5 rounded bg-bg-elev text-ink-mute">DONE</span><div class="text-[10px] text-ink-mute mt-1">Yesterday</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== DESKTOP — Dashboard ========== -->
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Desktop · 1280px (current layout)</div>
+      <div class="device device-desktop flex">
+        <!-- Sidebar -->
+        <div class="w-56 border-r border-line flex flex-col shrink-0">
+          <div class="h-14 flex items-center px-4 gap-2 border-b border-line">
+            <div class="w-8 h-8 rounded-md bg-accent flex items-center justify-center text-xs font-bold">E</div>
+            <span class="font-semibold">EduSpace</span>
+          </div>
+          <div class="flex-1 px-3 py-4 space-y-1 text-sm">
+            <div class="px-2 text-[10px] font-bold tracking-wider text-ink-dim mb-1">MAIN</div>
+            <a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-bg-elev text-accent">⊞ <span>Dashboard</span></a>
+            <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-bg-elev text-ink-mute">📹 <span>Video Calls</span></a>
+            <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-bg-elev text-ink-mute">🎮 <span>Games</span></a>
+            <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-bg-elev text-ink-mute">📝 <span>Exams</span></a>
+            <div class="px-2 mt-4 text-[10px] font-bold tracking-wider text-ink-dim mb-1">MANAGE</div>
+            <a class="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-bg-elev text-ink-mute"><span class="flex items-center gap-3">👥 <span>Students</span></span><span class="text-[10px] bg-rose-500 text-white px-1.5 py-0.5 rounded-full">3</span></a>
+            <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-bg-elev text-ink-mute">📊 <span>Reports</span></a>
+            <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-bg-elev text-ink-mute">🎬 <span>Recordings</span></a>
+          </div>
+          <div class="border-t border-line p-3 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-sm font-bold">A</div>
+            <div><div class="text-sm font-medium">Ali Rezaei</div><div class="text-[11px] text-ink-mute">Teacher</div></div>
+          </div>
+        </div>
+        <!-- Main -->
+        <div class="flex-1 flex flex-col">
+          <div class="h-14 border-b border-line flex items-center px-6 shrink-0">
+            <div><div class="text-sm font-semibold">Dashboard</div><div class="text-[11px] text-ink-mute">Thursday, May 28, 2026</div></div>
+            <div class="ml-auto flex gap-1 text-ink-mute">
+              <button class="w-9 h-9 rounded-lg hover:bg-bg-elev flex items-center justify-center">🌙</button>
+              <button class="w-9 h-9 rounded-lg hover:bg-bg-elev flex items-center justify-center">🔍</button>
+              <button class="w-9 h-9 rounded-lg hover:bg-bg-elev flex items-center justify-center">🔔</button>
+              <button class="w-9 h-9 rounded-lg hover:bg-bg-elev flex items-center justify-center">⚙</button>
+              <button class="w-9 h-9 rounded-lg hover:bg-bg-elev flex items-center justify-center">→</button>
+            </div>
+          </div>
+          <div class="flex-1 scrollarea p-8 space-y-6">
+            <div><div class="text-2xl font-bold">Good afternoon, mohsen 👋</div><div class="text-sm mt-1">Role: <span class="text-accent">Student</span></div></div>
+            <div class="grid grid-cols-4 gap-4">
+              <div class="bg-bg-panel border border-line rounded-xl p-5 flex flex-col items-center gap-2"><span class="text-3xl">📹</span><span class="text-sm">Start Call</span></div>
+              <div class="bg-bg-panel border border-line rounded-xl p-5 flex flex-col items-center gap-2"><span class="text-3xl">🎮</span><span class="text-sm">Launch Game</span></div>
+              <div class="bg-bg-panel border border-line rounded-xl p-5 flex flex-col items-center gap-2"><span class="text-3xl">📝</span><span class="text-sm">New Exam</span></div>
+              <div class="bg-bg-panel border border-line rounded-xl p-5 flex flex-col items-center gap-2"><span class="text-3xl">🎬</span><span class="text-sm">Recordings</span></div>
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+              <div class="bg-bg-panel border border-line rounded-xl p-5"><div class="text-3xl font-bold">14</div><div class="text-xs text-ink-mute mt-1">Sessions this week</div></div>
+              <div class="bg-bg-panel border border-line rounded-xl p-5"><div class="text-3xl font-bold">87</div><div class="text-xs text-ink-mute mt-1">Active students</div></div>
+              <div class="bg-bg-panel border border-line rounded-xl p-5"><div class="text-3xl font-bold text-emerald-400">94%</div><div class="text-xs text-ink-mute mt-1">Avg attendance</div></div>
+            </div>
+            <div class="bg-bg-panel border border-line rounded-xl p-5">
+              <div class="flex items-center justify-between mb-3"><div class="text-xs font-bold tracking-wider text-ink-mute">RECENT SESSIONS</div><a class="text-xs text-accent">See all →</a></div>
+              <div class="space-y-1">
+                <div class="flex items-center gap-4 p-3 rounded-lg hover:bg-bg-elev">
+                  <div class="w-10 h-10 bg-emerald-900/40 rounded-md flex items-center justify-center">📗</div>
+                  <div class="flex-1"><div class="font-semibold">Advanced English — Group A</div><div class="text-xs text-ink-mute">8 students · Word Quest active</div></div>
+                  <div class="text-right"><span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/40 text-emerald-400">● LIVE</span><div class="text-[10px] text-ink-mute mt-1">12m ago</div></div>
+                </div>
+                <div class="flex items-center gap-4 p-3 rounded-lg hover:bg-bg-elev">
+                  <div class="w-10 h-10 bg-blue-900/40 rounded-md flex items-center justify-center">📘</div>
+                  <div class="flex-1"><div class="font-semibold">Grammar B1 — Group C</div><div class="text-xs text-ink-mute">12 students · Exam scheduled</div></div>
+                  <div class="text-right"><span class="text-[10px] px-1.5 py-0.5 rounded bg-orange-900/40 text-orange-400">SOON</span><div class="text-[10px] text-ink-mute mt-1">In 25 min</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- LOGIN                                                        -->
+<!-- ============================================================ -->
+<section data-page="login" class="space-y-10 hidden">
+  <div>
+    <h2 class="text-2xl font-bold">Sign In</h2>
+    <p class="text-ink-mute">در موبایل: card یکپارچه با bg، فاصله‌ها فشرده‌تر، touch target بزرگ‌تر.</p>
+  </div>
+  <div class="flex flex-wrap gap-10 items-start justify-center">
+
+    <!-- Mobile -->
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Mobile · 375px</div>
+      <div class="device device-mobile flex flex-col items-center justify-center px-6">
+        <div class="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center text-2xl font-bold mb-3">E</div>
+        <div class="text-2xl font-bold">EduSpace</div>
+        <div class="text-sm text-ink-mute">Sign in to your account</div>
+        <div class="w-full mt-8 space-y-4">
+          <div>
+            <label class="text-[11px] font-bold tracking-wider text-ink-mute">USERNAME</label>
+            <input class="mt-1 w-full h-11 bg-bg-panel border border-accent/50 rounded-lg px-3 text-sm" placeholder="Enter your username">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold tracking-wider text-ink-mute">PASSWORD</label>
+            <div class="mt-1 relative">
+              <input class="w-full h-11 bg-bg-panel border border-line rounded-lg px-3 pr-10 text-sm" type="password" placeholder="Enter your password">
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-ink-mute">👁</span>
+            </div>
+          </div>
+          <button class="w-full h-11 bg-accent rounded-lg font-semibold text-sm">Sign In</button>
+          <div class="text-center text-xs text-ink-mute">Don't have an account? <span class="text-accent font-semibold">Create one</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tablet -->
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Tablet · 768px</div>
+      <div class="device device-tablet flex flex-col items-center justify-center">
+        <div class="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center text-xl font-bold mb-3">E</div>
+        <div class="text-xl font-bold">EduSpace</div>
+        <div class="text-sm text-ink-mute mb-6">Sign in to your account</div>
+        <div class="w-96 bg-bg-panel border border-line rounded-2xl p-6 space-y-4">
+          <div>
+            <label class="text-[11px] font-bold tracking-wider text-ink-mute">USERNAME</label>
+            <input class="mt-1 w-full h-10 bg-bg-elev border border-accent/60 rounded-lg px-3 text-sm" placeholder="Enter your username">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold tracking-wider text-ink-mute">PASSWORD</label>
+            <div class="mt-1 relative"><input class="w-full h-10 bg-bg-elev border border-line rounded-lg px-3 pr-10 text-sm" type="password" placeholder="Enter your password"><span class="absolute right-3 top-1/2 -translate-y-1/2 text-ink-mute">👁</span></div>
+          </div>
+          <button class="w-full h-10 bg-accent rounded-lg font-semibold text-sm">Sign In</button>
+          <div class="text-center text-xs text-ink-mute">Don't have an account? <span class="text-accent font-semibold">Create one</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop -->
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Desktop · 1280px (current)</div>
+      <div class="device device-desktop flex flex-col items-center justify-center">
+        <div class="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center text-xl font-bold mb-3">E</div>
+        <div class="text-xl font-bold">EduSpace</div>
+        <div class="text-sm text-ink-mute mb-6">Sign in to your account</div>
+        <div class="w-96 bg-bg-panel border border-line rounded-2xl p-6 space-y-4">
+          <div>
+            <label class="text-[11px] font-bold tracking-wider text-ink-mute">USERNAME</label>
+            <input class="mt-1 w-full h-10 bg-bg-elev border border-accent/60 rounded-lg px-3 text-sm" placeholder="Enter your username">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold tracking-wider text-ink-mute">PASSWORD</label>
+            <div class="mt-1 relative"><input class="w-full h-10 bg-bg-elev border border-line rounded-lg px-3 pr-10 text-sm" type="password" placeholder="Enter your password"><span class="absolute right-3 top-1/2 -translate-y-1/2 text-ink-mute">👁</span></div>
+          </div>
+          <button class="w-full h-10 bg-accent rounded-lg font-semibold text-sm">Sign In</button>
+          <div class="text-center text-xs text-ink-mute">Don't have an account? <span class="text-accent font-semibold">Create one</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- REGISTER                                                     -->
+<!-- ============================================================ -->
+<section data-page="register" class="space-y-10 hidden">
+  <div>
+    <h2 class="text-2xl font-bold">Sign Up</h2>
+    <p class="text-ink-mute">در موبایل: تمام عرض با padding، فیلدها به ترتیب stack می‌شن.</p>
+  </div>
+
+  <div class="flex flex-wrap gap-10 items-start justify-center">
+    <!-- Mobile -->
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Mobile · 375px</div>
+      <div class="device device-mobile flex flex-col">
+        <div class="flex-1 scrollarea p-6">
+          <div class="flex flex-col items-center mb-4">
+            <div class="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center text-xl font-bold">E</div>
+            <div class="text-xl font-bold mt-2">EduSpace</div>
+            <div class="text-xs text-ink-mute">Create your account</div>
+          </div>
+          <div class="space-y-4">
+            <div>
+              <label class="text-[11px] font-bold tracking-wider text-ink-mute">I AM A</label>
+              <div class="mt-1 grid grid-cols-2 gap-2">
+                <button class="h-11 bg-bg-panel border border-accent rounded-lg text-accent text-sm">🎓 Student</button>
+                <button class="h-11 bg-bg-panel border border-line rounded-lg text-ink-mute text-sm">👨‍🏫 Teacher</button>
+              </div>
+            </div>
+            <div><label class="text-[11px] font-bold tracking-wider text-ink-mute">FULL NAME</label><input class="mt-1 w-full h-11 bg-bg-panel border border-accent/50 rounded-lg px-3 text-sm" placeholder="Your full name"></div>
+            <div>
+              <label class="text-[11px] font-bold tracking-wider text-ink-mute">USERNAME</label>
+              <input class="mt-1 w-full h-11 bg-bg-panel border border-line rounded-lg px-3 text-sm" placeholder="e.g. ali_rezaei">
+              <div class="text-[10px] text-ink-dim mt-1">Letters, numbers and underscores only</div>
+            </div>
+            <div><label class="text-[11px] font-bold tracking-wider text-ink-mute">EMAIL</label><input class="mt-1 w-full h-11 bg-bg-panel border border-line rounded-lg px-3 text-sm" placeholder="you@example.com"></div>
+            <div><label class="text-[11px] font-bold tracking-wider text-ink-mute">PASSWORD</label><input class="mt-1 w-full h-11 bg-bg-panel border border-line rounded-lg px-3 text-sm" type="password" placeholder="Min 8 characters"></div>
+            <div><label class="text-[11px] font-bold tracking-wider text-ink-mute">CONFIRM PASSWORD</label><input class="mt-1 w-full h-11 bg-bg-panel border border-line rounded-lg px-3 text-sm" type="password" placeholder="Repeat your password"></div>
+            <button class="w-full h-11 bg-accent rounded-lg font-semibold text-sm">Create Account</button>
+            <div class="text-center text-xs text-ink-mute">Already have? <span class="text-accent font-semibold">Sign in</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tablet/Desktop (similar centered card) -->
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Tablet · 768px</div>
+      <div class="device device-tablet flex flex-col items-center justify-center scrollarea overflow-auto py-6">
+        <div class="flex flex-col items-center mb-4">
+          <div class="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center text-xl font-bold">E</div>
+          <div class="text-xl font-bold mt-2">EduSpace</div>
+          <div class="text-xs text-ink-mute">Create your account</div>
+        </div>
+        <div class="w-[420px] bg-bg-panel border border-line rounded-2xl p-6 space-y-4">
+          <div>
+            <label class="text-[11px] font-bold tracking-wider text-ink-mute">I AM A</label>
+            <div class="mt-1 grid grid-cols-2 gap-2">
+              <button class="h-10 bg-bg-elev border border-accent rounded-lg text-accent text-sm">🎓 Student</button>
+              <button class="h-10 bg-bg-elev border border-line rounded-lg text-ink-mute text-sm">👨‍🏫 Teacher</button>
+            </div>
+          </div>
+          <div><label class="text-[11px] font-bold tracking-wider text-ink-mute">FULL NAME</label><input class="mt-1 w-full h-10 bg-bg-elev border border-accent/60 rounded-lg px-3 text-sm" placeholder="Your full name"></div>
+          <div><label class="text-[11px] font-bold tracking-wider text-ink-mute">USERNAME</label><input class="mt-1 w-full h-10 bg-bg-elev border border-line rounded-lg px-3 text-sm" placeholder="e.g. ali_rezaei"></div>
+          <div><label class="text-[11px] font-bold tracking-wider text-ink-mute">EMAIL</label><input class="mt-1 w-full h-10 bg-bg-elev border border-line rounded-lg px-3 text-sm" placeholder="you@example.com"></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="text-[11px] font-bold tracking-wider text-ink-mute">PASSWORD</label><input class="mt-1 w-full h-10 bg-bg-elev border border-line rounded-lg px-3 text-sm" type="password" placeholder="Min 8"></div>
+            <div><label class="text-[11px] font-bold tracking-wider text-ink-mute">CONFIRM</label><input class="mt-1 w-full h-10 bg-bg-elev border border-line rounded-lg px-3 text-sm" type="password" placeholder="Repeat"></div>
+          </div>
+          <button class="w-full h-10 bg-accent rounded-lg font-semibold text-sm">Create Account</button>
+          <div class="text-center text-xs text-ink-mute">Already have? <span class="text-accent font-semibold">Sign in</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Desktop · 1280px (current)</div>
+      <div class="device device-desktop flex flex-col items-center justify-center">
+        <div class="flex flex-col items-center mb-4">
+          <div class="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center text-xl font-bold">E</div>
+          <div class="text-xl font-bold mt-2">EduSpace</div>
+          <div class="text-xs text-ink-mute">Create your account</div>
+        </div>
+        <div class="w-96 bg-bg-panel border border-line rounded-2xl p-6 space-y-4">
+          <div><label class="text-[11px] font-bold tracking-wider text-ink-mute">I AM A</label>
+            <div class="mt-1 grid grid-cols-2 gap-2">
+              <button class="h-10 bg-bg-elev border border-accent rounded-lg text-accent text-sm">🎓 Student</button>
+              <button class="h-10 bg-bg-elev border border-line rounded-lg text-ink-mute text-sm">👨‍🏫 Teacher</button>
+            </div>
+          </div>
+          <div><label class="text-[11px] font-bold tracking-wider text-ink-mute">FULL NAME</label><input class="mt-1 w-full h-10 bg-bg-elev border border-accent/60 rounded-lg px-3 text-sm" placeholder="Your full name"></div>
+          <div><label class="text-[11px] font-bold tracking-wider text-ink-mute">USERNAME</label><input class="mt-1 w-full h-10 bg-bg-elev border border-line rounded-lg px-3 text-sm" placeholder="e.g. ali_rezaei"></div>
+          <div><label class="text-[11px] font-bold tracking-wider text-ink-mute">EMAIL</label><input class="mt-1 w-full h-10 bg-bg-elev border border-line rounded-lg px-3 text-sm" placeholder="you@example.com"></div>
+          <div><label class="text-[11px] font-bold tracking-wider text-ink-mute">PASSWORD</label><input class="mt-1 w-full h-10 bg-bg-elev border border-line rounded-lg px-3 text-sm" type="password" placeholder="Min 8 characters"></div>
+          <div><label class="text-[11px] font-bold tracking-wider text-ink-mute">CONFIRM PASSWORD</label><input class="mt-1 w-full h-10 bg-bg-elev border border-line rounded-lg px-3 text-sm" type="password" placeholder="Repeat your password"></div>
+          <button class="w-full h-10 bg-accent rounded-lg font-semibold text-sm">Create Account</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PRE-JOIN                                                     -->
+<!-- ============================================================ -->
+<section data-page="prejoin" class="space-y-10 hidden">
+  <div>
+    <h2 class="text-2xl font-bold">Pre-Join Screen</h2>
+    <p class="text-ink-mute">Stack عمودی در موبایل، 2 ستونه در تبلت/دسکتاپ. Background grid فشرده‌تر در موبایل.</p>
+  </div>
+  <div class="flex flex-wrap gap-10 items-start justify-center">
+
+    <!-- Mobile -->
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Mobile · 375px</div>
+      <div class="device device-mobile flex flex-col">
+        <div class="flex-1 scrollarea p-4 space-y-4">
+          <div class="text-center pt-2">
+            <div class="text-lg font-bold">Mohsen's Room</div>
+            <div class="text-xs text-ink-mute">Room code: <span class="text-accent font-mono">YINBUB</span></div>
+          </div>
+          <!-- Camera preview -->
+          <div class="aspect-video bg-bg-panel border border-line rounded-xl flex flex-col items-center justify-center gap-3">
+            <div class="w-12 h-12 rounded-full bg-bg-elev flex items-center justify-center text-xl">📷</div>
+            <div class="text-xs text-ink-mute">Camera is off</div>
+            <div class="flex gap-2 mt-1">
+              <button class="w-9 h-9 rounded-full bg-bg-elev flex items-center justify-center">🎙</button>
+              <button class="w-9 h-9 rounded-full bg-rose-500/80 flex items-center justify-center">📷</button>
+            </div>
+          </div>
+          <!-- Background -->
+          <div>
+            <div class="text-[11px] font-bold tracking-wider text-ink-mute mb-2">BACKGROUND</div>
+            <div class="grid grid-cols-6 gap-1.5">
+              <div class="aspect-square rounded-md bg-accent/20 border border-accent flex items-center justify-center text-xs">✓</div>
+              <div class="aspect-square rounded-md bg-bg-elev border border-line"></div>
+              <div class="aspect-square rounded-md bg-gradient-to-br from-slate-700 to-slate-900 border border-line"></div>
+              <div class="aspect-square rounded-md bg-gradient-to-br from-emerald-700 to-green-900 border border-line"></div>
+              <div class="aspect-square rounded-md bg-gradient-to-br from-amber-700 to-rose-900 border border-line"></div>
+              <div class="aspect-square rounded-md bg-gradient-to-br from-cyan-700 to-blue-900 border border-line"></div>
+            </div>
+          </div>
+          <!-- Tabs -->
+          <div class="bg-bg-panel border border-line rounded-xl p-3 space-y-3">
+            <div class="grid grid-cols-2 gap-1 bg-bg-elev rounded-lg p-1 text-xs">
+              <button class="h-8 rounded-md bg-bg-soft">📷 Camera</button>
+              <button class="h-8 rounded-md text-ink-mute">🎙 Audio</button>
+            </div>
+            <div>
+              <div class="text-[11px] font-bold tracking-wider text-ink-mute">CAMERA</div>
+              <div class="mt-1 h-9 bg-bg-elev border border-line rounded-lg flex items-center px-3 text-xs">USB2.0 HD UVC WebCam ▾</div>
+            </div>
+          </div>
+          <button class="w-full h-12 bg-accent rounded-lg font-semibold text-sm">Join Now</button>
+          <button class="w-full h-10 text-accent text-sm">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tablet -->
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Tablet · 768px (2 col)</div>
+      <div class="device device-tablet flex flex-col p-6 gap-4">
+        <div class="text-center">
+          <div class="text-xl font-bold">Mohsen's Room</div>
+          <div class="text-xs text-ink-mute">Room code: <span class="text-accent font-mono">YINBUB</span></div>
+        </div>
+        <div class="flex-1 grid grid-cols-2 gap-4">
+          <div class="space-y-3">
+            <div class="aspect-video bg-bg-panel border border-line rounded-xl flex flex-col items-center justify-center gap-3">
+              <div class="w-12 h-12 rounded-full bg-bg-elev flex items-center justify-center text-xl">📷</div>
+              <div class="text-xs text-ink-mute">Camera is off</div>
+              <div class="flex gap-2"><button class="w-9 h-9 rounded-full bg-bg-elev">🎙</button><button class="w-9 h-9 rounded-full bg-rose-500/80">📷</button></div>
+            </div>
+            <div>
+              <div class="text-[11px] font-bold tracking-wider text-ink-mute mb-2">BACKGROUND</div>
+              <div class="grid grid-cols-6 gap-1.5">
+                <div class="aspect-square rounded-md bg-accent/20 border border-accent flex items-center justify-center text-xs">✓</div>
+                <div class="aspect-square rounded-md bg-bg-elev border border-line"></div>
+                <div class="aspect-square rounded-md bg-gradient-to-br from-slate-700 to-slate-900"></div>
+                <div class="aspect-square rounded-md bg-gradient-to-br from-emerald-700 to-green-900"></div>
+                <div class="aspect-square rounded-md bg-gradient-to-br from-amber-700 to-rose-900"></div>
+                <div class="aspect-square rounded-md bg-gradient-to-br from-cyan-700 to-blue-900"></div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-bg-panel border border-line rounded-xl p-4 flex flex-col">
+            <div class="grid grid-cols-2 gap-1 bg-bg-elev rounded-lg p-1 text-xs">
+              <button class="h-8 rounded-md bg-bg-soft">📷 Camera</button>
+              <button class="h-8 rounded-md text-ink-mute">🎙 Audio</button>
+            </div>
+            <div class="mt-4">
+              <div class="text-[11px] font-bold tracking-wider text-ink-mute">CAMERA</div>
+              <div class="mt-1 h-9 bg-bg-elev border border-line rounded-lg flex items-center px-3 text-xs">USB2.0 HD UVC WebCam ▾</div>
+            </div>
+            <div class="mt-auto space-y-2">
+              <button class="w-full h-10 bg-accent rounded-lg font-semibold text-sm">Join Now</button>
+              <button class="w-full h-9 text-accent text-sm">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop (current) -->
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Desktop · 1280px (current)</div>
+      <div class="device device-desktop flex flex-col items-center justify-center p-8">
+        <div class="text-center mb-6">
+          <div class="text-2xl font-bold">Mohsen's Room</div>
+          <div class="text-sm text-ink-mute">Room code: <span class="text-accent font-mono">YINBUB</span></div>
+        </div>
+        <div class="grid grid-cols-2 gap-6 w-[840px]">
+          <div class="space-y-4">
+            <div class="aspect-video bg-bg-panel border border-line rounded-xl flex flex-col items-center justify-center gap-3">
+              <div class="w-14 h-14 rounded-full bg-bg-elev flex items-center justify-center text-2xl">📷</div>
+              <div class="text-sm text-ink-mute">Camera is off</div>
+              <div class="flex gap-2"><button class="w-10 h-10 rounded-full bg-bg-elev">🎙</button><button class="w-10 h-10 rounded-full bg-rose-500/80">📷</button></div>
+            </div>
+            <div>
+              <div class="text-[11px] font-bold tracking-wider text-ink-mute mb-2">BACKGROUND</div>
+              <div class="grid grid-cols-6 gap-2">
+                <div class="aspect-square rounded-md bg-accent/20 border border-accent flex items-center justify-center text-xs">✓</div>
+                <div class="aspect-square rounded-md bg-bg-elev border border-line"></div>
+                <div class="aspect-square rounded-md bg-gradient-to-br from-slate-700 to-slate-900"></div>
+                <div class="aspect-square rounded-md bg-gradient-to-br from-emerald-700 to-green-900"></div>
+                <div class="aspect-square rounded-md bg-gradient-to-br from-amber-700 to-rose-900"></div>
+                <div class="aspect-square rounded-md bg-gradient-to-br from-cyan-700 to-blue-900"></div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-bg-panel border border-line rounded-xl p-5 flex flex-col">
+            <div class="grid grid-cols-2 gap-1 bg-bg-elev rounded-lg p-1 text-sm">
+              <button class="h-9 rounded-md bg-bg-soft">📷 Camera</button>
+              <button class="h-9 rounded-md text-ink-mute">🎙 Audio</button>
+            </div>
+            <div class="mt-5">
+              <div class="text-[11px] font-bold tracking-wider text-ink-mute">CAMERA</div>
+              <div class="mt-2 h-10 bg-bg-elev border border-line rounded-lg flex items-center px-3 text-sm">USB2.0 HD UVC WebCam ▾</div>
+            </div>
+            <div class="mt-auto space-y-2">
+              <button class="w-full h-11 bg-accent rounded-lg font-semibold">Join Now</button>
+              <button class="w-full h-10 text-accent">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- ROOM (3 participants — default video view)                    -->
+<!-- ============================================================ -->
+<section data-page="room" class="space-y-10 hidden">
+  <div>
+    <h2 class="text-2xl font-bold">In-Call · Default View (3 participants)</h2>
+    <p class="text-ink-mute">موبایل: ویدیو تمام صفحه + Bottom Sheet (با drag handle). تبلت: split. دسکتاپ: مثل فعلی.</p>
+  </div>
+  <div class="flex flex-wrap gap-10 items-start justify-center">
+
+    <!-- Mobile -->
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Mobile · video fullscreen</div>
+      <div class="device device-mobile flex flex-col">
+        <!-- Topbar -->
+        <div class="h-11 flex items-center px-3 gap-2 border-b border-line shrink-0 text-xs">
+          <span class="text-emerald-400">●</span>
+          <span class="font-medium">'s Room</span>
+          <span class="ml-auto text-emerald-400 font-mono">18:31</span>
+          <span class="text-ink-mute">3👥</span>
+          <button class="w-7 h-7 rounded hover:bg-bg-elev flex items-center justify-center">⋯</button>
+        </div>
+        <!-- Video grid 3 ppl -->
+        <div class="flex-1 p-2 grid grid-cols-2 grid-rows-2 gap-2">
+          <div class="bg-bg-panel rounded-lg flex flex-col items-center justify-center relative">
+            <div class="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold">M</div>
+            <div class="absolute bottom-1 left-1 right-1 text-[10px] bg-black/50 rounded px-1.5 py-0.5">mohsen (You)</div>
+          </div>
+          <div class="bg-bg-panel rounded-lg flex flex-col items-center justify-center relative">
+            <div class="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-sm">ME</div>
+            <div class="absolute bottom-1 left-1 right-1 text-[10px] bg-black/50 rounded px-1.5 py-0.5">mohsen esfandiari</div>
+          </div>
+          <div class="bg-bg-panel rounded-lg flex flex-col items-center justify-center relative col-span-2">
+            <div class="w-14 h-14 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center font-bold text-sm">TU</div>
+            <div class="absolute bottom-1 left-1 right-1 text-[10px] bg-black/50 rounded px-1.5 py-0.5">Test User</div>
+          </div>
+        </div>
+        <!-- Controls -->
+        <div class="h-16 border-t border-line shrink-0 flex items-center justify-around px-1">
+          <button class="w-10 h-10 rounded-lg hover:bg-bg-elev flex items-center justify-center">🎙</button>
+          <button class="w-10 h-10 rounded-lg bg-rose-500/30 text-rose-300 flex items-center justify-center">📷</button>
+          <button class="w-10 h-10 rounded-lg hover:bg-bg-elev flex items-center justify-center">🔗</button>
+          <div class="w-px h-6 bg-line"></div>
+          <button class="w-10 h-10 rounded-lg hover:bg-bg-elev flex items-center justify-center">👥</button>
+          <button class="w-10 h-10 rounded-lg hover:bg-bg-elev flex items-center justify-center">💬</button>
+          <button class="w-10 h-10 rounded-lg hover:bg-bg-elev flex items-center justify-center">🛠</button>
+          <div class="w-px h-6 bg-line"></div>
+          <button class="w-10 h-10 rounded-lg bg-rose-500 text-white flex items-center justify-center">⏻</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tablet -->
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Tablet · split (collapsible panel)</div>
+      <div class="device device-tablet flex flex-col">
+        <div class="h-12 flex items-center px-4 gap-3 border-b border-line shrink-0 text-sm">
+          <span class="text-emerald-400">●</span>
+          <span class="font-medium">'s Room <span class="text-[10px] ml-1 px-1.5 py-0.5 rounded bg-accent/20 text-accent">Host</span></span>
+          <span class="text-[11px] label-pill px-2 py-0.5 rounded font-mono">YINBUB</span>
+          <span class="ml-auto text-emerald-400 font-mono">18:31</span>
+          <span class="text-ink-mute text-xs">3 participants</span>
+        </div>
+        <div class="flex-1 flex overflow-hidden">
+          <div class="flex-1 p-3 grid grid-cols-2 grid-rows-2 gap-3">
+            <div class="bg-bg-panel rounded-xl flex items-center justify-center relative"><div class="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold">M</div><div class="absolute bottom-2 left-2 text-xs bg-black/50 rounded px-2 py-0.5">mohsen (You)</div></div>
+            <div class="bg-bg-panel rounded-xl flex items-center justify-center relative"><div class="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold">ME</div><div class="absolute bottom-2 left-2 text-xs bg-black/50 rounded px-2 py-0.5">mohsen esfandiari</div></div>
+            <div class="bg-bg-panel rounded-xl flex items-center justify-center relative col-span-2"><div class="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center font-bold">TU</div><div class="absolute bottom-2 left-2 text-xs bg-black/50 rounded px-2 py-0.5">Test User</div></div>
+          </div>
+          <div class="w-60 border-l border-line flex flex-col shrink-0">
+            <div class="flex border-b border-line text-ink-mute">
+              <button class="flex-1 h-10 text-accent border-b-2 border-accent">👥</button>
+              <button class="flex-1 h-10">💬</button>
+              <button class="flex-1 h-10">🛠</button>
+            </div>
+            <div class="p-3 space-y-2 text-sm">
+              <button class="w-full h-9 bg-accent/20 text-accent rounded-lg text-xs font-medium flex items-center justify-center gap-1">+ Add People</button>
+              <div class="text-[10px] font-bold tracking-wider text-ink-mute mt-2">HOST</div>
+              <div class="flex items-center gap-2 p-2 rounded-lg hover:bg-bg-elev"><div class="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-[10px] font-bold">M</div><div class="text-xs flex-1">mohsen (You)</div><span class="text-[10px]">🎙 📷</span></div>
+              <div class="text-[10px] font-bold tracking-wider text-ink-mute mt-2">STUDENTS (2)</div>
+              <div class="flex items-center gap-2 p-2 rounded-lg hover:bg-bg-elev"><div class="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-[10px] font-bold">ME</div><div class="text-xs flex-1">mohsen esfandiari</div></div>
+              <div class="flex items-center gap-2 p-2 rounded-lg hover:bg-bg-elev"><div class="w-7 h-7 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-[10px] font-bold">TU</div><div class="text-xs flex-1">Test User</div></div>
+            </div>
+          </div>
+        </div>
+        <!-- Controls with labels -->
+        <div class="h-16 border-t border-line flex items-center justify-center gap-1 shrink-0">
+          <button class="flex flex-col items-center gap-0.5 w-14"><span>🎙</span><span class="text-[10px]">Mic</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-14 text-rose-300"><span>📷</span><span class="text-[10px]">Camera</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-14"><span>🔗</span><span class="text-[10px]">Share</span></button>
+          <div class="w-px h-8 bg-line mx-2"></div>
+          <button class="flex flex-col items-center gap-0.5 w-14"><span>👥</span><span class="text-[10px]">People</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-14"><span>💬</span><span class="text-[10px]">Chat</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-14"><span>🛠</span><span class="text-[10px]">Tools</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-14"><span>⊞</span><span class="text-[10px]">Layout</span></button>
+          <div class="w-px h-8 bg-line mx-2"></div>
+          <button class="flex flex-col items-center gap-0.5 w-14 text-rose-400"><span>⏻</span><span class="text-[10px]">Leave</span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop -->
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Desktop · 1280px (current)</div>
+      <div class="device device-desktop flex flex-col">
+        <div class="h-12 flex items-center px-4 gap-3 border-b border-line shrink-0 text-sm">
+          <span class="text-emerald-400">●</span>
+          <span class="font-medium">'s Room <span class="text-[10px] ml-1 px-1.5 py-0.5 rounded bg-accent/20 text-accent">Host</span></span>
+          <span class="text-[11px] label-pill px-2 py-0.5 rounded font-mono">YINBUB</span>
+          <span class="ml-auto text-emerald-400 font-mono">18:31</span>
+          <span class="text-ink-mute">3 participants</span>
+          <span class="ml-3">ℹ</span>
+        </div>
+        <div class="flex-1 flex overflow-hidden">
+          <div class="flex-1 p-4 grid grid-cols-2 grid-rows-2 gap-4">
+            <div class="bg-bg-panel rounded-xl flex items-center justify-center relative"><div class="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold">M</div><div class="absolute bottom-2 left-2 text-xs bg-black/50 rounded px-2 py-1">mohsen (You)</div></div>
+            <div class="bg-bg-panel rounded-xl flex items-center justify-center relative"><div class="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold">ME</div><div class="absolute bottom-2 left-2 text-xs bg-black/50 rounded px-2 py-1">mohsen esfandiari</div></div>
+            <div class="bg-bg-panel rounded-xl flex items-center justify-center relative"><div class="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center font-bold">TU</div><div class="absolute bottom-2 left-2 text-xs bg-black/50 rounded px-2 py-1">Test User</div></div>
+          </div>
+          <div class="w-72 border-l border-line flex flex-col shrink-0">
+            <div class="flex border-b border-line text-ink-mute">
+              <button class="flex-1 h-12 text-accent border-b-2 border-accent">👥</button>
+              <button class="flex-1 h-12">💬</button>
+              <button class="flex-1 h-12">🛠</button>
+            </div>
+            <div class="p-4 space-y-2 text-sm">
+              <button class="w-full h-9 bg-accent/20 text-accent rounded-lg text-sm font-medium">+ Add People</button>
+              <div class="text-[10px] font-bold tracking-wider text-ink-mute mt-3">HOST</div>
+              <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-bg-elev"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-xs font-bold">M</div><div class="flex-1">mohsen (You)</div><span class="text-xs">🎙</span><span class="text-xs text-rose-400">📷</span></div>
+              <div class="text-[10px] font-bold tracking-wider text-ink-mute mt-3">STUDENTS (2)</div>
+              <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-bg-elev"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-xs font-bold">ME</div><div class="flex-1">mohsen esfandiari</div></div>
+              <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-bg-elev"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-xs font-bold">TU</div><div class="flex-1">Test User</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="h-16 border-t border-line flex items-center justify-center gap-2 shrink-0">
+          <button class="flex flex-col items-center gap-0.5 w-16"><span>🎙</span><span class="text-[10px]">Mic</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-16 text-rose-300"><span>📷</span><span class="text-[10px]">Camera</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-16"><span>🔗</span><span class="text-[10px]">Share</span></button>
+          <div class="w-px h-8 bg-line mx-2"></div>
+          <button class="flex flex-col items-center gap-0.5 w-16"><span>👥</span><span class="text-[10px]">People</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-16"><span>💬</span><span class="text-[10px]">Chat</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-16"><span>🛠</span><span class="text-[10px]">Tools</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-16"><span>⊞</span><span class="text-[10px]">Layout</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-16"><span>⚙</span><span class="text-[10px]">Settings</span></button>
+          <div class="w-px h-8 bg-line mx-2"></div>
+          <button class="flex flex-col items-center gap-0.5 w-16 text-rose-400"><span>⏻</span><span class="text-[10px]">Leave</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- ROOM + CHAT (Bottom Sheet on mobile)                          -->
+<!-- ============================================================ -->
+<section data-page="room-chat" class="space-y-10 hidden">
+  <div>
+    <h2 class="text-2xl font-bold">In-Call · Chat Open</h2>
+    <p class="text-ink-mute">روی موبایل، با تپ روی Chat یک Bottom Sheet با drag handle و 3 تا snap-point باز می‌شه. ویدئو پشت sheet با dim ملایم دیده می‌شه.</p>
+  </div>
+  <div class="flex flex-wrap gap-10 items-start justify-center">
+
+    <!-- Mobile with Bottom Sheet -->
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Mobile · Bottom Sheet @50%</div>
+      <div class="device device-mobile flex flex-col relative">
+        <div class="h-11 flex items-center px-3 gap-2 border-b border-line shrink-0 text-xs">
+          <span class="text-emerald-400">●</span><span>'s Room</span><span class="ml-auto text-emerald-400 font-mono">19:03</span><span class="text-ink-mute">3👥</span>
+        </div>
+        <div class="flex-1 p-2 grid grid-cols-2 grid-rows-2 gap-2 opacity-70">
+          <div class="bg-bg-panel rounded-lg flex items-center justify-center"><div class="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-xs font-bold">M</div></div>
+          <div class="bg-bg-panel rounded-lg flex items-center justify-center"><div class="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-xs font-bold">ME</div></div>
+          <div class="bg-bg-panel rounded-lg flex items-center justify-center col-span-2"><div class="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-xs font-bold">TU</div></div>
+        </div>
+        <!-- bottom sheet overlay -->
+        <div class="absolute left-0 right-0 bottom-0 h-[55%] bg-bg-elev border-t border-line rounded-t-2xl shadow-2xl flex flex-col">
+          <div class="pt-2 pb-1 flex justify-center"><div class="w-10 h-1 bg-line rounded-full"></div></div>
+          <div class="flex border-b border-line text-ink-mute">
+            <button class="flex-1 h-9 text-xs">👥 People</button>
+            <button class="flex-1 h-9 text-xs text-accent border-b-2 border-accent">💬 Chat</button>
+            <button class="flex-1 h-9 text-xs">🛠 Tools</button>
+            <button class="w-9 h-9 text-ink-mute">✕</button>
+          </div>
+          <div class="flex-1 scrollarea p-3 space-y-2 text-xs">
+            <div class="flex justify-end"><div class="bg-accent text-white rounded-2xl rounded-tr-sm px-3 py-1.5 max-w-[75%]">uyghiunmj<div class="text-[9px] opacity-70 mt-0.5">06:03 PM</div></div></div>
+            <div class="flex justify-start"><div class="bg-bg-panel border border-line rounded-2xl rounded-tl-sm px-3 py-1.5 max-w-[75%]">Sounds good!<div class="text-[9px] text-ink-mute mt-0.5">06:04 PM</div></div></div>
+          </div>
+          <div class="border-t border-line p-2 flex items-center gap-2">
+            <button class="w-8 h-8 rounded-full bg-bg-panel">😊</button>
+            <input class="flex-1 h-9 bg-bg-panel border border-line rounded-full px-3 text-xs" placeholder="Message...">
+            <button class="w-9 h-9 rounded-full bg-accent flex items-center justify-center">➤</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tablet -->
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Tablet · panel docked right (chat)</div>
+      <div class="device device-tablet flex flex-col">
+        <div class="h-12 flex items-center px-4 gap-3 border-b border-line shrink-0 text-sm">
+          <span class="text-emerald-400">●</span><span>'s Room</span><span class="text-[11px] label-pill px-2 py-0.5 rounded font-mono">YINBUB</span><span class="ml-auto text-emerald-400 font-mono">19:03</span><span class="text-ink-mute text-xs">3 participants</span>
+        </div>
+        <div class="flex-1 flex overflow-hidden">
+          <div class="flex-1 p-3 grid grid-cols-2 grid-rows-2 gap-3">
+            <div class="bg-bg-panel rounded-xl flex items-center justify-center border-2 border-emerald-500/40"><div class="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold">M</div></div>
+            <div class="bg-bg-panel rounded-xl flex items-center justify-center border-2 border-emerald-500/40"><div class="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold">ME</div></div>
+            <div class="bg-bg-panel rounded-xl flex items-center justify-center col-span-2"><div class="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center font-bold">TU</div></div>
+          </div>
+          <div class="w-60 border-l border-line flex flex-col shrink-0">
+            <div class="flex border-b border-line text-ink-mute">
+              <button class="flex-1 h-10">👥</button>
+              <button class="flex-1 h-10 text-accent border-b-2 border-accent">💬</button>
+              <button class="flex-1 h-10">🛠</button>
+            </div>
+            <div class="flex-1 scrollarea p-3 space-y-2 text-xs">
+              <div class="flex justify-end"><div class="bg-accent text-white rounded-2xl px-3 py-1.5 max-w-[80%]">uyghiunmj<div class="text-[9px] opacity-70 mt-0.5">06:03 PM</div></div></div>
+            </div>
+            <div class="border-t border-line p-2 flex items-center gap-2">
+              <button class="w-7 h-7 rounded-full bg-bg-panel text-xs">😊</button>
+              <input class="flex-1 h-8 bg-bg-panel border border-line rounded-full px-3 text-xs" placeholder="Message...">
+              <button class="w-8 h-8 rounded-full bg-accent text-xs">➤</button>
+            </div>
+          </div>
+        </div>
+        <div class="h-14 border-t border-line flex items-center justify-center gap-1 shrink-0 text-xs">
+          <button class="w-12">🎙</button><button class="w-12 text-rose-300">📷</button><button class="w-12">🔗</button>
+          <div class="w-px h-6 bg-line mx-2"></div>
+          <button class="w-12">👥</button><button class="w-12 text-accent">💬</button><button class="w-12">🛠</button>
+          <div class="w-px h-6 bg-line mx-2"></div>
+          <button class="w-12 text-rose-400">⏻</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop -->
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Desktop (current)</div>
+      <div class="device device-desktop flex flex-col">
+        <div class="h-12 flex items-center px-4 gap-3 border-b border-line shrink-0 text-sm">
+          <span class="text-emerald-400">●</span><span>'s Room</span><span class="text-[11px] label-pill px-2 py-0.5 rounded font-mono">YINBUB</span><span class="ml-auto text-emerald-400 font-mono">19:03</span><span class="text-ink-mute">3 participants</span>
+        </div>
+        <div class="flex-1 flex overflow-hidden">
+          <div class="flex-1 p-4 grid grid-cols-2 grid-rows-2 gap-4">
+            <div class="bg-bg-panel rounded-xl flex items-center justify-center border-2 border-emerald-500/40"><div class="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold">M</div></div>
+            <div class="bg-bg-panel rounded-xl flex items-center justify-center border-2 border-emerald-500/40"><div class="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold">ME</div></div>
+            <div class="bg-bg-panel rounded-xl flex items-center justify-center col-span-2"><div class="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center font-bold">TU</div></div>
+          </div>
+          <div class="w-72 border-l border-line flex flex-col shrink-0">
+            <div class="flex border-b border-line text-ink-mute">
+              <button class="flex-1 h-12">👥</button>
+              <button class="flex-1 h-12 text-accent border-b-2 border-accent">💬</button>
+              <button class="flex-1 h-12">🛠</button>
+            </div>
+            <div class="flex-1 scrollarea p-4 space-y-2 text-sm">
+              <div class="flex justify-end"><div class="bg-accent text-white rounded-2xl px-3 py-2 max-w-[80%]">uyghiunmj<div class="text-[10px] opacity-70 mt-0.5">06:03 PM</div></div></div>
+            </div>
+            <div class="border-t border-line p-3 flex items-center gap-2">
+              <button class="w-8 h-8 rounded-full bg-bg-panel">😊</button>
+              <input class="flex-1 h-9 bg-bg-panel border border-line rounded-full px-3 text-sm" placeholder="Message...">
+              <button class="w-9 h-9 rounded-full bg-accent">➤</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- ROOM + TOOLS                                                  -->
+<!-- ============================================================ -->
+<section data-page="room-tools" class="space-y-10 hidden">
+  <div>
+    <h2 class="text-2xl font-bold">In-Call · Tools Open</h2>
+    <p class="text-ink-mute">پنل Tools به عنوان لیست کامل با badge "Ready / Soon". موبایل: Bottom Sheet @90%.</p>
+  </div>
+  <div class="flex flex-wrap gap-10 items-start justify-center">
+    <!-- Mobile -->
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Mobile · Bottom Sheet @90%</div>
+      <div class="device device-mobile flex flex-col relative">
+        <div class="h-11 flex items-center px-3 gap-2 border-b border-line shrink-0 text-xs">
+          <span class="text-emerald-400">●</span><span>'s Room</span><span class="ml-auto text-emerald-400 font-mono">19:26</span>
+        </div>
+        <div class="flex-1 grid grid-cols-2 gap-1 p-1 opacity-50">
+          <div class="bg-bg-panel rounded"></div><div class="bg-bg-panel rounded"></div><div class="bg-bg-panel rounded col-span-2"></div>
+        </div>
+        <div class="absolute left-0 right-0 bottom-0 h-[90%] bg-bg-elev border-t border-line rounded-t-2xl shadow-2xl flex flex-col">
+          <div class="pt-2 pb-1 flex justify-center"><div class="w-10 h-1 bg-line rounded-full"></div></div>
+          <div class="flex border-b border-line text-ink-mute">
+            <button class="flex-1 h-9 text-xs">👥</button>
+            <button class="flex-1 h-9 text-xs">💬</button>
+            <button class="flex-1 h-9 text-xs text-accent border-b-2 border-accent">🛠 Tools</button>
+            <button class="w-9 h-9">✕</button>
+          </div>
+          <div class="flex-1 scrollarea p-3 space-y-2">
+            <div class="flex items-center gap-3 p-3 rounded-xl bg-bg-panel border border-line"><div class="w-9 h-9 rounded-md bg-violet-900/40 flex items-center justify-center">🎮</div><div class="flex-1"><div class="text-sm font-semibold">Launch Game</div><div class="text-[11px] text-ink-mute">Add game to session</div></div><span class="text-[10px] px-2 py-0.5 rounded bg-emerald-900/40 text-emerald-400">Ready</span></div>
+            <div class="flex items-center gap-3 p-3 rounded-xl bg-bg-panel border border-line"><div class="w-9 h-9 rounded-md bg-blue-900/40 flex items-center justify-center">📝</div><div class="flex-1"><div class="text-sm font-semibold">Whiteboard</div><div class="text-[11px] text-ink-mute">Collaborative drawing</div></div><span class="text-[10px] px-2 py-0.5 rounded bg-emerald-900/40 text-emerald-400">Ready</span></div>
+            <div class="flex items-center gap-3 p-3 rounded-xl bg-bg-panel border border-line"><div class="w-9 h-9 rounded-md bg-rose-900/40 flex items-center justify-center">📋</div><div class="flex-1"><div class="text-sm font-semibold">Quick Exam</div><div class="text-[11px] text-ink-mute">Start exam in session</div></div><span class="text-[10px] px-2 py-0.5 rounded bg-emerald-900/40 text-emerald-400">Ready</span></div>
+            <div class="flex items-center gap-3 p-3 rounded-xl bg-bg-panel border border-line opacity-70"><div class="w-9 h-9 rounded-md bg-amber-900/40 flex items-center justify-center">🤖</div><div class="flex-1"><div class="text-sm font-semibold">AI Summary</div><div class="text-[11px] text-ink-mute">Auto-summarize session</div></div><span class="text-[10px] px-2 py-0.5 rounded bg-orange-900/40 text-orange-400">Soon</span></div>
+            <div class="flex items-center gap-3 p-3 rounded-xl bg-bg-panel border border-line opacity-70"><div class="w-9 h-9 rounded-md bg-yellow-900/40 flex items-center justify-center">📁</div><div class="flex-1"><div class="text-sm font-semibold">File Share</div><div class="text-[11px] text-ink-mute">Share presentations</div></div><span class="text-[10px] px-2 py-0.5 rounded bg-orange-900/40 text-orange-400">Soon</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop -->
+    <div>
+      <div class="text-center text-xs text-ink-mute mb-2">Desktop (current)</div>
+      <div class="device device-desktop flex flex-col">
+        <div class="h-12 flex items-center px-4 gap-3 border-b border-line shrink-0 text-sm">
+          <span class="text-emerald-400">●</span><span>'s Room</span><span class="text-[11px] label-pill px-2 py-0.5 rounded font-mono">YINBUB</span><span class="ml-auto text-emerald-400 font-mono">19:26</span><span class="text-ink-mute">3 participants</span>
+        </div>
+        <div class="flex-1 flex overflow-hidden">
+          <div class="flex-1 p-4 flex items-center justify-center"><div class="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold">M</div></div>
+          <!-- Sidebar with thumbs + tool panel -->
+          <div class="w-32 border-l border-line p-2 space-y-2 shrink-0">
+            <div class="aspect-square bg-bg-panel rounded-lg flex flex-col items-center justify-center"><div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-xs font-bold">ME</div><div class="text-[10px] mt-1">mohsen es..</div></div>
+            <div class="aspect-square bg-bg-panel rounded-lg flex flex-col items-center justify-center"><div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-xs font-bold">TU</div><div class="text-[10px] mt-1">Test User</div></div>
+          </div>
+          <div class="w-72 border-l border-line flex flex-col shrink-0">
+            <div class="flex border-b border-line text-ink-mute">
+              <button class="flex-1 h-12">👥</button>
+              <button class="flex-1 h-12">💬</button>
+              <button class="flex-1 h-12 text-accent border-b-2 border-accent">🛠</button>
+            </div>
+            <div class="flex-1 scrollarea p-3 space-y-2">
+              <div class="flex items-center gap-3 p-3 rounded-xl bg-bg-panel border border-line"><div class="w-10 h-10 rounded-md bg-violet-900/40 flex items-center justify-center text-lg">🎮</div><div class="flex-1"><div class="text-sm font-semibold">Launch Game</div><div class="text-xs text-ink-mute">Add game to session</div></div><span class="text-[10px] px-2 py-0.5 rounded bg-emerald-900/40 text-emerald-400">Ready</span></div>
+              <div class="flex items-center gap-3 p-3 rounded-xl bg-bg-panel border border-line"><div class="w-10 h-10 rounded-md bg-blue-900/40 flex items-center justify-center text-lg">📝</div><div class="flex-1"><div class="text-sm font-semibold">Whiteboard</div><div class="text-xs text-ink-mute">Collaborative drawing</div></div><span class="text-[10px] px-2 py-0.5 rounded bg-emerald-900/40 text-emerald-400">Ready</span></div>
+              <div class="flex items-center gap-3 p-3 rounded-xl bg-bg-panel border border-line"><div class="w-10 h-10 rounded-md bg-rose-900/40 flex items-center justify-center text-lg">📋</div><div class="flex-1"><div class="text-sm font-semibold">Quick Exam</div><div class="text-xs text-ink-mute">Start exam in session</div></div><span class="text-[10px] px-2 py-0.5 rounded bg-emerald-900/40 text-emerald-400">Ready</span></div>
+              <div class="flex items-center gap-3 p-3 rounded-xl bg-bg-panel border border-line opacity-70"><div class="w-10 h-10 rounded-md bg-amber-900/40 flex items-center justify-center text-lg">🤖</div><div class="flex-1"><div class="text-sm font-semibold">AI Summary</div><div class="text-xs text-ink-mute">Auto-summarize session</div></div><span class="text-[10px] px-2 py-0.5 rounded bg-orange-900/40 text-orange-400">Soon</span></div>
+              <div class="flex items-center gap-3 p-3 rounded-xl bg-bg-panel border border-line opacity-70"><div class="w-10 h-10 rounded-md bg-yellow-900/40 flex items-center justify-center text-lg">📁</div><div class="flex-1"><div class="text-sm font-semibold">File Share</div><div class="text-xs text-ink-mute">Share presentations</div></div><span class="text-[10px] px-2 py-0.5 rounded bg-orange-900/40 text-orange-400">Soon</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ============== FOOTER ============== -->
+<footer class="border-t border-line py-8 mt-16">
+  <div class="max-w-[1600px] mx-auto px-6 text-center text-xs text-ink-mute">
+    <p>EduSpace · Responsive Design Mockups · branch: <code class="text-accent">design/responsive-mockups</code></p>
+    <p class="mt-2">طراحی mobile-first با Tailwind v4 / RTL-ready با logical properties (ms-/me-/start-/end-)</p>
+  </div>
+</footer>
+
+<script>
+  // tab switching
+  const tabs = document.querySelectorAll('[data-tab]');
+  const sections = document.querySelectorAll('[data-page]');
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    const tab = t.dataset.tab;
+    sections.forEach(s => s.classList.toggle('hidden', s.dataset.page !== tab));
+    window.scrollTo({top:0, behavior:'smooth'});
+  }));
+</script>
+</body>
+</html>
