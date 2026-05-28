@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>EduSpace — Responsive Design Mockups (v2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root {
+    --s0:#0f0f17; --s1:#16161f; --s2:#1e1e2a; --s3:#272735;
+    --t1:#f0f0f8; --t2:#8888a8; --t3:#4a4a6a;
+    --b:rgba(255,255,255,0.07); --b2:rgba(255,255,255,0.12);
+    --brand:#6366f1; --brand2:#4f46e5;
+    --green:#10b981; --amber:#f59e0b; --red:#ef4444; --cyan:#06b6d4;
+  }
+  html.ltr { font-family: 'Inter', system-ui, sans-serif; }
+  html.rtl { font-family: 'Vazirmatn', system-ui, sans-serif; }
+  body { background:#06060a; color:var(--t1); }
+  .device {
+    background:var(--s0);
+    border-radius:24px;
+    border:1px solid var(--b);
+    box-shadow: 0 20px 60px -10px rgba(0,0,0,0.6);
+    overflow:hidden;
+    isolation:isolate;
+  }
+  .device-mobile  { width:375px; height:740px; }
+  .device-tablet  { width:768px; height:900px; }
+  .device-desktop { width:1280px; height:760px; }
+  .surface-0 { background:var(--s0); }
+  .surface-1 { background:var(--s1); }
+  .surface-2 { background:var(--s2); }
+  .surface-3 { background:var(--s3); }
+  .text-pri { color:var(--t1); }
+  .text-mut { color:var(--t2); }
+  .text-dim { color:var(--t3); }
+  .border-line { border-color:var(--b); }
+  .border-line2 { border-color:var(--b2); }
+  .text-brand { color:var(--brand); }
+  .bg-brand { background:var(--brand); }
+  .bg-brand-soft { background:rgba(99,102,241,0.15); }
+  .bg-brand-soft2 { background:rgba(99,102,241,0.25); }
+  .scrollarea { overflow-y:auto; }
+  .scrollarea::-webkit-scrollbar { width:6px; height:6px; }
+  .scrollarea::-webkit-scrollbar-thumb { background:var(--s3); border-radius:3px; }
+  .tab.active { background:var(--s2); color:var(--t1); }
+  .tab { color:var(--t2); }
+  .badge { font-size:10px; padding:2px 6px; border-radius:4px; font-weight:600; }
+  .badge-live { background:rgba(16,185,129,0.15); color:#34d399; }
+  .badge-soon { background:rgba(245,158,11,0.15); color:#fbbf24; }
+  .badge-done { background:var(--s3); color:var(--t2); }
+  .badge-ready { background:rgba(16,185,129,0.15); color:#34d399; }
+  .swipe-dot { width:6px; height:6px; border-radius:9999px; background:var(--t3); transition:all .2s; }
+  .swipe-dot.active { width:18px; background:var(--brand); }
+  /* RTL flip helpers */
+  html.rtl .flip-x { transform: scaleX(-1); }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- ============== TOP NAV ============== -->
+<header class="sticky top-0 z-30 backdrop-blur bg-black/80 border-b border-line">
+  <div class="max-w-[1600px] mx-auto px-6 py-4 flex flex-wrap items-center gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-brand flex items-center justify-center font-bold text-white">E</div>
+      <div>
+        <div class="font-semibold text-pri">EduSpace · Design Mockups v2</div>
+        <div class="text-xs text-mut">From <code class="text-brand">develop</code> · Mobile-first · RTL-aware</div>
+      </div>
+    </div>
+
+    <!-- Lang toggle -->
+    <div class="flex items-center surface-1 border border-line rounded-lg p-0.5 ms-auto">
+      <button id="lang-en" class="px-3 py-1.5 text-xs font-semibold rounded-md bg-brand text-white">EN</button>
+      <button id="lang-fa" class="px-3 py-1.5 text-xs font-semibold rounded-md text-mut">FA</button>
+    </div>
+
+    <!-- Page tabs -->
+    <nav class="flex flex-wrap gap-1 text-sm w-full">
+      <button data-tab="dashboard" class="tab active px-3 py-1.5 rounded-md" data-en="Dashboard" data-fa="داشبورد">Dashboard</button>
+      <button data-tab="login"     class="tab px-3 py-1.5 rounded-md" data-en="Sign In" data-fa="ورود">Sign In</button>
+      <button data-tab="register"  class="tab px-3 py-1.5 rounded-md" data-en="Sign Up" data-fa="ثبت‌نام">Sign Up</button>
+      <button data-tab="prejoin"   class="tab px-3 py-1.5 rounded-md" data-en="Pre-Join" data-fa="پیش از ورود">Pre-Join</button>
+      <button data-tab="room"      class="tab px-3 py-1.5 rounded-md" data-en="In-Call · Video" data-fa="در تماس · ویدیو">In-Call · Video</button>
+      <button data-tab="room-people" class="tab px-3 py-1.5 rounded-md" data-en="In-Call · People" data-fa="در تماس · افراد">In-Call · People</button>
+      <button data-tab="room-chat" class="tab px-3 py-1.5 rounded-md" data-en="In-Call · Chat" data-fa="در تماس · چت">In-Call · Chat</button>
+      <button data-tab="room-tools" class="tab px-3 py-1.5 rounded-md" data-en="In-Call · Tools" data-fa="در تماس · ابزارها">In-Call · Tools</button>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-[1600px] mx-auto px-6 py-10 space-y-16">
+<!-- SECTIONS APPENDED BELOW -->
+
+
+<!-- ============================================================ -->
+<!-- DASHBOARD                                                    -->
+<!-- ============================================================ -->
+<section data-page="dashboard" class="space-y-8">
+  <div>
+    <h2 class="text-2xl font-bold" data-en="Dashboard" data-fa="داشبورد">Dashboard</h2>
+    <p class="text-mut text-sm mt-1" data-en="Mobile: Bottom Nav (4 items with center CTA) + Drawer for sidebar. Tablet: collapsed icon-only sidebar. Desktop: current full layout." data-fa="موبایل: نوار پایین (۴ آیتم با دکمه مرکزی) + کشوی سایدبار. تبلت: سایدبار جمع‌شده فقط آیکون. دسکتاپ: همان طراحی کنونی.">Mobile: Bottom Nav (4 items with center CTA) + Drawer for sidebar. Tablet: collapsed icon-only sidebar. Desktop: current full layout.</p>
+  </div>
+
+  <div class="flex flex-wrap gap-10 items-start justify-center">
+
+    <!-- ========= MOBILE ========= -->
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Mobile · 375px</div>
+      <div class="device device-mobile flex flex-col">
+        <!-- Topbar -->
+        <div class="h-14 flex items-center px-4 gap-3 border-b border-line shrink-0">
+          <button class="w-9 h-9 rounded-lg hover:surface-2 flex items-center justify-center text-mut">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </button>
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-md bg-brand flex items-center justify-center text-xs font-bold text-white">E</div>
+            <span class="font-semibold text-sm">EduSpace</span>
+          </div>
+          <div class="ms-auto flex gap-1">
+            <button class="w-9 h-9 rounded-lg hover:surface-2 flex items-center justify-center text-mut">🔔</button>
+            <button class="w-9 h-9 rounded-lg hover:surface-2 flex items-center justify-center">
+              <div class="w-7 h-7 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-xs font-bold text-white">A</div>
+            </button>
+          </div>
+        </div>
+        <!-- Content -->
+        <div class="flex-1 scrollarea p-4 space-y-4">
+          <div>
+            <div class="text-xs text-mut" data-en="Thursday, May 28" data-fa="پنج‌شنبه ۷ خرداد">Thursday, May 28</div>
+            <div class="text-xl font-bold mt-1" data-en="Good afternoon, mohsen 👋" data-fa="عصر بخیر، محسن 👋">Good afternoon, mohsen 👋</div>
+            <div class="text-sm mt-1"><span class="text-mut" data-en="Role:" data-fa="نقش:">Role:</span> <span class="text-brand font-semibold" data-en="Student" data-fa="دانش‌آموز">Student</span></div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="surface-1 border border-line rounded-xl p-4 flex flex-col items-center gap-2"><span class="text-2xl">📹</span><span class="text-xs font-medium" data-en="Start Call" data-fa="شروع تماس">Start Call</span></div>
+            <div class="surface-1 border border-line rounded-xl p-4 flex flex-col items-center gap-2"><span class="text-2xl">🎮</span><span class="text-xs font-medium" data-en="Launch Game" data-fa="اجرای بازی">Launch Game</span></div>
+            <div class="surface-1 border border-line rounded-xl p-4 flex flex-col items-center gap-2"><span class="text-2xl">📝</span><span class="text-xs font-medium" data-en="New Exam" data-fa="آزمون جدید">New Exam</span></div>
+            <div class="surface-1 border border-line rounded-xl p-4 flex flex-col items-center gap-2"><span class="text-2xl">🎬</span><span class="text-xs font-medium" data-en="Recordings" data-fa="ضبط‌ها">Recordings</span></div>
+          </div>
+
+          <div class="space-y-2">
+            <div class="surface-1 border border-line rounded-xl px-4 py-3"><div class="text-2xl font-bold">14</div><div class="text-xs text-mut" data-en="Sessions this week" data-fa="جلسات این هفته">Sessions this week</div></div>
+            <div class="surface-1 border border-line rounded-xl px-4 py-3"><div class="text-2xl font-bold">87</div><div class="text-xs text-mut" data-en="Active students" data-fa="دانش‌آموزان فعال">Active students</div></div>
+            <div class="surface-1 border border-line rounded-xl px-4 py-3"><div class="text-2xl font-bold" style="color:#34d399">94%</div><div class="text-xs text-mut" data-en="Avg attendance" data-fa="میانگین حضور">Avg attendance</div></div>
+          </div>
+
+          <div class="surface-1 border border-line rounded-xl p-3">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs font-bold tracking-wider text-mut" data-en="RECENT SESSIONS" data-fa="جلسات اخیر">RECENT SESSIONS</div>
+              <a class="text-xs text-brand" data-en="See all →" data-fa="مشاهده همه →">See all →</a>
+            </div>
+            <div class="space-y-2">
+              <div class="flex items-center gap-3 p-2 rounded-lg hover:surface-2">
+                <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background:rgba(16,185,129,0.15)">📗</div>
+                <div class="flex-1 min-w-0"><div class="text-sm font-semibold truncate" data-en="Advanced English — Group A" data-fa="انگلیسی پیشرفته — گروه A">Advanced English — Group A</div><div class="text-[11px] text-mut truncate" data-en="8 students · Word Quest active" data-fa="۸ دانش‌آموز · Word Quest فعال">8 students · Word Quest active</div></div>
+                <div class="text-end shrink-0"><span class="badge badge-live" data-en="● LIVE" data-fa="● زنده">● LIVE</span><div class="text-[10px] text-mut mt-1" data-en="12m" data-fa="۱۲د">12m</div></div>
+              </div>
+              <div class="flex items-center gap-3 p-2 rounded-lg hover:surface-2">
+                <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background:rgba(6,182,212,0.15)">📘</div>
+                <div class="flex-1 min-w-0"><div class="text-sm font-semibold truncate" data-en="Grammar B1 — Group C" data-fa="گرامر B1 — گروه C">Grammar B1 — Group C</div><div class="text-[11px] text-mut truncate" data-en="12 students · Exam scheduled" data-fa="۱۲ دانش‌آموز · آزمون برنامه‌ریزی شده">12 students · Exam scheduled</div></div>
+                <div class="text-end shrink-0"><span class="badge badge-soon" data-en="SOON" data-fa="بزودی">SOON</span><div class="text-[10px] text-mut mt-1" data-en="25m" data-fa="۲۵د">25m</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="h-4"></div>
+        </div>
+
+        <!-- Bottom Nav: Dashboard | Calls | [+] | More -->
+        <div class="h-16 border-t border-line shrink-0 grid grid-cols-4 px-1 relative">
+          <button class="flex flex-col items-center justify-center gap-0.5 text-brand">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            <span class="text-[10px] font-medium" data-en="Home" data-fa="خانه">Home</span>
+          </button>
+          <button class="flex flex-col items-center justify-center gap-0.5 text-mut">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+            <span class="text-[10px]" data-en="Calls" data-fa="تماس‌ها">Calls</span>
+          </button>
+          <!-- Center CTA -->
+          <div class="flex items-start justify-center">
+            <button class="w-14 h-14 -mt-5 rounded-2xl bg-brand flex items-center justify-center shadow-lg shadow-indigo-500/30 ring-4 ring-[#06060a]">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+          <button class="flex flex-col items-center justify-center gap-0.5 text-mut">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
+            <span class="text-[10px]" data-en="More" data-fa="بیشتر">More</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========= TABLET ========= -->
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Tablet · 768px</div>
+      <div class="device device-tablet flex">
+        <div class="w-14 border-e border-line flex flex-col items-center py-3 gap-2 shrink-0">
+          <div class="w-9 h-9 rounded-md bg-brand flex items-center justify-center text-xs font-bold text-white">E</div>
+          <div class="h-px w-8 bg-[var(--b)] my-2"></div>
+          <button class="w-10 h-10 rounded-lg surface-2 text-brand flex items-center justify-center">⊞</button>
+          <button class="w-10 h-10 rounded-lg hover:surface-2 text-mut flex items-center justify-center">📹</button>
+          <button class="w-10 h-10 rounded-lg hover:surface-2 text-mut flex items-center justify-center">🎮</button>
+          <button class="w-10 h-10 rounded-lg hover:surface-2 text-mut flex items-center justify-center">📝</button>
+          <div class="h-px w-8 bg-[var(--b)] my-2"></div>
+          <button class="w-10 h-10 rounded-lg hover:surface-2 text-mut flex items-center justify-center relative">👥<span class="absolute top-1 end-1 w-4 h-4 bg-rose-500 text-[9px] rounded-full flex items-center justify-center text-white">3</span></button>
+          <button class="w-10 h-10 rounded-lg hover:surface-2 text-mut flex items-center justify-center">📊</button>
+          <button class="w-10 h-10 rounded-lg hover:surface-2 text-mut flex items-center justify-center">🎬</button>
+          <div class="mt-auto"><button class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-sm font-bold text-white">A</button></div>
+        </div>
+        <div class="flex-1 flex flex-col">
+          <div class="h-14 border-b border-line flex items-center px-5 shrink-0">
+            <div>
+              <div class="text-sm font-semibold" data-en="Dashboard" data-fa="داشبورد">Dashboard</div>
+              <div class="text-[11px] text-mut" data-en="Thursday, May 28, 2026" data-fa="پنج‌شنبه ۷ خرداد ۱۴۰۵">Thursday, May 28, 2026</div>
+            </div>
+            <div class="ms-auto flex gap-1.5 text-mut">
+              <button class="w-9 h-9 rounded-lg hover:surface-2 flex items-center justify-center">🌙</button>
+              <button class="w-9 h-9 rounded-lg hover:surface-2 flex items-center justify-center">🔍</button>
+              <button class="w-9 h-9 rounded-lg hover:surface-2 flex items-center justify-center">🔔</button>
+              <button class="w-9 h-9 rounded-lg hover:surface-2 flex items-center justify-center">⚙</button>
+              <button class="w-9 h-9 rounded-lg hover:surface-2 flex items-center justify-center"><span class="flip-x">→</span></button>
+            </div>
+          </div>
+          <div class="flex-1 scrollarea p-6 space-y-5">
+            <div>
+              <div class="text-xl font-bold" data-en="Good afternoon, mohsen 👋" data-fa="عصر بخیر، محسن 👋">Good afternoon, mohsen 👋</div>
+              <div class="text-sm mt-1"><span class="text-mut" data-en="Role:" data-fa="نقش:">Role:</span> <span class="text-brand font-semibold" data-en="Student" data-fa="دانش‌آموز">Student</span></div>
+            </div>
+            <div class="grid grid-cols-4 gap-3">
+              <div class="surface-1 border border-line rounded-xl p-4 flex flex-col items-center gap-2"><span class="text-2xl">📹</span><span class="text-xs" data-en="Start Call" data-fa="شروع تماس">Start Call</span></div>
+              <div class="surface-1 border border-line rounded-xl p-4 flex flex-col items-center gap-2"><span class="text-2xl">🎮</span><span class="text-xs" data-en="Launch Game" data-fa="اجرای بازی">Launch Game</span></div>
+              <div class="surface-1 border border-line rounded-xl p-4 flex flex-col items-center gap-2"><span class="text-2xl">📝</span><span class="text-xs" data-en="New Exam" data-fa="آزمون جدید">New Exam</span></div>
+              <div class="surface-1 border border-line rounded-xl p-4 flex flex-col items-center gap-2"><span class="text-2xl">🎬</span><span class="text-xs" data-en="Recordings" data-fa="ضبط‌ها">Recordings</span></div>
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+              <div class="surface-1 border border-line rounded-xl p-4"><div class="text-2xl font-bold">14</div><div class="text-xs text-mut" data-en="Sessions this week" data-fa="جلسات این هفته">Sessions this week</div></div>
+              <div class="surface-1 border border-line rounded-xl p-4"><div class="text-2xl font-bold">87</div><div class="text-xs text-mut" data-en="Active students" data-fa="دانش‌آموزان فعال">Active students</div></div>
+              <div class="surface-1 border border-line rounded-xl p-4"><div class="text-2xl font-bold" style="color:#34d399">94%</div><div class="text-xs text-mut" data-en="Avg attendance" data-fa="میانگین حضور">Avg attendance</div></div>
+            </div>
+            <div class="surface-1 border border-line rounded-xl p-4">
+              <div class="flex items-center justify-between mb-3">
+                <div class="text-xs font-bold tracking-wider text-mut" data-en="RECENT SESSIONS" data-fa="جلسات اخیر">RECENT SESSIONS</div>
+                <a class="text-xs text-brand" data-en="See all →" data-fa="مشاهده همه →">See all →</a>
+              </div>
+              <div class="space-y-1">
+                <div class="flex items-center gap-3 p-2 rounded-lg hover:surface-2">
+                  <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background:rgba(16,185,129,0.15)">📗</div>
+                  <div class="flex-1"><div class="text-sm font-semibold" data-en="Advanced English — Group A" data-fa="انگلیسی پیشرفته — گروه A">Advanced English — Group A</div><div class="text-xs text-mut" data-en="8 students · Word Quest active" data-fa="۸ دانش‌آموز · Word Quest فعال">8 students · Word Quest active</div></div>
+                  <div class="text-end"><span class="badge badge-live" data-en="● LIVE" data-fa="● زنده">● LIVE</span><div class="text-[10px] text-mut mt-1" data-en="12m ago" data-fa="۱۲د قبل">12m ago</div></div>
+                </div>
+                <div class="flex items-center gap-3 p-2 rounded-lg hover:surface-2">
+                  <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background:rgba(6,182,212,0.15)">📘</div>
+                  <div class="flex-1"><div class="text-sm font-semibold" data-en="Grammar B1 — Group C" data-fa="گرامر B1 — گروه C">Grammar B1 — Group C</div><div class="text-xs text-mut" data-en="12 students · Exam scheduled" data-fa="۱۲ دانش‌آموز · آزمون برنامه‌ریزی شده">12 students · Exam scheduled</div></div>
+                  <div class="text-end"><span class="badge badge-soon" data-en="SOON" data-fa="بزودی">SOON</span><div class="text-[10px] text-mut mt-1" data-en="In 25 min" data-fa="تا ۲۵ دقیقه">In 25 min</div></div>
+                </div>
+                <div class="flex items-center gap-3 p-2 rounded-lg hover:surface-2">
+                  <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background:rgba(139,92,246,0.15)">💻</div>
+                  <div class="flex-1"><div class="text-sm font-semibold" data-en="Python Basics — Beginners" data-fa="پایتون مقدماتی — مبتدیان">Python Basics — Beginners</div><div class="text-xs text-mut" data-en="6 students · Recording ready" data-fa="۶ دانش‌آموز · ضبط آماده">6 students · Recording ready</div></div>
+                  <div class="text-end"><span class="badge badge-done" data-en="DONE" data-fa="تمام">DONE</span><div class="text-[10px] text-mut mt-1" data-en="Yesterday" data-fa="دیروز">Yesterday</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========= DESKTOP ========= -->
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Desktop · 1280px (current layout)</div>
+      <div class="device device-desktop flex">
+        <div class="w-56 border-e border-line flex flex-col shrink-0">
+          <div class="h-14 flex items-center px-4 gap-2 border-b border-line">
+            <div class="w-8 h-8 rounded-md bg-brand flex items-center justify-center text-xs font-bold text-white">E</div>
+            <span class="font-semibold">EduSpace</span>
+          </div>
+          <div class="flex-1 px-3 py-4 space-y-1 text-sm">
+            <div class="px-2 text-[10px] font-bold tracking-wider text-dim mb-1" data-en="MAIN" data-fa="اصلی">MAIN</div>
+            <a class="flex items-center gap-3 px-3 py-2 rounded-lg surface-2 text-brand">⊞ <span data-en="Dashboard" data-fa="داشبورد">Dashboard</span></a>
+            <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:surface-2 text-mut">📹 <span data-en="Video Calls" data-fa="تماس ویدیویی">Video Calls</span></a>
+            <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:surface-2 text-mut">🎮 <span data-en="Games" data-fa="بازی‌ها">Games</span></a>
+            <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:surface-2 text-mut">📝 <span data-en="Exams" data-fa="آزمون‌ها">Exams</span></a>
+            <div class="px-2 mt-4 text-[10px] font-bold tracking-wider text-dim mb-1" data-en="MANAGE" data-fa="مدیریت">MANAGE</div>
+            <a class="flex items-center justify-between px-3 py-2 rounded-lg hover:surface-2 text-mut"><span class="flex items-center gap-3">👥 <span data-en="Students" data-fa="دانش‌آموزان">Students</span></span><span class="badge bg-rose-500 text-white">3</span></a>
+            <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:surface-2 text-mut">📊 <span data-en="Reports" data-fa="گزارش‌ها">Reports</span></a>
+            <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:surface-2 text-mut">🎬 <span data-en="Recordings" data-fa="ضبط‌ها">Recordings</span></a>
+          </div>
+          <div class="border-t border-line p-3 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-sm font-bold text-white">A</div>
+            <div><div class="text-sm font-medium" data-en="Ali Rezaei" data-fa="علی رضایی">Ali Rezaei</div><div class="text-[11px] text-mut" data-en="Teacher" data-fa="معلم">Teacher</div></div>
+          </div>
+        </div>
+        <div class="flex-1 flex flex-col">
+          <div class="h-14 border-b border-line flex items-center px-6 shrink-0">
+            <div><div class="text-sm font-semibold" data-en="Dashboard" data-fa="داشبورد">Dashboard</div><div class="text-[11px] text-mut" data-en="Thursday, May 28, 2026" data-fa="پنج‌شنبه ۷ خرداد ۱۴۰۵">Thursday, May 28, 2026</div></div>
+            <div class="ms-auto flex gap-1 text-mut">
+              <button class="w-9 h-9 rounded-lg hover:surface-2 flex items-center justify-center">🌙</button>
+              <button class="w-9 h-9 rounded-lg hover:surface-2 flex items-center justify-center">🔍</button>
+              <button class="w-9 h-9 rounded-lg hover:surface-2 flex items-center justify-center">🔔</button>
+              <button class="w-9 h-9 rounded-lg hover:surface-2 flex items-center justify-center">⚙</button>
+              <button class="w-9 h-9 rounded-lg hover:surface-2 flex items-center justify-center"><span class="flip-x">→</span></button>
+            </div>
+          </div>
+          <div class="flex-1 scrollarea p-8 space-y-6">
+            <div><div class="text-2xl font-bold" data-en="Good afternoon, mohsen 👋" data-fa="عصر بخیر، محسن 👋">Good afternoon, mohsen 👋</div><div class="text-sm mt-1"><span class="text-mut" data-en="Role:" data-fa="نقش:">Role:</span> <span class="text-brand font-semibold" data-en="Student" data-fa="دانش‌آموز">Student</span></div></div>
+            <div class="grid grid-cols-4 gap-4">
+              <div class="surface-1 border border-line rounded-xl p-5 flex flex-col items-center gap-2"><span class="text-3xl">📹</span><span class="text-sm" data-en="Start Call" data-fa="شروع تماس">Start Call</span></div>
+              <div class="surface-1 border border-line rounded-xl p-5 flex flex-col items-center gap-2"><span class="text-3xl">🎮</span><span class="text-sm" data-en="Launch Game" data-fa="اجرای بازی">Launch Game</span></div>
+              <div class="surface-1 border border-line rounded-xl p-5 flex flex-col items-center gap-2"><span class="text-3xl">📝</span><span class="text-sm" data-en="New Exam" data-fa="آزمون جدید">New Exam</span></div>
+              <div class="surface-1 border border-line rounded-xl p-5 flex flex-col items-center gap-2"><span class="text-3xl">🎬</span><span class="text-sm" data-en="Recordings" data-fa="ضبط‌ها">Recordings</span></div>
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+              <div class="surface-1 border border-line rounded-xl p-5"><div class="text-3xl font-bold">14</div><div class="text-xs text-mut mt-1" data-en="Sessions this week" data-fa="جلسات این هفته">Sessions this week</div></div>
+              <div class="surface-1 border border-line rounded-xl p-5"><div class="text-3xl font-bold">87</div><div class="text-xs text-mut mt-1" data-en="Active students" data-fa="دانش‌آموزان فعال">Active students</div></div>
+              <div class="surface-1 border border-line rounded-xl p-5"><div class="text-3xl font-bold" style="color:#34d399">94%</div><div class="text-xs text-mut mt-1" data-en="Avg attendance" data-fa="میانگین حضور">Avg attendance</div></div>
+            </div>
+            <div class="surface-1 border border-line rounded-xl p-5">
+              <div class="flex items-center justify-between mb-3"><div class="text-xs font-bold tracking-wider text-mut" data-en="RECENT SESSIONS" data-fa="جلسات اخیر">RECENT SESSIONS</div><a class="text-xs text-brand" data-en="See all →" data-fa="مشاهده همه →">See all →</a></div>
+              <div class="space-y-1">
+                <div class="flex items-center gap-4 p-3 rounded-lg hover:surface-2">
+                  <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background:rgba(16,185,129,0.15)">📗</div>
+                  <div class="flex-1"><div class="font-semibold" data-en="Advanced English — Group A" data-fa="انگلیسی پیشرفته — گروه A">Advanced English — Group A</div><div class="text-xs text-mut" data-en="8 students · Word Quest active" data-fa="۸ دانش‌آموز · Word Quest فعال">8 students · Word Quest active</div></div>
+                  <div class="text-end"><span class="badge badge-live" data-en="● LIVE" data-fa="● زنده">● LIVE</span><div class="text-[10px] text-mut mt-1" data-en="12m ago" data-fa="۱۲د قبل">12m ago</div></div>
+                </div>
+                <div class="flex items-center gap-4 p-3 rounded-lg hover:surface-2">
+                  <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background:rgba(6,182,212,0.15)">📘</div>
+                  <div class="flex-1"><div class="font-semibold" data-en="Grammar B1 — Group C" data-fa="گرامر B1 — گروه C">Grammar B1 — Group C</div><div class="text-xs text-mut" data-en="12 students · Exam scheduled" data-fa="۱۲ دانش‌آموز · آزمون برنامه‌ریزی شده">12 students · Exam scheduled</div></div>
+                  <div class="text-end"><span class="badge badge-soon" data-en="SOON" data-fa="بزودی">SOON</span><div class="text-[10px] text-mut mt-1" data-en="In 25 min" data-fa="تا ۲۵ دقیقه">In 25 min</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+
+<!-- ============================================================ -->
+<!-- LOGIN                                                        -->
+<!-- ============================================================ -->
+<section data-page="login" class="space-y-8 hidden">
+  <div>
+    <h2 class="text-2xl font-bold" data-en="Sign In" data-fa="ورود">Sign In</h2>
+    <p class="text-mut text-sm mt-1" data-en="Mobile: full-width inputs, larger touch targets, no card border. Tablet/Desktop: centered 384px card." data-fa="موبایل: ورودی‌های تمام‌عرض، تارگت‌های بزرگ‌تر، بدون حاشیه کارت. تبلت/دسکتاپ: کارت ۳۸۴ پیکسلی وسط.">Mobile: full-width inputs, larger touch targets, no card border. Tablet/Desktop: centered 384px card.</p>
+  </div>
+  <div class="flex flex-wrap gap-10 items-start justify-center">
+
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Mobile · 375px</div>
+      <div class="device device-mobile flex flex-col items-center justify-center px-6">
+        <div class="w-16 h-16 rounded-2xl bg-brand flex items-center justify-center text-2xl font-bold text-white mb-3">E</div>
+        <div class="text-2xl font-bold">EduSpace</div>
+        <div class="text-sm text-mut" data-en="Sign in to your account" data-fa="به حساب خود وارد شوید">Sign in to your account</div>
+        <div class="w-full mt-8 space-y-4">
+          <div>
+            <label class="text-[11px] font-bold tracking-wider text-mut" data-en="USERNAME" data-fa="نام کاربری">USERNAME</label>
+            <input class="mt-1 w-full h-11 surface-1 border-2 border-brand rounded-lg px-3 text-sm text-pri" data-en-ph="Enter your username" data-fa-ph="نام کاربری خود را وارد کنید" placeholder="Enter your username">
+          </div>
+          <div>
+            <label class="text-[11px] font-bold tracking-wider text-mut" data-en="PASSWORD" data-fa="رمز عبور">PASSWORD</label>
+            <div class="mt-1 relative">
+              <input class="w-full h-11 surface-1 border border-line2 rounded-lg px-3 text-sm text-pri pe-10" type="password" data-en-ph="Enter your password" data-fa-ph="رمز عبور خود را وارد کنید" placeholder="Enter your password">
+              <span class="absolute end-3 top-1/2 -translate-y-1/2 text-mut">👁</span>
+            </div>
+          </div>
+          <button class="w-full h-11 bg-brand rounded-lg font-semibold text-sm text-white" data-en="Sign In" data-fa="ورود">Sign In</button>
+          <div class="text-center text-xs text-mut">
+            <span data-en="Don't have an account?" data-fa="حساب کاربری ندارید؟">Don't have an account?</span>
+            <span class="text-brand font-semibold ms-1" data-en="Create one" data-fa="ایجاد حساب">Create one</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Tablet · 768px</div>
+      <div class="device device-tablet flex flex-col items-center justify-center">
+        <div class="w-14 h-14 rounded-2xl bg-brand flex items-center justify-center text-xl font-bold text-white mb-3">E</div>
+        <div class="text-xl font-bold">EduSpace</div>
+        <div class="text-sm text-mut mb-6" data-en="Sign in to your account" data-fa="به حساب خود وارد شوید">Sign in to your account</div>
+        <div class="w-96 surface-1 border border-line rounded-2xl p-6 space-y-4">
+          <div><label class="text-[11px] font-bold tracking-wider text-mut" data-en="USERNAME" data-fa="نام کاربری">USERNAME</label><input class="mt-1 w-full h-10 surface-2 border-2 border-brand rounded-lg px-3 text-sm text-pri" placeholder="Enter your username"></div>
+          <div><label class="text-[11px] font-bold tracking-wider text-mut" data-en="PASSWORD" data-fa="رمز عبور">PASSWORD</label><div class="mt-1 relative"><input class="w-full h-10 surface-2 border border-line2 rounded-lg px-3 pe-10 text-sm text-pri" type="password" placeholder="Enter your password"><span class="absolute end-3 top-1/2 -translate-y-1/2 text-mut">👁</span></div></div>
+          <button class="w-full h-10 bg-brand rounded-lg font-semibold text-sm text-white" data-en="Sign In" data-fa="ورود">Sign In</button>
+          <div class="text-center text-xs text-mut"><span data-en="Don't have an account?" data-fa="حساب کاربری ندارید؟">Don't have an account?</span> <span class="text-brand font-semibold" data-en="Create one" data-fa="ایجاد حساب">Create one</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Desktop · 1280px (current)</div>
+      <div class="device device-desktop flex flex-col items-center justify-center">
+        <div class="w-14 h-14 rounded-2xl bg-brand flex items-center justify-center text-xl font-bold text-white mb-3">E</div>
+        <div class="text-xl font-bold">EduSpace</div>
+        <div class="text-sm text-mut mb-6" data-en="Sign in to your account" data-fa="به حساب خود وارد شوید">Sign in to your account</div>
+        <div class="w-96 surface-1 border border-line rounded-2xl p-6 space-y-4">
+          <div><label class="text-[11px] font-bold tracking-wider text-mut" data-en="USERNAME" data-fa="نام کاربری">USERNAME</label><input class="mt-1 w-full h-10 surface-2 border-2 border-brand rounded-lg px-3 text-sm text-pri" placeholder="Enter your username"></div>
+          <div><label class="text-[11px] font-bold tracking-wider text-mut" data-en="PASSWORD" data-fa="رمز عبور">PASSWORD</label><div class="mt-1 relative"><input class="w-full h-10 surface-2 border border-line2 rounded-lg px-3 pe-10 text-sm text-pri" type="password" placeholder="Enter your password"><span class="absolute end-3 top-1/2 -translate-y-1/2 text-mut">👁</span></div></div>
+          <button class="w-full h-10 bg-brand rounded-lg font-semibold text-sm text-white" data-en="Sign In" data-fa="ورود">Sign In</button>
+          <div class="text-center text-xs text-mut"><span data-en="Don't have an account?" data-fa="حساب کاربری ندارید؟">Don't have an account?</span> <span class="text-brand font-semibold" data-en="Create one" data-fa="ایجاد حساب">Create one</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- REGISTER                                                     -->
+<!-- ============================================================ -->
+<section data-page="register" class="space-y-8 hidden">
+  <div>
+    <h2 class="text-2xl font-bold" data-en="Sign Up" data-fa="ثبت‌نام">Sign Up</h2>
+    <p class="text-mut text-sm mt-1" data-en="Mobile: scrollable form, role pills full width, large touch targets. Tablet+: 2-column password fields to reduce vertical length." data-fa="موبایل: فرم اسکرولی، انتخاب نقش تمام‌عرض، تارگت‌های بزرگ. تبلت+: رمز و تأییدش دو ستونه برای کاهش طول.">Mobile: scrollable form, role pills full width, large touch targets. Tablet+: 2-column password fields to reduce vertical length.</p>
+  </div>
+  <div class="flex flex-wrap gap-10 items-start justify-center">
+
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Mobile · 375px</div>
+      <div class="device device-mobile flex flex-col">
+        <div class="flex-1 scrollarea p-6">
+          <div class="flex flex-col items-center mb-4">
+            <div class="w-14 h-14 rounded-2xl bg-brand flex items-center justify-center text-xl font-bold text-white">E</div>
+            <div class="text-xl font-bold mt-2">EduSpace</div>
+            <div class="text-xs text-mut" data-en="Create your account" data-fa="حساب خود را بسازید">Create your account</div>
+          </div>
+          <div class="space-y-4">
+            <div>
+              <label class="text-[11px] font-bold tracking-wider text-mut" data-en="I AM A" data-fa="من یک ... هستم">I AM A</label>
+              <div class="mt-1 grid grid-cols-2 gap-2">
+                <button class="h-11 surface-1 border-2 border-brand rounded-lg text-brand text-sm font-medium" data-en="🎓 Student" data-fa="🎓 دانش‌آموز">🎓 Student</button>
+                <button class="h-11 surface-1 border border-line rounded-lg text-mut text-sm" data-en="👨‍🏫 Teacher" data-fa="👨‍🏫 معلم">👨‍🏫 Teacher</button>
+              </div>
+            </div>
+            <div><label class="text-[11px] font-bold tracking-wider text-mut" data-en="FULL NAME" data-fa="نام کامل">FULL NAME</label><input class="mt-1 w-full h-11 surface-1 border-2 border-brand rounded-lg px-3 text-sm text-pri" placeholder="Your full name"></div>
+            <div>
+              <label class="text-[11px] font-bold tracking-wider text-mut" data-en="USERNAME" data-fa="نام کاربری">USERNAME</label>
+              <input class="mt-1 w-full h-11 surface-1 border border-line rounded-lg px-3 text-sm text-pri" placeholder="e.g. ali_rezaei">
+              <div class="text-[10px] text-dim mt-1" data-en="Letters, numbers and underscores only" data-fa="فقط حروف، اعداد و خط زیر">Letters, numbers and underscores only</div>
+            </div>
+            <div><label class="text-[11px] font-bold tracking-wider text-mut" data-en="EMAIL" data-fa="ایمیل">EMAIL</label><input class="mt-1 w-full h-11 surface-1 border border-line rounded-lg px-3 text-sm text-pri" placeholder="you@example.com"></div>
+            <div><label class="text-[11px] font-bold tracking-wider text-mut" data-en="PASSWORD" data-fa="رمز عبور">PASSWORD</label><input class="mt-1 w-full h-11 surface-1 border border-line rounded-lg px-3 text-sm text-pri" type="password" data-en-ph="Min 8 characters" data-fa-ph="حداقل ۸ کاراکتر" placeholder="Min 8 characters"></div>
+            <div><label class="text-[11px] font-bold tracking-wider text-mut" data-en="CONFIRM PASSWORD" data-fa="تکرار رمز عبور">CONFIRM PASSWORD</label><input class="mt-1 w-full h-11 surface-1 border border-line rounded-lg px-3 text-sm text-pri" type="password" placeholder="Repeat your password"></div>
+            <button class="w-full h-11 bg-brand rounded-lg font-semibold text-sm text-white" data-en="Create Account" data-fa="ایجاد حساب">Create Account</button>
+            <div class="text-center text-xs text-mut"><span data-en="Already have an account?" data-fa="قبلاً حساب دارید؟">Already have an account?</span> <span class="text-brand font-semibold" data-en="Sign in" data-fa="ورود">Sign in</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Tablet · 768px (compact 2-col passwords)</div>
+      <div class="device device-tablet flex flex-col items-center justify-start scrollarea overflow-auto py-6">
+        <div class="flex flex-col items-center mb-4">
+          <div class="w-14 h-14 rounded-2xl bg-brand flex items-center justify-center text-xl font-bold text-white">E</div>
+          <div class="text-xl font-bold mt-2">EduSpace</div>
+          <div class="text-xs text-mut" data-en="Create your account" data-fa="حساب خود را بسازید">Create your account</div>
+        </div>
+        <div class="w-[440px] surface-1 border border-line rounded-2xl p-6 space-y-4">
+          <div>
+            <label class="text-[11px] font-bold tracking-wider text-mut" data-en="I AM A" data-fa="من یک ... هستم">I AM A</label>
+            <div class="mt-1 grid grid-cols-2 gap-2">
+              <button class="h-10 surface-2 border-2 border-brand rounded-lg text-brand text-sm" data-en="🎓 Student" data-fa="🎓 دانش‌آموز">🎓 Student</button>
+              <button class="h-10 surface-2 border border-line rounded-lg text-mut text-sm" data-en="👨‍🏫 Teacher" data-fa="👨‍🏫 معلم">👨‍🏫 Teacher</button>
+            </div>
+          </div>
+          <div><label class="text-[11px] font-bold tracking-wider text-mut" data-en="FULL NAME" data-fa="نام کامل">FULL NAME</label><input class="mt-1 w-full h-10 surface-2 border-2 border-brand rounded-lg px-3 text-sm text-pri" placeholder="Your full name"></div>
+          <div><label class="text-[11px] font-bold tracking-wider text-mut" data-en="USERNAME" data-fa="نام کاربری">USERNAME</label><input class="mt-1 w-full h-10 surface-2 border border-line rounded-lg px-3 text-sm text-pri" placeholder="e.g. ali_rezaei"></div>
+          <div><label class="text-[11px] font-bold tracking-wider text-mut" data-en="EMAIL" data-fa="ایمیل">EMAIL</label><input class="mt-1 w-full h-10 surface-2 border border-line rounded-lg px-3 text-sm text-pri" placeholder="you@example.com"></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="text-[11px] font-bold tracking-wider text-mut" data-en="PASSWORD" data-fa="رمز عبور">PASSWORD</label><input class="mt-1 w-full h-10 surface-2 border border-line rounded-lg px-3 text-sm text-pri" type="password" placeholder="Min 8"></div>
+            <div><label class="text-[11px] font-bold tracking-wider text-mut" data-en="CONFIRM" data-fa="تأیید">CONFIRM</label><input class="mt-1 w-full h-10 surface-2 border border-line rounded-lg px-3 text-sm text-pri" type="password" placeholder="Repeat"></div>
+          </div>
+          <button class="w-full h-10 bg-brand rounded-lg font-semibold text-sm text-white" data-en="Create Account" data-fa="ایجاد حساب">Create Account</button>
+          <div class="text-center text-xs text-mut"><span data-en="Already have an account?" data-fa="قبلاً حساب دارید؟">Already have an account?</span> <span class="text-brand font-semibold" data-en="Sign in" data-fa="ورود">Sign in</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Desktop · 1280px (current)</div>
+      <div class="device device-desktop flex flex-col items-center justify-start scrollarea overflow-auto py-6">
+        <div class="flex flex-col items-center mb-4">
+          <div class="w-14 h-14 rounded-2xl bg-brand flex items-center justify-center text-xl font-bold text-white">E</div>
+          <div class="text-xl font-bold mt-2">EduSpace</div>
+          <div class="text-xs text-mut" data-en="Create your account" data-fa="حساب خود را بسازید">Create your account</div>
+        </div>
+        <div class="w-96 surface-1 border border-line rounded-2xl p-6 space-y-4">
+          <div><label class="text-[11px] font-bold tracking-wider text-mut" data-en="I AM A" data-fa="من یک ... هستم">I AM A</label>
+            <div class="mt-1 grid grid-cols-2 gap-2">
+              <button class="h-10 surface-2 border-2 border-brand rounded-lg text-brand text-sm" data-en="🎓 Student" data-fa="🎓 دانش‌آموز">🎓 Student</button>
+              <button class="h-10 surface-2 border border-line rounded-lg text-mut text-sm" data-en="👨‍🏫 Teacher" data-fa="👨‍🏫 معلم">👨‍🏫 Teacher</button>
+            </div>
+          </div>
+          <div><label class="text-[11px] font-bold tracking-wider text-mut" data-en="FULL NAME" data-fa="نام کامل">FULL NAME</label><input class="mt-1 w-full h-10 surface-2 border-2 border-brand rounded-lg px-3 text-sm text-pri" placeholder="Your full name"></div>
+          <div><label class="text-[11px] font-bold tracking-wider text-mut" data-en="USERNAME" data-fa="نام کاربری">USERNAME</label><input class="mt-1 w-full h-10 surface-2 border border-line rounded-lg px-3 text-sm text-pri" placeholder="e.g. ali_rezaei"></div>
+          <div><label class="text-[11px] font-bold tracking-wider text-mut" data-en="EMAIL" data-fa="ایمیل">EMAIL</label><input class="mt-1 w-full h-10 surface-2 border border-line rounded-lg px-3 text-sm text-pri" placeholder="you@example.com"></div>
+          <div><label class="text-[11px] font-bold tracking-wider text-mut" data-en="PASSWORD" data-fa="رمز عبور">PASSWORD</label><input class="mt-1 w-full h-10 surface-2 border border-line rounded-lg px-3 text-sm text-pri" type="password" placeholder="Min 8 characters"></div>
+          <div><label class="text-[11px] font-bold tracking-wider text-mut" data-en="CONFIRM PASSWORD" data-fa="تکرار رمز عبور">CONFIRM PASSWORD</label><input class="mt-1 w-full h-10 surface-2 border border-line rounded-lg px-3 text-sm text-pri" type="password" placeholder="Repeat your password"></div>
+          <button class="w-full h-10 bg-brand rounded-lg font-semibold text-sm text-white" data-en="Create Account" data-fa="ایجاد حساب">Create Account</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+<!-- ============================================================ -->
+<!-- PRE-JOIN                                                     -->
+<!-- ============================================================ -->
+<section data-page="prejoin" class="space-y-8 hidden">
+  <div>
+    <h2 class="text-2xl font-bold" data-en="Pre-Join Screen" data-fa="پیش از ورود به اتاق">Pre-Join Screen</h2>
+    <p class="text-mut text-sm mt-1" data-en="Mobile: vertical stack with sticky CTA. Tablet/Desktop: 2-column (preview left, settings right)." data-fa="موبایل: چیدمان عمودی با دکمه چسبیده پایین. تبلت/دسکتاپ: دو ستونه (پیش‌نمایش چپ، تنظیمات راست).">Mobile: vertical stack with sticky CTA. Tablet/Desktop: 2-column (preview left, settings right).</p>
+  </div>
+  <div class="flex flex-wrap gap-10 items-start justify-center">
+
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Mobile · 375px (sticky bottom CTA)</div>
+      <div class="device device-mobile flex flex-col">
+        <div class="flex-1 scrollarea p-4 space-y-4">
+          <div class="text-center pt-2">
+            <div class="text-lg font-bold" data-en="Mohsen's Room" data-fa="اتاق محسن">Mohsen's Room</div>
+            <div class="text-xs text-mut"><span data-en="Room code:" data-fa="کد اتاق:">Room code:</span> <span class="text-brand font-mono">YINBUB</span></div>
+          </div>
+          <div class="aspect-video surface-1 border border-line rounded-xl flex flex-col items-center justify-center gap-3">
+            <div class="w-12 h-12 rounded-full surface-2 flex items-center justify-center text-xl">📷</div>
+            <div class="text-xs text-mut" data-en="Camera is off" data-fa="دوربین خاموش است">Camera is off</div>
+            <div class="flex gap-2 mt-1">
+              <button class="w-9 h-9 rounded-full surface-2 flex items-center justify-center">🎙</button>
+              <button class="w-9 h-9 rounded-full bg-rose-500/80 flex items-center justify-center">📷</button>
+            </div>
+          </div>
+          <div>
+            <div class="text-[11px] font-bold tracking-wider text-mut mb-2" data-en="BACKGROUND" data-fa="پس‌زمینه">BACKGROUND</div>
+            <div class="grid grid-cols-6 gap-1.5">
+              <div class="aspect-square rounded-md bg-brand-soft border-2 border-brand flex items-center justify-center text-xs text-brand">✓</div>
+              <div class="aspect-square rounded-md surface-2 border border-line"></div>
+              <div class="aspect-square rounded-md bg-gradient-to-br from-slate-700 to-slate-900 border border-line"></div>
+              <div class="aspect-square rounded-md bg-gradient-to-br from-emerald-700 to-green-900 border border-line"></div>
+              <div class="aspect-square rounded-md bg-gradient-to-br from-amber-700 to-rose-900 border border-line"></div>
+              <div class="aspect-square rounded-md bg-gradient-to-br from-cyan-700 to-blue-900 border border-line"></div>
+            </div>
+          </div>
+          <div class="surface-1 border border-line rounded-xl p-3 space-y-3">
+            <div class="grid grid-cols-2 gap-1 surface-2 rounded-lg p-1 text-xs">
+              <button class="h-8 rounded-md surface-3" data-en="📷 Camera" data-fa="📷 دوربین">📷 Camera</button>
+              <button class="h-8 rounded-md text-mut" data-en="🎙 Audio" data-fa="🎙 صدا">🎙 Audio</button>
+            </div>
+            <div>
+              <div class="text-[11px] font-bold tracking-wider text-mut" data-en="CAMERA" data-fa="دوربین">CAMERA</div>
+              <div class="mt-1 h-9 surface-2 border border-line rounded-lg flex items-center px-3 text-xs">USB2.0 HD UVC WebCam ▾</div>
+            </div>
+          </div>
+        </div>
+        <!-- sticky CTA -->
+        <div class="border-t border-line p-3 space-y-2 shrink-0">
+          <button class="w-full h-12 bg-brand rounded-lg font-semibold text-sm text-white" data-en="Join Now" data-fa="ورود به جلسه">Join Now</button>
+          <button class="w-full h-9 text-brand text-sm" data-en="Cancel" data-fa="انصراف">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Tablet · 768px (2-col)</div>
+      <div class="device device-tablet flex flex-col p-6 gap-4">
+        <div class="text-center">
+          <div class="text-xl font-bold" data-en="Mohsen's Room" data-fa="اتاق محسن">Mohsen's Room</div>
+          <div class="text-xs text-mut"><span data-en="Room code:" data-fa="کد اتاق:">Room code:</span> <span class="text-brand font-mono">YINBUB</span></div>
+        </div>
+        <div class="flex-1 grid grid-cols-2 gap-4">
+          <div class="space-y-3">
+            <div class="aspect-video surface-1 border border-line rounded-xl flex flex-col items-center justify-center gap-3">
+              <div class="w-12 h-12 rounded-full surface-2 flex items-center justify-center text-xl">📷</div>
+              <div class="text-xs text-mut" data-en="Camera is off" data-fa="دوربین خاموش است">Camera is off</div>
+              <div class="flex gap-2"><button class="w-9 h-9 rounded-full surface-2">🎙</button><button class="w-9 h-9 rounded-full bg-rose-500/80">📷</button></div>
+            </div>
+            <div>
+              <div class="text-[11px] font-bold tracking-wider text-mut mb-2" data-en="BACKGROUND" data-fa="پس‌زمینه">BACKGROUND</div>
+              <div class="grid grid-cols-6 gap-1.5">
+                <div class="aspect-square rounded-md bg-brand-soft border-2 border-brand flex items-center justify-center text-xs text-brand">✓</div>
+                <div class="aspect-square rounded-md surface-2 border border-line"></div>
+                <div class="aspect-square rounded-md bg-gradient-to-br from-slate-700 to-slate-900"></div>
+                <div class="aspect-square rounded-md bg-gradient-to-br from-emerald-700 to-green-900"></div>
+                <div class="aspect-square rounded-md bg-gradient-to-br from-amber-700 to-rose-900"></div>
+                <div class="aspect-square rounded-md bg-gradient-to-br from-cyan-700 to-blue-900"></div>
+              </div>
+            </div>
+          </div>
+          <div class="surface-1 border border-line rounded-xl p-4 flex flex-col">
+            <div class="grid grid-cols-2 gap-1 surface-2 rounded-lg p-1 text-xs">
+              <button class="h-8 rounded-md surface-3" data-en="📷 Camera" data-fa="📷 دوربین">📷 Camera</button>
+              <button class="h-8 rounded-md text-mut" data-en="🎙 Audio" data-fa="🎙 صدا">🎙 Audio</button>
+            </div>
+            <div class="mt-4">
+              <div class="text-[11px] font-bold tracking-wider text-mut" data-en="CAMERA" data-fa="دوربین">CAMERA</div>
+              <div class="mt-1 h-9 surface-2 border border-line rounded-lg flex items-center px-3 text-xs">USB2.0 HD UVC WebCam ▾</div>
+            </div>
+            <div class="mt-auto space-y-2">
+              <button class="w-full h-10 bg-brand rounded-lg font-semibold text-sm text-white" data-en="Join Now" data-fa="ورود به جلسه">Join Now</button>
+              <button class="w-full h-9 text-brand text-sm" data-en="Cancel" data-fa="انصراف">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Desktop · 1280px (current)</div>
+      <div class="device device-desktop flex flex-col items-center justify-center p-8">
+        <div class="text-center mb-6">
+          <div class="text-2xl font-bold" data-en="Mohsen's Room" data-fa="اتاق محسن">Mohsen's Room</div>
+          <div class="text-sm text-mut"><span data-en="Room code:" data-fa="کد اتاق:">Room code:</span> <span class="text-brand font-mono">YINBUB</span></div>
+        </div>
+        <div class="grid grid-cols-2 gap-6 w-[840px]">
+          <div class="space-y-4">
+            <div class="aspect-video surface-1 border border-line rounded-xl flex flex-col items-center justify-center gap-3">
+              <div class="w-14 h-14 rounded-full surface-2 flex items-center justify-center text-2xl">📷</div>
+              <div class="text-sm text-mut" data-en="Camera is off" data-fa="دوربین خاموش است">Camera is off</div>
+              <div class="flex gap-2"><button class="w-10 h-10 rounded-full surface-2">🎙</button><button class="w-10 h-10 rounded-full bg-rose-500/80">📷</button></div>
+            </div>
+            <div>
+              <div class="text-[11px] font-bold tracking-wider text-mut mb-2" data-en="BACKGROUND" data-fa="پس‌زمینه">BACKGROUND</div>
+              <div class="grid grid-cols-6 gap-2">
+                <div class="aspect-square rounded-md bg-brand-soft border-2 border-brand flex items-center justify-center text-xs text-brand">✓</div>
+                <div class="aspect-square rounded-md surface-2 border border-line"></div>
+                <div class="aspect-square rounded-md bg-gradient-to-br from-slate-700 to-slate-900"></div>
+                <div class="aspect-square rounded-md bg-gradient-to-br from-emerald-700 to-green-900"></div>
+                <div class="aspect-square rounded-md bg-gradient-to-br from-amber-700 to-rose-900"></div>
+                <div class="aspect-square rounded-md bg-gradient-to-br from-cyan-700 to-blue-900"></div>
+              </div>
+            </div>
+          </div>
+          <div class="surface-1 border border-line rounded-xl p-5 flex flex-col">
+            <div class="grid grid-cols-2 gap-1 surface-2 rounded-lg p-1 text-sm">
+              <button class="h-9 rounded-md surface-3" data-en="📷 Camera" data-fa="📷 دوربین">📷 Camera</button>
+              <button class="h-9 rounded-md text-mut" data-en="🎙 Audio" data-fa="🎙 صدا">🎙 Audio</button>
+            </div>
+            <div class="mt-5">
+              <div class="text-[11px] font-bold tracking-wider text-mut" data-en="CAMERA" data-fa="دوربین">CAMERA</div>
+              <div class="mt-2 h-10 surface-2 border border-line rounded-lg flex items-center px-3 text-sm">USB2.0 HD UVC WebCam ▾</div>
+            </div>
+            <div class="mt-auto space-y-2">
+              <button class="w-full h-11 bg-brand rounded-lg font-semibold text-white" data-en="Join Now" data-fa="ورود به جلسه">Join Now</button>
+              <button class="w-full h-10 text-brand" data-en="Cancel" data-fa="انصراف">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+<!-- ============================================================ -->
+<!-- IN-CALL · VIDEO (mobile = swipe page 1 of 4)                  -->
+<!-- ============================================================ -->
+<section data-page="room" class="space-y-8 hidden">
+  <div>
+    <h2 class="text-2xl font-bold" data-en="In-Call · Video (Page 1 of 4)" data-fa="در تماس · ویدیو (صفحه ۱ از ۴)">In-Call · Video (Page 1 of 4)</h2>
+    <p class="text-mut text-sm mt-1" data-en="Mobile uses swipe-pages: Video → People → Chat → Tools. Bottom dots indicate current page. Tablet/Desktop keep the side panel." data-fa="موبایل از سوایپ بین صفحات استفاده می‌کند: ویدیو ← افراد ← چت ← ابزارها. نقطه‌های پایین موقعیت فعلی را نشان می‌دهد. تبلت/دسکتاپ پنل کناری دارد.">Mobile uses swipe-pages: Video → People → Chat → Tools. Bottom dots indicate current page.</p>
+  </div>
+
+  <!-- Swipe carousel illustration -->
+  <div class="surface-1 border border-line rounded-xl p-4">
+    <div class="flex items-center gap-2 text-xs text-mut mb-3">
+      <span class="font-bold tracking-wider" data-en="SWIPE FLOW (mobile)" data-fa="جریان سوایپ (موبایل)">SWIPE FLOW (mobile)</span>
+      <div class="flex-1 h-px bg-[var(--b)]"></div>
+    </div>
+    <div class="flex items-center gap-2 text-xs">
+      <span class="badge bg-brand text-white">1. Video</span>
+      <span class="text-mut">←→</span>
+      <span class="badge surface-2 text-mut">2. People</span>
+      <span class="text-mut">←→</span>
+      <span class="badge surface-2 text-mut">3. Chat</span>
+      <span class="text-mut">←→</span>
+      <span class="badge surface-2 text-mut">4. Tools</span>
+    </div>
+  </div>
+
+  <div class="flex flex-wrap gap-10 items-start justify-center">
+
+    <!-- ========= MOBILE — Video page ========= -->
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Mobile · Page 1 (Video)</div>
+      <div class="device device-mobile flex flex-col">
+        <div class="h-11 flex items-center px-3 gap-2 border-b border-line shrink-0 text-xs">
+          <span style="color:#34d399">●</span>
+          <span class="font-medium" data-en="'s Room" data-fa="اتاق">'s Room</span>
+          <span class="ms-auto font-mono" style="color:#34d399">18:31</span>
+          <span class="text-mut">3👥</span>
+          <button class="w-7 h-7 rounded hover:surface-2 flex items-center justify-center">⋯</button>
+        </div>
+        <div class="flex-1 p-2 grid grid-cols-2 grid-rows-2 gap-2">
+          <div class="surface-1 rounded-lg flex flex-col items-center justify-center relative">
+            <div class="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-white">M</div>
+            <div class="absolute bottom-1 start-1 end-1 text-[10px] bg-black/60 rounded px-1.5 py-0.5">mohsen (You)</div>
+          </div>
+          <div class="surface-1 rounded-lg flex flex-col items-center justify-center relative">
+            <div class="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-white text-sm">ME</div>
+            <div class="absolute bottom-1 start-1 end-1 text-[10px] bg-black/60 rounded px-1.5 py-0.5">mohsen esfandiari</div>
+          </div>
+          <div class="surface-1 rounded-lg flex flex-col items-center justify-center relative col-span-2">
+            <div class="w-14 h-14 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center font-bold text-white text-sm">TU</div>
+            <div class="absolute bottom-1 start-1 end-1 text-[10px] bg-black/60 rounded px-1.5 py-0.5">Test User</div>
+          </div>
+        </div>
+        <!-- Swipe dots -->
+        <div class="flex items-center justify-center gap-1.5 py-2 shrink-0">
+          <span class="swipe-dot active"></span>
+          <span class="swipe-dot"></span>
+          <span class="swipe-dot"></span>
+          <span class="swipe-dot"></span>
+        </div>
+        <!-- Controls -->
+        <div class="h-14 border-t border-line shrink-0 flex items-center justify-around px-1">
+          <button class="w-10 h-10 rounded-lg hover:surface-2 flex items-center justify-center">🎙</button>
+          <button class="w-10 h-10 rounded-lg bg-rose-500/30 text-rose-300 flex items-center justify-center">📷</button>
+          <button class="w-10 h-10 rounded-lg hover:surface-2 flex items-center justify-center">🔗</button>
+          <div class="w-px h-6 bg-[var(--b)]"></div>
+          <button class="w-10 h-10 rounded-lg hover:surface-2 flex items-center justify-center text-mut">⊞</button>
+          <button class="w-10 h-10 rounded-lg hover:surface-2 flex items-center justify-center text-mut">⚙</button>
+          <div class="w-px h-6 bg-[var(--b)]"></div>
+          <button class="w-10 h-10 rounded-lg bg-rose-500 text-white flex items-center justify-center">⏻</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========= TABLET ========= -->
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Tablet · 768px (panel docked)</div>
+      <div class="device device-tablet flex flex-col">
+        <div class="h-12 flex items-center px-4 gap-3 border-b border-line shrink-0 text-sm">
+          <span style="color:#34d399">●</span>
+          <span class="font-medium" data-en="'s Room" data-fa="اتاق">'s Room</span>
+          <span class="text-[10px] ms-1 px-1.5 py-0.5 rounded bg-brand-soft text-brand" data-en="Host" data-fa="میزبان">Host</span>
+          <span class="text-[11px] surface-1 border border-line px-2 py-0.5 rounded font-mono">YINBUB</span>
+          <span class="ms-auto font-mono" style="color:#34d399">18:31</span>
+          <span class="text-mut text-xs"><span data-en="3 participants" data-fa="۳ شرکت‌کننده">3 participants</span></span>
+        </div>
+        <div class="flex-1 flex overflow-hidden">
+          <div class="flex-1 p-3 grid grid-cols-2 grid-rows-2 gap-3">
+            <div class="surface-1 rounded-xl flex items-center justify-center relative"><div class="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-white">M</div><div class="absolute bottom-2 start-2 text-xs bg-black/60 rounded px-2 py-0.5">mohsen (You)</div></div>
+            <div class="surface-1 rounded-xl flex items-center justify-center relative"><div class="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-white">ME</div><div class="absolute bottom-2 start-2 text-xs bg-black/60 rounded px-2 py-0.5">mohsen esfandiari</div></div>
+            <div class="surface-1 rounded-xl flex items-center justify-center relative col-span-2"><div class="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center font-bold text-white">TU</div><div class="absolute bottom-2 start-2 text-xs bg-black/60 rounded px-2 py-0.5">Test User</div></div>
+          </div>
+          <div class="w-60 border-s border-line flex flex-col shrink-0">
+            <div class="flex border-b border-line text-mut">
+              <button class="flex-1 h-10 text-brand border-b-2 border-brand">👥</button>
+              <button class="flex-1 h-10">💬</button>
+              <button class="flex-1 h-10">🛠</button>
+            </div>
+            <div class="p-3 space-y-2 text-sm">
+              <button class="w-full h-9 bg-brand-soft text-brand rounded-lg text-xs font-medium" data-en="+ Add People" data-fa="+ افزودن افراد">+ Add People</button>
+              <div class="text-[10px] font-bold tracking-wider text-mut mt-2" data-en="HOST" data-fa="میزبان">HOST</div>
+              <div class="flex items-center gap-2 p-2 rounded-lg hover:surface-2"><div class="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-[10px] font-bold text-white">M</div><div class="text-xs flex-1">mohsen (You)</div><span class="text-[10px]">🎙 📷</span></div>
+              <div class="text-[10px] font-bold tracking-wider text-mut mt-2" data-en="STUDENTS (2)" data-fa="دانش‌آموزان (۲)">STUDENTS (2)</div>
+              <div class="flex items-center gap-2 p-2 rounded-lg hover:surface-2"><div class="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-[10px] font-bold text-white">ME</div><div class="text-xs flex-1">mohsen esfandiari</div></div>
+              <div class="flex items-center gap-2 p-2 rounded-lg hover:surface-2"><div class="w-7 h-7 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-[10px] font-bold text-white">TU</div><div class="text-xs flex-1">Test User</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="h-16 border-t border-line flex items-center justify-center gap-1 shrink-0">
+          <button class="flex flex-col items-center gap-0.5 w-14"><span>🎙</span><span class="text-[10px]" data-en="Mic" data-fa="میکروفون">Mic</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-14 text-rose-300"><span>📷</span><span class="text-[10px]" data-en="Camera" data-fa="دوربین">Camera</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-14"><span>🔗</span><span class="text-[10px]" data-en="Share" data-fa="اشتراک">Share</span></button>
+          <div class="w-px h-8 bg-[var(--b)] mx-2"></div>
+          <button class="flex flex-col items-center gap-0.5 w-14"><span>👥</span><span class="text-[10px]" data-en="People" data-fa="افراد">People</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-14"><span>💬</span><span class="text-[10px]" data-en="Chat" data-fa="چت">Chat</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-14"><span>🛠</span><span class="text-[10px]" data-en="Tools" data-fa="ابزار">Tools</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-14"><span>⊞</span><span class="text-[10px]" data-en="Layout" data-fa="چیدمان">Layout</span></button>
+          <div class="w-px h-8 bg-[var(--b)] mx-2"></div>
+          <button class="flex flex-col items-center gap-0.5 w-14 text-rose-400"><span>⏻</span><span class="text-[10px]" data-en="Leave" data-fa="خروج">Leave</span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========= DESKTOP ========= -->
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Desktop · 1280px (current)</div>
+      <div class="device device-desktop flex flex-col">
+        <div class="h-12 flex items-center px-4 gap-3 border-b border-line shrink-0 text-sm">
+          <span style="color:#34d399">●</span>
+          <span class="font-medium" data-en="'s Room" data-fa="اتاق">'s Room</span>
+          <span class="text-[10px] ms-1 px-1.5 py-0.5 rounded bg-brand-soft text-brand" data-en="Host" data-fa="میزبان">Host</span>
+          <span class="text-[11px] surface-1 border border-line px-2 py-0.5 rounded font-mono">YINBUB</span>
+          <span class="ms-auto font-mono" style="color:#34d399">18:31</span>
+          <span class="text-mut" data-en="3 participants" data-fa="۳ شرکت‌کننده">3 participants</span>
+          <span class="ms-3">ℹ</span>
+        </div>
+        <div class="flex-1 flex overflow-hidden">
+          <div class="flex-1 p-4 grid grid-cols-2 grid-rows-2 gap-4">
+            <div class="surface-1 rounded-xl flex items-center justify-center relative"><div class="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-white">M</div><div class="absolute bottom-2 start-2 text-xs bg-black/60 rounded px-2 py-1">mohsen (You)</div></div>
+            <div class="surface-1 rounded-xl flex items-center justify-center relative"><div class="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-white">ME</div><div class="absolute bottom-2 start-2 text-xs bg-black/60 rounded px-2 py-1">mohsen esfandiari</div></div>
+            <div class="surface-1 rounded-xl flex items-center justify-center relative"><div class="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center font-bold text-white">TU</div><div class="absolute bottom-2 start-2 text-xs bg-black/60 rounded px-2 py-1">Test User</div></div>
+          </div>
+          <div class="w-72 border-s border-line flex flex-col shrink-0">
+            <div class="flex border-b border-line text-mut">
+              <button class="flex-1 h-12 text-brand border-b-2 border-brand">👥</button>
+              <button class="flex-1 h-12">💬</button>
+              <button class="flex-1 h-12">🛠</button>
+            </div>
+            <div class="p-4 space-y-2 text-sm">
+              <button class="w-full h-9 bg-brand-soft text-brand rounded-lg text-sm font-medium" data-en="+ Add People" data-fa="+ افزودن افراد">+ Add People</button>
+              <div class="text-[10px] font-bold tracking-wider text-mut mt-3" data-en="HOST" data-fa="میزبان">HOST</div>
+              <div class="flex items-center gap-3 p-2 rounded-lg hover:surface-2"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-xs font-bold text-white">M</div><div class="flex-1">mohsen (You)</div><span class="text-xs">🎙</span><span class="text-xs text-rose-400">📷</span></div>
+              <div class="text-[10px] font-bold tracking-wider text-mut mt-3" data-en="STUDENTS (2)" data-fa="دانش‌آموزان (۲)">STUDENTS (2)</div>
+              <div class="flex items-center gap-3 p-2 rounded-lg hover:surface-2"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-xs font-bold text-white">ME</div><div class="flex-1">mohsen esfandiari</div></div>
+              <div class="flex items-center gap-3 p-2 rounded-lg hover:surface-2"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-xs font-bold text-white">TU</div><div class="flex-1">Test User</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="h-16 border-t border-line flex items-center justify-center gap-2 shrink-0">
+          <button class="flex flex-col items-center gap-0.5 w-16"><span>🎙</span><span class="text-[10px]" data-en="Mic" data-fa="میکروفون">Mic</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-16 text-rose-300"><span>📷</span><span class="text-[10px]" data-en="Camera" data-fa="دوربین">Camera</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-16"><span>🔗</span><span class="text-[10px]" data-en="Share" data-fa="اشتراک">Share</span></button>
+          <div class="w-px h-8 bg-[var(--b)] mx-2"></div>
+          <button class="flex flex-col items-center gap-0.5 w-16"><span>👥</span><span class="text-[10px]" data-en="People" data-fa="افراد">People</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-16"><span>💬</span><span class="text-[10px]" data-en="Chat" data-fa="چت">Chat</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-16"><span>🛠</span><span class="text-[10px]" data-en="Tools" data-fa="ابزار">Tools</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-16"><span>⊞</span><span class="text-[10px]" data-en="Layout" data-fa="چیدمان">Layout</span></button>
+          <button class="flex flex-col items-center gap-0.5 w-16"><span>⚙</span><span class="text-[10px]" data-en="Settings" data-fa="تنظیمات">Settings</span></button>
+          <div class="w-px h-8 bg-[var(--b)] mx-2"></div>
+          <button class="flex flex-col items-center gap-0.5 w-16 text-rose-400"><span>⏻</span><span class="text-[10px]" data-en="Leave" data-fa="خروج">Leave</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+<!-- ============================================================ -->
+<!-- IN-CALL · PEOPLE (mobile = swipe page 2 of 4)                 -->
+<!-- ============================================================ -->
+<section data-page="room-people" class="space-y-8 hidden">
+  <div>
+    <h2 class="text-2xl font-bold" data-en="In-Call · People (Page 2 of 4)" data-fa="در تماس · افراد (صفحه ۲ از ۴)">In-Call · People (Page 2 of 4)</h2>
+    <p class="text-mut text-sm mt-1" data-en="Mobile: full-screen people list with mini video preview pinned to top; swipe back to video or forward to chat. Tablet/Desktop: panel docked." data-fa="موبایل: لیست افراد تمام‌صفحه با پیش‌نمایش ویدیو در بالا؛ سوایپ به عقب برای ویدیو، به جلو برای چت.">Mobile: full-screen people list with mini video preview pinned to top.</p>
+  </div>
+
+  <div class="flex flex-wrap gap-10 items-start justify-center">
+
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Mobile · Page 2 (People)</div>
+      <div class="device device-mobile flex flex-col">
+        <div class="h-11 flex items-center px-3 gap-2 border-b border-line shrink-0 text-xs">
+          <span style="color:#34d399">●</span>
+          <span class="font-medium" data-en="'s Room" data-fa="اتاق">'s Room</span>
+          <span class="ms-auto font-mono" style="color:#34d399">18:31</span>
+          <span class="text-mut">3👥</span>
+          <button class="w-7 h-7 rounded hover:surface-2 flex items-center justify-center">⋯</button>
+        </div>
+        <!-- Mini video strip (pinned) -->
+        <div class="surface-1 border-b border-line p-2 shrink-0 flex gap-2 overflow-x-auto">
+          <div class="w-20 h-14 surface-2 rounded-md flex items-center justify-center shrink-0 relative"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-[10px] font-bold text-white">M</div></div>
+          <div class="w-20 h-14 surface-2 rounded-md flex items-center justify-center shrink-0 relative"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-[10px] font-bold text-white">ME</div></div>
+          <div class="w-20 h-14 surface-2 rounded-md flex items-center justify-center shrink-0 relative"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-[10px] font-bold text-white">TU</div></div>
+        </div>
+        <!-- People list -->
+        <div class="flex-1 scrollarea p-3 space-y-2">
+          <button class="w-full h-10 bg-brand-soft text-brand rounded-lg text-xs font-medium" data-en="+ Add People" data-fa="+ افزودن افراد">+ Add People</button>
+          <div class="text-[10px] font-bold tracking-wider text-mut mt-2" data-en="HOST" data-fa="میزبان">HOST</div>
+          <div class="flex items-center gap-3 p-2 rounded-lg surface-1">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-xs font-bold text-white">M</div>
+            <div class="flex-1"><div class="text-sm font-medium">mohsen (You)</div><div class="text-[10px] text-mut" data-en="Host · You" data-fa="میزبان · شما">Host · You</div></div>
+            <span>🎙</span><span class="text-rose-400">📷</span>
+          </div>
+          <div class="text-[10px] font-bold tracking-wider text-mut mt-3" data-en="STUDENTS (2)" data-fa="دانش‌آموزان (۲)">STUDENTS (2)</div>
+          <div class="flex items-center gap-3 p-2 rounded-lg surface-1">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-xs font-bold text-white">ME</div>
+            <div class="flex-1"><div class="text-sm font-medium">mohsen esfandiari</div><div class="text-[10px] text-mut">@mohsen.esfandiari</div></div>
+            <span>🎙</span><span class="text-rose-400">📷</span>
+          </div>
+          <div class="flex items-center gap-3 p-2 rounded-lg surface-1">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-xs font-bold text-white">TU</div>
+            <div class="flex-1"><div class="text-sm font-medium">Test User</div><div class="text-[10px] text-mut">@test_user</div></div>
+            <span>🎙</span><span class="text-rose-400">📷</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-center gap-1.5 py-2 shrink-0">
+          <span class="swipe-dot"></span>
+          <span class="swipe-dot active"></span>
+          <span class="swipe-dot"></span>
+          <span class="swipe-dot"></span>
+        </div>
+        <div class="h-14 border-t border-line shrink-0 flex items-center justify-around px-1">
+          <button class="w-10 h-10 rounded-lg hover:surface-2 flex items-center justify-center">🎙</button>
+          <button class="w-10 h-10 rounded-lg bg-rose-500/30 text-rose-300 flex items-center justify-center">📷</button>
+          <button class="w-10 h-10 rounded-lg hover:surface-2 flex items-center justify-center">🔗</button>
+          <div class="w-px h-6 bg-[var(--b)]"></div>
+          <button class="w-10 h-10 rounded-lg hover:surface-2 flex items-center justify-center text-mut">⊞</button>
+          <button class="w-10 h-10 rounded-lg hover:surface-2 flex items-center justify-center text-mut">⚙</button>
+          <div class="w-px h-6 bg-[var(--b)]"></div>
+          <button class="w-10 h-10 rounded-lg bg-rose-500 text-white flex items-center justify-center">⏻</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tablet: panel docked (people active) -->
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Tablet · panel: People active</div>
+      <div class="device device-tablet flex flex-col">
+        <div class="h-12 flex items-center px-4 gap-3 border-b border-line shrink-0 text-sm">
+          <span style="color:#34d399">●</span><span data-en="'s Room" data-fa="اتاق">'s Room</span><span class="text-[11px] surface-1 border border-line px-2 py-0.5 rounded font-mono">YINBUB</span><span class="ms-auto font-mono" style="color:#34d399">18:31</span><span class="text-mut text-xs">3 participants</span>
+        </div>
+        <div class="flex-1 flex overflow-hidden">
+          <div class="flex-1 p-3 grid grid-cols-2 grid-rows-2 gap-3">
+            <div class="surface-1 rounded-xl flex items-center justify-center"><div class="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-white">M</div></div>
+            <div class="surface-1 rounded-xl flex items-center justify-center"><div class="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-white">ME</div></div>
+            <div class="surface-1 rounded-xl flex items-center justify-center col-span-2"><div class="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center font-bold text-white">TU</div></div>
+          </div>
+          <div class="w-60 border-s border-line flex flex-col shrink-0">
+            <div class="flex border-b border-line text-mut">
+              <button class="flex-1 h-10 text-brand border-b-2 border-brand">👥</button>
+              <button class="flex-1 h-10">💬</button>
+              <button class="flex-1 h-10">🛠</button>
+            </div>
+            <div class="flex-1 scrollarea p-3 space-y-2 text-xs">
+              <button class="w-full h-9 bg-brand-soft text-brand rounded-lg text-xs font-medium" data-en="+ Add People" data-fa="+ افزودن افراد">+ Add People</button>
+              <div class="text-[10px] font-bold tracking-wider text-mut mt-2" data-en="HOST" data-fa="میزبان">HOST</div>
+              <div class="flex items-center gap-2 p-2 rounded-lg hover:surface-2"><div class="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-[10px] font-bold text-white">M</div><div class="flex-1">mohsen (You)</div><span>🎙</span></div>
+              <div class="text-[10px] font-bold tracking-wider text-mut mt-2" data-en="STUDENTS (2)" data-fa="دانش‌آموزان (۲)">STUDENTS (2)</div>
+              <div class="flex items-center gap-2 p-2 rounded-lg hover:surface-2"><div class="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-[10px] font-bold text-white">ME</div><div class="flex-1">mohsen esfandiari</div></div>
+              <div class="flex items-center gap-2 p-2 rounded-lg hover:surface-2"><div class="w-7 h-7 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-[10px] font-bold text-white">TU</div><div class="flex-1">Test User</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="h-14 border-t border-line flex items-center justify-center gap-1 shrink-0 text-xs">
+          <button class="w-12">🎙</button><button class="w-12 text-rose-300">📷</button><button class="w-12">🔗</button>
+          <div class="w-px h-6 bg-[var(--b)] mx-2"></div>
+          <button class="w-12 text-brand">👥</button><button class="w-12">💬</button><button class="w-12">🛠</button>
+          <div class="w-px h-6 bg-[var(--b)] mx-2"></div>
+          <button class="w-12 text-rose-400">⏻</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop -->
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Desktop (current)</div>
+      <div class="device device-desktop flex flex-col">
+        <div class="h-12 flex items-center px-4 gap-3 border-b border-line shrink-0 text-sm">
+          <span style="color:#34d399">●</span><span data-en="'s Room" data-fa="اتاق">'s Room</span><span class="text-[11px] surface-1 border border-line px-2 py-0.5 rounded font-mono">YINBUB</span><span class="ms-auto font-mono" style="color:#34d399">18:31</span><span class="text-mut">3 participants</span>
+        </div>
+        <div class="flex-1 flex overflow-hidden">
+          <div class="flex-1 p-4 grid grid-cols-2 grid-rows-2 gap-4">
+            <div class="surface-1 rounded-xl flex items-center justify-center"><div class="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-white">M</div></div>
+            <div class="surface-1 rounded-xl flex items-center justify-center"><div class="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-white">ME</div></div>
+            <div class="surface-1 rounded-xl flex items-center justify-center col-span-2"><div class="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center font-bold text-white">TU</div></div>
+          </div>
+          <div class="w-72 border-s border-line flex flex-col shrink-0">
+            <div class="flex border-b border-line text-mut">
+              <button class="flex-1 h-12 text-brand border-b-2 border-brand">👥</button>
+              <button class="flex-1 h-12">💬</button>
+              <button class="flex-1 h-12">🛠</button>
+            </div>
+            <div class="flex-1 scrollarea p-4 space-y-2 text-sm">
+              <button class="w-full h-9 bg-brand-soft text-brand rounded-lg text-sm font-medium" data-en="+ Add People" data-fa="+ افزودن افراد">+ Add People</button>
+              <div class="text-[10px] font-bold tracking-wider text-mut mt-3" data-en="HOST" data-fa="میزبان">HOST</div>
+              <div class="flex items-center gap-3 p-2 rounded-lg hover:surface-2"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-xs font-bold text-white">M</div><div class="flex-1">mohsen (You)</div><span>🎙</span><span class="text-rose-400">📷</span></div>
+              <div class="text-[10px] font-bold tracking-wider text-mut mt-3" data-en="STUDENTS (2)" data-fa="دانش‌آموزان (۲)">STUDENTS (2)</div>
+              <div class="flex items-center gap-3 p-2 rounded-lg hover:surface-2"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-xs font-bold text-white">ME</div><div class="flex-1">mohsen esfandiari</div></div>
+              <div class="flex items-center gap-3 p-2 rounded-lg hover:surface-2"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-xs font-bold text-white">TU</div><div class="flex-1">Test User</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+<!-- ============================================================ -->
+<!-- IN-CALL · CHAT (mobile = swipe page 3 of 4)                   -->
+<!-- ============================================================ -->
+<section data-page="room-chat" class="space-y-8 hidden">
+  <div>
+    <h2 class="text-2xl font-bold" data-en="In-Call · Chat (Page 3 of 4)" data-fa="در تماس · چت (صفحه ۳ از ۴)">In-Call · Chat (Page 3 of 4)</h2>
+    <p class="text-mut text-sm mt-1" data-en="Mobile: full-screen chat with input pinned above swipe dots and controls. Tablet/Desktop: chat panel docked." data-fa="موبایل: چت تمام‌صفحه با ورودی چسبیده بالای نقطه‌های سوایپ و کنترل‌ها.">Mobile: full-screen chat with input pinned above swipe dots and controls.</p>
+  </div>
+
+  <div class="flex flex-wrap gap-10 items-start justify-center">
+
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Mobile · Page 3 (Chat)</div>
+      <div class="device device-mobile flex flex-col">
+        <div class="h-11 flex items-center px-3 gap-2 border-b border-line shrink-0 text-xs">
+          <span style="color:#34d399">●</span>
+          <span class="font-medium" data-en="'s Room" data-fa="اتاق">'s Room</span>
+          <span class="ms-auto font-mono" style="color:#34d399">19:03</span>
+          <span class="text-mut">3👥</span>
+          <button class="w-7 h-7 rounded hover:surface-2 flex items-center justify-center">⋯</button>
+        </div>
+        <!-- mini video strip -->
+        <div class="surface-1 border-b border-line p-2 shrink-0 flex gap-2 overflow-x-auto">
+          <div class="w-20 h-14 surface-2 rounded-md flex items-center justify-center shrink-0"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-[10px] font-bold text-white">M</div></div>
+          <div class="w-20 h-14 surface-2 rounded-md flex items-center justify-center shrink-0"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-[10px] font-bold text-white">ME</div></div>
+          <div class="w-20 h-14 surface-2 rounded-md flex items-center justify-center shrink-0"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-[10px] font-bold text-white">TU</div></div>
+        </div>
+        <!-- Chat -->
+        <div class="flex-1 scrollarea p-3 space-y-2 text-xs">
+          <div class="flex justify-start"><div class="surface-1 border border-line rounded-2xl rounded-ss-sm px-3 py-1.5 max-w-[75%]"><div class="text-[10px] text-mut mb-0.5">mohsen esfandiari</div>Hey, can you share the slides?<div class="text-[9px] text-mut mt-0.5">06:00 PM</div></div></div>
+          <div class="flex justify-end"><div class="bg-brand text-white rounded-2xl rounded-se-sm px-3 py-1.5 max-w-[75%]">Sure! Sending now 👍<div class="text-[9px] opacity-70 mt-0.5">06:01 PM</div></div></div>
+          <div class="flex justify-start"><div class="surface-1 border border-line rounded-2xl rounded-ss-sm px-3 py-1.5 max-w-[75%]"><div class="text-[10px] text-mut mb-0.5">Test User</div>👋 Hello everyone!<div class="text-[9px] text-mut mt-0.5">06:02 PM</div></div></div>
+          <div class="flex justify-end"><div class="bg-brand text-white rounded-2xl rounded-se-sm px-3 py-1.5 max-w-[75%]">uyghiunmj<div class="text-[9px] opacity-70 mt-0.5">06:03 PM</div></div></div>
+        </div>
+        <!-- input -->
+        <div class="border-t border-line p-2 shrink-0 flex items-center gap-2">
+          <button class="w-8 h-8 rounded-full surface-1">😊</button>
+          <input class="flex-1 h-9 surface-1 border border-line rounded-full px-3 text-xs" data-en-ph="Message..." data-fa-ph="پیام..." placeholder="Message...">
+          <button class="w-9 h-9 rounded-full bg-brand flex items-center justify-center text-white">➤</button>
+        </div>
+        <div class="flex items-center justify-center gap-1.5 py-2 shrink-0">
+          <span class="swipe-dot"></span>
+          <span class="swipe-dot"></span>
+          <span class="swipe-dot active"></span>
+          <span class="swipe-dot"></span>
+        </div>
+        <div class="h-14 border-t border-line shrink-0 flex items-center justify-around px-1">
+          <button class="w-10 h-10 rounded-lg hover:surface-2 flex items-center justify-center">🎙</button>
+          <button class="w-10 h-10 rounded-lg bg-rose-500/30 text-rose-300 flex items-center justify-center">📷</button>
+          <button class="w-10 h-10 rounded-lg hover:surface-2 flex items-center justify-center">🔗</button>
+          <div class="w-px h-6 bg-[var(--b)]"></div>
+          <button class="w-10 h-10 rounded-lg hover:surface-2 flex items-center justify-center text-mut">⊞</button>
+          <button class="w-10 h-10 rounded-lg hover:surface-2 flex items-center justify-center text-mut">⚙</button>
+          <div class="w-px h-6 bg-[var(--b)]"></div>
+          <button class="w-10 h-10 rounded-lg bg-rose-500 text-white flex items-center justify-center">⏻</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tablet -->
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Tablet · panel: Chat</div>
+      <div class="device device-tablet flex flex-col">
+        <div class="h-12 flex items-center px-4 gap-3 border-b border-line shrink-0 text-sm">
+          <span style="color:#34d399">●</span><span data-en="'s Room" data-fa="اتاق">'s Room</span><span class="text-[11px] surface-1 border border-line px-2 py-0.5 rounded font-mono">YINBUB</span><span class="ms-auto font-mono" style="color:#34d399">19:03</span><span class="text-mut text-xs">3 participants</span>
+        </div>
+        <div class="flex-1 flex overflow-hidden">
+          <div class="flex-1 p-3 grid grid-cols-2 grid-rows-2 gap-3">
+            <div class="surface-1 rounded-xl flex items-center justify-center" style="border:2px solid rgba(16,185,129,0.4)"><div class="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-white">M</div></div>
+            <div class="surface-1 rounded-xl flex items-center justify-center" style="border:2px solid rgba(16,185,129,0.4)"><div class="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-white">ME</div></div>
+            <div class="surface-1 rounded-xl flex items-center justify-center col-span-2"><div class="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center font-bold text-white">TU</div></div>
+          </div>
+          <div class="w-60 border-s border-line flex flex-col shrink-0">
+            <div class="flex border-b border-line text-mut">
+              <button class="flex-1 h-10">👥</button>
+              <button class="flex-1 h-10 text-brand border-b-2 border-brand">💬</button>
+              <button class="flex-1 h-10">🛠</button>
+            </div>
+            <div class="flex-1 scrollarea p-3 space-y-2 text-xs">
+              <div class="flex justify-start"><div class="surface-1 border border-line rounded-2xl px-3 py-1.5 max-w-[80%]">Hey, can you share the slides?<div class="text-[9px] text-mut mt-0.5">06:00 PM</div></div></div>
+              <div class="flex justify-end"><div class="bg-brand text-white rounded-2xl px-3 py-1.5 max-w-[80%]">uyghiunmj<div class="text-[9px] opacity-70 mt-0.5">06:03 PM</div></div></div>
+            </div>
+            <div class="border-t border-line p-2 flex items-center gap-2">
+              <button class="w-7 h-7 rounded-full surface-1 text-xs">😊</button>
+              <input class="flex-1 h-8 surface-1 border border-line rounded-full px-3 text-xs" data-en-ph="Message..." data-fa-ph="پیام..." placeholder="Message...">
+              <button class="w-8 h-8 rounded-full bg-brand text-xs text-white">➤</button>
+            </div>
+          </div>
+        </div>
+        <div class="h-14 border-t border-line flex items-center justify-center gap-1 shrink-0 text-xs">
+          <button class="w-12">🎙</button><button class="w-12 text-rose-300">📷</button><button class="w-12">🔗</button>
+          <div class="w-px h-6 bg-[var(--b)] mx-2"></div>
+          <button class="w-12">👥</button><button class="w-12 text-brand">💬</button><button class="w-12">🛠</button>
+          <div class="w-px h-6 bg-[var(--b)] mx-2"></div>
+          <button class="w-12 text-rose-400">⏻</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop -->
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Desktop · current</div>
+      <div class="device device-desktop flex flex-col">
+        <div class="h-12 flex items-center px-4 gap-3 border-b border-line shrink-0 text-sm">
+          <span style="color:#34d399">●</span><span data-en="'s Room" data-fa="اتاق">'s Room</span><span class="text-[11px] surface-1 border border-line px-2 py-0.5 rounded font-mono">YINBUB</span><span class="ms-auto font-mono" style="color:#34d399">19:03</span><span class="text-mut">3 participants</span>
+        </div>
+        <div class="flex-1 flex overflow-hidden">
+          <div class="flex-1 p-4 grid grid-cols-2 grid-rows-2 gap-4">
+            <div class="surface-1 rounded-xl flex items-center justify-center" style="border:2px solid rgba(16,185,129,0.4)"><div class="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-white">M</div></div>
+            <div class="surface-1 rounded-xl flex items-center justify-center" style="border:2px solid rgba(16,185,129,0.4)"><div class="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-white">ME</div></div>
+            <div class="surface-1 rounded-xl flex items-center justify-center col-span-2"><div class="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center font-bold text-white">TU</div></div>
+          </div>
+          <div class="w-72 border-s border-line flex flex-col shrink-0">
+            <div class="flex border-b border-line text-mut">
+              <button class="flex-1 h-12">👥</button>
+              <button class="flex-1 h-12 text-brand border-b-2 border-brand">💬</button>
+              <button class="flex-1 h-12">🛠</button>
+            </div>
+            <div class="flex-1 scrollarea p-4 space-y-2 text-sm">
+              <div class="flex justify-start"><div class="surface-1 border border-line rounded-2xl px-3 py-2 max-w-[80%]"><div class="text-[10px] text-mut mb-0.5">mohsen esfandiari</div>Hey, can you share the slides?<div class="text-[10px] text-mut mt-0.5">06:00 PM</div></div></div>
+              <div class="flex justify-end"><div class="bg-brand text-white rounded-2xl px-3 py-2 max-w-[80%]">uyghiunmj<div class="text-[10px] opacity-70 mt-0.5">06:03 PM</div></div></div>
+            </div>
+            <div class="border-t border-line p-3 flex items-center gap-2">
+              <button class="w-8 h-8 rounded-full surface-1">😊</button>
+              <input class="flex-1 h-9 surface-1 border border-line rounded-full px-3 text-sm" data-en-ph="Message..." data-fa-ph="پیام..." placeholder="Message...">
+              <button class="w-9 h-9 rounded-full bg-brand text-white">➤</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+
+<!-- ============================================================ -->
+<!-- IN-CALL · TOOLS (mobile = swipe page 4 of 4)                  -->
+<!-- ============================================================ -->
+<section data-page="room-tools" class="space-y-8 hidden">
+  <div>
+    <h2 class="text-2xl font-bold" data-en="In-Call · Tools (Page 4 of 4)" data-fa="در تماس · ابزارها (صفحه ۴ از ۴)">In-Call · Tools (Page 4 of 4)</h2>
+    <p class="text-mut text-sm mt-1" data-en="Mobile: full-screen tool list with Ready/Soon badges. Tap a tool to launch. Tablet/Desktop: panel docked with thumbnails strip." data-fa="موبایل: لیست تمام‌صفحه ابزارها با برچسب آماده/بزودی. تبلت/دسکتاپ: پنل کناری با نوار تصاویر کوچک.">Mobile: full-screen tool list with Ready/Soon badges.</p>
+  </div>
+
+  <div class="flex flex-wrap gap-10 items-start justify-center">
+
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Mobile · Page 4 (Tools)</div>
+      <div class="device device-mobile flex flex-col">
+        <div class="h-11 flex items-center px-3 gap-2 border-b border-line shrink-0 text-xs">
+          <span style="color:#34d399">●</span>
+          <span class="font-medium" data-en="'s Room" data-fa="اتاق">'s Room</span>
+          <span class="ms-auto font-mono" style="color:#34d399">19:26</span>
+          <span class="text-mut">3👥</span>
+        </div>
+        <!-- mini video strip -->
+        <div class="surface-1 border-b border-line p-2 shrink-0 flex gap-2 overflow-x-auto">
+          <div class="w-20 h-14 surface-2 rounded-md flex items-center justify-center shrink-0"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-[10px] font-bold text-white">M</div></div>
+          <div class="w-20 h-14 surface-2 rounded-md flex items-center justify-center shrink-0"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-[10px] font-bold text-white">ME</div></div>
+          <div class="w-20 h-14 surface-2 rounded-md flex items-center justify-center shrink-0"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-[10px] font-bold text-white">TU</div></div>
+        </div>
+        <div class="flex-1 scrollarea p-3 space-y-2">
+          <div class="flex items-center gap-3 p-3 rounded-xl surface-1 border border-line"><div class="w-9 h-9 rounded-md flex items-center justify-center" style="background:rgba(139,92,246,0.18)">🎮</div><div class="flex-1"><div class="text-sm font-semibold" data-en="Launch Game" data-fa="اجرای بازی">Launch Game</div><div class="text-[11px] text-mut" data-en="Add game to session" data-fa="افزودن بازی به جلسه">Add game to session</div></div><span class="badge badge-ready" data-en="Ready" data-fa="آماده">Ready</span></div>
+          <div class="flex items-center gap-3 p-3 rounded-xl surface-1 border border-line"><div class="w-9 h-9 rounded-md flex items-center justify-center" style="background:rgba(6,182,212,0.18)">📝</div><div class="flex-1"><div class="text-sm font-semibold" data-en="Whiteboard" data-fa="وایت‌برد">Whiteboard</div><div class="text-[11px] text-mut" data-en="Collaborative drawing" data-fa="نقاشی مشارکتی">Collaborative drawing</div></div><span class="badge badge-ready" data-en="Ready" data-fa="آماده">Ready</span></div>
+          <div class="flex items-center gap-3 p-3 rounded-xl surface-1 border border-line"><div class="w-9 h-9 rounded-md flex items-center justify-center" style="background:rgba(244,63,94,0.18)">📋</div><div class="flex-1"><div class="text-sm font-semibold" data-en="Quick Exam" data-fa="آزمون سریع">Quick Exam</div><div class="text-[11px] text-mut" data-en="Start exam in session" data-fa="شروع آزمون در جلسه">Start exam in session</div></div><span class="badge badge-ready" data-en="Ready" data-fa="آماده">Ready</span></div>
+          <div class="flex items-center gap-3 p-3 rounded-xl surface-1 border border-line opacity-70"><div class="w-9 h-9 rounded-md flex items-center justify-center" style="background:rgba(245,158,11,0.18)">🤖</div><div class="flex-1"><div class="text-sm font-semibold" data-en="AI Summary" data-fa="خلاصه هوشمند">AI Summary</div><div class="text-[11px] text-mut" data-en="Auto-summarize session" data-fa="خلاصه‌سازی خودکار جلسه">Auto-summarize session</div></div><span class="badge badge-soon" data-en="Soon" data-fa="بزودی">Soon</span></div>
+          <div class="flex items-center gap-3 p-3 rounded-xl surface-1 border border-line opacity-70"><div class="w-9 h-9 rounded-md flex items-center justify-center" style="background:rgba(234,179,8,0.18)">📁</div><div class="flex-1"><div class="text-sm font-semibold" data-en="File Share" data-fa="اشتراک فایل">File Share</div><div class="text-[11px] text-mut" data-en="Share presentations" data-fa="اشتراک ارائه‌ها">Share presentations</div></div><span class="badge badge-soon" data-en="Soon" data-fa="بزودی">Soon</span></div>
+        </div>
+        <div class="flex items-center justify-center gap-1.5 py-2 shrink-0">
+          <span class="swipe-dot"></span>
+          <span class="swipe-dot"></span>
+          <span class="swipe-dot"></span>
+          <span class="swipe-dot active"></span>
+        </div>
+        <div class="h-14 border-t border-line shrink-0 flex items-center justify-around px-1">
+          <button class="w-10 h-10 rounded-lg hover:surface-2 flex items-center justify-center">🎙</button>
+          <button class="w-10 h-10 rounded-lg bg-rose-500/30 text-rose-300 flex items-center justify-center">📷</button>
+          <button class="w-10 h-10 rounded-lg hover:surface-2 flex items-center justify-center">🔗</button>
+          <div class="w-px h-6 bg-[var(--b)]"></div>
+          <button class="w-10 h-10 rounded-lg hover:surface-2 flex items-center justify-center text-mut">⊞</button>
+          <button class="w-10 h-10 rounded-lg hover:surface-2 flex items-center justify-center text-mut">⚙</button>
+          <div class="w-px h-6 bg-[var(--b)]"></div>
+          <button class="w-10 h-10 rounded-lg bg-rose-500 text-white flex items-center justify-center">⏻</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tablet -->
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Tablet · panel: Tools</div>
+      <div class="device device-tablet flex flex-col">
+        <div class="h-12 flex items-center px-4 gap-3 border-b border-line shrink-0 text-sm">
+          <span style="color:#34d399">●</span><span data-en="'s Room" data-fa="اتاق">'s Room</span><span class="text-[11px] surface-1 border border-line px-2 py-0.5 rounded font-mono">YINBUB</span><span class="ms-auto font-mono" style="color:#34d399">19:26</span>
+        </div>
+        <div class="flex-1 flex overflow-hidden">
+          <div class="flex-1 p-3 flex items-center justify-center"><div class="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-white">M</div></div>
+          <div class="w-24 border-s border-line p-2 space-y-2 shrink-0">
+            <div class="aspect-square surface-1 rounded-lg flex flex-col items-center justify-center"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-[10px] font-bold text-white">ME</div><div class="text-[9px] mt-1">esfandi..</div></div>
+            <div class="aspect-square surface-1 rounded-lg flex flex-col items-center justify-center"><div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-[10px] font-bold text-white">TU</div><div class="text-[9px] mt-1">Test User</div></div>
+          </div>
+          <div class="w-60 border-s border-line flex flex-col shrink-0">
+            <div class="flex border-b border-line text-mut">
+              <button class="flex-1 h-10">👥</button>
+              <button class="flex-1 h-10">💬</button>
+              <button class="flex-1 h-10 text-brand border-b-2 border-brand">🛠</button>
+            </div>
+            <div class="flex-1 scrollarea p-2 space-y-1.5 text-xs">
+              <div class="flex items-center gap-2 p-2 rounded-lg surface-1 border border-line"><div class="w-7 h-7 rounded-md flex items-center justify-center text-sm" style="background:rgba(139,92,246,0.18)">🎮</div><div class="flex-1"><div class="font-semibold text-[11px]" data-en="Launch Game" data-fa="اجرای بازی">Launch Game</div></div><span class="badge badge-ready" data-en="Ready" data-fa="آماده">Ready</span></div>
+              <div class="flex items-center gap-2 p-2 rounded-lg surface-1 border border-line"><div class="w-7 h-7 rounded-md flex items-center justify-center text-sm" style="background:rgba(6,182,212,0.18)">📝</div><div class="flex-1"><div class="font-semibold text-[11px]" data-en="Whiteboard" data-fa="وایت‌برد">Whiteboard</div></div><span class="badge badge-ready" data-en="Ready" data-fa="آماده">Ready</span></div>
+              <div class="flex items-center gap-2 p-2 rounded-lg surface-1 border border-line"><div class="w-7 h-7 rounded-md flex items-center justify-center text-sm" style="background:rgba(244,63,94,0.18)">📋</div><div class="flex-1"><div class="font-semibold text-[11px]" data-en="Quick Exam" data-fa="آزمون سریع">Quick Exam</div></div><span class="badge badge-ready" data-en="Ready" data-fa="آماده">Ready</span></div>
+              <div class="flex items-center gap-2 p-2 rounded-lg surface-1 border border-line opacity-70"><div class="w-7 h-7 rounded-md flex items-center justify-center text-sm" style="background:rgba(245,158,11,0.18)">🤖</div><div class="flex-1"><div class="font-semibold text-[11px]" data-en="AI Summary" data-fa="خلاصه هوشمند">AI Summary</div></div><span class="badge badge-soon" data-en="Soon" data-fa="بزودی">Soon</span></div>
+              <div class="flex items-center gap-2 p-2 rounded-lg surface-1 border border-line opacity-70"><div class="w-7 h-7 rounded-md flex items-center justify-center text-sm" style="background:rgba(234,179,8,0.18)">📁</div><div class="flex-1"><div class="font-semibold text-[11px]" data-en="File Share" data-fa="اشتراک فایل">File Share</div></div><span class="badge badge-soon" data-en="Soon" data-fa="بزودی">Soon</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="h-14 border-t border-line flex items-center justify-center gap-1 shrink-0 text-xs">
+          <button class="w-12">🎙</button><button class="w-12 text-rose-300">📷</button><button class="w-12">🔗</button>
+          <div class="w-px h-6 bg-[var(--b)] mx-2"></div>
+          <button class="w-12">👥</button><button class="w-12">💬</button><button class="w-12 text-brand">🛠</button>
+          <div class="w-px h-6 bg-[var(--b)] mx-2"></div>
+          <button class="w-12 text-rose-400">⏻</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop (current) -->
+    <div>
+      <div class="text-center text-xs text-mut mb-2">Desktop · current</div>
+      <div class="device device-desktop flex flex-col">
+        <div class="h-12 flex items-center px-4 gap-3 border-b border-line shrink-0 text-sm">
+          <span style="color:#34d399">●</span><span data-en="'s Room" data-fa="اتاق">'s Room</span><span class="text-[11px] surface-1 border border-line px-2 py-0.5 rounded font-mono">YINBUB</span><span class="ms-auto font-mono" style="color:#34d399">19:26</span><span class="text-mut">3 participants</span>
+        </div>
+        <div class="flex-1 flex overflow-hidden">
+          <div class="flex-1 p-4 flex items-center justify-center"><div class="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-white">M</div></div>
+          <div class="w-32 border-s border-line p-2 space-y-2 shrink-0">
+            <div class="aspect-square surface-1 rounded-lg flex flex-col items-center justify-center"><div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-xs font-bold text-white">ME</div><div class="text-[10px] mt-1">mohsen es..</div></div>
+            <div class="aspect-square surface-1 rounded-lg flex flex-col items-center justify-center"><div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-xs font-bold text-white">TU</div><div class="text-[10px] mt-1">Test User</div></div>
+          </div>
+          <div class="w-72 border-s border-line flex flex-col shrink-0">
+            <div class="flex border-b border-line text-mut">
+              <button class="flex-1 h-12">👥</button>
+              <button class="flex-1 h-12">💬</button>
+              <button class="flex-1 h-12 text-brand border-b-2 border-brand">🛠</button>
+            </div>
+            <div class="flex-1 scrollarea p-3 space-y-2">
+              <div class="flex items-center gap-3 p-3 rounded-xl surface-1 border border-line"><div class="w-10 h-10 rounded-md flex items-center justify-center text-lg" style="background:rgba(139,92,246,0.18)">🎮</div><div class="flex-1"><div class="text-sm font-semibold" data-en="Launch Game" data-fa="اجرای بازی">Launch Game</div><div class="text-xs text-mut" data-en="Add game to session" data-fa="افزودن بازی به جلسه">Add game to session</div></div><span class="badge badge-ready" data-en="Ready" data-fa="آماده">Ready</span></div>
+              <div class="flex items-center gap-3 p-3 rounded-xl surface-1 border border-line"><div class="w-10 h-10 rounded-md flex items-center justify-center text-lg" style="background:rgba(6,182,212,0.18)">📝</div><div class="flex-1"><div class="text-sm font-semibold" data-en="Whiteboard" data-fa="وایت‌برد">Whiteboard</div><div class="text-xs text-mut" data-en="Collaborative drawing" data-fa="نقاشی مشارکتی">Collaborative drawing</div></div><span class="badge badge-ready" data-en="Ready" data-fa="آماده">Ready</span></div>
+              <div class="flex items-center gap-3 p-3 rounded-xl surface-1 border border-line"><div class="w-10 h-10 rounded-md flex items-center justify-center text-lg" style="background:rgba(244,63,94,0.18)">📋</div><div class="flex-1"><div class="text-sm font-semibold" data-en="Quick Exam" data-fa="آزمون سریع">Quick Exam</div><div class="text-xs text-mut" data-en="Start exam in session" data-fa="شروع آزمون در جلسه">Start exam in session</div></div><span class="badge badge-ready" data-en="Ready" data-fa="آماده">Ready</span></div>
+              <div class="flex items-center gap-3 p-3 rounded-xl surface-1 border border-line opacity-70"><div class="w-10 h-10 rounded-md flex items-center justify-center text-lg" style="background:rgba(245,158,11,0.18)">🤖</div><div class="flex-1"><div class="text-sm font-semibold" data-en="AI Summary" data-fa="خلاصه هوشمند">AI Summary</div><div class="text-xs text-mut" data-en="Auto-summarize session" data-fa="خلاصه‌سازی خودکار جلسه">Auto-summarize session</div></div><span class="badge badge-soon" data-en="Soon" data-fa="بزودی">Soon</span></div>
+              <div class="flex items-center gap-3 p-3 rounded-xl surface-1 border border-line opacity-70"><div class="w-10 h-10 rounded-md flex items-center justify-center text-lg" style="background:rgba(234,179,8,0.18)">📁</div><div class="flex-1"><div class="text-sm font-semibold" data-en="File Share" data-fa="اشتراک فایل">File Share</div><div class="text-xs text-mut" data-en="Share presentations" data-fa="اشتراک ارائه‌ها">Share presentations</div></div><span class="badge badge-soon" data-en="Soon" data-fa="بزودی">Soon</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ============== FOOTER ============== -->
+<footer class="border-t border-line py-8 mt-16">
+  <div class="max-w-[1600px] mx-auto px-6 text-center text-xs text-mut">
+    <p data-en="EduSpace · Responsive Design Mockups v2 · branch: design/responsive-mockups-v2" data-fa="EduSpace · ماک‌آپ‌های ریسپانسیو نسخه ۲ · شاخه: design/responsive-mockups-v2">EduSpace · Responsive Design Mockups v2 · branch: design/responsive-mockups-v2</p>
+    <p class="mt-2" data-en="Mobile-first · Tailwind v4 · RTL-aware (logical properties) · Swipe-pages on mobile In-Call" data-fa="موبایل-اول · Tailwind v4 · سازگار با RTL · سوایپ صفحات در موبایل">Mobile-first · Tailwind v4 · RTL-aware (logical properties) · Swipe-pages on mobile In-Call</p>
+  </div>
+</footer>
+
+<script>
+  // ===== Page tab switching =====
+  const tabs = document.querySelectorAll('[data-tab]');
+  const sections = document.querySelectorAll('[data-page]');
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    const tab = t.dataset.tab;
+    sections.forEach(s => s.classList.toggle('hidden', s.dataset.page !== tab));
+    window.scrollTo({top:0, behavior:'smooth'});
+  }));
+
+  // ===== Language toggle =====
+  const html = document.documentElement;
+  const btnEN = document.getElementById('lang-en');
+  const btnFA = document.getElementById('lang-fa');
+
+  function applyLang(lang) {
+    const isFa = lang === 'fa';
+    html.lang = isFa ? 'fa' : 'en';
+    html.dir = isFa ? 'rtl' : 'ltr';
+    html.classList.toggle('rtl', isFa);
+    html.classList.toggle('ltr', !isFa);
+
+    // text content
+    document.querySelectorAll('[data-en]').forEach(el => {
+      const txt = el.getAttribute(isFa ? 'data-fa' : 'data-en');
+      if (txt != null) {
+        // preserve children only when there are no nested data-en elements
+        const hasNestedI18n = el.querySelector('[data-en]');
+        if (!hasNestedI18n) el.textContent = txt;
+      }
+    });
+    // placeholders
+    document.querySelectorAll('[data-en-ph]').forEach(el => {
+      const ph = el.getAttribute(isFa ? 'data-fa-ph' : 'data-en-ph');
+      if (ph != null) el.placeholder = ph;
+    });
+
+    // toggle button styles
+    btnEN.classList.toggle('bg-brand', !isFa);
+    btnEN.classList.toggle('text-white', !isFa);
+    btnEN.classList.toggle('text-mut', isFa);
+    btnFA.classList.toggle('bg-brand', isFa);
+    btnFA.classList.toggle('text-white', isFa);
+    btnFA.classList.toggle('text-mut', !isFa);
+  }
+  btnEN.addEventListener('click', () => applyLang('en'));
+  btnFA.addEventListener('click', () => applyLang('fa'));
+  // initial
+  applyLang('en');
+</script>
+
+</body>
+</html>
