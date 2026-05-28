@@ -8,7 +8,7 @@ rtc:
   use_external_ip: false
 
 keys:
-  devkey: devsecret-change-me-in-production-min-32chars
+  devkey: devsecret
 
 redis:
   address: redis:6379

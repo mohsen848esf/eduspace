@@ -2,7 +2,7 @@
 # Picks up RoomComposite jobs from redis and writes the resulting MP4
 # to the shared volume mounted at /out (-> backend/media/recordings/).
 api_key: devkey
-api_secret: devsecret-change-me-in-production-min-32chars
+api_secret: devsecret
 ws_url: ws://livekit:7880
 
 redis:

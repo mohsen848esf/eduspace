@@ -136,7 +136,7 @@ CORS_ALLOW_CREDENTIALS = True
 LIVEKIT_API_KEY = os.getenv('LIVEKIT_API_KEY', 'devkey')
 LIVEKIT_API_SECRET = os.getenv(
     'LIVEKIT_API_SECRET',
-    'devsecret-change-me-in-production-min-32chars',
+    'devsecret',
 )
 LIVEKIT_HOST_URL = os.getenv('LIVEKIT_HOST_URL', 'http://localhost:7880')
 LIVEKIT_WS_URL = os.getenv('LIVEKIT_WS_URL', 'ws://localhost:7880')
