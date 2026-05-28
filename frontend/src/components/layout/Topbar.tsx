@@ -80,7 +80,7 @@ export default function Topbar({
         <Tooltip content={t("topbar.notifications", { count: 3 })}>
           <button className="relative w-8 h-8 rounded-lg bg-transparent border-none text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)] cursor-pointer flex items-center justify-center text-base transition-all duration-150">
             🔔
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[var(--red)] rounded-full border-2 border-[var(--s1)]" />
+            <span className="absolute top-1.5 end-1.5 w-1.5 h-1.5 bg-[var(--red)] rounded-full border-2 border-[var(--s1)]" />
           </button>
         </Tooltip>
 
@@ -97,7 +97,7 @@ export default function Topbar({
             onClick={handleLogout}
             className="w-8 h-8 rounded-lg bg-transparent border-none cursor-pointer text-[var(--t2)] hover:bg-[var(--red)]/10 hover:text-[var(--red)] flex items-center justify-center transition-all"
           >
-            {Icons.leave}
+            <span className="rtl-flip">{Icons.leave}</span>
           </button>
         </Tooltip>
       </div>

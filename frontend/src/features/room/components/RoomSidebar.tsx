@@ -87,7 +87,7 @@ function ParticipantsTab() {
         >
           {getInitials(name)}
           {isMutedByHost && (
-            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[var(--red)] rounded-full flex items-center justify-center text-[7px]">
+            <span className="absolute -bottom-0.5 -end-0.5 w-3 h-3 bg-[var(--red)] rounded-full flex items-center justify-center text-[7px]">
               🔇
             </span>
           )}
@@ -221,7 +221,7 @@ function ChatTab({ roomCode }: { roomCode: string }) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto flex flex-col gap-2 pr-1 pb-2">
+      <div className="flex-1 overflow-y-auto flex flex-col gap-2 pe-1 pb-2">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
             <span className="text-2xl">💬</span>
@@ -380,7 +380,7 @@ function ToolsTab() {
         <button
           key={tool.name}
           disabled={tool.status === "soon"}
-          className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-[var(--s3)] disabled:cursor-not-allowed transition-colors text-left border-none bg-transparent w-full"
+          className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-[var(--s3)] disabled:cursor-not-allowed transition-colors text-start border-none bg-transparent w-full"
         >
           <div
             className={cn(
@@ -432,7 +432,7 @@ export default function RoomSidebar({
   ];
 
   return (
-    <div className="w-[272px] bg-[var(--s1)] border-l border-[var(--b)] flex flex-col flex-shrink-0 fade-in">
+    <div className="w-[272px] bg-[var(--s1)] border-s border-[var(--b)] flex flex-col flex-shrink-0 fade-in">
       {/* Tab buttons */}
       <ChatListener roomCode={roomCode} />
 

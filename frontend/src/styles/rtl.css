@@ -1,0 +1,37 @@
+/*
+ * RTL adjustments
+ * --------------------------------------------------------------------------
+ * Most direction-sensitive classes use Tailwind v4 logical equivalents
+ * (ms-*, me-*, ps-*, pe-*, start-*, end-*, border-s, border-e, rounded-s-*,
+ * rounded-e-*, text-start). This file covers the few cases logical classes
+ * cannot express:
+ *   1. Mirroring directional SVG icons (e.g. the leave/exit arrow).
+ *   2. Flipping inline transforms that would otherwise mirror video twice.
+ */
+
+/* Flip directional inline icons in RTL — opt-in via .rtl-flip. */
+[dir="rtl"] .rtl-flip {
+  transform: scaleX(-1);
+}
+
+/* Force ltr formatting for room codes, durations, and similar tokens. */
+.force-ltr {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* Fade-in still works regardless of direction. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fade-in 0.18s ease-out;
+}

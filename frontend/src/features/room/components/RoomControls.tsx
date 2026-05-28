@@ -77,7 +77,7 @@ function LayoutPopover({
               onClose();
             }}
             className={cn(
-              "w-full flex items-center gap-2.5 px-2 py-2 rounded-lg border-none cursor-pointer transition-all duration-150 text-left",
+              "w-full flex items-center gap-2.5 px-2 py-2 rounded-lg border-none cursor-pointer transition-all duration-150 text-start",
               layout === l.id
                 ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
                 : "bg-transparent text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
@@ -89,7 +89,7 @@ function LayoutPopover({
               <div className="text-[10px] text-[var(--t3)]">{l.desc}</div>
             </div>
             {layout === l.id && (
-              <span className="ml-auto text-[var(--brand)] text-xs">✓</span>
+              <span className="ms-auto text-[var(--brand)] text-xs">✓</span>
             )}
           </button>
         ))}
@@ -174,7 +174,7 @@ function SplitBtn({
           onClick={onMain}
           className={cn(
             "flex flex-col items-center justify-center gap-1",
-            "px-2.5 rounded-l-xl border-none cursor-pointer",
+            "px-2.5 rounded-s-xl border-none cursor-pointer",
             "min-w-[40px] transition-all duration-150 active:scale-[0.96]",
             stateClass,
           )}
@@ -187,7 +187,7 @@ function SplitBtn({
         <button
           onClick={onArrow}
           className={cn(
-            "w-5 rounded-r-xl border-none border-l border-[var(--b)]",
+            "w-5 rounded-e-xl border-none border-s border-[var(--b)]",
             "cursor-pointer text-[10px] transition-all duration-150",
             "flex items-center justify-center",
             stateClass,
@@ -297,7 +297,7 @@ function MicSettingsPopover({
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute bottom-[76px] left-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-64 fade-in">
+      <div className="absolute bottom-[76px] start-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-64 fade-in">
         <div className="relative">
           <AudioVisualizer isMicOn={isMicOn} />
         </div>
@@ -387,7 +387,7 @@ function CamSettingsPopover({ onClose }: { onClose: () => void }) {
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute bottom-[76px] left-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-64 fade-in">
+      <div className="absolute bottom-[76px] start-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-64 fade-in">
         {/* Camera device */}
         <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-1.5">
           {t("preJoin.camera")}
@@ -605,7 +605,7 @@ export default function RoomControls({
           onClick={onLeave}
           className="flex items-center gap-2 px-4 h-[52px] bg-[var(--red)] hover:bg-red-500 active:scale-[0.97] text-white font-semibold text-sm rounded-xl border-none cursor-pointer transition-all duration-150"
         >
-          {Icons.leave}
+          <span className="rtl-flip">{Icons.leave}</span>
           {t("controls.leave")}
         </button>
       </Tooltip>

@@ -188,7 +188,7 @@ export default function GameContainer({
 
       {/* ── Top bar ── */}
       {status !== "splash" && (
-        <div className="absolute top-3 right-3 z-30 flex items-center gap-2">
+        <div className="absolute top-3 end-3 z-30 flex items-center gap-2">
           {/* Host controls */}
           {isHost && status === "ready" && (
             <button
@@ -284,7 +284,7 @@ export default function GameContainer({
 
       {/* ── EduSpace branding watermark ── */}
       {(status === "playing" || status === "paused") && (
-        <div className="absolute bottom-3 left-3 z-30">
+        <div className="absolute bottom-3 start-3 z-30">
           <span className="text-xs text-gray-600 font-medium">
             {t("container.branding")}
           </span>
