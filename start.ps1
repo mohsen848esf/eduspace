@@ -22,7 +22,7 @@ Write-Host "Docker is ready!" -ForegroundColor Green
 docker compose up -d
 
 # Start Backend
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD\backend'; .\venv\Scripts\activate; python manage.py runserver"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD\backend'; .\venv\Scripts\activate; uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --reload"
 
 # Start Frontend
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD\frontend'; npm run dev"
