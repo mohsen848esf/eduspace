@@ -1,6 +1,7 @@
 @import "@livekit/components-styles";
 @import "tailwindcss";
 @import "./styles/design-system.css";
+@import "./styles/rtl.css";
 
 html,
 body,

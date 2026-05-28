@@ -77,7 +77,7 @@ export default function RoomTopbar({ isRecording = false }: RoomTopbarProps) {
           <button
             onClick={copyRoomCode}
             className={cn(
-              "flex items-center gap-1.5 px-2 py-1 rounded-lg border-none cursor-pointer transition-all text-xs font-mono",
+              "flex items-center gap-1.5 px-2 py-1 rounded-lg border-none cursor-pointer transition-all text-xs font-mono force-ltr",
               copied
                 ? "bg-[var(--green)]/15 text-[var(--green)]"
                 : "bg-[var(--s3)] text-[var(--t3)] hover:text-[var(--t1)] hover:bg-[var(--s4)]",
@@ -97,7 +97,7 @@ export default function RoomTopbar({ isRecording = false }: RoomTopbarProps) {
             {t("topbar.rec")}
           </div>
         )}
-        <span className="text-sm font-mono text-[var(--green)] font-semibold">
+        <span className="text-sm font-mono text-[var(--green)] font-semibold force-ltr">
           {duration}
         </span>
         <span className="text-xs text-[var(--t3)]">{participantsLabel}</span>
@@ -125,7 +125,7 @@ export default function RoomTopbar({ isRecording = false }: RoomTopbarProps) {
               className="fixed inset-0 z-40"
               onClick={() => setShowInfo(false)}
             />
-            <div className="absolute top-10 right-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-56 fade-in">
+            <div className="absolute top-10 end-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-56 fade-in">
               <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2">
                 {t("topbar.infoTitle")}
               </div>
@@ -142,7 +142,7 @@ export default function RoomTopbar({ isRecording = false }: RoomTopbarProps) {
                   <span className="text-xs text-[var(--t3)]">
                     {t("topbar.infoCode")}
                   </span>
-                  <span className="text-xs font-mono text-[var(--brand-text)]">
+                  <span className="text-xs font-mono text-[var(--brand-text)] force-ltr">
                     {roomCode}
                   </span>
                 </div>
@@ -150,7 +150,7 @@ export default function RoomTopbar({ isRecording = false }: RoomTopbarProps) {
                   <span className="text-xs text-[var(--t3)]">
                     {t("topbar.infoDuration")}
                   </span>
-                  <span className="text-xs font-mono text-[var(--green)]">
+                  <span className="text-xs font-mono text-[var(--green)] force-ltr">
                     {duration}
                   </span>
                 </div>

@@ -21,7 +21,10 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
       <span
         className={cn(
           "absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full transition-transform duration-200 block",
-          on ? "translate-x-[14px]" : "translate-x-0.5",
+          // start-aligned thumb that moves to end when 'on'.
+          // start-0 + translate-x-* works in LTR; in RTL the same numeric translation moves to the left,
+          // so we use negative translate values guarded by a dir-aware variant via Tailwind logical APIs.
+          on ? "start-[14px]" : "start-0.5",
         )}
       />
     </button>

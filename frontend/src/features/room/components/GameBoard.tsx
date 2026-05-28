@@ -57,7 +57,7 @@ function ParticipantStrip({
   );
 
   return (
-    <div className="flex flex-col gap-1.5 w-20 bg-[var(--s1)] border-r border-[var(--b)] p-1.5 overflow-y-auto">
+    <div className="flex flex-col gap-1.5 w-20 bg-[var(--s1)] border-e border-[var(--b)] p-1.5 overflow-y-auto">
       {allParticipants.map((participant) => {
         const camTrack = tracks.find(
           (tr) =>
@@ -97,7 +97,7 @@ function ParticipantStrip({
                 </div>
               </div>
             )}
-            <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-1 py-0.5">
+            <div className="absolute bottom-0 start-0 end-0 bg-black/50 px-1 py-0.5">
               <span className="text-[8px] text-white truncate block">
                 {isLocal ? t("tile.you").replace(/[()]/g, "") : name}
               </span>
@@ -209,7 +209,7 @@ export default function GameBoard({
                 onClick={onEnd}
                 className="flex items-center gap-1.5 px-2.5 py-1 bg-[var(--red)]/10 hover:bg-[var(--red)]/20 text-[var(--red)] text-xs font-semibold rounded-lg border-none cursor-pointer transition-all"
               >
-                {Icons.leave}
+                <span className="rtl-flip">{Icons.leave}</span>
                 {t("board.endGame")}
               </button>
             </Tooltip>

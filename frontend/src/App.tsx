@@ -7,8 +7,6 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.lang = language;
-    // Note: full RTL layout work happens in the rtl-layout branch.
-    // We still sync `dir` so platform widgets (selects, tooltips) get the right direction.
     document.documentElement.dir = dir;
   }, [language, dir]);
 
