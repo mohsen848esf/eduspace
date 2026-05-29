@@ -56,10 +56,19 @@ export function useAccessGuard({
         await recordingsApi.detail(token);
       } catch (err: any) {
         const status = err?.response?.status;
+        // 403 (unpublished / removed from visible_to / link-share turned off
+        // and not owner / not superuser) and 404 (deleted) both mean the
+        // current viewer has lost access.
         if (status === 403 || status === 404) {
+          // eslint-disable-next-line no-console
+          console.info(
+            "[recording] access revoked for token=%s (status=%d)",
+            token,
+            status,
+          );
           setRevoked(true);
         }
-        // Network errors etc. — leave the existing access alone, try again next tick.
+        // Network errors / 5xx etc. — leave the existing access alone, try again next tick.
       }
     };
 
