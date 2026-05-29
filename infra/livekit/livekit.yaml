@@ -13,4 +13,10 @@ keys:
 redis:
   address: redis:6379
 
-# Egress worker discovery happens via redis (worker subscribes to job queue).
+# Forward egress lifecycle events to Django.
+# host.docker.internal is the dev-time hostname the docker container
+# uses to reach services running on the Windows host (Django dev server).
+webhook:
+  api_key: devkey
+  urls:
+    - http://host.docker.internal:8000/api/recordings/webhook/
