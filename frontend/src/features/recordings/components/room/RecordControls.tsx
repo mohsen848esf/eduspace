@@ -29,43 +29,57 @@ function formatElapsed(secondsTotal: number): string {
 /**
  * Pause-aware elapsed timer.
  *
- * Active states: ticks once per second, anchored to `activeSince`.
- * Paused: returns the last value seen before pause and stops ticking.
+ * Tracks accumulated *active* time across pause/resume cycles instead of
+ * deriving from wall clock minus original start_at, which would count
+ * paused intervals as elapsed.
  *
- * The simple `Date.now() - started_at` approach was wrong because it
- * treats the wall clock as the source of truth, so a paused recording
- * appeared to keep growing.
+ *   activeSinceKey  identity of the current recording. When it changes
+ *                   we reset accumulated state.
+ *   isActiveTicking true while the egress is actually capturing frames.
  */
 function useElapsed(
-  activeSince: string | null,
+  activeSinceKey: string | null,
   isActiveTicking: boolean,
 ): number {
   const [now, setNow] = useState(() => Date.now());
-  const frozen = useRef<number | null>(null);
+  const accumulatedRef = useRef(0); // total seconds of past active intervals
+  const anchorRef = useRef<number | null>(null); // ms when current run started
+  const lastKey = useRef<string | null>(null);
 
+  // Reset on recording change.
   useEffect(() => {
-    if (!isActiveTicking) {
-      // Freeze whatever we last computed.
-      if (activeSince && frozen.current === null) {
-        frozen.current = Math.max(
-          0,
-          Math.floor((now - new Date(activeSince).getTime()) / 1000),
-        );
-      }
-      return;
+    if (lastKey.current !== activeSinceKey) {
+      accumulatedRef.current = 0;
+      anchorRef.current = null;
+      lastKey.current = activeSinceKey;
     }
-    // Resuming: clear the freeze and start ticking again.
-    frozen.current = null;
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-    // We deliberately don't depend on `now` so the interval isn't
-    // recreated every tick.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSince, isActiveTicking]);
+  }, [activeSinceKey]);
 
-  if (!activeSince) return 0;
-  if (frozen.current !== null) return frozen.current;
-  return Math.floor((now - new Date(activeSince).getTime()) / 1000);
+  // Manage anchor + ticking.
+  useEffect(() => {
+    if (isActiveTicking) {
+      // Resume / start: set a fresh anchor and tick once a second.
+      anchorRef.current = Date.now();
+      const id = window.setInterval(() => setNow(Date.now()), 1000);
+      return () => {
+        // On pause / unmount, fold the elapsed run into the accumulator.
+        if (anchorRef.current !== null) {
+          accumulatedRef.current += (Date.now() - anchorRef.current) / 1000;
+          anchorRef.current = null;
+        }
+        window.clearInterval(id);
+      };
+    }
+    // Already paused: no anchor, no interval.
+    return undefined;
+  }, [isActiveTicking, activeSinceKey]);
+
+  if (!activeSinceKey) return 0;
+  const live =
+    isActiveTicking && anchorRef.current !== null
+      ? (now - anchorRef.current) / 1000
+      : 0;
+  return Math.max(0, Math.floor(accumulatedRef.current + live));
 }
 
 export default function RecordControls({
@@ -104,7 +118,7 @@ export default function RecordControls({
     (recording.status === "starting" || recording.status === "recording");
 
   const elapsed = useElapsed(
-    isActive && recording ? recording.started_at : null,
+    isActive && recording ? recording.public_token : null,
     Boolean(isTicking),
   );
 
