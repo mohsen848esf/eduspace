@@ -33,6 +33,11 @@ CASES = [
     ('recording_list', {}, '/api/recordings/'),
     ('recording_detail', {'token': 'AbC_123-xyz'}, '/api/recordings/AbC_123-xyz/'),
     ('recording_stream', {'token': 'AbC_123-xyz'}, '/api/recordings/AbC_123-xyz/stream/'),
+
+    # Owner editing & sharing
+    ('recording_finalize', {'token': 'AbC_123-xyz'}, '/api/recordings/AbC_123-xyz/finalize/'),
+    ('recording_publish', {'token': 'AbC_123-xyz'}, '/api/recordings/AbC_123-xyz/publish/'),
+    ('recording_unpublish', {'token': 'AbC_123-xyz'}, '/api/recordings/AbC_123-xyz/unpublish/'),
 ]
 
 
