@@ -170,7 +170,7 @@ def _on_egress_ended(segment: RecordingSegment, egress_info: dict) -> None:
         None,
     )
 
-    recording.duration_seconds = int(total_duration)
+    recording.duration_seconds = int(round(total_duration))
     recording.size_bytes = total_size
     if last_segment and last_segment.file_path:
         recording.file_path = last_segment.file_path
