@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "../../../lib/utils";
 import { Tooltip } from "../../../components/ui/Tooltip";
 import { type Recording } from "../api/recordings.api";
+import RecordingThumbnail from "./RecordingThumbnail";
 
 interface RecordingCardProps {
   recording: Recording;
@@ -64,8 +65,15 @@ export default function RecordingCard({
         "hover:border-[var(--bh)] cursor-pointer transition-colors",
       )}
     >
-      <div className="aspect-video bg-black flex items-center justify-center text-3xl text-[var(--t3)]">
-        🎬
+      <div className="relative">
+        <RecordingThumbnail
+          token={recording.public_token}
+          durationSeconds={recording.duration_seconds}
+          className="aspect-video bg-black overflow-hidden"
+        />
+        <span className="absolute bottom-1.5 end-1.5 text-[10px] font-mono text-white bg-black/70 backdrop-blur-sm px-1.5 py-0.5 rounded force-ltr">
+          {formatDuration(recording.duration_seconds, t)}
+        </span>
       </div>
       <div className="p-3 flex flex-col gap-2">
         <div className="flex items-start justify-between gap-2">

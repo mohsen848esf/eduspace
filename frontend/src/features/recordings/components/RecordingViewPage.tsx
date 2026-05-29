@@ -7,6 +7,7 @@ import { Tooltip } from "../../../components/ui/Tooltip";
 import { Icons } from "../../../lib/constants/icons";
 import recordingsApi, { type Recording } from "../api/recordings.api";
 import RecordingPlayer from "./RecordingPlayer";
+import { useAccessGuard } from "../hooks/useAccessGuard";
 
 function formatTimecode(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
@@ -19,6 +20,10 @@ function formatTimecode(seconds: number): string {
  * Plain watch page for a recording someone else shared with the user.
  * Owners are bounced to the editor route since that's where they spend
  * their time on a recording.
+ *
+ * Polls detail() periodically: if the host unpublishes / removes the
+ * viewer / soft-deletes the recording, we tear the player down and
+ * route back to /recordings so the viewer can't keep watching the Blob.
  */
 export default function RecordingViewPage() {
   const { t } = useTranslation("recordings");
@@ -53,6 +58,19 @@ export default function RecordingViewPage() {
     };
   }, [token, navigate, t]);
 
+  // While the player is up, periodically re-check that the viewer still
+  // has access. If the host unpublishes mid-watch, we kick them out.
+  const { revoked } = useAccessGuard({
+    enabled: !!recording && !recording.is_owner,
+    token: recording?.public_token ?? null,
+  });
+
+  useEffect(() => {
+    if (!revoked) return;
+    toast(t("watch.accessRevoked"), { icon: "🔒" });
+    navigate("/recordings", { replace: true });
+  }, [revoked, navigate, t]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--s0)]">
@@ -60,7 +78,7 @@ export default function RecordingViewPage() {
       </div>
     );
   }
-  if (!recording) return null;
+  if (!recording || revoked) return null;
 
   return (
     <div className="min-h-screen bg-[var(--s0)] text-[var(--t1)]">

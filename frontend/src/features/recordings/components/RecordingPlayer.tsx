@@ -118,6 +118,9 @@ export default function RecordingPlayer({
       controls={controls}
       autoPlay={autoPlay}
       playsInline
+      controlsList="nodownload noplaybackrate"
+      disablePictureInPicture
+      onContextMenu={(e) => e.preventDefault()}
     />
   );
 }

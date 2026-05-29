@@ -55,6 +55,9 @@
     "confirm": "Stop & leave",
     "cancel": "Stay in call"
   },
+  "watch": {
+    "accessRevoked": "The host has stopped sharing this recording."
+  },
   "editor": {
     "title": "Edit recording",
     "back": "Back to recordings",
