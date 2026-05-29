@@ -11,6 +11,7 @@ urlpatterns = [
     path('<str:room_code>/invite/', views.invite_to_room, name='invite_to_room'),
     path('<str:room_code>/kick/', views.kick_participant, name='kick_participant'),
     path('<str:room_code>/grant-screen-share/', views.grant_screen_share, name='grant_screen_share'),
+    path('<str:room_code>/participants-history/', views.room_participants_history, name='room_participants_history'),
 
     # --- Recording control (host only, except status which is participant-level) ---
     path('<str:room_code>/recording/start/', recording_views.start_recording, name='recording_start'),

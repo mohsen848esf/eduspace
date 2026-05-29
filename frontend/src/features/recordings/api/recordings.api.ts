@@ -19,6 +19,7 @@ export interface Recording {
   started_at: string;
   completed_at: string | null;
   is_published: boolean;
+  is_link_shared?: boolean;
   segment_count: number;
   // present in detail / list responses
   room_code?: string;
@@ -108,9 +109,16 @@ const recordingsApi = {
     return res.data;
   },
 
-  publish: async (token: string, userIds: number[]): Promise<Recording> => {
+  publish: async (
+    token: string,
+    userIds: number[],
+    opts: { isLinkShared?: boolean } = {},
+  ): Promise<Recording> => {
     const res = await client.post(`/recordings/${token}/publish/`, {
       user_ids: userIds,
+      ...(opts.isLinkShared !== undefined
+        ? { is_link_shared: opts.isLinkShared }
+        : {}),
     });
     return res.data;
   },
@@ -125,6 +133,15 @@ const recordingsApi = {
   // We hand the URL to RecordingPlayer.tsx which wires fetch + Blob URL.
   streamUrl: (token: string) =>
     `${client.defaults.baseURL}/recordings/${token}/stream/`,
+
+  // Public-facing watch URL we copy into the user's clipboard when the
+  // owner enables link-sharing on a recording.
+  watchUrl: (token: string) =>
+    `${window.location.origin}/recordings/${token}`,
 };
 
 export default recordingsApi;
+
+// Convenience: also exposed as a named function so tests don't need
+// the default-export indirection.
+export const recordingsApi_ = recordingsApi;

@@ -107,6 +107,7 @@ def _serialize(recording: Recording, *, detail: bool = False) -> dict:
             recording.completed_at.isoformat() if recording.completed_at else None
         ),
         'is_published': recording.is_published,
+        'is_link_shared': recording.is_link_shared,
         'segment_count': recording.segments.count(),
     }
     if detail:
@@ -777,6 +778,13 @@ def publish_recording(request, token: str):
     except (TypeError, ValueError):
         return Response({'error': 'user_ids must contain integers'}, status=http.HTTP_400_BAD_REQUEST)
 
+    # Optional shareable-link toggle (defaults to keeping current value).
+    raw_link = request.data.get('is_link_shared')
+    if raw_link is None:
+        link_shared = rec.is_link_shared
+    else:
+        link_shared = bool(raw_link)
+
     # Resolve to real user rows; silently drop any that don't exist or are the
     # owner themselves (they always have access).
     users = list(
@@ -786,7 +794,8 @@ def publish_recording(request, token: str):
     with transaction.atomic():
         rec.is_published = True
         rec.published_at = timezone.now()
-        rec.save(update_fields=['is_published', 'published_at'])
+        rec.is_link_shared = link_shared
+        rec.save(update_fields=['is_published', 'published_at', 'is_link_shared'])
         rec.visible_to.set(users)
 
     _send_publish_notifications(rec, [u.id for u in users])
@@ -821,7 +830,8 @@ def unpublish_recording(request, token: str):
     with transaction.atomic():
         rec.is_published = False
         rec.published_at = None
-        rec.save(update_fields=['is_published', 'published_at'])
+        rec.is_link_shared = False
+        rec.save(update_fields=['is_published', 'published_at', 'is_link_shared'])
         rec.visible_to.clear()
 
     logger.info('recording unpublished token=%s', rec.public_token)

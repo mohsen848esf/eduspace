@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -15,10 +15,12 @@ import RoomSidebar from "./RoomSidebar";
 import RoomControls from "./RoomControls";
 import PreJoinScreen, { type PreJoinSettings } from "./prejoin/PreJoinScreen";
 import Spinner from "../../../components/ui/Spinner";
+import ConfirmModal from "../../../components/ui/ConfirmModal";
 import RoomTopbar from "./RoomTopbar";
 import { useRoomDisconnect } from "../hooks/useRoomDisconnect";
 import { useBackgroundStore } from "../store/backgroundStore";
 import { useBackgroundBlur } from "../hooks/useBackgroundBlur";
+import { useActiveRecordingStore } from "../../recordings/store/activeRecordingStore";
 
 type LayoutMode = "grid" | "spotlight" | "sidebar";
 
@@ -27,6 +29,7 @@ function RoomContent({
 }: {
   preJoinSettings: PreJoinSettings | null;
 }) {
+  const { t } = useTranslation("recordings");
   const controls = useRoomControls(
     preJoinSettings?.camEnabled ?? true,
     preJoinSettings?.micEnabled ?? true,
@@ -37,6 +40,27 @@ function RoomContent({
   const { disconnect } = useRoomDisconnect();
   const { roomCode } = useRoomStore();
   const { changeBackground } = useBackgroundBlur();
+  const inFlightToken = useActiveRecordingStore((s) => s.inFlightToken);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
+
+  const handleLeaveRequest = useCallback(() => {
+    if (inFlightToken) {
+      setShowLeaveConfirm(true);
+    } else {
+      disconnect();
+    }
+  }, [disconnect, inFlightToken]);
+
+  const handleLeaveConfirm = useCallback(async () => {
+    setIsLeaving(true);
+    try {
+      await disconnect({ stopRecordingFirst: true });
+    } finally {
+      setIsLeaving(false);
+      setShowLeaveConfirm(false);
+    }
+  }, [disconnect]);
 
   useEffect(() => {
     if (setupDone.current) return;
@@ -110,7 +134,19 @@ function RoomContent({
         onToggleSettings={controls.toggleSettings}
         onTogglePushToTalk={controls.togglePushToTalk}
         onLayoutChange={setLayout}
-        onLeave={disconnect}
+        onLeave={handleLeaveRequest}
+      />
+      <ConfirmModal
+        open={showLeaveConfirm}
+        onOpenChange={setShowLeaveConfirm}
+        title={t("leaveModal.title")}
+        description={t("leaveModal.description")}
+        confirmLabel={t("leaveModal.confirm")}
+        cancelLabel={t("leaveModal.cancel")}
+        confirmVariant="danger"
+        isLoading={isLeaving}
+        blocking
+        onConfirm={handleLeaveConfirm}
       />
     </div>
   );
@@ -146,7 +182,7 @@ export default function RoomPage() {
         <span className="text-4xl">⚠️</span>
         <p className="text-[var(--red)] text-sm">{error}</p>
         <button
-          onClick={leaveRoom}
+          onClick={() => leaveRoom()}
           className="text-[var(--brand-text)] hover:underline text-sm bg-transparent border-none cursor-pointer"
         >
           ← {t("common:actions.back")}

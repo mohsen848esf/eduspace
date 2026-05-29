@@ -160,6 +160,48 @@ def get_room(request, room_code):
     })
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def room_participants_history(request, room_code):
+    """
+    Return everyone who ever joined this room (active or left), so the
+    host can target them when publishing a recording. Host-only.
+    """
+    try:
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if room.host_id != request.user.id and not request.user.is_superuser:
+        return Response(
+            {'error': 'Only the host can view the full participant history'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    rows = (
+        room.participants
+        .select_related('user')
+        .order_by('joined_at')
+    )
+    seen = set()
+    items = []
+    for row in rows:
+        if row.user_id == room.host_id:
+            continue  # host is implicit
+        if row.user_id in seen:
+            continue
+        seen.add(row.user_id)
+        items.append({
+            'id': row.user_id,
+            'username': row.user.username,
+            'full_name': row.user.full_name or row.user.username,
+            'is_active': row.is_active,
+            'joined_at': row.joined_at.isoformat(),
+            'left_at': row.left_at.isoformat() if row.left_at else None,
+        })
+    return Response({'count': len(items), 'results': items})
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def invite_to_room(request, room_code):

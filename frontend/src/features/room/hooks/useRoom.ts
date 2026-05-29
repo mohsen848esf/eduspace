@@ -59,42 +59,45 @@ export function useRoom() {
     [navigate, setRoom, t],
   );
 
-  const leaveRoom = useCallback(async () => {
-    const { roomCode } = useRoomStore.getState();
+  const leaveRoom = useCallback(
+    async ({ redirectTo }: { redirectTo?: string } = {}) => {
+      const { roomCode } = useRoomStore.getState();
 
-    // Stop all media devices
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter((d) => d.kind === "videoinput");
-      if (videoDevices.length > 0) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
-        stream.getTracks().forEach((track) => {
-          track.stop();
-          track.enabled = false;
-        });
-      }
-    } catch {
-      /* swallow */
-    }
-
-    // Reset background
-    useBackgroundStore.getState().setBackground("none");
-
-    // Leave room on backend
-    if (roomCode) {
+      // Stop all media devices
       try {
-        await roomApi.leave(roomCode);
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter((d) => d.kind === "videoinput");
+        if (videoDevices.length > 0) {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true,
+          });
+          stream.getTracks().forEach((track) => {
+            track.stop();
+            track.enabled = false;
+          });
+        }
       } catch {
         /* swallow */
       }
-    }
 
-    clearRoom();
-    navigate("/dashboard");
-  }, [navigate, clearRoom]);
+      // Reset background
+      useBackgroundStore.getState().setBackground("none");
+
+      // Leave room on backend
+      if (roomCode) {
+        try {
+          await roomApi.leave(roomCode);
+        } catch {
+          /* swallow */
+        }
+      }
+
+      clearRoom();
+      navigate(redirectTo ?? "/dashboard");
+    },
+    [navigate, clearRoom],
+  );
 
   const clearError = useCallback(() => setError(null), []);
 

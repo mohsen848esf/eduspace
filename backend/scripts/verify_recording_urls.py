@@ -38,6 +38,9 @@ CASES = [
     ('recording_finalize', {'token': 'AbC_123-xyz'}, '/api/recordings/AbC_123-xyz/finalize/'),
     ('recording_publish', {'token': 'AbC_123-xyz'}, '/api/recordings/AbC_123-xyz/publish/'),
     ('recording_unpublish', {'token': 'AbC_123-xyz'}, '/api/recordings/AbC_123-xyz/unpublish/'),
+
+    # Room participants history
+    ('room_participants_history', {'room_code': 'ABC123'}, '/api/rooms/ABC123/participants-history/'),
 ]
 
 

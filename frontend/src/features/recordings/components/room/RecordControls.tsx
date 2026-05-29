@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Tooltip } from "../../../../components/ui/Tooltip";
 import { cn } from "../../../../lib/utils";
@@ -28,19 +27,45 @@ function formatElapsed(secondsTotal: number): string {
 }
 
 /**
- * Wall-clock elapsed timer. We don't trust the parent to keep this state
- * because the recording status only moves on poll boundaries.
+ * Pause-aware elapsed timer.
+ *
+ * Active states: ticks once per second, anchored to `activeSince`.
+ * Paused: returns the last value seen before pause and stops ticking.
+ *
+ * The simple `Date.now() - started_at` approach was wrong because it
+ * treats the wall clock as the source of truth, so a paused recording
+ * appeared to keep growing.
  */
-function useElapsed(activeSince: string | null) {
+function useElapsed(
+  activeSince: string | null,
+  isActiveTicking: boolean,
+): number {
   const [now, setNow] = useState(() => Date.now());
+  const frozen = useRef<number | null>(null);
+
   useEffect(() => {
-    if (!activeSince) return;
+    if (!isActiveTicking) {
+      // Freeze whatever we last computed.
+      if (activeSince && frozen.current === null) {
+        frozen.current = Math.max(
+          0,
+          Math.floor((now - new Date(activeSince).getTime()) / 1000),
+        );
+      }
+      return;
+    }
+    // Resuming: clear the freeze and start ticking again.
+    frozen.current = null;
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
-  }, [activeSince]);
+    // We deliberately don't depend on `now` so the interval isn't
+    // recreated every tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSince, isActiveTicking]);
+
   if (!activeSince) return 0;
-  const startedMs = new Date(activeSince).getTime();
-  return Math.floor((now - startedMs) / 1000);
+  if (frozen.current !== null) return frozen.current;
+  return Math.floor((now - new Date(activeSince).getTime()) / 1000);
 }
 
 export default function RecordControls({
@@ -54,27 +79,8 @@ export default function RecordControls({
   onResume,
 }: RecordControlsProps) {
   const { t } = useTranslation("recordings");
-  const navigate = useNavigate();
   const [showQuality, setShowQuality] = useState(false);
   const [quality, setQuality] = useState<RecordingQuality>("720p");
-  const lastTokenRef = useRef<string | null>(null);
-
-  // When a recording finishes (transitions away from active), navigate the
-  // host straight to the editor as a "stop & edit" UX.
-  useEffect(() => {
-    const recording = status.recording;
-    if (!recording) {
-      lastTokenRef.current = null;
-      return;
-    }
-    if (
-      recording.status === "completed" &&
-      recording.public_token !== lastTokenRef.current
-    ) {
-      lastTokenRef.current = recording.public_token;
-      navigate(`/recordings/${recording.public_token}/edit`);
-    }
-  }, [status.recording, navigate]);
 
   if (!isHost || !roomCode) return null;
 
@@ -92,8 +98,14 @@ export default function RecordControls({
   const isPaused = recording?.status === "paused";
   const isProcessing = recording?.status === "processing";
 
+  // Tick only while genuinely capturing frames, not during pause / processing.
+  const isTicking =
+    isActive &&
+    (recording.status === "starting" || recording.status === "recording");
+
   const elapsed = useElapsed(
     isActive && recording ? recording.started_at : null,
+    Boolean(isTicking),
   );
 
   if (isIdle) {
@@ -221,7 +233,7 @@ export default function RecordControls({
       )}
 
       {!isProcessing && (
-        <Tooltip content={t("controls.stopAndEdit")}>
+        <Tooltip content={t("controls.stop")}>
           <button
             onClick={() => onStop()}
             disabled={isMutating}

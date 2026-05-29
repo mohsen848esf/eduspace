@@ -6,6 +6,7 @@ import recordingsApi, {
   type RecordingQuality,
   type RoomRecordingStatus,
 } from "../api/recordings.api";
+import { useActiveRecordingStore } from "../store/activeRecordingStore";
 
 const POLL_MS = 2500;
 
@@ -21,6 +22,12 @@ interface UseRoomRecordingOptions {
  *
  * Polling is gated by `isHost` so participants never hit the endpoint when the
  * server would 403 them anyway.
+ *
+ * Side effect: keeps the activeRecordingStore in sync. When a recording
+ * finishes (transitions to completed/failed), its token is moved from
+ * `inFlightToken` to `pendingEditToken` so the disconnect flow can take
+ * the host to the editor after they leave the call — instead of yanking
+ * them out of an active conversation.
  */
 export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) {
   const { t } = useTranslation("recordings");
@@ -30,6 +37,35 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
   });
   const [isMutating, setIsMutating] = useState(false);
   const cancelled = useRef(false);
+  const lastTokenRef = useRef<string | null>(null);
+  const setInFlight = useActiveRecordingStore((s) => s.setInFlight);
+  const setPendingEdit = useActiveRecordingStore((s) => s.setPendingEdit);
+
+  // Reflect status changes into the cross-component store.
+  useEffect(() => {
+    if (!isHost) return;
+    const rec = status.recording;
+    if (!rec) {
+      setInFlight(null);
+      return;
+    }
+    if (
+      rec.status === "starting" ||
+      rec.status === "recording" ||
+      rec.status === "paused" ||
+      rec.status === "processing"
+    ) {
+      setInFlight(rec.public_token);
+    } else if (rec.status === "completed" || rec.status === "failed") {
+      // Only flag for-edit on the moment of transition (token-newness check)
+      // so revisits / re-polls don't keep re-triggering.
+      if (rec.public_token !== lastTokenRef.current) {
+        lastTokenRef.current = rec.public_token;
+        setInFlight(null);
+        if (rec.status === "completed") setPendingEdit(rec.public_token);
+      }
+    }
+  }, [status.recording, isHost, setInFlight, setPendingEdit]);
 
   const refresh = useCallback(async () => {
     if (!roomCode || !isHost) return;
@@ -37,7 +73,7 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
       const next = await recordingsApi.roomStatus(roomCode);
       if (!cancelled.current) setStatus(next);
     } catch {
-      // 403 (we're not a participant anymore) or 404 (room gone). Don't toast.
+      // 403 / 404 — don't toast.
     }
   }, [roomCode, isHost]);
 
@@ -65,8 +101,6 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
       setIsMutating(true);
       try {
         const next = await fn();
-        // Mutation's response is the source of truth for the UI; we still
-        // poll a moment later to pick up webhook-driven status flips.
         setStatus({ status: next.status, recording: next });
         window.setTimeout(refresh, 500);
         return next;

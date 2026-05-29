@@ -16,7 +16,9 @@
     "failedBadge": "Failed",
     "watch": "Watch",
     "edit": "Edit",
+    "share": "Share",
     "delete": "Delete",
+    "deleteTitle": "Delete recording?",
     "deleteConfirm": "Delete this recording? This cannot be undone."
   },
   "filters": {
@@ -47,6 +49,12 @@
     "errorResume": "Could not resume recording",
     "tooEarly": "Recording is still starting; try again in a moment"
   },
+  "leaveModal": {
+    "title": "Stop the recording and leave?",
+    "description": "This call is being recorded. If you leave now, the recording will stop and the file will be saved to your library.",
+    "confirm": "Stop & leave",
+    "cancel": "Stay in call"
+  },
   "editor": {
     "title": "Edit recording",
     "back": "Back to recordings",
@@ -75,7 +83,15 @@
     "selectedCount_one": "{{count}} person selected",
     "selectedCount_other": "{{count}} people selected",
     "publish": "Publish",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "callParticipants": "People in this call",
+    "selectAll": "Select all",
+    "clearAll": "Clear",
+    "linkShareTitle": "Shareable link",
+    "linkShareDesc": "Anyone signed in with this link can watch.",
+    "linkShareCopy": "Copy link",
+    "linkShareCopied": "Link copied",
+    "leftEarly": "left early"
   },
   "notification": {
     "publishedTitle": "🎬 {{from}} shared a recording",

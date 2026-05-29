@@ -6,7 +6,8 @@ import { type Recording } from "../api/recordings.api";
 
 interface RecordingCardProps {
   recording: Recording;
-  onDelete?: (token: string) => void;
+  onDelete?: (recording: Recording) => void;
+  onShare?: (recording: Recording) => void;
 }
 
 function formatDuration(seconds: number, t: (k: string, v?: any) => string) {
@@ -16,7 +17,11 @@ function formatDuration(seconds: number, t: (k: string, v?: any) => string) {
   return t("card.duration", { minutes: m, seconds: s });
 }
 
-export default function RecordingCard({ recording, onDelete }: RecordingCardProps) {
+export default function RecordingCard({
+  recording,
+  onDelete,
+  onShare,
+}: RecordingCardProps) {
   const { t } = useTranslation("recordings");
   const navigate = useNavigate();
 
@@ -39,12 +44,14 @@ export default function RecordingCard({ recording, onDelete }: RecordingCardProp
     else navigate(`/recordings/${recording.public_token}`);
   };
 
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onShare?.(recording);
+  };
+
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!onDelete) return;
-    if (window.confirm(t("card.deleteConfirm"))) {
-      onDelete(recording.public_token);
-    }
+    onDelete?.(recording);
   };
 
   const startedAt = new Date(recording.started_at).toLocaleString();
@@ -100,6 +107,16 @@ export default function RecordingCard({ recording, onDelete }: RecordingCardProp
             </button>
             {isOwner && (
               <>
+                {onShare && (
+                  <Tooltip content={t("card.share")}>
+                    <button
+                      onClick={handleShare}
+                      className="w-7 h-7 rounded-md border-none cursor-pointer bg-[var(--s3)] text-[var(--t2)] hover:text-[var(--brand-text)] hover:bg-[var(--brand-soft)] flex items-center justify-center text-xs"
+                    >
+                      ↗
+                    </button>
+                  </Tooltip>
+                )}
                 <Tooltip content={t("card.edit")}>
                   <button
                     onClick={(e) => {

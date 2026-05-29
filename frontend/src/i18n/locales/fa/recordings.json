@@ -16,7 +16,9 @@
     "failedBadge": "ناموفق",
     "watch": "تماشا",
     "edit": "ویرایش",
+    "share": "اشتراک",
     "delete": "حذف",
+    "deleteTitle": "حذف ضبط؟",
     "deleteConfirm": "این ضبط حذف شود؟ این عمل قابل بازگشت نیست."
   },
   "filters": {
@@ -47,6 +49,12 @@
     "errorResume": "ادامه ضبط با خطا مواجه شد",
     "tooEarly": "ضبط هنوز در حال شروع است؛ چند لحظه دیگر امتحان کنید"
   },
+  "leaveModal": {
+    "title": "ضبط متوقف شود و خارج می‌شوید؟",
+    "description": "این تماس در حال ضبط است. اگر اکنون خارج شوید، ضبط پایان می‌یابد و فایل در کتابخانه‌ی شما ذخیره می‌شود.",
+    "confirm": "پایان و خروج",
+    "cancel": "ماندن در تماس"
+  },
   "editor": {
     "title": "ویرایش ضبط",
     "back": "بازگشت به ضبط‌ها",
@@ -75,7 +83,15 @@
     "selectedCount_one": "{{count}} نفر انتخاب شده",
     "selectedCount_other": "{{count}} نفر انتخاب شده",
     "publish": "انتشار",
-    "cancel": "لغو"
+    "cancel": "لغو",
+    "callParticipants": "افراد حاضر در این تماس",
+    "selectAll": "انتخاب همه",
+    "clearAll": "پاک کردن",
+    "linkShareTitle": "لینک قابل اشتراک",
+    "linkShareDesc": "هر فردی که با حساب وارد شود و این لینک را داشته باشد می‌تواند تماشا کند.",
+    "linkShareCopy": "کپی لینک",
+    "linkShareCopied": "لینک کپی شد",
+    "leftEarly": "زودتر خارج شده"
   },
   "notification": {
     "publishedTitle": "🎬 {{from}} ضبطی را به اشتراک گذاشت",

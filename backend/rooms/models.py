@@ -139,6 +139,10 @@ class Recording(models.Model):
         help_text='Participants the host shared the published recording with.',
     )
 
+    # If True, any authenticated user with the URL can watch.
+    # The owner sets this with the "shareable link" toggle in publish UI.
+    is_link_shared = models.BooleanField(default=False)
+
     # Soft delete: hide from listings but keep the row for audit.
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
@@ -173,6 +177,9 @@ class Recording(models.Model):
             return True
         if not self.is_published or self.is_deleted:
             return False
+        if self.is_link_shared and user.is_authenticated:
+            return True
+        return self.visible_to.filter(pk=user.pk).exists()
         return self.visible_to.filter(pk=user.pk).exists()
 
 

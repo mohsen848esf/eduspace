@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import Button from "../../../components/ui/Button";
 import Spinner from "../../../components/ui/Spinner";
+import ConfirmModal from "../../../components/ui/ConfirmModal";
 import { Tooltip } from "../../../components/ui/Tooltip";
 import { Icons } from "../../../lib/constants/icons";
 import { cn } from "../../../lib/utils";
@@ -30,6 +31,8 @@ export default function RecordingEditPage() {
   const [previewKey, setPreviewKey] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load
   useEffect(() => {
@@ -98,19 +101,30 @@ export default function RecordingEditPage() {
 
   const handleDelete = async () => {
     if (!recording) return;
-    if (!window.confirm(t("card.deleteConfirm"))) return;
+    setIsDeleting(true);
     try {
       await recordingsApi.remove(recording.public_token);
       navigate("/recordings");
     } catch {
       toast.error(t("editor.saveError"));
+      setIsDeleting(false);
     }
   };
 
-  const handlePublish = async (userIds: number[]) => {
+  const handlePublish = async ({
+    userIds,
+    isLinkShared,
+  }: {
+    userIds: number[];
+    isLinkShared: boolean;
+  }) => {
     if (!recording) return;
     try {
-      const next = await recordingsApi.publish(recording.public_token, userIds);
+      const next = await recordingsApi.publish(
+        recording.public_token,
+        userIds,
+        { isLinkShared },
+      );
       setRecording(next);
       toast.success(t("editor.published"));
     } catch {
@@ -164,7 +178,7 @@ export default function RecordingEditPage() {
               {t("editor.publish")}
             </Button>
           )}
-          <Button variant="danger" size="sm" onClick={handleDelete}>
+          <Button variant="danger" size="sm" onClick={() => setShowDelete(true)}>
             {t("editor.delete")}
           </Button>
         </div>
@@ -235,7 +249,8 @@ export default function RecordingEditPage() {
 
       <PublishModal
         open={showPublish}
-        onClose={() => setShowPublish(false)}
+        recordingToken={recording.public_token}
+        roomCode={recording.room_code}
         initialSelected={
           recording.shared_with?.map((s) => ({
             id: s.id,
@@ -243,7 +258,22 @@ export default function RecordingEditPage() {
             full_name: s.full_name,
           })) ?? []
         }
+        initialLinkShared={recording.is_link_shared ?? false}
+        onClose={() => setShowPublish(false)}
         onPublish={handlePublish}
+      />
+      <ConfirmModal
+        open={showDelete}
+        onOpenChange={(v) => {
+          if (!v) setShowDelete(false);
+        }}
+        title={t("card.deleteTitle")}
+        description={t("card.deleteConfirm")}
+        confirmLabel={t("card.delete")}
+        confirmVariant="danger"
+        isLoading={isDeleting}
+        blocking
+        onConfirm={handleDelete}
       />
     </div>
   );

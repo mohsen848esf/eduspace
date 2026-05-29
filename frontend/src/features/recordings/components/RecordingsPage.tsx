@@ -3,8 +3,10 @@ import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import AppShell from "../../../components/layout/AppShell";
 import Spinner from "../../../components/ui/Spinner";
+import ConfirmModal from "../../../components/ui/ConfirmModal";
 import RecordingCard from "./RecordingCard";
-import recordingsApi from "../api/recordings.api";
+import PublishModal from "./PublishModal";
+import recordingsApi, { type Recording } from "../api/recordings.api";
 import { useRecordings, type RecordingsFilter } from "../hooks/useRecordings";
 import { cn } from "../../../lib/utils";
 
@@ -21,12 +23,40 @@ export default function RecordingsPage() {
   const [activeNav, setActiveNav] = useState("recordings");
   const { items, isLoading, filter, setFilter, refresh } = useRecordings("all");
 
-  const handleDelete = async (token: string) => {
+  const [shareTarget, setShareTarget] = useState<Recording | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Recording | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
     try {
-      await recordingsApi.remove(token);
+      await recordingsApi.remove(deleteTarget.public_token);
+      setDeleteTarget(null);
       refresh();
     } catch {
       toast.error(t("editor.saveError"));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleShare = async ({
+    userIds,
+    isLinkShared,
+  }: {
+    userIds: number[];
+    isLinkShared: boolean;
+  }) => {
+    if (!shareTarget) return;
+    try {
+      await recordingsApi.publish(shareTarget.public_token, userIds, {
+        isLinkShared,
+      });
+      toast.success(t("editor.published"));
+      refresh();
+    } catch {
+      toast.error(t("editor.publishError"));
     }
   };
 
@@ -77,12 +107,47 @@ export default function RecordingsPage() {
               <RecordingCard
                 key={rec.public_token}
                 recording={rec}
-                onDelete={rec.is_owner ? handleDelete : undefined}
+                onShare={rec.is_owner ? setShareTarget : undefined}
+                onDelete={rec.is_owner ? setDeleteTarget : undefined}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Share modal */}
+      {shareTarget && (
+        <PublishModal
+          open={!!shareTarget}
+          recordingToken={shareTarget.public_token}
+          roomCode={shareTarget.room_code}
+          initialSelected={
+            shareTarget.shared_with?.map((s) => ({
+              id: s.id,
+              username: s.username,
+              full_name: s.full_name,
+            })) ?? []
+          }
+          initialLinkShared={shareTarget.is_link_shared ?? false}
+          onClose={() => setShareTarget(null)}
+          onPublish={handleShare}
+        />
+      )}
+
+      {/* Delete confirmation */}
+      <ConfirmModal
+        open={!!deleteTarget}
+        onOpenChange={(v) => {
+          if (!v) setDeleteTarget(null);
+        }}
+        title={t("card.deleteTitle")}
+        description={t("card.deleteConfirm")}
+        confirmLabel={t("card.delete")}
+        confirmVariant="danger"
+        isLoading={isDeleting}
+        blocking
+        onConfirm={confirmDelete}
+      />
     </AppShell>
   );
 }
