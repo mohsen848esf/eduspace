@@ -21,3 +21,13 @@ backend/media/recordings/*
 # OS / editor noise
 **/.DS_Store
 **/Thumbs.db
+
+# Local tooling caches and per-user editor metadata
+.??*/specs/
+.??*/steering/
+.??*/hooks/
+.??*/agents/
+
+# Per-developer local overrides (editor preferences, machine-specific bits)
+.editors.local
+*.local
