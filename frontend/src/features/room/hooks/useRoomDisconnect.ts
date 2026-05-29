@@ -38,16 +38,30 @@ export function useRoomDisconnect() {
     async ({ stopRecordingFirst = false }: DisconnectOptions = {}) => {
       const recordingStore = useActiveRecordingStore.getState();
 
+      // Capture the in-flight token NOW (before we tear anything down).
+      // We promote it to pendingEdit so the post-disconnect redirect
+      // works even if we never see the webhook-driven `completed`
+      // status during the small window between stop and unmount.
+      const stoppingToken = recordingStore.inFlightToken;
+
       // 1. If the host wants to stop the recording on the way out, fire
       //    the stop API before tearing down the LiveKit connection. The
       //    egress worker can then finalize cleanly via webhook.
-      if (stopRecordingFirst && roomCode && recordingStore.inFlightToken) {
+      if (stopRecordingFirst && roomCode && stoppingToken) {
         try {
           await recordingsApi.stop(roomCode);
         } catch {
           // If stop fails (e.g. server hiccup) we still proceed with the
           // leave: LiveKit's egress will end naturally on disconnect.
         }
+      }
+
+      // Promote any active recording token to pendingEdit so the post-
+      // disconnect redirect lands on the editor. The editor route is
+      // resilient to a still-processing recording.
+      if (stoppingToken && !recordingStore.pendingEditToken) {
+        recordingStore.setPendingEdit(stoppingToken);
+        recordingStore.setInFlight(null);
       }
 
       try {

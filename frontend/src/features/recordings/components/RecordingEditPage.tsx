@@ -34,14 +34,15 @@ export default function RecordingEditPage() {
   const [showDelete, setShowDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Load
+  // Load + poll while processing.
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
-    setIsLoading(true);
-    recordingsApi
-      .detail(token)
-      .then((data) => {
+    let pollTimer: number | null = null;
+
+    const fetchOnce = async () => {
+      try {
+        const data = await recordingsApi.detail(token);
         if (cancelled) return;
         setRecording(data);
         setTrimStart(data.trim_start_seconds ?? 0);
@@ -50,16 +51,32 @@ export default function RecordingEditPage() {
             ? data.trim_end_seconds
             : data.duration_seconds,
         );
-      })
-      .catch(() => {
-        toast.error(t("editor.notReady"));
-        navigate("/recordings");
-      })
-      .finally(() => {
+        // Keep polling while the recording is still being captured /
+        // muxed; stop once it lands in a terminal state.
+        const stillWorking =
+          data.status === "starting" ||
+          data.status === "recording" ||
+          data.status === "paused" ||
+          data.status === "processing";
+        if (stillWorking) {
+          pollTimer = window.setTimeout(fetchOnce, 2_000);
+        }
+      } catch {
+        if (!cancelled) {
+          toast.error(t("editor.notReady"));
+          navigate("/recordings");
+        }
+      } finally {
         if (!cancelled) setIsLoading(false);
-      });
+      }
+    };
+
+    setIsLoading(true);
+    fetchOnce();
+
     return () => {
       cancelled = true;
+      if (pollTimer != null) window.clearTimeout(pollTimer);
     };
   }, [token, navigate, t]);
 
@@ -68,6 +85,12 @@ export default function RecordingEditPage() {
     () => Math.max(0, trimEnd - trimStart),
     [trimStart, trimEnd],
   );
+  const isStillProcessing =
+    !!recording &&
+    (recording.status === "starting" ||
+      recording.status === "recording" ||
+      recording.status === "paused" ||
+      recording.status === "processing");
 
   const handleSave = async () => {
     if (!recording) return;
@@ -186,13 +209,30 @@ export default function RecordingEditPage() {
 
       {/* Body */}
       <main className="max-w-5xl mx-auto p-5 flex flex-col gap-5">
-        <RecordingPlayer
-          key={previewKey}
-          token={recording.public_token}
-          startSeconds={trimStart}
-        />
+        {isStillProcessing ? (
+          <div className="bg-[var(--s2)] rounded-2xl border border-[var(--b)] aspect-video flex flex-col items-center justify-center gap-3 text-[var(--t3)]">
+            <Spinner size="lg" />
+            <p className="text-sm font-semibold text-[var(--t1)]">
+              {t("editor.processingTitle")}
+            </p>
+            <p className="text-xs text-[var(--t3)] max-w-md text-center px-4">
+              {t("editor.processingHint")}
+            </p>
+          </div>
+        ) : (
+          <RecordingPlayer
+            key={previewKey}
+            token={recording.public_token}
+            startSeconds={trimStart}
+          />
+        )}
 
-        <div className="bg-[var(--s2)] rounded-xl border border-[var(--b)] p-5 flex flex-col gap-4">
+        <div
+          className={cn(
+            "bg-[var(--s2)] rounded-xl border border-[var(--b)] p-5 flex flex-col gap-4",
+            isStillProcessing && "opacity-60 pointer-events-none",
+          )}
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="text-sm font-semibold">{t("editor.title")}</div>
             <div className="flex items-center gap-3 text-[11px] text-[var(--t3)] font-mono force-ltr">

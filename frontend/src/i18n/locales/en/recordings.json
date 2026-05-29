@@ -76,7 +76,9 @@
     "publishError": "Could not publish recording",
     "delete": "Delete recording",
     "loading": "Loading recording...",
-    "notReady": "This recording is still being processed."
+    "notReady": "This recording is still being processed.",
+    "processingTitle": "Saving recording...",
+    "processingHint": "We're finalizing your file. This usually takes a few seconds. The page will refresh automatically when it's ready."
   },
   "publishModal": {
     "title": "Share recording",
