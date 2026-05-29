@@ -1,0 +1,16 @@
+# LiveKit server configuration for the EduSpace dev stack.
+# Keys must match LIVEKIT_API_KEY / LIVEKIT_API_SECRET in backend/.env
+# (and the matching api_key/api_secret used by the egress worker).
+port: 7880
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  use_external_ip: false
+
+keys:
+  devkey: devsecret
+
+redis:
+  address: redis:6379
+
+# Egress worker discovery happens via redis (worker subscribes to job queue).

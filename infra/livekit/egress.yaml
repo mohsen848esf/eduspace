@@ -1,0 +1,17 @@
+# LiveKit Egress worker configuration.
+# Picks up RoomComposite jobs from redis and writes the resulting MP4
+# to the shared volume mounted at /out (-> backend/media/recordings/).
+api_key: devkey
+api_secret: devsecret
+ws_url: ws://livekit:7880
+
+redis:
+  address: redis:6379
+
+# Local file output. The egress container needs write access to /out,
+# which is bind-mounted from backend/media/recordings on the host.
+local_directory: /out
+
+# Limit concurrent recordings on a single worker (dev box).
+cpu_cost:
+  room_composite_cpu_cost: 3

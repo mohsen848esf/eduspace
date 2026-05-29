@@ -1,11 +1,15 @@
+import asyncio
 import random
 import string
+
+from django.conf import settings
 from django.utils import timezone
+from livekit import api
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from livekit import api
+
 from .models import Room, RoomParticipant
 
 
@@ -14,13 +18,16 @@ def generate_room_code():
 
 
 def generate_livekit_token(room_code: str, user, is_host: bool) -> str:
+    """
+    Mint a short-lived LiveKit room token for `user`.
+
+    Identity is the username (unique) so that re-joining the same room
+    cleanly replaces the stale session instead of creating a duplicate.
+    """
     token = api.AccessToken(
-        api_key='devkey',
-        api_secret='devsecret',
+        api_key=settings.LIVEKIT_API_KEY,
+        api_secret=settings.LIVEKIT_API_SECRET,
     )
-    # هر user یه identity ثابت داره — user_id
-    # این باعث میشه اگه دوباره جوین بشه session قبلی replace بشه
-    # راه حل: identity = username که unique هست
     token.with_identity(user.username)
     token.with_name(user.full_name or user.username)
     token.with_grants(api.VideoGrants(
@@ -32,6 +39,8 @@ def generate_livekit_token(room_code: str, user, is_host: bool) -> str:
         room_admin=is_host,
     ))
     return token.to_jwt()
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_room(request):
@@ -39,7 +48,6 @@ def create_room(request):
     while Room.objects.filter(room_code=room_code).exists():
         room_code = generate_room_code()
 
-    # اسم اختیاریه — اگه نداد خالی میمونه
     name = request.data.get('name', '').strip()
 
     room = Room.objects.create(
@@ -62,8 +70,9 @@ def create_room(request):
         'room_code': room.room_code,
         'name': room.name,
         'token': token,
-        'livekit_url': 'ws://localhost:7880',
+        'livekit_url': settings.LIVEKIT_WS_URL,
     }, status=status.HTTP_201_CREATED)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -98,7 +107,7 @@ def join_room(request, room_code):
         'room_code': room.room_code,
         'name': room.name,
         'token': token,
-        'livekit_url': 'ws://localhost:7880',
+        'livekit_url': settings.LIVEKIT_WS_URL,
         'is_host': is_host,
     })
 
@@ -150,6 +159,7 @@ def get_room(request, room_code):
         'is_recorded': room.is_recorded,
     })
 
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def invite_to_room(request, room_code):
@@ -168,12 +178,10 @@ def invite_to_room(request, room_code):
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    # Send real-time notification
+    # Real-time notification through the user's notifications channel group.
     from asgiref.sync import async_to_sync
     from channels.layers import get_channel_layer
     channel_layer = get_channel_layer()
-    print(f'Channel layer: {channel_layer}')
-    print(f'Sending to group: notifications_{invited_user.id}')
     if channel_layer:
         try:
             async_to_sync(channel_layer.group_send)(
@@ -186,21 +194,19 @@ def invite_to_room(request, room_code):
                         'room_name': room.name or room_code,
                         'from': request.user.full_name or request.user.username,
                         'invite_link': f'/room/{room_code}',
-                    }
-                }
+                    },
+                },
             )
-            print(f"Notification sent to user {invited_user.id}")
-        except Exception as e:
-            print(f"Error sending notification: {e}")
+        except Exception:
+            # Notification delivery is best-effort: don't fail the invite API.
             import traceback
             traceback.print_exc()
-    else:
-        print("Channel layer is None!")
 
     return Response({
         'message': f'Invited {invited_user.username}',
         'invite_link': f'/room/{room_code}',
     })
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -219,13 +225,12 @@ def kick_participant(request, room_code):
 
     try:
         from livekit import api as lk_api
-        import asyncio
 
         async def remove():
             lk = lk_api.LiveKitAPI(
-                url='http://localhost:7880',
-                api_key='devkey',
-                api_secret='devsecret',
+                url=settings.LIVEKIT_HOST_URL,
+                api_key=settings.LIVEKIT_API_KEY,
+                api_secret=settings.LIVEKIT_API_SECRET,
             )
             await lk.room.remove_participant(
                 lk_api.RoomParticipantIdentity(
@@ -242,6 +247,7 @@ def kick_participant(request, room_code):
         import traceback
         print('KICK ERROR:', traceback.format_exc())
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

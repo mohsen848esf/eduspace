@@ -107,6 +107,11 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+
+# Media files (user-uploaded + server-generated assets like recordings).
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 SIMPLE_JWT = {
@@ -121,3 +126,40 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
+# ---------------------------------------------------------------------------
+# LiveKit
+# ---------------------------------------------------------------------------
+# Credentials and URLs are loaded from the environment so production deploys
+# can rotate them without code changes. Defaults stay safe for the local
+# dev stack defined in docker-compose.yml.
+LIVEKIT_API_KEY = os.getenv('LIVEKIT_API_KEY', 'devkey')
+LIVEKIT_API_SECRET = os.getenv(
+    'LIVEKIT_API_SECRET',
+    'devsecret',
+)
+LIVEKIT_HOST_URL = os.getenv('LIVEKIT_HOST_URL', 'http://localhost:7880')
+LIVEKIT_WS_URL = os.getenv('LIVEKIT_WS_URL', 'ws://localhost:7880')
+
+# ---------------------------------------------------------------------------
+# Session recording
+# ---------------------------------------------------------------------------
+# Default capture quality. Hosts can override per-session.
+RECORDING_DEFAULT_QUALITY = os.getenv('RECORDING_DEFAULT_QUALITY', '720p')
+
+# Where the egress worker drops finished MP4 files. Stored relative to
+# MEDIA_ROOT so Django's storage helpers can serve them.
+_recording_subdir = os.getenv('RECORDING_OUTPUT_DIR', 'media/recordings')
+# Strip a leading "media/" if present so the path is always relative to MEDIA_ROOT.
+if _recording_subdir.startswith('media/'):
+    _recording_subdir = _recording_subdir[len('media/'):]
+RECORDING_OUTPUT_SUBDIR = _recording_subdir
+RECORDING_OUTPUT_DIR = MEDIA_ROOT / RECORDING_OUTPUT_SUBDIR
+
+# Hard cap so a runaway egress can't fill the disk.
+RECORDING_MAX_DURATION_SECONDS = int(
+    os.getenv('RECORDING_MAX_DURATION_SECONDS', '14400'),
+)
+
+# Make sure the directory exists at startup so Django can serve from it.
+os.makedirs(RECORDING_OUTPUT_DIR, exist_ok=True)
