@@ -74,6 +74,14 @@ export default function RecordingCard({
         <span className="absolute bottom-1.5 end-1.5 text-[10px] font-mono text-white bg-black/70 backdrop-blur-sm px-1.5 py-0.5 rounded force-ltr">
           {formatDuration(recording.duration_seconds, t)}
         </span>
+        {isOwner &&
+          recording.viewer_count !== undefined &&
+          recording.viewer_count > 0 && (
+            <span className="absolute top-1.5 start-1.5 text-[10px] font-semibold text-white bg-black/70 backdrop-blur-sm px-1.5 py-0.5 rounded flex items-center gap-1 force-ltr">
+              <span aria-hidden>👁</span>
+              {t("card.viewerCount", { count: recording.viewer_count })}
+            </span>
+          )}
       </div>
       <div className="p-3 flex flex-col gap-2">
         <div className="flex items-start justify-between gap-2">

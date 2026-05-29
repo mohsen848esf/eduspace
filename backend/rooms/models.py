@@ -211,3 +211,51 @@ class RecordingSegment(models.Model):
     class Meta:
         unique_together = ('recording', 'index')
         ordering = ['index']
+
+
+class RecordingView(models.Model):
+    """
+    Tracks how far each viewer has watched a recording.
+
+    The frontend player heartbeats current playback position every
+    few seconds; we keep both the most recent position (so the player
+    can resume from there next time) and the furthest position seen
+    (so the host's analytics shows the high-water-mark of engagement).
+
+    One row per (recording, user) pair. Owners are excluded because the
+    host already has detailed access via the editor; this table is
+    about *audience* engagement.
+    """
+
+    recording = models.ForeignKey(
+        Recording,
+        on_delete=models.CASCADE,
+        related_name='views',
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='recording_views',
+    )
+
+    # Where the viewer paused / stopped during their last session.
+    last_position_seconds = models.FloatField(default=0)
+    # Furthest point they've reached across all sessions; never decreases.
+    furthest_position_seconds = models.FloatField(default=0)
+    # Number of distinct sessions: incremented when a heartbeat arrives
+    # more than RecordingView.NEW_SESSION_GAP_SECONDS after the last one.
+    view_count = models.PositiveIntegerField(default=0)
+
+    first_watched_at = models.DateTimeField(auto_now_add=True)
+    last_watched_at = models.DateTimeField(auto_now=True)
+
+    NEW_SESSION_GAP_SECONDS = 30 * 60  # 30 minutes
+
+    class Meta:
+        unique_together = ('recording', 'user')
+        indexes = [
+            models.Index(fields=['recording', '-last_watched_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username} -> {self.recording.public_token}'

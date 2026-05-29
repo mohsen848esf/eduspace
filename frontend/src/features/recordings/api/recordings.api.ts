@@ -31,6 +31,23 @@ export interface Recording {
   trim_start_seconds?: number;
   trim_end_seconds?: number | null;
   shared_with?: { id: number; username: string; full_name: string }[];
+  // Resume position for the requesting non-owner viewer (0 if none yet).
+  last_position_seconds?: number;
+  // For owner only: distinct number of non-owner users who have heartbeated.
+  viewer_count?: number;
+}
+
+export interface RecordingViewer {
+  user_id: number;
+  username: string;
+  full_name: string;
+  last_position_seconds: number;
+  furthest_position_seconds: number;
+  view_count: number;
+  first_watched_at: string;
+  last_watched_at: string;
+  /** 0..1 ratio of furthest_position_seconds / duration_seconds. */
+  completion_ratio: number;
 }
 
 export interface RoomRecordingStatus {
@@ -125,6 +142,38 @@ const recordingsApi = {
 
   unpublish: async (token: string): Promise<Recording> => {
     const res = await client.post(`/recordings/${token}/unpublish/`);
+    return res.data;
+  },
+
+  // ── Watch tracking ────────────────────────────────────────────────────
+  /**
+   * Lightweight ping the player fires every few seconds while the user
+   * is watching. Server clamps and stores last/furthest position. Owner
+   * heartbeats are silently dropped (response: { ignored: 'owner' }).
+   */
+  heartbeat: async (
+    token: string,
+    positionSeconds: number,
+  ): Promise<{
+    last_position_seconds?: number;
+    furthest_position_seconds?: number;
+    view_count?: number;
+    ignored?: string;
+  }> => {
+    const res = await client.post(`/recordings/${token}/heartbeat/`, {
+      position_seconds: positionSeconds,
+    });
+    return res.data;
+  },
+
+  /**
+   * Host-only analytics: list every non-owner viewer with their progress,
+   * completion ratio, last-watched timestamp, and session count.
+   */
+  getViews: async (
+    token: string,
+  ): Promise<{ count: number; results: RecordingViewer[] }> => {
+    const res = await client.get(`/recordings/${token}/views/`);
     return res.data;
   },
 

@@ -10,7 +10,16 @@ interface RecordingPlayerProps {
   className?: string;
   controls?: boolean;
   autoPlay?: boolean;
+  /**
+   * When true (non-owner watch page), the player periodically reports
+   * the current playback position back to the server so the host can
+   * see how far each viewer has watched. Owner heartbeats are dropped
+   * server-side, but we skip them here too so we don't spam requests.
+   */
+  trackProgress?: boolean;
 }
+
+const HEARTBEAT_INTERVAL_MS = 5_000;
 
 /**
  * Plays a recording's stream URL while sending the user's JWT.
@@ -22,6 +31,10 @@ interface RecordingPlayerProps {
  *
  * The blob URL is revoked when the component unmounts or the token
  * changes so we don't leak large objects.
+ *
+ * When `trackProgress` is on, the player also sends watch heartbeats
+ * to /recordings/<token>/heartbeat/ at a steady cadence and on
+ * pause/seeked events so a brief watch still registers.
  */
 export default function RecordingPlayer({
   token,
@@ -29,6 +42,7 @@ export default function RecordingPlayer({
   className,
   controls = true,
   autoPlay = false,
+  trackProgress = false,
 }: RecordingPlayerProps) {
   const { t } = useTranslation("recordings");
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -91,6 +105,66 @@ export default function RecordingPlayer({
     if (v.readyState >= 1) apply();
     else v.addEventListener("loadedmetadata", apply, { once: true });
   }, [blobUrl, startSeconds]);
+
+  // Heartbeat reporter for watch tracking (non-owner only). We send a
+  // ping every HEARTBEAT_INTERVAL_MS while playing, and on pause/seeked
+  // so a quick watch still registers. Errors are swallowed so a flaky
+  // network never breaks playback.
+  useEffect(() => {
+    if (!trackProgress || !blobUrl || !videoRef.current) return;
+    const v = videoRef.current;
+    let lastReportedAt = 0;
+    let intervalId: number | null = null;
+
+    const send = (force = false) => {
+      const now = Date.now();
+      if (!force && now - lastReportedAt < HEARTBEAT_INTERVAL_MS - 500) return;
+      lastReportedAt = now;
+      const position = Number.isFinite(v.currentTime) ? v.currentTime : 0;
+      // Fire-and-forget; ignore errors so playback isn't disturbed.
+      recordingsApi.heartbeat(token, position).catch(() => undefined);
+    };
+
+    const onPlay = () => {
+      send(true);
+      if (intervalId == null) {
+        intervalId = window.setInterval(() => send(false), HEARTBEAT_INTERVAL_MS);
+      }
+    };
+    const onPause = () => {
+      if (intervalId != null) {
+        window.clearInterval(intervalId);
+        intervalId = null;
+      }
+      send(true);
+    };
+    const onSeeked = () => send(true);
+    const onEnded = () => {
+      onPause();
+      send(true);
+    };
+
+    v.addEventListener("play", onPlay);
+    v.addEventListener("playing", onPlay);
+    v.addEventListener("pause", onPause);
+    v.addEventListener("seeked", onSeeked);
+    v.addEventListener("ended", onEnded);
+
+    return () => {
+      v.removeEventListener("play", onPlay);
+      v.removeEventListener("playing", onPlay);
+      v.removeEventListener("pause", onPause);
+      v.removeEventListener("seeked", onSeeked);
+      v.removeEventListener("ended", onEnded);
+      if (intervalId != null) {
+        window.clearInterval(intervalId);
+        intervalId = null;
+      }
+      // Final ping so the server captures the position the viewer
+      // reached even if they navigate away mid-playback.
+      send(true);
+    };
+  }, [trackProgress, blobUrl, token]);
 
   if (isLoading) {
     return (
