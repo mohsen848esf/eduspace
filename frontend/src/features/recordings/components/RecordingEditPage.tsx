@@ -11,6 +11,7 @@ import { cn } from "../../../lib/utils";
 import recordingsApi, { type Recording } from "../api/recordings.api";
 import RecordingPlayer from "./RecordingPlayer";
 import PublishModal from "./PublishModal";
+import RecordingViewersPanel from "./RecordingViewersPanel";
 
 function formatTimecode(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
@@ -31,6 +32,7 @@ export default function RecordingEditPage() {
   const [previewKey, setPreviewKey] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
+  const [showViewers, setShowViewers] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -201,6 +203,15 @@ export default function RecordingEditPage() {
               {t("editor.publish")}
             </Button>
           )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowViewers(true)}
+          >
+            {t("editor.viewers", {
+              count: recording.viewer_count ?? 0,
+            })}
+          </Button>
           <Button variant="danger" size="sm" onClick={() => setShowDelete(true)}>
             {t("editor.delete")}
           </Button>
@@ -314,6 +325,12 @@ export default function RecordingEditPage() {
         isLoading={isDeleting}
         blocking
         onConfirm={handleDelete}
+      />
+      <RecordingViewersPanel
+        open={showViewers}
+        recordingToken={recording.public_token}
+        durationSeconds={recording.duration_seconds}
+        onClose={() => setShowViewers(false)}
       />
     </div>
   );

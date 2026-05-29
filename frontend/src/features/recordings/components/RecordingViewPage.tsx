@@ -112,7 +112,16 @@ export default function RecordingViewPage() {
       </header>
 
       <main className="max-w-5xl mx-auto p-5">
-        <RecordingPlayer token={recording.public_token} autoPlay />
+        <RecordingPlayer
+          token={recording.public_token}
+          autoPlay
+          trackProgress
+          startSeconds={
+            recording.last_position_seconds && recording.last_position_seconds > 1
+              ? recording.last_position_seconds
+              : undefined
+          }
+        />
       </main>
     </div>
   );

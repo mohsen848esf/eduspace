@@ -44,4 +44,14 @@ urlpatterns = [
         recording_views.unpublish_recording,
         name='recording_unpublish',
     ),
+    path(
+        '<str:token>/heartbeat/',
+        recording_views.recording_heartbeat,
+        name='recording_heartbeat',
+    ),
+    path(
+        '<str:token>/views/',
+        recording_views.recording_views,
+        name='recording_views',
+    ),
 ]
