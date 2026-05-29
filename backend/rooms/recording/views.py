@@ -486,7 +486,13 @@ def recording_detail_or_delete(request, token: str):
             )
         payload = _serialize(rec, detail=True)
         payload['is_owner'] = rec.owner_id == request.user.id
-        return Response(payload)
+        response = Response(payload)
+        # Authorization can change at any moment (publish/unpublish, removal
+        # from visible_to, soft delete). Disabling caching keeps the access
+        # guard polling honest — clients always hit the live state.
+        response['Cache-Control'] = 'no-store, no-cache, must-revalidate, private'
+        response['Pragma'] = 'no-cache'
+        return response
 
     # DELETE
     if rec.owner_id != request.user.id and not request.user.is_superuser:

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import recordingsApi from "../api/recordings.api";
+import client from "../../../lib/api/client";
 
 interface UseAccessGuardOptions {
   /** Enabled is false until the page has resolved its initial detail load. */
@@ -53,7 +53,15 @@ export function useAccessGuard({
     const check = async () => {
       if (cancelled.current) return;
       try {
-        await recordingsApi.detail(token);
+        // Skip the recordingsApi.detail() helper here so we can pass a
+        // cache-buster directly. axios doesn't set no-store by default;
+        // some browsers will happily reuse a stale 200 for tens of
+        // seconds, defeating the whole guard. The backend also sets
+        // Cache-Control: no-store on the detail endpoint, but the
+        // cache-buster makes us robust to proxies in between.
+        await client.get(`/recordings/${token}/`, {
+          params: { _: Date.now() },
+        });
       } catch (err: any) {
         const status = err?.response?.status;
         // 403 (unpublished / removed from visible_to / link-share turned off
