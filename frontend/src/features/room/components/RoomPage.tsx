@@ -5,6 +5,7 @@ import {
   LiveKitRoom,
   RoomAudioRenderer,
   useLocalParticipant,
+  useRoomContext,
 } from "@livekit/components-react";
 import { Track } from "livekit-client";
 import { useRoomStore } from "../store/roomStore";
@@ -13,12 +14,16 @@ import { useRoomControls } from "../hooks/useRoomControls";
 import VideoGrid from "./VideoGrid";
 import RoomSidebar from "./RoomSidebar";
 import RoomControls from "./RoomControls";
+import GameBoard from "./GameBoard";
+import GameInviteToast from "./GameInviteToast";
 import PreJoinScreen, { type PreJoinSettings } from "./prejoin/PreJoinScreen";
 import Spinner from "../../../components/ui/Spinner";
 import RoomTopbar from "./RoomTopbar";
 import { useRoomDisconnect } from "../hooks/useRoomDisconnect";
 import { useBackgroundStore } from "../store/backgroundStore";
 import { useBackgroundBlur } from "../hooks/useBackgroundBlur";
+import { useGameBoard } from "../hooks/useGameBoard";
+import { RoomGameProvider } from "../hooks/useRoomGameContext";
 
 type LayoutMode = "grid" | "spotlight" | "sidebar";
 
@@ -38,6 +43,26 @@ function RoomContent({
   const { roomCode } = useRoomStore();
   const { changeBackground } = useBackgroundBlur();
 
+  // Game state for this room. Lives at this level so VideoGrid can be
+  // swapped for GameBoard when a game is active and the sidebar's Tools
+  // tab can launch new games via context.
+  const game = useGameBoard();
+  const room = useRoomContext();
+
+  // Wire LiveKit's data channel into the game hook so GAME_INVITE /
+  // GAME_ACCEPT / GAME_END messages broadcast over publishData() reach
+  // every participant.
+  useEffect(() => {
+    if (!room) return;
+    const handler = (payload: Uint8Array, participant?: any) => {
+      game.handleDataMessage(payload, participant);
+    };
+    room.on("dataReceived", handler);
+    return () => {
+      room.off("dataReceived", handler);
+    };
+  }, [room, game.handleDataMessage]);
+
   useEffect(() => {
     if (setupDone.current) return;
     if (!localParticipant) return;
@@ -50,7 +75,6 @@ function RoomContent({
 
         if (!camEnabled) return;
 
-        // Wait for the camera track to go live before applying processors.
         const waitForLive = async (attempts = 0): Promise<boolean> => {
           const camPub = localParticipant.getTrackPublication(
             Track.Source.Camera,
@@ -85,34 +109,45 @@ function RoomContent({
   }, [localParticipant]);
 
   return (
-    <div className="flex flex-col w-full h-full">
-      <RoomTopbar />
-      <div className="flex flex-1 overflow-hidden">
-        <VideoGrid layout={layout} onLayoutChange={setLayout} />
-        <RoomSidebar
-          activeTab={controls.sidebarTab}
-          onTabChange={controls.toggleSidebar}
-          roomCode={roomCode || ""}
+    <RoomGameProvider value={game}>
+      <div className="flex flex-col w-full h-full">
+        <RoomTopbar />
+        <div className="flex flex-1 overflow-hidden">
+          {game.gameBoard.isActive ? (
+            <GameBoard gameBoard={game.gameBoard} onEnd={game.endGame} />
+          ) : (
+            <VideoGrid layout={layout} onLayoutChange={setLayout} />
+          )}
+          <RoomSidebar
+            activeTab={controls.sidebarTab}
+            onTabChange={controls.toggleSidebar}
+            roomCode={roomCode || ""}
+          />
+        </div>
+        <RoomControls
+          isMicOn={controls.isMicOn}
+          isCamOn={controls.isCamOn}
+          isScreenSharing={controls.isScreenSharing}
+          isPushToTalk={controls.isPushToTalk}
+          sidebarTab={controls.sidebarTab}
+          settingsOpen={controls.settingsOpen}
+          layout={layout}
+          onToggleMic={controls.toggleMic}
+          onToggleCam={controls.toggleCam}
+          onToggleScreenShare={controls.toggleScreenShare}
+          onToggleSidebar={controls.toggleSidebar}
+          onToggleSettings={controls.toggleSettings}
+          onTogglePushToTalk={controls.togglePushToTalk}
+          onLayoutChange={setLayout}
+          onLeave={disconnect}
+        />
+        <GameInviteToast
+          invite={game.pendingInvite}
+          onAccept={game.acceptGame}
+          onDecline={game.declineGame}
         />
       </div>
-      <RoomControls
-        isMicOn={controls.isMicOn}
-        isCamOn={controls.isCamOn}
-        isScreenSharing={controls.isScreenSharing}
-        isPushToTalk={controls.isPushToTalk}
-        sidebarTab={controls.sidebarTab}
-        settingsOpen={controls.settingsOpen}
-        layout={layout}
-        onToggleMic={controls.toggleMic}
-        onToggleCam={controls.toggleCam}
-        onToggleScreenShare={controls.toggleScreenShare}
-        onToggleSidebar={controls.toggleSidebar}
-        onToggleSettings={controls.toggleSettings}
-        onTogglePushToTalk={controls.togglePushToTalk}
-        onLayoutChange={setLayout}
-        onLeave={disconnect}
-      />
-    </div>
+    </RoomGameProvider>
   );
 }
 

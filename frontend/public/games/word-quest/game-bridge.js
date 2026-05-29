@@ -1,16 +1,35 @@
 // game-bridge.js
-// Bridge between Word Quest and EduSpace platform
-// Communication via postMessage protocol
+// Bridge between Word Quest and the EduSpace platform.
+// Communication happens through window.postMessage with this protocol:
+//
+//   Platform -> Game:
+//     GAME_INIT           { mode, players, settings, currentPlayer }
+//     GAME_START
+//     GAME_PAUSE
+//     GAME_RESUME
+//     GAME_NEXT_QUESTION
+//
+//   Game -> Platform:
+//     GAME_READY          { gameId }
+//     SCORE_UPDATE        { userId, score, questionIndex }
+//     QUESTION_CHANGE     { index, total }
+//     CORRECT_ANSWER      { userId, word, timeLeft }
+//     GAME_OVER           { scores }
+//     NEED_NEXT           {}
+//
+// The platform serves both itself and the game from the same origin
+// (vite dev server / production hosting), so we restrict postMessage
+// to event.origin === window.location.origin.
 
 const GameBridge = (() => {
   let isConnected = false;
-  let gameMode = "solo"; // solo | battle | class
+  let gameMode = "solo"; // solo | battle | class | in-call
   let players = [];
   let settings = {};
+  let currentPlayer = null;
 
   // ── Listen for messages from platform ──
   window.addEventListener("message", (event) => {
-    // Security: only accept messages from same origin
     if (event.origin !== window.location.origin) return;
 
     const { type, payload } = event.data || {};
@@ -18,25 +37,22 @@ const GameBridge = (() => {
 
     switch (type) {
       case "GAME_INIT":
-        gameMode = payload.mode || "solo";
-        players = payload.players || [];
-        settings = payload.settings || {};
+        gameMode = (payload && payload.mode) || "solo";
+        players = (payload && payload.players) || [];
+        settings = (payload && payload.settings) || {};
+        currentPlayer = (payload && payload.currentPlayer) || null;
         isConnected = true;
         applySettings(settings);
-        // پیام GAME_READY قبلاً از boot فرستاده شده
         break;
       case "GAME_START":
         if (typeof startGame === "function") startGame();
         break;
-
       case "GAME_PAUSE":
         if (typeof pauseGame === "function") pauseGame();
         break;
-
       case "GAME_RESUME":
         if (typeof resumeGame === "function") resumeGame();
         break;
-
       case "GAME_NEXT_QUESTION":
         if (typeof nextQuestion === "function") nextQuestion();
         break;
@@ -52,17 +68,18 @@ const GameBridge = (() => {
 
   // ── Apply settings from platform ──
   function applySettings(s) {
-    if (s.timePerQuestion) {
-      // override default timer
+    if (s && s.timePerQuestion) {
+      // Stash so the game's own startup can pick it up.
       window.__platformSettings = s;
     }
-    if (s.mode === "class") {
-      // class mode: teacher controls next question
+    if (s && s.mode === "class") {
       window.__classMode = true;
     }
   }
 
-  // وقتی بازی لود شد به پلتفرم اطلاع بده
+  // Tell the platform we're alive once the page has finished loading.
+  // The 1.6s delay matches the splash animation; reducing it would
+  // race the platform's GAME_INIT listener attachment.
   window.addEventListener("load", () => {
     setTimeout(() => {
       sendToPlatform("GAME_READY", { gameId: "word-quest" });
@@ -75,6 +92,9 @@ const GameBridge = (() => {
     getMode: () => gameMode,
     getPlayers: () => players,
     getSettings: () => settings,
+    getCurrentPlayer: () => currentPlayer,
+    isInCall: () => gameMode === "in-call",
+    isHost: () => Boolean(currentPlayer && currentPlayer.isHost),
 
     onScoreUpdate(userId, score, questionIndex) {
       sendToPlatform("SCORE_UPDATE", { userId, score, questionIndex });
@@ -93,8 +113,10 @@ const GameBridge = (() => {
     },
 
     onNeedNext() {
-      // class mode: tell teacher we're waiting for next
       sendToPlatform("NEED_NEXT", {});
     },
   };
 })();
+
+// Expose on window so game.js (which loads after this file) can find it.
+window.GameBridge = GameBridge;

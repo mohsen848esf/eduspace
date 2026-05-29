@@ -12,8 +12,10 @@ import { Icons } from "../../../lib/constants/icons";
 import { cn } from "../../../lib/utils";
 import { Tooltip } from "../../../components/ui/Tooltip";
 import InviteModal from "./InviteModal";
+import GameSelectorModal from "./GameSelectorModal";
 import { useChatStore } from "../store/chatStore";
 import { useRoomStore } from "../store/roomStore";
+import { useRoomGame } from "../hooks/useRoomGameContext";
 
 interface RoomSidebarProps {
   activeTab: SidebarTab;
@@ -331,85 +333,121 @@ function ChatTab({ roomCode }: { roomCode: string }) {
 
 // ── Tools Tab ──
 function ToolsTab() {
-  const { t } = useTranslation(["room", "common"]);
+  const { t } = useTranslation(["room", "common", "games"]);
+  const { gameBoard, launchGame, endGame } = useRoomGame();
+  const { isHost } = useRoomStore();
+  const [showSelector, setShowSelector] = useState(false);
+
+  const isGameActive = gameBoard.isActive;
+
+  // Primary game tool changes shape based on whether a game is running.
+  const gameTool = isGameActive
+    ? {
+        icon: "🛑",
+        name: t("games:tools.endGameLabel"),
+        desc: t("games:tools.endGameDesc"),
+        status: "ready" as const,
+        onClick: () => endGame(),
+        bg: "bg-[rgba(248,113,113,0.12)]",
+        disabled: !isHost,
+      }
+    : {
+        icon: "🎮",
+        name: t("games:tools.launchLabel"),
+        desc: t("games:tools.launchDesc"),
+        status: "ready" as const,
+        onClick: () => setShowSelector(true),
+        bg: "bg-[rgba(99,102,241,0.15)]",
+        disabled: !isHost,
+      };
 
   const tools = [
-    {
-      icon: "🎮",
-      name: t("tools.launchGame"),
-      desc: t("tools.launchGameDesc"),
-      status: "ready" as const,
-    },
+    gameTool,
     {
       icon: "📋",
       name: t("tools.whiteboard"),
       desc: t("tools.whiteboardDesc"),
       status: "ready" as const,
+      onClick: () => undefined,
+      bg: "bg-[rgba(56,189,248,0.12)]",
+      disabled: false,
     },
     {
       icon: "📝",
       name: t("tools.quickExam"),
       desc: t("tools.quickExamDesc"),
       status: "ready" as const,
+      onClick: () => undefined,
+      bg: "bg-[rgba(34,197,94,0.12)]",
+      disabled: false,
     },
     {
       icon: "🤖",
       name: t("tools.aiSummary"),
       desc: t("tools.aiSummaryDesc"),
       status: "soon" as const,
+      onClick: () => undefined,
+      bg: "bg-[rgba(245,158,11,0.12)]",
+      disabled: true,
     },
     {
       icon: "📁",
       name: t("tools.fileShare"),
       desc: t("tools.fileShareDesc"),
       status: "soon" as const,
+      onClick: () => undefined,
+      bg: "bg-[rgba(248,113,113,0.12)]",
+      disabled: true,
     },
   ];
 
-  const iconBgs: Record<string, string> = {
-    "🎮": "bg-[rgba(99,102,241,0.15)]",
-    "📋": "bg-[rgba(56,189,248,0.12)]",
-    "📝": "bg-[rgba(34,197,94,0.12)]",
-    "🤖": "bg-[rgba(245,158,11,0.12)]",
-    "📁": "bg-[rgba(248,113,113,0.12)]",
-  };
-
   return (
-    <div className="flex flex-col gap-1">
-      {tools.map((tool) => (
-        <button
-          key={tool.name}
-          disabled={tool.status === "soon"}
-          className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-[var(--s3)] disabled:cursor-not-allowed transition-colors text-left border-none bg-transparent w-full"
-        >
-          <div
-            className={cn(
-              "w-8 h-8 rounded-lg flex items-center justify-center text-base flex-shrink-0",
-              iconBgs[tool.icon],
-            )}
+    <>
+      <div className="flex flex-col gap-1">
+        {tools.map((tool) => (
+          <button
+            key={tool.name}
+            onClick={tool.onClick}
+            disabled={tool.disabled || tool.status === "soon"}
+            className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-[var(--s3)] disabled:cursor-not-allowed disabled:opacity-50 transition-colors text-left border-none bg-transparent w-full"
           >
-            {tool.icon}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-medium text-[var(--t1)]">
-              {tool.name}
+            <div
+              className={cn(
+                "w-8 h-8 rounded-lg flex items-center justify-center text-base flex-shrink-0",
+                tool.bg,
+              )}
+            >
+              {tool.icon}
             </div>
-            <div className="text-[10px] text-[var(--t3)] mt-0.5">
-              {tool.desc}
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-medium text-[var(--t1)]">
+                {tool.name}
+              </div>
+              <div className="text-[10px] text-[var(--t3)] mt-0.5">
+                {tool.desc}
+              </div>
             </div>
-          </div>
-          {tool.status === "soon" ? (
-            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-[rgba(245,158,11,0.1)] text-[var(--amber)] flex-shrink-0">
-              {t("common:actions.soon")}
-            </span>
-          ) : (
-            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-[rgba(34,197,94,0.1)] text-[var(--green)] flex-shrink-0">
-              {t("tools.ready")}
-            </span>
-          )}
-        </button>
-      ))}
-    </div>
+            {tool.status === "soon" ? (
+              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-[rgba(245,158,11,0.1)] text-[var(--amber)] flex-shrink-0">
+                {t("common:actions.soon")}
+              </span>
+            ) : (
+              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-[rgba(34,197,94,0.1)] text-[var(--green)] flex-shrink-0">
+                {t("tools.ready")}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      <GameSelectorModal
+        open={showSelector}
+        onClose={() => setShowSelector(false)}
+        onLaunch={(args) =>
+          launchGame(args.gameId, args.gameTitle, args.gameUrl)
+        }
+      />
+    </>
   );
 }
 
