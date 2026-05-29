@@ -1,0 +1,86 @@
+{
+  "page": {
+    "title": "ضبط‌ها",
+    "subtitle": "ضبط‌های جلسات خود را تماشا و مدیریت کنید",
+    "empty": "هنوز ضبطی ندارید",
+    "emptyHint": "ضبط جلسات شما اینجا نمایش داده می‌شود.",
+    "loading": "در حال بارگذاری ضبط‌ها..."
+  },
+  "card": {
+    "by": "توسط {{name}}",
+    "duration": "{{minutes}} دقیقه و {{seconds}} ثانیه",
+    "durationShort": "{{seconds}} ثانیه",
+    "publishedBadge": "اشتراک‌گذاری شده",
+    "draftBadge": "پیش‌نویس",
+    "processingBadge": "در حال پردازش",
+    "failedBadge": "ناموفق",
+    "watch": "تماشا",
+    "edit": "ویرایش",
+    "delete": "حذف",
+    "deleteConfirm": "این ضبط حذف شود؟ این عمل قابل بازگشت نیست."
+  },
+  "filters": {
+    "all": "همه",
+    "published": "اشتراک‌گذاری شده",
+    "drafts": "پیش‌نویس‌ها",
+    "processing": "در حال پردازش",
+    "failed": "ناموفق"
+  },
+  "controls": {
+    "rec": "ضبط",
+    "recording": "ضبط",
+    "paused": "متوقف",
+    "processing": "در حال ذخیره...",
+    "starting": "در حال شروع...",
+    "start": "شروع ضبط",
+    "stop": "پایان ضبط",
+    "pause": "توقف",
+    "resume": "ادامه",
+    "qualityLabel": "کیفیت",
+    "quality720p": "720p",
+    "quality1080p": "1080p",
+    "stopAndEdit": "پایان و ویرایش",
+    "stopAndEditHint": "ضبط را پایان داده و ویرایشگر را باز می‌کند.",
+    "errorStart": "شروع ضبط با خطا مواجه شد",
+    "errorStop": "پایان ضبط با خطا مواجه شد",
+    "errorPause": "توقف ضبط با خطا مواجه شد",
+    "errorResume": "ادامه ضبط با خطا مواجه شد",
+    "tooEarly": "ضبط هنوز در حال شروع است؛ چند لحظه دیگر امتحان کنید"
+  },
+  "editor": {
+    "title": "ویرایش ضبط",
+    "back": "بازگشت به ضبط‌ها",
+    "originalDuration": "اصلی",
+    "trimmedDuration": "بریده‌شده",
+    "trimStart": "شروع",
+    "trimEnd": "پایان",
+    "preview": "پیش‌نمایش",
+    "save": "ذخیره برش",
+    "saved": "برش ذخیره شد",
+    "saveError": "ذخیره برش با خطا مواجه شد",
+    "publish": "انتشار",
+    "unpublish": "لغو انتشار",
+    "published": "ضبط منتشر شد",
+    "unpublished": "انتشار ضبط لغو شد",
+    "publishError": "انتشار ضبط با خطا مواجه شد",
+    "delete": "حذف ضبط",
+    "loading": "در حال بارگذاری ضبط...",
+    "notReady": "این ضبط هنوز در حال پردازش است."
+  },
+  "publishModal": {
+    "title": "اشتراک‌گذاری ضبط",
+    "subtitle": "افرادی که می‌توانند این ضبط را تماشا کنند انتخاب کنید.",
+    "searchPlaceholder": "جست‌وجو با نام کاربری یا نام...",
+    "noResults": "کاربری یافت نشد",
+    "selectedCount_one": "{{count}} نفر انتخاب شده",
+    "selectedCount_other": "{{count}} نفر انتخاب شده",
+    "publish": "انتشار",
+    "cancel": "لغو"
+  },
+  "notification": {
+    "publishedTitle": "🎬 {{from}} ضبطی را به اشتراک گذاشت",
+    "publishedSubtitle": "{{roomName}} · {{duration}}",
+    "watch": "تماشا",
+    "later": "بعداً"
+  }
+}

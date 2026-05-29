@@ -1,0 +1,86 @@
+{
+  "page": {
+    "title": "Recordings",
+    "subtitle": "Watch and manage your session recordings",
+    "empty": "No recordings yet",
+    "emptyHint": "Recordings of your sessions will show up here.",
+    "loading": "Loading recordings..."
+  },
+  "card": {
+    "by": "by {{name}}",
+    "duration": "{{minutes}}m {{seconds}}s",
+    "durationShort": "{{seconds}}s",
+    "publishedBadge": "Shared",
+    "draftBadge": "Draft",
+    "processingBadge": "Processing",
+    "failedBadge": "Failed",
+    "watch": "Watch",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this recording? This cannot be undone."
+  },
+  "filters": {
+    "all": "All",
+    "published": "Shared",
+    "drafts": "Drafts",
+    "processing": "Processing",
+    "failed": "Failed"
+  },
+  "controls": {
+    "rec": "REC",
+    "recording": "REC",
+    "paused": "Paused",
+    "processing": "Saving...",
+    "starting": "Starting...",
+    "start": "Start recording",
+    "stop": "Stop recording",
+    "pause": "Pause",
+    "resume": "Resume",
+    "qualityLabel": "Quality",
+    "quality720p": "720p",
+    "quality1080p": "1080p",
+    "stopAndEdit": "Stop & edit",
+    "stopAndEditHint": "Stops the recording and opens the editor when it's ready.",
+    "errorStart": "Could not start recording",
+    "errorStop": "Could not stop recording",
+    "errorPause": "Could not pause recording",
+    "errorResume": "Could not resume recording",
+    "tooEarly": "Recording is still starting; try again in a moment"
+  },
+  "editor": {
+    "title": "Edit recording",
+    "back": "Back to recordings",
+    "originalDuration": "Original",
+    "trimmedDuration": "Trimmed",
+    "trimStart": "Start",
+    "trimEnd": "End",
+    "preview": "Preview",
+    "save": "Save trim",
+    "saved": "Trim saved",
+    "saveError": "Could not save trim",
+    "publish": "Publish",
+    "unpublish": "Unpublish",
+    "published": "Recording published",
+    "unpublished": "Recording unpublished",
+    "publishError": "Could not publish recording",
+    "delete": "Delete recording",
+    "loading": "Loading recording...",
+    "notReady": "This recording is still being processed."
+  },
+  "publishModal": {
+    "title": "Share recording",
+    "subtitle": "Pick the people who can watch this recording.",
+    "searchPlaceholder": "Search by username or name...",
+    "noResults": "No users match",
+    "selectedCount_one": "{{count}} person selected",
+    "selectedCount_other": "{{count}} people selected",
+    "publish": "Publish",
+    "cancel": "Cancel"
+  },
+  "notification": {
+    "publishedTitle": "🎬 {{from}} shared a recording",
+    "publishedSubtitle": "{{roomName}} · {{duration}}",
+    "watch": "Watch",
+    "later": "Later"
+  }
+}
