@@ -1,24 +1,40 @@
 """
-Host-only recording control endpoints + LiveKit egress webhook.
+Recording endpoints.
 
-POST /api/rooms/<code>/recording/start/
-POST /api/rooms/<code>/recording/stop/
-POST /api/rooms/<code>/recording/pause/
-POST /api/rooms/<code>/recording/resume/
-GET  /api/rooms/<code>/recording/status/
-POST /api/recordings/webhook/
+Host-only control plane:
+    POST /api/rooms/<code>/recording/start/
+    POST /api/rooms/<code>/recording/stop/
+    POST /api/rooms/<code>/recording/pause/
+    POST /api/rooms/<code>/recording/resume/
+    GET  /api/rooms/<code>/recording/status/
+
+Recording library (read-side):
+    GET    /api/recordings/                      list user's accessible recordings
+    GET    /api/recordings/<token>/              detail for one recording
+    GET    /api/recordings/<token>/stream/       streamed MP4 (HTTP Range support)
+    DELETE /api/recordings/<token>/              owner-only soft delete + on-disk cleanup
+
+LiveKit webhook:
+    POST /api/recordings/webhook/                HMAC-verified
 
 Auth model:
     * start/stop/pause/resume: only the host of the room
-    * status: any active room participant
+    * status: any participant of the room
+    * list/detail/stream: Recording.can_be_viewed_by(user)
+    * delete: owner only
     * webhook: HMAC-verified by livekit.api.WebhookReceiver
 """
 
 from __future__ import annotations
 
 import logging
+import shutil
+from pathlib import Path
 
+from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
+from django.http import Http404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status as http
@@ -31,6 +47,7 @@ from rest_framework.response import Response
 from rooms.models import Recording, RecordingSegment, Room, RoomParticipant
 
 from . import service
+from .streaming import serve_video_with_range
 from .webhook import WebhookError, handle_event, parse_event
 
 logger = logging.getLogger(__name__)
@@ -70,8 +87,8 @@ def _require_participant(request, room) -> Response | None:
     return None
 
 
-def _serialize(recording: Recording) -> dict:
-    return {
+def _serialize(recording: Recording, *, detail: bool = False) -> dict:
+    payload = {
         'public_token': recording.public_token,
         'status': recording.status,
         'quality': recording.quality,
@@ -84,6 +101,21 @@ def _serialize(recording: Recording) -> dict:
         'is_published': recording.is_published,
         'segment_count': recording.segments.count(),
     }
+    if detail:
+        payload.update({
+            'room_code': recording.room.room_code,
+            'room_name': recording.room.name,
+            'owner_username': recording.owner.username,
+            'owner_full_name': recording.owner.full_name or recording.owner.username,
+            'is_owner': False,  # caller fills this in
+            'published_at': (
+                recording.published_at.isoformat()
+                if recording.published_at else None
+            ),
+            'trim_start_seconds': recording.trim_start_seconds,
+            'trim_end_seconds': recording.trim_end_seconds,
+        })
+    return payload
 
 
 def _active_recording(room: Room) -> Recording | None:
@@ -362,6 +394,176 @@ def egress_webhook(request):
     return Response({'ok': True})
 
 
+# ---------------------------------------------------------------------------
+# Library endpoints (read-side)
+# ---------------------------------------------------------------------------
+
+def _accessible_recordings_qs(user):
+    """
+    Recordings the user can see in their library: their own (any status),
+    plus published recordings shared with them.
+    """
+    return (
+        Recording.objects
+        .filter(is_deleted=False)
+        .filter(
+            Q(owner=user) | Q(is_published=True, visible_to=user)
+        )
+        .select_related('room', 'owner')
+        .distinct()
+        .order_by('-started_at')
+    )
+
+
+def _get_recording_or_404(token: str) -> Recording | None:
+    try:
+        return Recording.objects.select_related('room', 'owner').get(
+            public_token=token, is_deleted=False,
+        )
+    except Recording.DoesNotExist:
+        return None
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_recordings(request):
+    """
+    Return the authenticated user's accessible recordings.
+
+    Query params:
+        room_code   filter to a single room (e.g. for the room dashboard widget)
+        status      filter by status (e.g. completed)
+        published   "true" / "false" filter
+    """
+    qs = _accessible_recordings_qs(request.user)
+
+    room_code = request.query_params.get('room_code')
+    if room_code:
+        qs = qs.filter(room__room_code=room_code)
+
+    status_filter = request.query_params.get('status')
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+
+    published = request.query_params.get('published')
+    if published is not None:
+        qs = qs.filter(is_published=str(published).lower() == 'true')
+
+    items = []
+    for rec in qs[:200]:  # cap to avoid runaway responses
+        payload = _serialize(rec, detail=True)
+        payload['is_owner'] = rec.owner_id == request.user.id
+        items.append(payload)
+
+    return Response({'count': len(items), 'results': items})
+
+
+@api_view(['GET', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def recording_detail_or_delete(request, token: str):
+    """
+    GET    /api/recordings/<token>/   detail
+    DELETE /api/recordings/<token>/   owner-only soft delete + on-disk cleanup
+    """
+    rec = _get_recording_or_404(token)
+    if rec is None:
+        return Response({'error': 'Recording not found'}, status=http.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        if not rec.can_be_viewed_by(request.user):
+            return Response(
+                {'error': 'You do not have permission to view this recording'},
+                status=http.HTTP_403_FORBIDDEN,
+            )
+        payload = _serialize(rec, detail=True)
+        payload['is_owner'] = rec.owner_id == request.user.id
+        return Response(payload)
+
+    # DELETE
+    if rec.owner_id != request.user.id and not request.user.is_superuser:
+        return Response(
+            {'error': 'Only the owner can delete a recording'},
+            status=http.HTTP_403_FORBIDDEN,
+        )
+    if rec.is_active:
+        return Response(
+            {'error': 'Cannot delete a recording that is still in progress'},
+            status=http.HTTP_409_CONFLICT,
+        )
+
+    rec_dir: Path = settings.RECORDING_OUTPUT_DIR / rec.public_token
+    if rec_dir.exists():
+        try:
+            shutil.rmtree(rec_dir)
+        except OSError:
+            logger.exception('failed to remove %s', rec_dir)
+
+    rec.is_deleted = True
+    rec.deleted_at = timezone.now()
+    rec.file_path = ''
+    rec.save(update_fields=['is_deleted', 'deleted_at', 'file_path'])
+    rec.segments.update(file_path='')
+
+    logger.info(
+        'recording deleted token=%s by user=%s',
+        rec.public_token, request.user.username,
+    )
+    return Response(status=http.HTTP_204_NO_CONTENT)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def stream_recording(request, token: str):
+    """
+    Stream the playable file for a recording.
+
+    The opaque public_token in the URL is necessary but not sufficient —
+    every request is re-authorized via Recording.can_be_viewed_by so a
+    leaked URL alone can't be used by a logged-out attacker.
+    """
+    rec = _get_recording_or_404(token)
+    if rec is None:
+        raise Http404
+
+    if not rec.can_be_viewed_by(request.user):
+        return Response(
+            {'error': 'You do not have permission to stream this recording'},
+            status=http.HTTP_403_FORBIDDEN,
+        )
+
+    if not rec.file_path:
+        return Response(
+            {'error': 'Recording is not ready yet'},
+            status=http.HTTP_409_CONFLICT,
+        )
+
+    abs_path: Path = settings.RECORDING_OUTPUT_DIR / rec.file_path
+    if not abs_path.exists():
+        logger.error(
+            'recording %s missing on disk: expected %s',
+            rec.public_token, abs_path,
+        )
+        return Response(
+            {'error': 'Recording file is missing on the server'},
+            status=http.HTTP_410_GONE,
+        )
+
+    # File name surfaced to the browser. Title-cased on the server side
+    # so the user sees something sensible if they save the file.
+    filename = f'eduspace-{rec.room.room_code}-{rec.public_token}.mp4'
+    return serve_video_with_range(
+        abs_path,
+        range_header=request.META.get('HTTP_RANGE', ''),
+        if_modified_since=request.META.get('HTTP_IF_MODIFIED_SINCE'),
+        content_type='video/mp4',
+        filename=filename,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Re-exports
+# ---------------------------------------------------------------------------
+
 # Re-export for convenience so the wiring in rooms/urls.py stays small.
 __all__ = [
     'start_recording',
@@ -370,4 +572,7 @@ __all__ = [
     'resume_recording',
     'recording_status',
     'egress_webhook',
+    'list_recordings',
+    'recording_detail_or_delete',
+    'stream_recording',
 ]

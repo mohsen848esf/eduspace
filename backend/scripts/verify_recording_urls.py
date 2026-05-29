@@ -19,12 +19,20 @@ django.setup()
 from django.urls import reverse  # noqa: E402
 
 CASES = [
+    # Control plane
     ('recording_start', {'room_code': 'ABC123'}, '/api/rooms/ABC123/recording/start/'),
     ('recording_stop', {'room_code': 'ABC123'}, '/api/rooms/ABC123/recording/stop/'),
     ('recording_pause', {'room_code': 'ABC123'}, '/api/rooms/ABC123/recording/pause/'),
     ('recording_resume', {'room_code': 'ABC123'}, '/api/rooms/ABC123/recording/resume/'),
     ('recording_status', {'room_code': 'ABC123'}, '/api/rooms/ABC123/recording/status/'),
+
+    # Webhook
     ('recording_webhook', {}, '/api/recordings/webhook/'),
+
+    # Library
+    ('recording_list', {}, '/api/recordings/'),
+    ('recording_detail', {'token': 'AbC_123-xyz'}, '/api/recordings/AbC_123-xyz/'),
+    ('recording_stream', {'token': 'AbC_123-xyz'}, '/api/recordings/AbC_123-xyz/stream/'),
 ]
 
 
