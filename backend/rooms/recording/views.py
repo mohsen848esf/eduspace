@@ -191,8 +191,18 @@ def stop_recording(request, room_code: str):
             status=http.HTTP_404_NOT_FOUND,
         )
 
-    # Stop the most recent segment (the one that's actually running).
+    # Reject stop if egress hasn't had time to bootstrap. RoomCompositeEgress
+    # spins up an internal headless browser which takes ~3s; stopping before
+    # then aborts the run with no file produced.
     last_segment = recording.segments.order_by('-index').first()
+    if last_segment and last_segment.started_at:
+        elapsed = (timezone.now() - last_segment.started_at).total_seconds()
+        if elapsed < 3.0:
+            return Response(
+                {'error': 'Recording is still starting; please try again in a moment'},
+                status=http.HTTP_409_CONFLICT,
+            )
+
     if last_segment and last_segment.egress_id and recording.status != Recording.Status.PAUSED:
         service.stop_egress(last_segment.egress_id)
 
@@ -222,6 +232,15 @@ def pause_recording(request, room_code: str):
         )
 
     last_segment = recording.segments.order_by('-index').first()
+    # Same bootstrap guard as stop_recording — see comment there.
+    if last_segment and last_segment.started_at:
+        elapsed = (timezone.now() - last_segment.started_at).total_seconds()
+        if elapsed < 3.0:
+            return Response(
+                {'error': 'Recording is still starting; please try again in a moment'},
+                status=http.HTTP_409_CONFLICT,
+            )
+
     if last_segment and last_segment.egress_id:
         service.stop_egress(last_segment.egress_id)
 
@@ -311,11 +330,27 @@ def egress_webhook(request):
         or request.headers.get('Authorization')
         or ''
     )
+    raw_body = request.body
+    logger.info(
+        'webhook received: %d bytes, auth-header=%s',
+        len(raw_body), 'present' if auth_header else 'MISSING',
+    )
+
     try:
-        event = parse_event(request.body, auth_header)
+        event = parse_event(raw_body, auth_header)
     except WebhookError as exc:
-        logger.warning('webhook rejected: %s', exc)
+        logger.warning(
+            'webhook rejected: %s | first 200 chars of body: %s',
+            exc, raw_body[:200],
+        )
         return Response({'error': str(exc)}, status=http.HTTP_401_UNAUTHORIZED)
+
+    logger.info(
+        'webhook event=%s id=%s egressId=%s',
+        event.get('event'),
+        event.get('id'),
+        (event.get('egressInfo') or {}).get('egressId'),
+    )
 
     try:
         handle_event(event)

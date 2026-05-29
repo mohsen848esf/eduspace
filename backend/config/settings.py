@@ -163,3 +163,31 @@ RECORDING_MAX_DURATION_SECONDS = int(
 
 # Make sure the directory exists at startup so Django can serve from it.
 os.makedirs(RECORDING_OUTPUT_DIR, exist_ok=True)
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+# Send our app loggers to stdout at INFO so recording/webhook/egress events
+# are visible in `runserver` / `uvicorn` output during development.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '[{asctime}] {levelname} {name}: {message}',
+            'style': '{',
+            'datefmt': '%H:%M:%S',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'rooms': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'accounts': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'games': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+    },
+}

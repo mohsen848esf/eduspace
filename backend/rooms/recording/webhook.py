@@ -119,18 +119,35 @@ def _on_egress_ended(segment: RecordingSegment, egress_info: dict) -> None:
     """
     Worker finished writing the segment file. Persist its size/duration
     and, if this was the final segment, flip the parent recording to
-    PROCESSING -> COMPLETED.
+    PROCESSING -> COMPLETED (or FAILED if egress aborted).
     """
     recording = segment.recording
+
+    # Detect aborted/failed egress. Egress can end with status EGRESS_ABORTED
+    # or EGRESS_FAILED + a non-empty `error`. We treat both as a hard failure
+    # for the *segment*, but only fail the parent if there are no successful
+    # segments alongside this one.
+    egress_status = (egress_info.get('status') or '').upper()
+    egress_error = egress_info.get('error') or ''
+    is_failed_egress = (
+        egress_status in {'EGRESS_ABORTED', 'EGRESS_FAILED'}
+        or bool(egress_error)
+    )
 
     # Finalize the segment row.
     segment.ended_at = _ts_from_egress(egress_info, key='endedAt') or timezone.now()
     duration = _segment_duration_seconds(egress_info)
     if duration:
         segment.duration_seconds = duration
-    if segment.file_path:
+    if segment.file_path and not is_failed_egress:
         segment.size_bytes = file_size_bytes(segment.file_path)
     segment.save(update_fields=['ended_at', 'duration_seconds', 'size_bytes'])
+
+    if is_failed_egress:
+        logger.warning(
+            'egress aborted: token=%s segment=%d status=%s error=%s',
+            recording.public_token, segment.index, egress_status, egress_error,
+        )
 
     # If the parent recording is still PAUSED we leave it alone — the host
     # will resume into a new segment. Anything else means this was the
@@ -142,19 +159,26 @@ def _on_egress_ended(segment: RecordingSegment, egress_info: dict) -> None:
         )
         return
 
-    # Aggregate totals across all segments.
-    total_duration = sum(s.duration_seconds for s in recording.segments.all())
-    total_size = sum(s.size_bytes for s in recording.segments.all())
-    last_segment = (
-        recording.segments.exclude(file_path='').order_by('-index').first()
+    # Aggregate totals across all successful segments.
+    successful_segments = [
+        s for s in recording.segments.all() if s.size_bytes > 0
+    ]
+    total_duration = sum(s.duration_seconds for s in successful_segments)
+    total_size = sum(s.size_bytes for s in successful_segments)
+    last_segment = next(
+        (s for s in sorted(successful_segments, key=lambda x: x.index, reverse=True)),
+        None,
     )
 
     recording.duration_seconds = int(total_duration)
     recording.size_bytes = total_size
-    # Until trim/publish runs, the canonical playable file is the last segment.
     if last_segment and last_segment.file_path:
         recording.file_path = last_segment.file_path
-    recording.status = Recording.Status.COMPLETED
+
+    if successful_segments:
+        recording.status = Recording.Status.COMPLETED
+    else:
+        recording.status = Recording.Status.FAILED
     recording.completed_at = timezone.now()
     recording.save(
         update_fields=[
@@ -163,8 +187,9 @@ def _on_egress_ended(segment: RecordingSegment, egress_info: dict) -> None:
         ],
     )
     logger.info(
-        'recording completed token=%s segments=%d duration=%ds size=%dB',
+        'recording finalized token=%s status=%s segments=%d duration=%ds size=%dB',
         recording.public_token,
+        recording.status,
         recording.segments.count(),
         recording.duration_seconds,
         recording.size_bytes,
