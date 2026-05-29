@@ -1,7 +1,7 @@
 """
 URL patterns mounted at /api/recordings/.
 
-Recording library + LiveKit egress webhook.
+Recording library, owner editing/sharing, and the LiveKit egress webhook.
 """
 
 from django.urls import path
@@ -28,5 +28,20 @@ urlpatterns = [
         '<str:token>/stream/',
         recording_views.stream_recording,
         name='recording_stream',
+    ),
+    path(
+        '<str:token>/finalize/',
+        recording_views.finalize_recording,
+        name='recording_finalize',
+    ),
+    path(
+        '<str:token>/publish/',
+        recording_views.publish_recording,
+        name='recording_publish',
+    ),
+    path(
+        '<str:token>/unpublish/',
+        recording_views.unpublish_recording,
+        name='recording_unpublish',
     ),
 ]

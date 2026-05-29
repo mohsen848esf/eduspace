@@ -3,5 +3,11 @@
     "title": "📹 {{from}} شما را دعوت کرد",
     "joinNow": "ورود به جلسه",
     "dismiss": "بستن"
+  },
+  "recordingPublished": {
+    "title": "🎬 {{from}} یک ضبط را به اشتراک گذاشت",
+    "subtitle": "{{roomName}} · {{duration}}",
+    "watch": "تماشا",
+    "dismiss": "بعداً"
   }
 }

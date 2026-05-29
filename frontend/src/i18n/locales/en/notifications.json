@@ -3,5 +3,11 @@
     "title": "📹 {{from}} invited you",
     "joinNow": "Join Now",
     "dismiss": "Dismiss"
+  },
+  "recordingPublished": {
+    "title": "🎬 {{from}} shared a recording",
+    "subtitle": "{{roomName}} · {{duration}}",
+    "watch": "Watch",
+    "dismiss": "Later"
   }
 }
