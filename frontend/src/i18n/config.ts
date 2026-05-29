@@ -8,6 +8,7 @@ import enDashboard from "./locales/en/dashboard.json";
 import enRoom from "./locales/en/room.json";
 import enGames from "./locales/en/games.json";
 import enNotifications from "./locales/en/notifications.json";
+import enRecordings from "./locales/en/recordings.json";
 
 import faCommon from "./locales/fa/common.json";
 import faAuth from "./locales/fa/auth.json";
@@ -15,6 +16,7 @@ import faDashboard from "./locales/fa/dashboard.json";
 import faRoom from "./locales/fa/room.json";
 import faGames from "./locales/fa/games.json";
 import faNotifications from "./locales/fa/notifications.json";
+import faRecordings from "./locales/fa/recordings.json";
 
 export const SUPPORTED_LANGUAGES = ["en", "fa"] as const;
 export type Language = (typeof SUPPORTED_LANGUAGES)[number];
@@ -28,6 +30,7 @@ export const NAMESPACES = [
   "room",
   "games",
   "notifications",
+  "recordings",
 ] as const;
 
 export const resources = {
@@ -38,6 +41,7 @@ export const resources = {
     room: enRoom,
     games: enGames,
     notifications: enNotifications,
+    recordings: enRecordings,
   },
   fa: {
     common: faCommon,
@@ -46,6 +50,7 @@ export const resources = {
     room: faRoom,
     games: faGames,
     notifications: faNotifications,
+    recordings: faRecordings,
   },
 } as const;
 

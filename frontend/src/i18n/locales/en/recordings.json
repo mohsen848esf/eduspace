@@ -1,0 +1,123 @@
+{
+  "page": {
+    "title": "Recordings",
+    "subtitle": "Watch and manage your session recordings",
+    "empty": "No recordings yet",
+    "emptyHint": "Recordings of your sessions will show up here.",
+    "loading": "Loading recordings..."
+  },
+  "card": {
+    "by": "by {{name}}",
+    "duration": "{{minutes}}m {{seconds}}s",
+    "durationShort": "{{seconds}}s",
+    "publishedBadge": "Shared",
+    "draftBadge": "Draft",
+    "processingBadge": "Processing",
+    "failedBadge": "Failed",
+    "watch": "Watch",
+    "edit": "Edit",
+    "share": "Share",
+    "delete": "Delete",
+    "deleteTitle": "Delete recording?",
+    "deleteConfirm": "Delete this recording? This cannot be undone.",
+    "viewerCount_one": "{{count}} viewer",
+    "viewerCount_other": "{{count}} viewers"
+  },
+  "filters": {
+    "all": "All",
+    "published": "Shared",
+    "drafts": "Drafts",
+    "processing": "Processing",
+    "failed": "Failed"
+  },
+  "controls": {
+    "rec": "REC",
+    "recording": "REC",
+    "paused": "Paused",
+    "processing": "Saving...",
+    "starting": "Starting...",
+    "start": "Start recording",
+    "stop": "Stop recording",
+    "pause": "Pause",
+    "resume": "Resume",
+    "qualityLabel": "Quality",
+    "quality720p": "720p",
+    "quality1080p": "1080p",
+    "stopAndEdit": "Stop & edit",
+    "stopAndEditHint": "Stops the recording and opens the editor when it's ready.",
+    "errorStart": "Could not start recording",
+    "errorStop": "Could not stop recording",
+    "errorPause": "Could not pause recording",
+    "errorResume": "Could not resume recording",
+    "tooEarly": "Recording is still starting; try again in a moment"
+  },
+  "leaveModal": {
+    "title": "Stop the recording and leave?",
+    "description": "This call is being recorded. If you leave now, the recording will stop and the file will be saved to your library.",
+    "confirm": "Stop & leave",
+    "cancel": "Stay in call"
+  },
+  "watch": {
+    "accessRevoked": "The host has stopped sharing this recording."
+  },
+  "editor": {
+    "title": "Edit recording",
+    "back": "Back to recordings",
+    "originalDuration": "Original",
+    "trimmedDuration": "Trimmed",
+    "trimStart": "Start",
+    "trimEnd": "End",
+    "preview": "Preview",
+    "save": "Save trim",
+    "saved": "Trim saved",
+    "saveError": "Could not save trim",
+    "publish": "Publish",
+    "unpublish": "Unpublish",
+    "published": "Recording published",
+    "unpublished": "Recording unpublished",
+    "publishError": "Could not publish recording",
+    "delete": "Delete recording",
+    "loading": "Loading recording...",
+    "notReady": "This recording is still being processed.",
+    "processingTitle": "Saving recording...",
+    "processingHint": "We're finalizing your file. This usually takes a few seconds. The page will refresh automatically when it's ready.",
+    "viewers_one": "{{count}} viewer",
+    "viewers_other": "{{count}} viewers"
+  },
+  "publishModal": {
+    "title": "Share recording",
+    "subtitle": "Pick the people who can watch this recording.",
+    "searchPlaceholder": "Search by username or name...",
+    "noResults": "No users match",
+    "selectedCount_one": "{{count}} person selected",
+    "selectedCount_other": "{{count}} people selected",
+    "publish": "Publish",
+    "cancel": "Cancel",
+    "callParticipants": "People in this call",
+    "selectAll": "Select all",
+    "clearAll": "Clear",
+    "linkShareTitle": "Shareable link",
+    "linkShareDesc": "Anyone signed in with this link can watch.",
+    "linkShareCopy": "Copy link",
+    "linkShareCopied": "Link copied",
+    "leftEarly": "left early"
+  },
+  "notification": {
+    "publishedTitle": "🎬 {{from}} shared a recording",
+    "publishedSubtitle": "{{roomName}} · {{duration}}",
+    "watch": "Watch",
+    "later": "Later"
+  },
+  "viewers": {
+    "title": "Who has watched",
+    "subtitle": "Each viewer's progress through this recording. Owner views are not tracked.",
+    "empty": "No one has watched yet",
+    "emptyHint": "We'll show each viewer here once they start watching, including how far they've reached.",
+    "errorLoading": "Could not load viewers.",
+    "close": "Close",
+    "furthest": "Furthest",
+    "progressLabel": "Watched {{percent}}% of the recording",
+    "sessions_one": "{{count}} session",
+    "sessions_other": "{{count}} sessions"
+  }
+}

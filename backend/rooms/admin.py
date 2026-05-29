@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Recording, RecordingSegment, Room, RoomParticipant
+from .models import Recording, RecordingSegment, RecordingView, Room, RoomParticipant
 
 
 class RoomParticipantInline(admin.TabularInline):
@@ -44,3 +44,15 @@ class RecordingAdmin(admin.ModelAdmin):
         'duration_seconds', 'size_bytes', 'file_path',
     )
     inlines = [RecordingSegmentInline]
+
+
+
+@admin.register(RecordingView)
+class RecordingViewAdmin(admin.ModelAdmin):
+    list_display = (
+        'user', 'recording', 'view_count',
+        'last_position_seconds', 'furthest_position_seconds',
+        'last_watched_at',
+    )
+    list_filter = ('recording__room',)
+    search_fields = ('user__username', 'recording__public_token')

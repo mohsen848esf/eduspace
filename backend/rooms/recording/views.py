@@ -19,6 +19,11 @@ Owner editing & sharing:
     POST   /api/recordings/<token>/publish/      publish to specified users
     POST   /api/recordings/<token>/unpublish/    revoke publish
 
+Watch tracking:
+    POST   /api/recordings/<token>/heartbeat/    viewer ping with current position
+    GET    /api/recordings/<token>/views/        host-only: who watched, how far
+    POST   /api/recordings/<token>/unpublish/    revoke publish
+
 LiveKit webhook:
     POST /api/recordings/webhook/                HMAC-verified
 
@@ -95,7 +100,16 @@ def _require_participant(request, room) -> Response | None:
     return None
 
 
-def _serialize(recording: Recording, *, detail: bool = False) -> dict:
+def _serialize(recording: Recording, *, detail: bool = False, viewer=None) -> dict:
+    """
+    Build the JSON payload for a recording.
+
+    `viewer` is the requesting user when known. When supplied:
+      * non-owner viewers get back their `last_position_seconds`
+        so the player can resume where they stopped last time;
+      * the owner gets back `viewer_count` (number of distinct
+        non-owner users who have heartbeated at least once).
+    """
     payload = {
         'public_token': recording.public_token,
         'status': recording.status,
@@ -107,6 +121,7 @@ def _serialize(recording: Recording, *, detail: bool = False) -> dict:
             recording.completed_at.isoformat() if recording.completed_at else None
         ),
         'is_published': recording.is_published,
+        'is_link_shared': recording.is_link_shared,
         'segment_count': recording.segments.count(),
     }
     if detail:
@@ -123,6 +138,18 @@ def _serialize(recording: Recording, *, detail: bool = False) -> dict:
             'trim_start_seconds': recording.trim_start_seconds,
             'trim_end_seconds': recording.trim_end_seconds,
         })
+        if viewer is not None and getattr(viewer, 'is_authenticated', False):
+            from rooms.models import RecordingView
+            if viewer.id == recording.owner_id:
+                payload['viewer_count'] = recording.views.count()
+                payload['last_position_seconds'] = 0
+            else:
+                view = RecordingView.objects.filter(
+                    recording=recording, user=viewer,
+                ).first()
+                payload['last_position_seconds'] = (
+                    view.last_position_seconds if view else 0
+                )
     return payload
 
 
@@ -459,7 +486,7 @@ def list_recordings(request):
 
     items = []
     for rec in qs[:200]:  # cap to avoid runaway responses
-        payload = _serialize(rec, detail=True)
+        payload = _serialize(rec, detail=True, viewer=request.user)
         payload['is_owner'] = rec.owner_id == request.user.id
         items.append(payload)
 
@@ -483,9 +510,15 @@ def recording_detail_or_delete(request, token: str):
                 {'error': 'You do not have permission to view this recording'},
                 status=http.HTTP_403_FORBIDDEN,
             )
-        payload = _serialize(rec, detail=True)
+        payload = _serialize(rec, detail=True, viewer=request.user)
         payload['is_owner'] = rec.owner_id == request.user.id
-        return Response(payload)
+        response = Response(payload)
+        # Authorization can change at any moment (publish/unpublish, removal
+        # from visible_to, soft delete). Disabling caching keeps the access
+        # guard polling honest — clients always hit the live state.
+        response['Cache-Control'] = 'no-store, no-cache, must-revalidate, private'
+        response['Pragma'] = 'no-cache'
+        return response
 
     # DELETE
     if rec.owner_id != request.user.id and not request.user.is_superuser:
@@ -732,7 +765,7 @@ def finalize_recording(request, token: str):
         rec.duration_seconds, rec.size_bytes,
     )
 
-    payload = _serialize(rec, detail=True)
+    payload = _serialize(rec, detail=True, viewer=request.user)
     payload['is_owner'] = True
     return Response(payload)
 
@@ -777,6 +810,13 @@ def publish_recording(request, token: str):
     except (TypeError, ValueError):
         return Response({'error': 'user_ids must contain integers'}, status=http.HTTP_400_BAD_REQUEST)
 
+    # Optional shareable-link toggle (defaults to keeping current value).
+    raw_link = request.data.get('is_link_shared')
+    if raw_link is None:
+        link_shared = rec.is_link_shared
+    else:
+        link_shared = bool(raw_link)
+
     # Resolve to real user rows; silently drop any that don't exist or are the
     # owner themselves (they always have access).
     users = list(
@@ -786,7 +826,8 @@ def publish_recording(request, token: str):
     with transaction.atomic():
         rec.is_published = True
         rec.published_at = timezone.now()
-        rec.save(update_fields=['is_published', 'published_at'])
+        rec.is_link_shared = link_shared
+        rec.save(update_fields=['is_published', 'published_at', 'is_link_shared'])
         rec.visible_to.set(users)
 
     _send_publish_notifications(rec, [u.id for u in users])
@@ -796,7 +837,7 @@ def publish_recording(request, token: str):
         rec.public_token, len(users),
     )
 
-    payload = _serialize(rec, detail=True)
+    payload = _serialize(rec, detail=True, viewer=request.user)
     payload['is_owner'] = True
     payload['shared_with'] = [
         {'id': u.id, 'username': u.username, 'full_name': u.full_name}
@@ -821,14 +862,146 @@ def unpublish_recording(request, token: str):
     with transaction.atomic():
         rec.is_published = False
         rec.published_at = None
-        rec.save(update_fields=['is_published', 'published_at'])
+        rec.is_link_shared = False
+        rec.save(update_fields=['is_published', 'published_at', 'is_link_shared'])
         rec.visible_to.clear()
 
     logger.info('recording unpublished token=%s', rec.public_token)
 
-    payload = _serialize(rec, detail=True)
+    payload = _serialize(rec, detail=True, viewer=request.user)
     payload['is_owner'] = True
     return Response(payload)
+
+
+# ---------------------------------------------------------------------------
+# Watch tracking (viewer heartbeats + host-side analytics)
+# ---------------------------------------------------------------------------
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def recording_heartbeat(request, token: str):
+    """
+    Viewer ping with their current playback position.
+
+    Body: { "position_seconds": <float> }
+
+    The owner's heartbeats are intentionally not stored — they're not the
+    audience and we don't want their playthrough showing up in their own
+    analytics. Anonymous / unauthenticated users can't reach this view
+    (IsAuthenticated).
+    """
+    rec = _get_recording_or_404(token)
+    if rec is None:
+        return Response({'error': 'Recording not found'}, status=http.HTTP_404_NOT_FOUND)
+
+    if not rec.can_be_viewed_by(request.user):
+        return Response(
+            {'error': 'You do not have permission to view this recording'},
+            status=http.HTTP_403_FORBIDDEN,
+        )
+    if rec.owner_id == request.user.id:
+        # Owner watching their own recording — silently no-op so the
+        # frontend doesn't have to special-case the request.
+        return Response({'ignored': 'owner'}, status=http.HTTP_200_OK)
+
+    try:
+        position = float(request.data.get('position_seconds') or 0)
+    except (TypeError, ValueError):
+        return Response(
+            {'error': 'position_seconds must be a number'},
+            status=http.HTTP_400_BAD_REQUEST,
+        )
+
+    # Clamp to the recording's known duration so a misbehaving client
+    # can't store nonsense numbers.
+    if rec.duration_seconds:
+        position = max(0.0, min(position, float(rec.duration_seconds)))
+    else:
+        position = max(0.0, position)
+
+    from rooms.models import RecordingView
+
+    view, created = RecordingView.objects.get_or_create(
+        recording=rec,
+        user=request.user,
+    )
+
+    now = timezone.now()
+    is_new_session = (
+        created
+        or (now - view.last_watched_at).total_seconds()
+        > RecordingView.NEW_SESSION_GAP_SECONDS
+    )
+
+    view.last_position_seconds = position
+    if position > view.furthest_position_seconds:
+        view.furthest_position_seconds = position
+    if is_new_session:
+        view.view_count += 1
+    view.save()
+
+    return Response(
+        {
+            'last_position_seconds': view.last_position_seconds,
+            'furthest_position_seconds': view.furthest_position_seconds,
+            'view_count': view.view_count,
+        },
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def recording_views(request, token: str):
+    """
+    Host-only analytics: who has watched and how far.
+
+    Returns:
+        {
+            "count": <int>,
+            "results": [
+                {
+                    "user_id": ...,
+                    "username": ...,
+                    "full_name": ...,
+                    "last_position_seconds": ...,
+                    "furthest_position_seconds": ...,
+                    "view_count": ...,
+                    "first_watched_at": ...,
+                    "last_watched_at": ...,
+                    "completion_ratio": <float 0..1>
+                }
+            ]
+        }
+    """
+    rec = _get_recording_or_404(token)
+    if rec is None:
+        return Response({'error': 'Recording not found'}, status=http.HTTP_404_NOT_FOUND)
+
+    if rec.owner_id != request.user.id and not request.user.is_superuser:
+        return Response(
+            {'error': 'Only the owner can see who watched a recording'},
+            status=http.HTTP_403_FORBIDDEN,
+        )
+
+    duration = float(rec.duration_seconds or 0)
+    items = []
+    for view in rec.views.select_related('user').order_by('-last_watched_at'):
+        completion = 0.0
+        if duration > 0:
+            completion = min(1.0, view.furthest_position_seconds / duration)
+        items.append({
+            'user_id': view.user_id,
+            'username': view.user.username,
+            'full_name': view.user.full_name or view.user.username,
+            'last_position_seconds': view.last_position_seconds,
+            'furthest_position_seconds': view.furthest_position_seconds,
+            'view_count': view.view_count,
+            'first_watched_at': view.first_watched_at.isoformat(),
+            'last_watched_at': view.last_watched_at.isoformat(),
+            'completion_ratio': completion,
+        })
+
+    return Response({'count': len(items), 'results': items})
 
 
 # ---------------------------------------------------------------------------
@@ -849,4 +1022,6 @@ __all__ = [
     'finalize_recording',
     'publish_recording',
     'unpublish_recording',
+    'recording_heartbeat',
+    'recording_views',
 ]

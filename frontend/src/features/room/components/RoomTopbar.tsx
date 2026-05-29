@@ -9,10 +9,8 @@ import { Tooltip } from "../../../components/ui/Tooltip";
 import { Icons } from "../../../lib/constants/icons";
 import { cn } from "../../../lib/utils";
 import toast from "react-hot-toast";
-
-interface RoomTopbarProps {
-  isRecording?: boolean;
-}
+import RecordControls from "../../recordings/components/room/RecordControls";
+import { useRoomRecording } from "../../recordings/hooks/useRoomRecording";
 
 function useDuration() {
   const [seconds, setSeconds] = useState(0);
@@ -28,7 +26,7 @@ function useDuration() {
   return h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`;
 }
 
-export default function RoomTopbar({ isRecording = false }: RoomTopbarProps) {
+export default function RoomTopbar() {
   const { t } = useTranslation("room");
   const { roomCode, roomName, isHost } = useRoomStore();
   const remoteParticipants = useParticipants();
@@ -41,6 +39,8 @@ export default function RoomTopbar({ isRecording = false }: RoomTopbarProps) {
   const duration = useDuration();
   const [copied, setCopied] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+
+  const recording = useRoomRecording({ roomCode, isHost });
 
   const copyRoomCode = async () => {
     await navigator.clipboard.writeText(
@@ -56,6 +56,10 @@ export default function RoomTopbar({ isRecording = false }: RoomTopbarProps) {
     totalParticipants === 1
       ? t("topbar.participantOne", { count: totalParticipants })
       : t("topbar.participantOther", { count: totalParticipants });
+
+  const isLiveRecording =
+    recording.status.recording?.status === "recording" ||
+    recording.status.recording?.status === "starting";
 
   return (
     <div className="h-12 flex-shrink-0 flex items-center justify-between px-4 bg-[var(--s1)] border-b border-[var(--b)]">
@@ -77,7 +81,7 @@ export default function RoomTopbar({ isRecording = false }: RoomTopbarProps) {
           <button
             onClick={copyRoomCode}
             className={cn(
-              "flex items-center gap-1.5 px-2 py-1 rounded-lg border-none cursor-pointer transition-all text-xs font-mono",
+              "flex items-center gap-1.5 px-2 py-1 rounded-lg border-none cursor-pointer transition-all text-xs font-mono force-ltr",
               copied
                 ? "bg-[var(--green)]/15 text-[var(--green)]"
                 : "bg-[var(--s3)] text-[var(--t3)] hover:text-[var(--t1)] hover:bg-[var(--s4)]",
@@ -91,20 +95,32 @@ export default function RoomTopbar({ isRecording = false }: RoomTopbarProps) {
 
       {/* Center */}
       <div className="flex items-center gap-3">
-        {isRecording && (
+        {/* Tiny indicator visible to all participants while a recording is live */}
+        {isLiveRecording && !isHost && (
           <div className="flex items-center gap-1.5 text-[var(--red)] text-xs font-semibold">
             <div className="w-1.5 h-1.5 rounded-full bg-[var(--red)] animate-pulse" />
             {t("topbar.rec")}
           </div>
         )}
-        <span className="text-sm font-mono text-[var(--green)] font-semibold">
+        <span className="text-sm font-mono text-[var(--green)] font-semibold force-ltr">
           {duration}
         </span>
         <span className="text-xs text-[var(--t3)]">{participantsLabel}</span>
       </div>
 
       {/* Right */}
-      <div className="flex items-center gap-1 relative">
+      <div className="flex items-center gap-2 relative">
+        <RecordControls
+          roomCode={roomCode}
+          isHost={isHost}
+          status={recording.status}
+          isMutating={recording.isMutating}
+          onStart={recording.start}
+          onStop={recording.stop}
+          onPause={recording.pause}
+          onResume={recording.resume}
+        />
+
         <Tooltip content={t("topbar.info")}>
           <button
             onClick={() => setShowInfo((p) => !p)}
@@ -125,7 +141,7 @@ export default function RoomTopbar({ isRecording = false }: RoomTopbarProps) {
               className="fixed inset-0 z-40"
               onClick={() => setShowInfo(false)}
             />
-            <div className="absolute top-10 right-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-56 fade-in">
+            <div className="absolute top-10 end-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-56 fade-in">
               <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2">
                 {t("topbar.infoTitle")}
               </div>
@@ -142,7 +158,7 @@ export default function RoomTopbar({ isRecording = false }: RoomTopbarProps) {
                   <span className="text-xs text-[var(--t3)]">
                     {t("topbar.infoCode")}
                   </span>
-                  <span className="text-xs font-mono text-[var(--brand-text)]">
+                  <span className="text-xs font-mono text-[var(--brand-text)] force-ltr">
                     {roomCode}
                   </span>
                 </div>
@@ -150,7 +166,7 @@ export default function RoomTopbar({ isRecording = false }: RoomTopbarProps) {
                   <span className="text-xs text-[var(--t3)]">
                     {t("topbar.infoDuration")}
                   </span>
-                  <span className="text-xs font-mono text-[var(--green)]">
+                  <span className="text-xs font-mono text-[var(--green)] force-ltr">
                     {duration}
                   </span>
                 </div>

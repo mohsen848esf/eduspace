@@ -101,6 +101,11 @@ def concat_segments(
     the same codec / sample rate / pixel format. RoomCompositeEgress
     always emits identical settings within one recording, so this works
     reliably for our pause/resume case.
+
+    Even for the single-segment case we still go through ffmpeg to
+    rewrite the moov atom and produce a web-playable MP4 with correct
+    duration metadata; the raw segment LiveKit writes can have a
+    streaming-style container that confuses HTML5 video.
     """
     paths = [Path(p) for p in segment_paths]
     if not paths:
@@ -109,14 +114,23 @@ def concat_segments(
         if not p.exists():
             raise FFmpegError(f'segment missing: {p}')
 
-    if len(paths) == 1:
-        # Trivial case: copy the lone segment to the destination so the
-        # caller can rely on output_path existing.
-        shutil.copy2(paths[0], output_path)
-        return
-
     ffmpeg = _which('ffmpeg')
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if len(paths) == 1:
+        # Single input: skip the concat demuxer, but still remux so the
+        # output has +faststart and a proper moov.
+        _run([
+            ffmpeg,
+            '-y',
+            '-hide_banner',
+            '-loglevel', 'error',
+            '-i', str(paths[0]),
+            '-c', 'copy',
+            '-movflags', '+faststart',
+            str(output_path),
+        ])
+        return
 
     # ffmpeg concat demuxer needs a list-file with one `file '/abs/path'` per line.
     with tempfile.NamedTemporaryFile(
@@ -167,8 +181,20 @@ def trim_inplace(
         )
 
     if start_seconds == 0 and end_seconds is None:
-        if source_path.resolve() != output_path.resolve():
-            shutil.copy2(source_path, output_path)
+        # No trim requested. Still remux so the output has correct
+        # moov / +faststart metadata even if the source was raw egress.
+        ffmpeg = _which('ffmpeg')
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        _run([
+            ffmpeg,
+            '-y',
+            '-hide_banner',
+            '-loglevel', 'error',
+            '-i', str(source_path),
+            '-c', 'copy',
+            '-movflags', '+faststart',
+            str(output_path),
+        ])
         return
 
     ffmpeg = _which('ffmpeg')

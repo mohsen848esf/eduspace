@@ -3,8 +3,17 @@ import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../store/authStore";
 import toast from "react-hot-toast";
 
+function formatNotificationDuration(seconds: number | undefined): string {
+  if (!seconds || seconds < 1) return "0:00";
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60)
+    .toString()
+    .padStart(2, "0");
+  return `${m}:${s}`;
+}
+
 export function useNotifications() {
-  const { t } = useTranslation("notifications");
+  const { t } = useTranslation(["notifications", "recordings"]);
   const { isAuthenticated } = useAuthStore();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeout = useRef<number>(0);
@@ -17,7 +26,9 @@ export function useNotifications() {
           (toastInstance) => (
             <div className="flex flex-col gap-2">
               <p className="text-sm font-semibold">
-                {t("roomInvite.title", { from: notification.from })}
+                {t("notifications:roomInvite.title", {
+                  from: notification.from,
+                })}
               </p>
               <p className="text-xs opacity-70">
                 {notification.room_name || notification.room_code}
@@ -30,13 +41,13 @@ export function useNotifications() {
                   }}
                   className="flex-1 bg-indigo-600 text-white text-xs font-semibold py-1.5 rounded-lg"
                 >
-                  {t("roomInvite.joinNow")}
+                  {t("notifications:roomInvite.joinNow")}
                 </button>
                 <button
                   onClick={() => toast.dismiss(toastInstance.id)}
                   className="px-3 text-xs opacity-60 hover:opacity-100"
                 >
-                  {t("roomInvite.dismiss")}
+                  {t("notifications:roomInvite.dismiss")}
                 </button>
               </div>
             </div>
@@ -52,6 +63,63 @@ export function useNotifications() {
             },
           },
         );
+        return;
+      }
+
+      if (notification.type === "RECORDING_PUBLISHED") {
+        const watchLink =
+          notification.watch_link ||
+          (notification.recording_token
+            ? `/recordings/${notification.recording_token}`
+            : "/recordings");
+        toast(
+          (toastInstance) => (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-semibold">
+                {t("recordings:notification.publishedTitle", {
+                  from: notification.from,
+                })}
+              </p>
+              <p className="text-xs opacity-70">
+                {t("recordings:notification.publishedSubtitle", {
+                  roomName:
+                    notification.room_name || notification.room_code || "",
+                  duration: formatNotificationDuration(
+                    notification.duration_seconds,
+                  ),
+                })}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    toast.dismiss(toastInstance.id);
+                    window.location.href = watchLink;
+                  }}
+                  className="flex-1 bg-indigo-600 text-white text-xs font-semibold py-1.5 rounded-lg"
+                >
+                  {t("recordings:notification.watch")}
+                </button>
+                <button
+                  onClick={() => toast.dismiss(toastInstance.id)}
+                  className="px-3 text-xs opacity-60 hover:opacity-100"
+                >
+                  {t("recordings:notification.later")}
+                </button>
+              </div>
+            </div>
+          ),
+          {
+            duration: 15000,
+            style: {
+              background: "#1e1e2a",
+              color: "#f0f0f8",
+              border: "1px solid rgba(99,102,241,0.3)",
+              borderRadius: "12px",
+              padding: "12px",
+            },
+          },
+        );
+        return;
       }
     },
     [t],

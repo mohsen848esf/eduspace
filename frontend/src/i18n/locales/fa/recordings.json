@@ -1,0 +1,123 @@
+{
+  "page": {
+    "title": "ضبط‌ها",
+    "subtitle": "ضبط‌های جلسات خود را تماشا و مدیریت کنید",
+    "empty": "هنوز ضبطی ندارید",
+    "emptyHint": "ضبط جلسات شما اینجا نمایش داده می‌شود.",
+    "loading": "در حال بارگذاری ضبط‌ها..."
+  },
+  "card": {
+    "by": "توسط {{name}}",
+    "duration": "{{minutes}} دقیقه و {{seconds}} ثانیه",
+    "durationShort": "{{seconds}} ثانیه",
+    "publishedBadge": "اشتراک‌گذاری شده",
+    "draftBadge": "پیش‌نویس",
+    "processingBadge": "در حال پردازش",
+    "failedBadge": "ناموفق",
+    "watch": "تماشا",
+    "edit": "ویرایش",
+    "share": "اشتراک",
+    "delete": "حذف",
+    "deleteTitle": "حذف ضبط؟",
+    "deleteConfirm": "این ضبط حذف شود؟ این عمل قابل بازگشت نیست.",
+    "viewerCount_one": "{{count}} بیننده",
+    "viewerCount_other": "{{count}} بیننده"
+  },
+  "filters": {
+    "all": "همه",
+    "published": "اشتراک‌گذاری شده",
+    "drafts": "پیش‌نویس‌ها",
+    "processing": "در حال پردازش",
+    "failed": "ناموفق"
+  },
+  "controls": {
+    "rec": "ضبط",
+    "recording": "ضبط",
+    "paused": "متوقف",
+    "processing": "در حال ذخیره...",
+    "starting": "در حال شروع...",
+    "start": "شروع ضبط",
+    "stop": "پایان ضبط",
+    "pause": "توقف",
+    "resume": "ادامه",
+    "qualityLabel": "کیفیت",
+    "quality720p": "720p",
+    "quality1080p": "1080p",
+    "stopAndEdit": "پایان و ویرایش",
+    "stopAndEditHint": "ضبط را پایان داده و ویرایشگر را باز می‌کند.",
+    "errorStart": "شروع ضبط با خطا مواجه شد",
+    "errorStop": "پایان ضبط با خطا مواجه شد",
+    "errorPause": "توقف ضبط با خطا مواجه شد",
+    "errorResume": "ادامه ضبط با خطا مواجه شد",
+    "tooEarly": "ضبط هنوز در حال شروع است؛ چند لحظه دیگر امتحان کنید"
+  },
+  "leaveModal": {
+    "title": "ضبط متوقف شود و خارج می‌شوید؟",
+    "description": "این تماس در حال ضبط است. اگر اکنون خارج شوید، ضبط پایان می‌یابد و فایل در کتابخانه‌ی شما ذخیره می‌شود.",
+    "confirm": "پایان و خروج",
+    "cancel": "ماندن در تماس"
+  },
+  "watch": {
+    "accessRevoked": "میزبان اشتراک‌گذاری این ضبط را متوقف کرده است."
+  },
+  "editor": {
+    "title": "ویرایش ضبط",
+    "back": "بازگشت به ضبط‌ها",
+    "originalDuration": "اصلی",
+    "trimmedDuration": "بریده‌شده",
+    "trimStart": "شروع",
+    "trimEnd": "پایان",
+    "preview": "پیش‌نمایش",
+    "save": "ذخیره برش",
+    "saved": "برش ذخیره شد",
+    "saveError": "ذخیره برش با خطا مواجه شد",
+    "publish": "انتشار",
+    "unpublish": "لغو انتشار",
+    "published": "ضبط منتشر شد",
+    "unpublished": "انتشار ضبط لغو شد",
+    "publishError": "انتشار ضبط با خطا مواجه شد",
+    "delete": "حذف ضبط",
+    "loading": "در حال بارگذاری ضبط...",
+    "notReady": "این ضبط هنوز در حال پردازش است.",
+    "processingTitle": "در حال ذخیره ضبط...",
+    "processingHint": "در حال نهایی‌سازی فایل هستیم. معمولاً چند ثانیه طول می‌کشد. وقتی آماده شد، این صفحه به‌صورت خودکار به‌روزرسانی می‌شود.",
+    "viewers_one": "{{count}} بیننده",
+    "viewers_other": "{{count}} بیننده"
+  },
+  "publishModal": {
+    "title": "اشتراک‌گذاری ضبط",
+    "subtitle": "افرادی که می‌توانند این ضبط را تماشا کنند انتخاب کنید.",
+    "searchPlaceholder": "جست‌وجو با نام کاربری یا نام...",
+    "noResults": "کاربری یافت نشد",
+    "selectedCount_one": "{{count}} نفر انتخاب شده",
+    "selectedCount_other": "{{count}} نفر انتخاب شده",
+    "publish": "انتشار",
+    "cancel": "لغو",
+    "callParticipants": "افراد حاضر در این تماس",
+    "selectAll": "انتخاب همه",
+    "clearAll": "پاک کردن",
+    "linkShareTitle": "لینک قابل اشتراک",
+    "linkShareDesc": "هر فردی که با حساب وارد شود و این لینک را داشته باشد می‌تواند تماشا کند.",
+    "linkShareCopy": "کپی لینک",
+    "linkShareCopied": "لینک کپی شد",
+    "leftEarly": "زودتر خارج شده"
+  },
+  "notification": {
+    "publishedTitle": "🎬 {{from}} ضبطی را به اشتراک گذاشت",
+    "publishedSubtitle": "{{roomName}} · {{duration}}",
+    "watch": "تماشا",
+    "later": "بعداً"
+  },
+  "viewers": {
+    "title": "افرادی که تماشا کرده‌اند",
+    "subtitle": "پیشرفت هر بیننده در این ضبط. تماشای میزبان ثبت نمی‌شود.",
+    "empty": "هنوز کسی تماشا نکرده است",
+    "emptyHint": "پس از اینکه افراد شروع به تماشا کنند، نام و میزان پیشرفت هرکدام اینجا نمایش داده می‌شود.",
+    "errorLoading": "بارگذاری بینندگان با خطا مواجه شد.",
+    "close": "بستن",
+    "furthest": "تا اینجا",
+    "progressLabel": "{{percent}}٪ از ضبط را تماشا کرده است",
+    "sessions_one": "{{count}} جلسه",
+    "sessions_other": "{{count}} جلسه"
+  }
+}
