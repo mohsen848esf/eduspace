@@ -170,16 +170,30 @@ class Recording(models.Model):
     def can_be_viewed_by(self, user) -> bool:
         """
         Authorization rule for streaming the file.
-        Stricter than `visible_to`: owners and superusers always pass,
-        and unpublished recordings are owner-only.
+
+        Authorization tiers, in order:
+          1. The owner always passes — even on unpublished or soft-deleted
+             recordings (so the editor surface keeps working).
+          2. Anonymous users and soft-deleted recordings always fail.
+          3. For published recordings:
+             a. `visible_to` members pass.
+             b. If the link-share flag is on, any authenticated user passes.
+          4. Unpublished, non-owner: fail.
+
+        Note: superusers are NOT granted blanket access here. The previous
+        implementation let any superuser stream any recording, which broke
+        unpublish-revokes-access expectations during testing (a superuser
+        viewer could keep watching after the host unpublished). Superuser
+        access still works through the Django admin where appropriate.
         """
-        if user.is_authenticated and (user.is_superuser or user == self.owner):
+        if not user.is_authenticated:
+            return False
+        if user.id == self.owner_id:
             return True
         if not self.is_published or self.is_deleted:
             return False
-        if self.is_link_shared and user.is_authenticated:
+        if self.is_link_shared:
             return True
-        return self.visible_to.filter(pk=user.pk).exists()
         return self.visible_to.filter(pk=user.pk).exists()
 
 
