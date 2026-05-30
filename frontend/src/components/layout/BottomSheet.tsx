@@ -6,7 +6,15 @@ import {
   useRef,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "../../lib/utils";
+
+/**
+ * localStorage key used to remember whether we've already shown the
+ * one-time "drag down to dismiss" hint to the user. Cleared by the
+ * user implicitly on first dismiss / first close.
+ */
+const HINT_STORAGE_KEY = "eduspace.bottomSheetHintSeen";
 
 interface BottomSheetProps {
   open: boolean;
@@ -55,6 +63,30 @@ export default function BottomSheet({
   const dragRef = useRef({ active: false, startY: 0, currentY: 0, startTime: 0 });
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [showHint, setShowHint] = useState(false);
+  const { t } = useTranslation("common");
+
+  // First-open tour hint — shows below the drag handle for ~5s the very
+  // first time the user opens any BottomSheet on this device, then never
+  // again (state is persisted in localStorage).
+  useEffect(() => {
+    if (!open) return;
+    try {
+      if (localStorage.getItem(HINT_STORAGE_KEY) === "1") return;
+    } catch {
+      // Privacy mode / disabled storage — fall through and show the hint.
+    }
+    setShowHint(true);
+    const timeout = window.setTimeout(() => {
+      setShowHint(false);
+      try {
+        localStorage.setItem(HINT_STORAGE_KEY, "1");
+      } catch {
+        // Ignore quota / disabled-storage errors.
+      }
+    }, 5000);
+    return () => window.clearTimeout(timeout);
+  }, [open]);
 
   // Reset drag state every time the sheet reopens; no leftover offsets.
   useEffect(() => {
@@ -66,6 +98,13 @@ export default function BottomSheet({
 
   const handlePointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
+      // First successful drag dismisses the hint and persists "seen".
+      setShowHint(false);
+      try {
+        localStorage.setItem(HINT_STORAGE_KEY, "1");
+      } catch {
+        // ignore
+      }
       dragRef.current = {
         active: true,
         startY: e.clientY,
@@ -165,6 +204,21 @@ export default function BottomSheet({
               <DialogPrimitive.Title className="text-sm font-semibold text-[var(--t1)] self-start">
                 {title}
               </DialogPrimitive.Title>
+            )}
+            {showHint && (
+              <span
+                className={cn(
+                  "self-center text-[11px] text-[var(--t3)]",
+                  "flex items-center gap-1",
+                  "animate-pulse",
+                )}
+                role="status"
+              >
+                <span aria-hidden>↓</span>
+                {t("bottomSheet.dragHint", {
+                  defaultValue: "Drag down to close",
+                })}
+              </span>
             )}
           </div>
 

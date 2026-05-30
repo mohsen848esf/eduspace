@@ -116,8 +116,12 @@ export default function MobileSheetShell({
       <div className="relative flex flex-col w-full h-full">
         <RoomMobileTopbar />
 
-        {/* Full-screen video grid (or game) — sheets cover it on demand. */}
-        <div className="flex-1 overflow-hidden">
+        {/* Full-screen video grid (or game) — sheets cover it on demand.
+            The wrapper is a flex column so VideoGrid's `flex-1` actually
+            stretches; without `flex flex-col` here, VideoGrid would
+            collapse to its content height and leave the bottom 2/3 of
+            the screen black. */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {game.gameBoard.isActive ? (
             <GameBoard gameBoard={game.gameBoard} onEnd={game.endGame} />
           ) : (
