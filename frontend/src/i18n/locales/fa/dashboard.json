@@ -38,7 +38,12 @@
     "recordings": "ضبط‌ها",
     "yourProfile": "پروفایل شما",
     "expandSidebar": "باز کردن منوی کناری",
-    "collapseSidebar": "بستن منوی کناری"
+    "collapseSidebar": "بستن منوی کناری",
+    "more": "بیشتر",
+    "menu": "منو",
+    "openMenu": "باز کردن منو",
+    "closeMenu": "بستن منو",
+    "signOut": "خروج از حساب"
   },
   "topbar": {
     "switchToLight": "تغییر به حالت روشن",
