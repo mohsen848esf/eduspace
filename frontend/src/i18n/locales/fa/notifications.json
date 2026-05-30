@@ -9,5 +9,17 @@
     "subtitle": "{{roomName}} · {{duration}}",
     "watch": "تماشا",
     "dismiss": "بعداً"
+  },
+  "inbox": {
+    "title": "اعلان‌ها",
+    "empty": "هنوز اعلانی ندارید",
+    "emptyHint": "دعوت‌ها و ضبط‌های اشتراک‌گذاری‌شده اینجا نمایش داده می‌شوند.",
+    "unreadCount_one": "{{count}} خوانده‌نشده",
+    "unreadCount_other": "{{count}} خوانده‌نشده",
+    "markAllRead": "همه را خوانده‌شده علامت بزن",
+    "markRead": "خوانده شد",
+    "remove": "حذف",
+    "clearAll": "پاک کردن همه",
+    "unreadDot": "خوانده‌نشده"
   }
 }

@@ -1,9 +1,12 @@
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Tooltip } from "../ui/Tooltip";
 import { useAuthStore } from "../../features/auth/store/authStore";
+import { useNotificationsStore } from "../../features/auth/store/notificationsStore";
 import { Icons } from "../../lib/constants/icons";
 import { useLocale } from "../../i18n/useLocale";
+import NotificationsPopover from "./NotificationsPopover";
 
 interface TopbarProps {
   title: string;
@@ -25,9 +28,14 @@ export default function Topbar({
   onHamburgerClick,
 }: TopbarProps) {
   const navigate = useNavigate();
-  const { t } = useTranslation(["dashboard", "common", "auth"]);
+  const { t } = useTranslation(["dashboard", "common", "auth", "notifications"]);
   const { language, toggleLanguage } = useLocale();
   const { logout } = useAuthStore();
+  const unreadCount = useNotificationsStore((s) =>
+    s.items.filter((it) => it.readAt === null).length,
+  );
+  const bellRef = useRef<HTMLButtonElement>(null);
+  const [showInbox, setShowInbox] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -98,12 +106,38 @@ export default function Topbar({
           </button>
         </Tooltip>
 
-        <Tooltip content={t("topbar.notifications", { count: 3 })}>
-          <button className="relative w-8 h-8 rounded-lg bg-transparent border-none text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)] cursor-pointer flex items-center justify-center text-base transition-all duration-150">
-            🔔
-            <span className="absolute top-1.5 end-1.5 w-1.5 h-1.5 bg-[var(--red)] rounded-full border-2 border-[var(--s1)]" />
-          </button>
-        </Tooltip>
+        <div className="relative">
+          <Tooltip
+            content={
+              unreadCount > 0
+                ? t("notifications:inbox.unreadCount", { count: unreadCount })
+                : t("notifications:inbox.title")
+            }
+          >
+            <button
+              ref={bellRef}
+              onClick={() => setShowInbox((p) => !p)}
+              aria-label={t("notifications:inbox.title")}
+              aria-expanded={showInbox}
+              className={cnBell(showInbox)}
+            >
+              {Icons.bell}
+              {unreadCount > 0 && (
+                <span
+                  className="absolute top-1 end-1 min-w-[14px] h-[14px] px-1 bg-[var(--red)] text-white text-[9px] font-bold rounded-full border-2 border-[var(--s1)] flex items-center justify-center force-ltr"
+                  aria-hidden
+                >
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
+          </Tooltip>
+          <NotificationsPopover
+            open={showInbox}
+            onClose={() => setShowInbox(false)}
+            anchorRef={bellRef}
+          />
+        </div>
 
         <Tooltip content={t("topbar.settings")}>
           <button className="w-8 h-8 rounded-lg bg-transparent border-none text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)] cursor-pointer flex items-center justify-center text-base transition-all duration-150">
@@ -124,4 +158,17 @@ export default function Topbar({
       </div>
     </header>
   );
+}
+
+/**
+ * Bell button class — its layout is reused in the popover-open state so
+ * the active/inactive look stays consistent. Pulled out of the JSX to
+ * keep the render tree readable.
+ */
+function cnBell(active: boolean): string {
+  const base =
+    "relative w-8 h-8 rounded-lg border-none cursor-pointer flex items-center justify-center transition-all duration-150 [&>svg]:w-[18px] [&>svg]:h-[18px]";
+  return active
+    ? `${base} bg-[var(--brand-soft)] text-[var(--brand-text)]`
+    : `${base} bg-transparent text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]`;
 }

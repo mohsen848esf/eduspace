@@ -9,5 +9,17 @@
     "subtitle": "{{roomName}} · {{duration}}",
     "watch": "Watch",
     "dismiss": "Later"
+  },
+  "inbox": {
+    "title": "Notifications",
+    "empty": "No notifications yet",
+    "emptyHint": "Invites and shared recordings will show up here.",
+    "unreadCount_one": "{{count}} unread",
+    "unreadCount_other": "{{count}} unread",
+    "markAllRead": "Mark all read",
+    "markRead": "Mark read",
+    "remove": "Remove",
+    "clearAll": "Clear all",
+    "unreadDot": "Unread"
   }
 }
