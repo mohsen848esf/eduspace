@@ -278,8 +278,11 @@ export default function MobileSwipeStage({
       onKeyDown={handleKeyDown}
       // touch-pan-y lets the browser keep handling vertical scrolls inside
       // panels; only horizontal moves reach our pointer handlers.
+      // overflow-x-clip is stronger than overflow-hidden — it forbids
+      // programmatic horizontal scroll, which guards against descendants
+      // calling scrollIntoView() and inadvertently shifting our track.
       className={cn(
-        "flex-1 overflow-hidden touch-pan-y outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]",
+        "flex-1 overflow-y-hidden overflow-x-clip touch-pan-y outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]",
         className,
       )}
     >

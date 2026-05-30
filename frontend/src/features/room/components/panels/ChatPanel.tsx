@@ -76,10 +76,21 @@ export default function ChatPanel({
   const messages = getMessages(roomCode);
   const [message, setMessage] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
+  // Scroll the message list to the bottom whenever new messages arrive.
+  // We deliberately AVOID Element.scrollIntoView here: it walks every
+  // scrollable ancestor and tries to bring the target into view, which
+  // also scrolls horizontal `overflow:hidden` ancestors (like the swipe
+  // stage that hosts this panel on mobile). That sideways scroll fights
+  // our transform-based pager and visually drags the chat page on top
+  // of whichever tab the user actually selected.
+  // Setting scrollTop on the messages container only touches that one
+  // element, leaving the swipe stage's transform untouched.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   const handleSend = () => {
@@ -94,7 +105,10 @@ export default function ChatPanel({
     <div className="flex flex-col h-full">
       {withListener && <ChatListener roomCode={roomCode} />}
 
-      <div className="flex-1 overflow-y-auto flex flex-col gap-2 pe-1 pb-2">
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto flex flex-col gap-2 pe-1 pb-2"
+      >
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
             <span className="text-2xl">💬</span>
@@ -146,7 +160,6 @@ export default function ChatPanel({
             );
           })
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       {showEmoji && (
