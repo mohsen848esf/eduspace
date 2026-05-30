@@ -42,6 +42,10 @@ export const useRoomLayoutStore = create<RoomLayoutState>()(
     }),
     {
       name: "eduspace.roomLayout",
+      // Bumped to v2 because the pre-v2 store may have persisted
+      // activePanel by mistake; v2 explicitly partializes only mobileMode
+      // so any stale activePanel from old localStorage is dropped on load.
+      version: 2,
       // Only persist mobileMode; activePanel resets per session.
       partialize: (state) => ({ mobileMode: state.mobileMode }),
       // Hydration guard: if the stored value isn't one of the known
@@ -51,6 +55,8 @@ export const useRoomLayoutStore = create<RoomLayoutState>()(
         if (!VALID_MODES.includes(merged.mobileMode)) {
           merged.mobileMode = "swipe";
         }
+        // Always reset session-only fields, no matter what was stored.
+        merged.activePanel = "video";
         return merged;
       },
     },

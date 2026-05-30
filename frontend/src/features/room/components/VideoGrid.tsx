@@ -41,10 +41,26 @@ function getAvatarGradient(identity: string): string {
 function getGridClass(count: number): string {
   if (count === 1) return "grid-cols-1 grid-rows-1";
   if (count === 2) return "grid-cols-2 grid-rows-1";
+  // 3 participants: a 2x2 grid where the 3rd tile spans both columns.
+  // The col-span is applied directly on the tile via getTileClass below.
+  if (count === 3) return "grid-cols-2 grid-rows-2";
   if (count <= 4) return "grid-cols-2 grid-rows-2";
   if (count <= 6) return "grid-cols-3 grid-rows-2";
   if (count <= 9) return "grid-cols-3 grid-rows-3";
   return "grid-cols-4 grid-rows-3";
+}
+
+/**
+ * Per-tile class overrides. Returns a class for the Nth (0-based) tile
+ * given the total count, used to make a single tile span when the row
+ * would otherwise leave it lonely.
+ */
+function getTileClass(index: number, count: number): string {
+  if (count === 3 && index === 2) {
+    // 3rd tile gets a full-width row at the bottom.
+    return "col-span-2";
+  }
+  return "";
 }
 
 function getTrackRefs(participant: Participant, tracks: any[]) {
@@ -72,6 +88,7 @@ function ParticipantTile({
   onMute,
   onKick,
   mutedByHost,
+  className,
 }: {
   participant: Participant;
   camTrackRef: any;
@@ -83,6 +100,12 @@ function ParticipantTile({
   onMute?: (p: RemoteParticipant) => void;
   onKick?: (p: RemoteParticipant) => void;
   mutedByHost?: Set<string>;
+  /**
+   * Extra Tailwind classes appended to the tile root. Used by the grid
+   * layout to make a single tile span when the row would otherwise leave
+   * it lonely (e.g., 3 participants → 3rd tile spans both columns).
+   */
+  className?: string;
 }) {
   const { t } = useTranslation("room");
   const isSpeaking = useIsSpeaking(participant);
@@ -112,6 +135,7 @@ function ParticipantTile({
         "relative bg-[var(--s2)] rounded-xl overflow-hidden transition-all duration-200 w-full h-full",
         isSpeaking &&
           "ring-2 ring-[var(--green)] ring-offset-2 ring-offset-[var(--s0)]",
+        className,
         pinned &&
           "ring-2 ring-[var(--brand)] ring-offset-2 ring-offset-[var(--s0)]",
       )}
@@ -271,7 +295,7 @@ function GridLayout({
         getGridClass(allParticipants.length),
       )}
     >
-      {allParticipants.map((p) => {
+      {allParticipants.map((p, idx) => {
         const { cam, screen } = getTrackRefs(p, tracks);
         return (
           <ParticipantTile
@@ -285,6 +309,7 @@ function GridLayout({
             onMute={onMute}
             onKick={onKick}
             mutedByHost={mutedByHost}
+            className={getTileClass(idx, allParticipants.length)}
           />
         );
       })}

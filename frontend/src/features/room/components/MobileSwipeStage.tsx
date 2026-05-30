@@ -123,15 +123,22 @@ export default function MobileSwipeStage({
     [count],
   );
 
-  // Compute the track's offset in pixels for the *settled* state. Drag
-  // delta layers on top via the transform string built below.
-  const settledOffsetPx = activeIndex * widthRef.current * directionSign;
+  // The track is `count * 100%` wide and each child column is exactly
+  // 100/count% (== one viewport) wide. To scroll to page N we shift the
+  // track by N * (100/count)% = N * (1/count) of the track. Using a
+  // percent of the track removes the dependency on a measured viewport
+  // width — the position is correct on the first paint, before any
+  // ResizeObserver has fired.
+  const settledOffsetPercent =
+    -((activeIndex * 100) / count) * (directionSign === -1 ? 1 : -1);
 
-  // Translate is settled offset + (negative-of-direction × drag delta in
-  // RTL, plain in LTR). Easier to think of as: the track follows your
-  // finger; if you drag start->end (positive deltaX in LTR), the track
-  // translates positive too, revealing the previous page.
-  const translatePx = settledOffsetPx + dragOffsetPx;
+  // Drag delta still comes in pixels (from pointer events). It's added
+  // on top of the percent translation through a calc().
+  const trackTransform = `translate3d(calc(${settledOffsetPercent}% + ${dragOffsetPx}px), 0, 0)`;
+
+  // (Settled offset is computed above as a percentage; the drag delta
+  // is layered on top via the CSS calc() in trackTransform. There is no
+  // pixel-based translation step.)
 
   const handlePointerDown = useCallback((e: PointerEvent<HTMLDivElement>) => {
     // Only primary button / touch / pen.
@@ -282,25 +289,27 @@ export default function MobileSwipeStage({
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerEnd}
         style={{
-          transform: `translate3d(${translatePx}px, 0, 0)`,
+          // The track is sized to count * 100% so each child column is
+          // exactly 100% / count = 1 viewport. translate3d slides the
+          // whole track left/right.
+          width: `${count * 100}%`,
+          transform: trackTransform,
           transition:
             isDragging || respectsReducedMotion
               ? "none"
               : `transform ${SNAP_TRANSITION_MS}ms ease-out`,
-          // Grid-based track — every child column is forced to exactly
-          // 100% of the viewport's width, no matter how much content it
-          // contains. Avoids the flex-shrink + min-width-auto pitfalls.
-          display: "grid",
-          gridAutoFlow: "column",
-          gridAutoColumns: "100%",
-          height: "100%",
         }}
+        className="flex h-full"
       >
         {Children.map(children, (child, idx) => (
           <div
             key={idx}
             aria-hidden={idx !== activeIndex}
-            className="w-full h-full overflow-hidden"
+            // Each child takes 1/count of the track, which equals 100% of
+            // the viewport. shrink-0 + flex-basis-0 keeps the column rigid
+            // even when the inner content is narrower.
+            style={{ width: `${100 / count}%` }}
+            className="h-full shrink-0 overflow-hidden"
           >
             {child}
           </div>
