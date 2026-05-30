@@ -36,10 +36,10 @@ export default function DashboardPage() {
       activeNav={activeNav}
       onNavigate={setActiveNav}
     >
-      <div className="flex flex-col gap-5 fade-in">
+      <div className="flex flex-col gap-4 md:gap-5 fade-in">
         {/* Greeting */}
         <div>
-          <h2 className="text-xl font-bold text-[var(--t1)]">
+          <h2 className="text-xl md:text-2xl font-bold text-[var(--t1)]">
             {greeting()}, {user?.full_name || user?.username} 👋
           </h2>
           <p className="text-sm text-[var(--t2)] mt-1">
@@ -51,7 +51,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick actions */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             {
               icon: "📹",
@@ -74,10 +74,10 @@ export default function DashboardPage() {
               key={item.nav}
               onClick={item.action || (() => setActiveNav(item.nav))}
               disabled={roomLoading}
-              className="flex flex-col items-center gap-2 p-4 bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none disabled:opacity-50"
+              className="flex flex-col items-center gap-2 p-4 md:p-5 min-h-[88px] bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none disabled:opacity-50"
             >
-              <span className="text-2xl">{item.icon}</span>
-              <span className="text-xs font-medium text-[var(--t2)]">
+              <span className="text-2xl md:text-3xl">{item.icon}</span>
+              <span className="text-xs md:text-sm font-medium text-[var(--t2)] text-center">
                 {t(item.labelKey)}
               </span>
             </button>
@@ -85,7 +85,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {[
             {
               labelKey: "stats.sessionsThisWeek",
@@ -101,14 +101,17 @@ export default function DashboardPage() {
               color: "var(--green)",
             },
           ].map((stat) => (
-            <div key={stat.labelKey} className="bg-[var(--s2)] rounded-xl p-4">
+            <div
+              key={stat.labelKey}
+              className="bg-[var(--s2)] rounded-xl p-4 md:p-5 flex md:flex-col items-baseline md:items-start justify-between md:justify-start gap-2"
+            >
               <div
-                className="text-2xl font-bold text-[var(--t1)]"
+                className="text-2xl md:text-3xl font-bold text-[var(--t1)]"
                 style={stat.color ? { color: stat.color } : {}}
               >
                 {stat.value}
               </div>
-              <div className="text-xs text-[var(--t3)] mt-1">
+              <div className="text-xs text-[var(--t3)] md:mt-1">
                 {t(stat.labelKey)}
               </div>
             </div>

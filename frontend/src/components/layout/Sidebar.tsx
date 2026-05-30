@@ -43,7 +43,7 @@ export default function Sidebar({
         onClick={() => onNavigate?.(item.id)}
         className={cn(
           "flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg transition-all duration-150",
-          "text-left border-none cursor-pointer",
+          "text-start border-none cursor-pointer",
           collapsed && "justify-center px-2",
           isActive
             ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
@@ -87,7 +87,7 @@ export default function Sidebar({
     <aside
       className={cn(
         "flex flex-col flex-shrink-0 h-full",
-        "bg-[var(--s1)] border-r border-[var(--b)]",
+        "bg-[var(--s1)] border-e border-[var(--b)]",
         "transition-all duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
         collapsed ? "w-14" : "w-[220px]",
       )}
@@ -160,10 +160,10 @@ export default function Sidebar({
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--brand)] to-[var(--cyan)] flex items-center justify-center text-white text-xs font-bold">
                 A
               </div>
-              <span className="absolute bottom-0 right-0 w-2 h-2 bg-[var(--green)] rounded-full border-2 border-[var(--s1)]" />
+              <span className="absolute bottom-0 end-0 w-2 h-2 bg-[var(--green)] rounded-full border-2 border-[var(--s1)]" />
             </div>
             {!collapsed && (
-              <div className="overflow-hidden text-left">
+              <div className="overflow-hidden text-start">
                 <div className="text-xs font-semibold text-[var(--t1)] whitespace-nowrap">
                   Ali Rezaei
                 </div>

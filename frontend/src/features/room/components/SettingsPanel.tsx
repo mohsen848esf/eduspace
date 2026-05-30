@@ -53,7 +53,7 @@ export default function SettingsPanel({
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute bottom-[76px] left-1/2 -translate-x-1/2 z-50 w-60 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 fade-in">
+      <div className="absolute bottom-[76px] left-1/2 -translate-x-1/2 z-50 w-60 max-w-[calc(100vw-1.5rem)] bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 fade-in">
         <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2 px-1">
           {t("settings.title")}
         </div>

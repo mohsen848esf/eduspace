@@ -289,11 +289,12 @@ export default function PreJoinScreen({
   };
 
   return (
-    <div className="min-h-screen bg-[var(--s0)] flex items-center justify-center p-4">
-      <div className="w-full max-w-3xl fade-in">
+    <div className="min-h-screen bg-[var(--s0)] flex flex-col md:items-center md:justify-center md:p-4">
+      {/* Scrollable content area; on desktop the whole thing is centered. */}
+      <div className="flex-1 overflow-y-auto md:overflow-visible md:flex-none md:w-full md:max-w-3xl px-4 pt-6 pb-4 md:p-0 fade-in">
         {/* Header */}
-        <div className="text-center mb-6">
-          <div className="text-2xl font-bold text-[var(--t1)] mb-1">
+        <div className="text-center mb-5 md:mb-6">
+          <div className="text-xl md:text-2xl font-bold text-[var(--t1)] mb-1">
             {roomName}
           </div>
           <div className="text-sm text-[var(--t3)]">
@@ -536,8 +537,9 @@ export default function PreJoinScreen({
               </div>
             </div>
 
-            {/* Join buttons */}
-            <div className="flex flex-col gap-2 flex-shrink-0">
+            {/* Join buttons — in-card on tablet/desktop. Mobile uses the
+                sticky footer below the scrollable content. */}
+            <div className="hidden md:flex flex-col gap-2 flex-shrink-0">
               <Button fullWidth onClick={handleJoin}>
                 {t("preJoin.join")}
               </Button>
@@ -547,6 +549,16 @@ export default function PreJoinScreen({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Mobile sticky CTA — sits at the page bottom; hidden at md+. */}
+      <div className="md:hidden flex-shrink-0 border-t border-[var(--b)] bg-[var(--s1)] p-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] flex flex-col gap-2">
+        <Button fullWidth onClick={handleJoin} className="min-h-12 text-base">
+          {t("preJoin.join")}
+        </Button>
+        <Button variant="ghost" fullWidth onClick={onCancel} className="min-h-11">
+          {t("preJoin.cancel")}
+        </Button>
       </div>
     </div>
   );

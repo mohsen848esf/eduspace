@@ -171,7 +171,7 @@ export default function RecordingEditPage() {
   return (
     <div className="min-h-screen bg-[var(--s0)] text-[var(--t1)]">
       {/* Topbar */}
-      <header className="h-14 flex items-center justify-between px-5 bg-[var(--s1)] border-b border-[var(--b)]">
+      <header className="min-h-14 flex flex-wrap items-center justify-between gap-2 px-3 md:px-5 py-2 md:py-0 bg-[var(--s1)] border-b border-[var(--b)]">
         <div className="flex items-center gap-3">
           <Tooltip content={t("editor.back")}>
             <button
@@ -219,7 +219,7 @@ export default function RecordingEditPage() {
       </header>
 
       {/* Body */}
-      <main className="max-w-5xl mx-auto p-5 flex flex-col gap-5">
+      <main className="max-w-5xl mx-auto p-3 md:p-5 flex flex-col gap-4 md:gap-5">
         {isStillProcessing ? (
           <div className="bg-[var(--s2)] rounded-2xl border border-[var(--b)] aspect-video flex flex-col items-center justify-center gap-3 text-[var(--t3)]">
             <Spinner size="lg" />

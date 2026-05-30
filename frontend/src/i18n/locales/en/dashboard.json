@@ -38,7 +38,12 @@
     "recordings": "Recordings",
     "yourProfile": "Your profile",
     "expandSidebar": "Expand sidebar",
-    "collapseSidebar": "Collapse sidebar"
+    "collapseSidebar": "Collapse sidebar",
+    "more": "More",
+    "menu": "Menu",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "signOut": "Sign out"
   },
   "topbar": {
     "switchToLight": "Switch to light mode",

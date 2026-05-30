@@ -57,7 +57,7 @@ function ParticipantStrip({
   );
 
   return (
-    <div className="flex flex-col gap-1.5 w-20 bg-[var(--s1)] border-r border-[var(--b)] p-1.5 overflow-y-auto">
+    <div className="flex flex-col gap-1.5 w-20 bg-[var(--s1)] border-e border-[var(--b)] p-1.5 overflow-y-auto">
       {allParticipants.map((participant) => {
         const camTrack = tracks.find(
           (tr) =>

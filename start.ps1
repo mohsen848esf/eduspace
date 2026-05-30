@@ -5,12 +5,14 @@
 #   .\start.ps1 -Editor cursor        # skip the prompt, use a specific editor
 #   .\start.ps1 -Editor none          # don't open any editor
 #
-# Detected editors (first match wins when no -Editor is given):
-#   cursor, kiro, code (vscode)
+# Built-in editor candidates: cursor, code (VS Code).
+# To make the picker also detect other editors installed on your machine,
+# create a gitignored file `.editors.local` in the project root with one
+# editor command per line, or set the environment variable
+# EDUSPACE_EDITORS to a comma-separated list (e.g. "myide,otherone").
 
 [CmdletBinding()]
 param(
-    [ValidateSet('cursor', 'kiro', 'code', 'none', '')]
     [string]$Editor = ''
 )
 
@@ -23,6 +25,36 @@ Write-Host 'Starting EduSpace...' -ForegroundColor Cyan
 # ---------------------------------------------------------------------------
 # Pick an editor
 # ---------------------------------------------------------------------------
+function Get-EditorCandidates {
+    $candidates = [System.Collections.Generic.List[string]]::new()
+    $candidates.Add('cursor')
+    $candidates.Add('code')
+
+    # Local override file — gitignored, lets each developer add their own
+    # preferred editors without committing the name to the repo.
+    $localFile = Join-Path $projectRoot '.editors.local'
+    if (Test-Path $localFile) {
+        Get-Content $localFile | ForEach-Object {
+            $name = $_.Trim()
+            if ($name -and -not $candidates.Contains($name)) {
+                $candidates.Add($name) | Out-Null
+            }
+        }
+    }
+
+    # Env-var override — same idea, useful in CI / shared shells.
+    if ($env:EDUSPACE_EDITORS) {
+        foreach ($name in $env:EDUSPACE_EDITORS -split ',') {
+            $trimmed = $name.Trim()
+            if ($trimmed -and -not $candidates.Contains($trimmed)) {
+                $candidates.Add($trimmed) | Out-Null
+            }
+        }
+    }
+
+    return $candidates.ToArray()
+}
+
 function Resolve-Editor {
     param([string[]]$Candidates)
     $found = @()
@@ -40,9 +72,9 @@ function Resolve-Editor {
 
 $editorChoice = $Editor.ToLower()
 if (-not $editorChoice) {
-    $available = Resolve-Editor -Candidates @('cursor', 'kiro', 'code')
+    $available = Resolve-Editor -Candidates (Get-EditorCandidates)
     if ($available.Count -eq 0) {
-        Write-Host 'No supported editor found on PATH (cursor, kiro, code). Skipping.' -ForegroundColor Yellow
+        Write-Host 'No editor found on PATH. Skipping (set EDUSPACE_EDITORS or .editors.local to add candidates).' -ForegroundColor Yellow
         $editorChoice = 'none'
     }
     elseif ($available.Count -eq 1) {

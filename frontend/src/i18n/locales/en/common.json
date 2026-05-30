@@ -30,5 +30,8 @@
     "generic": "Something went wrong",
     "accessDenied": "Access Denied",
     "noPermission": "You don't have permission to view this page."
+  },
+  "bottomSheet": {
+    "dragHint": "Drag down to close"
   }
 }
