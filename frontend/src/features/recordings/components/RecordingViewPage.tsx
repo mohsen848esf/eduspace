@@ -82,7 +82,7 @@ export default function RecordingViewPage() {
 
   return (
     <div className="min-h-screen bg-[var(--s0)] text-[var(--t1)]">
-      <header className="h-14 flex items-center justify-between px-5 bg-[var(--s1)] border-b border-[var(--b)]">
+      <header className="h-14 flex items-center justify-between gap-3 px-3 md:px-5 bg-[var(--s1)] border-b border-[var(--b)]">
         <div className="flex items-center gap-3">
           <Tooltip content={t("editor.back")}>
             <button
@@ -111,7 +111,7 @@ export default function RecordingViewPage() {
         </span>
       </header>
 
-      <main className="max-w-5xl mx-auto p-5">
+      <main className="max-w-5xl mx-auto p-3 md:p-5">
         <RecordingPlayer
           token={recording.public_token}
           autoPlay

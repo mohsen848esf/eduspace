@@ -68,22 +68,25 @@ export default function RecordingsPage() {
       onNavigate={setActiveNav}
     >
       <div className="flex flex-col gap-4 fade-in">
-        {/* Filters */}
-        <div className="flex flex-wrap gap-1.5">
-          {FILTERS.map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={cn(
-                "px-3 h-8 rounded-lg border-none cursor-pointer text-xs font-semibold transition-colors",
-                filter === f
-                  ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
-                  : "bg-[var(--s2)] text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
-              )}
-            >
-              {t(`filters.${f}`)}
-            </button>
-          ))}
+        {/* Filters — sticky on mobile so the user can scroll cards while
+            keeping access to the filter row. */}
+        <div className="md:static sticky top-0 z-10 bg-[var(--s0)] -mx-4 px-4 pt-1 pb-2 md:m-0 md:p-0 md:bg-transparent">
+          <div className="flex flex-wrap gap-1.5 overflow-x-auto md:flex-wrap">
+            {FILTERS.map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={cn(
+                  "px-3 min-h-9 h-9 rounded-lg border-none cursor-pointer text-xs font-semibold transition-colors flex-shrink-0",
+                  filter === f
+                    ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
+                    : "bg-[var(--s2)] text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
+                )}
+              >
+                {t(`filters.${f}`)}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Body */}
@@ -102,7 +105,7 @@ export default function RecordingsPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             {items.map((rec) => (
               <RecordingCard
                 key={rec.public_token}
