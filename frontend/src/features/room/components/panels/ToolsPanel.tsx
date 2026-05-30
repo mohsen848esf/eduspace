@@ -93,7 +93,7 @@ export default function ToolsPanel() {
             key={tool.name}
             onClick={tool.onClick}
             disabled={tool.disabled || tool.status === "soon"}
-            className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-[var(--s3)] disabled:cursor-not-allowed disabled:opacity-50 transition-colors text-left border-none bg-transparent w-full"
+            className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-[var(--s3)] disabled:cursor-not-allowed disabled:opacity-50 transition-colors text-start border-none bg-transparent w-full"
           >
             <div
               className={cn(

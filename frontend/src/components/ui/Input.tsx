@@ -46,7 +46,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           >
             {label}
             {props.required && (
-              <span className="text-[var(--red)] ml-1">*</span>
+              <span className="text-[var(--red)] ms-1">*</span>
             )}
           </label>
         )}
@@ -55,7 +55,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         <div className="relative flex items-center">
           {/* Left icon */}
           {leftIcon && (
-            <span className="absolute left-3 text-[var(--t3)] pointer-events-none text-sm">
+            <span className="absolute start-3 text-[var(--t3)] pointer-events-none text-sm">
               {leftIcon}
             </span>
           )}
@@ -74,8 +74,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
                 ? "border-[var(--red)]/50 focus:border-[var(--red)] focus:ring-[var(--red)]/20"
                 : "border-[var(--b)] focus:border-[var(--brand)] focus:ring-[var(--brand)]/20",
               // Icon padding
-              leftIcon && "pl-9",
-              rightIcon && "pr-10",
+              leftIcon && "ps-9",
+              rightIcon && "pe-10",
               // Disabled
               "disabled:opacity-50 disabled:cursor-not-allowed",
               className,
@@ -89,7 +89,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
               type="button"
               onClick={onRightIconClick}
               className={cn(
-                "absolute right-3 text-[var(--t3)] transition-colors duration-150",
+                "absolute end-3 text-[var(--t3)] transition-colors duration-150",
                 onRightIconClick
                   ? "hover:text-[var(--t1)] cursor-pointer"
                   : "cursor-default pointer-events-none",

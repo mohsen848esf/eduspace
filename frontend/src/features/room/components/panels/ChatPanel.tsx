@@ -94,7 +94,7 @@ export default function ChatPanel({
     <div className="flex flex-col h-full">
       {withListener && <ChatListener roomCode={roomCode} />}
 
-      <div className="flex-1 overflow-y-auto flex flex-col gap-2 pr-1 pb-2">
+      <div className="flex-1 overflow-y-auto flex flex-col gap-2 pe-1 pb-2">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
             <span className="text-2xl">💬</span>
@@ -130,8 +130,8 @@ export default function ChatPanel({
                   className={cn(
                     "max-w-[85%] px-3 py-2 rounded-2xl text-xs leading-relaxed",
                     isMe
-                      ? "bg-[var(--brand)] text-white rounded-br-sm"
-                      : "bg-[var(--s3)] text-[var(--t1)] rounded-bl-sm",
+                      ? "bg-[var(--brand)] text-white rounded-ee-sm"
+                      : "bg-[var(--s3)] text-[var(--t1)] rounded-es-sm",
                   )}
                 >
                   {msg.message}

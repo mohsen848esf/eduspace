@@ -141,7 +141,7 @@ function ParticipantTile({
       )}
 
       {hasScreen && hasVideo && !compact && (
-        <div className="absolute bottom-10 right-2 w-20 h-14 rounded-lg overflow-hidden border-2 border-[var(--s0)] shadow-lg">
+        <div className="absolute bottom-10 end-2 w-20 h-14 rounded-lg overflow-hidden border-2 border-[var(--s0)] shadow-lg">
           <VideoTrack
             trackRef={camTrackRef}
             className={cn(
@@ -153,20 +153,20 @@ function ParticipantTile({
       )}
 
       {hasScreen && !compact && (
-        <div className="absolute top-2 left-2 bg-[var(--brand)]/80 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
+        <div className="absolute top-2 start-2 bg-[var(--brand)]/80 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
           {Icons.screenShare}
           <span>{t("tile.sharing")}</span>
         </div>
       )}
 
       {pinned && !compact && (
-        <div className="absolute top-2 right-2 bg-[var(--brand)]/80 backdrop-blur-sm text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md">
+        <div className="absolute top-2 end-2 bg-[var(--brand)]/80 backdrop-blur-sm text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md">
           📌
         </div>
       )}
 
       {isSpeaking && (
-        <div className="absolute top-2 right-2 flex gap-0.5 items-end h-4">
+        <div className="absolute top-2 end-2 flex gap-0.5 items-end h-4">
           {[1, 2, 3, 2, 1].map((h, i) => (
             <div
               key={i}
@@ -233,7 +233,7 @@ function ParticipantTile({
           )}
         </div>
       )}
-      <div className="absolute bottom-0 left-0 right-0 p-1.5 flex items-center gap-1 bg-gradient-to-t from-black/60 to-transparent">
+      <div className="absolute bottom-0 start-0 end-0 p-1.5 flex items-center gap-1 bg-gradient-to-t from-black/60 to-transparent">
         <span
           className={cn(
             "font-semibold text-white bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded-md truncate flex-1",
