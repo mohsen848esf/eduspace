@@ -53,10 +53,6 @@ export default function RoomMobileTopbar() {
   const menuRef = useRef<HTMLDivElement>(null);
 
   const recording = useRoomRecording({ roomCode, isHost });
-  const isLiveRecording =
-    recording.status.recording?.status === "recording" ||
-    recording.status.recording?.status === "starting" ||
-    recording.status.recording?.status === "paused";
 
   useEffect(() => {
     if (!showMenu) return;
@@ -91,16 +87,9 @@ export default function RoomMobileTopbar() {
         </span>
       </div>
 
-      {/* REC dot (recording only) */}
-      {isLiveRecording && (
-        <span
-          aria-label={t("topbar.rec")}
-          className={cn(
-            "w-2 h-2 rounded-full bg-[var(--red)] flex-shrink-0",
-            recording.status.recording?.status !== "paused" && "animate-pulse",
-          )}
-        />
-      )}
+      {/* Recording state moved to RoomRecordingBadge (overlay on the
+          call surface) — it's visible to every participant there, so
+          we don't double up by stamping a dot here too. */}
 
       {/* Timer */}
       <span className="text-xs font-mono text-[var(--green)] font-semibold force-ltr flex-shrink-0">

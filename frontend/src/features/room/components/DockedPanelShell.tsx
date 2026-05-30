@@ -6,6 +6,7 @@ import GameBoard from "./GameBoard";
 import GameInviteToast from "./GameInviteToast";
 import RoomTopbar from "./RoomTopbar";
 import RoomControls from "./RoomControls";
+import RoomRecordingBadge from "./RoomRecordingBadge";
 import RoomSidebar from "./RoomSidebar";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
 import { type useGameBoard } from "../hooks/useGameBoard";
@@ -69,11 +70,14 @@ export default function DockedPanelShell({
     <div className="flex flex-col w-full h-full">
       <RoomTopbar />
       <div className="flex flex-1 overflow-hidden">
-        {game.gameBoard.isActive ? (
-          <GameBoard gameBoard={game.gameBoard} onEnd={game.endGame} />
-        ) : (
-          <VideoGrid layout={layout} onLayoutChange={onLayoutChange} />
-        )}
+        <div className="relative flex-1 flex">
+          {game.gameBoard.isActive ? (
+            <GameBoard gameBoard={game.gameBoard} onEnd={game.endGame} />
+          ) : (
+            <VideoGrid layout={layout} onLayoutChange={onLayoutChange} />
+          )}
+          <RoomRecordingBadge />
+        </div>
         <RoomSidebar
           activeTab={controls.sidebarTab}
           onTabChange={controls.toggleSidebar}
