@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../store/authStore";
+import { useNotificationsStore } from "../store/notificationsStore";
 import toast from "react-hot-toast";
 
 function formatNotificationDuration(seconds: number | undefined): string {
@@ -15,12 +16,23 @@ function formatNotificationDuration(seconds: number | undefined): string {
 export function useNotifications() {
   const { t } = useTranslation(["notifications", "recordings"]);
   const { isAuthenticated } = useAuthStore();
+  const addToInbox = useNotificationsStore((s) => s.add);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeout = useRef<number>(0);
   const isUnmounted = useRef(false);
 
   const handleNotification = useCallback(
     (notification: any) => {
+      // Persist into the inbox first so the user can come back to it
+      // even if they miss the toast. The store de-dupes, so this is safe
+      // to call on every message including reconnect-replays.
+      if (
+        notification?.type === "ROOM_INVITE" ||
+        notification?.type === "RECORDING_PUBLISHED"
+      ) {
+        addToInbox(notification.type, notification);
+      }
+
       if (notification.type === "ROOM_INVITE") {
         toast(
           (toastInstance) => (
@@ -122,7 +134,7 @@ export function useNotifications() {
         return;
       }
     },
-    [t],
+    [t, addToInbox],
   );
 
   const connect = useCallback(() => {
