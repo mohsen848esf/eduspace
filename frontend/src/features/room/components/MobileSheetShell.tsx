@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useRoomStore } from "../store/roomStore";
 import { useRoomLayoutStore, type ActivePanel } from "../store/roomLayoutStore";
@@ -5,8 +6,10 @@ import { type SidebarTab } from "../hooks/useRoomControls";
 import VideoGrid from "./VideoGrid";
 import GameBoard from "./GameBoard";
 import GameInviteToast from "./GameInviteToast";
-import RoomTopbar from "./RoomTopbar";
-import RoomControls from "./RoomControls";
+import RoomMobileTopbar from "./RoomMobileTopbar";
+import RoomMobileControls from "./RoomMobileControls";
+import SettingsPanel from "./SettingsPanel";
+import MobilePanelTabs from "./MobilePanelTabs";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
 import BottomSheet from "../../../components/layout/BottomSheet";
 import ParticipantsPanel from "./panels/ParticipantsPanel";
@@ -45,10 +48,10 @@ interface MobileSheetShellProps {
 /**
  * Mobile in-call layout — bottom-sheets variant.
  *
- * Video grid stays full-screen. Tapping a panel button (People / Chat /
- * Tools) opens a BottomSheet for that panel. The active panel is mirrored
- * into useRoomLayoutStore so the bottom-bar's highlight follows the open
- * sheet, and closing a sheet snaps the user back to the "video" panel.
+ * Video grid stays full-screen. The MobilePanelTabs strip across the top
+ * lets the user open People / Chat / Tools as a bottom sheet (and tap
+ * Video to close all sheets and focus the call). The bottom controls
+ * carry only the four essentials.
  */
 export default function MobileSheetShell({
   controls,
@@ -69,22 +72,42 @@ export default function MobileSheetShell({
   const activePanel = useRoomLayoutStore((s) => s.activePanel);
   const setActivePanel = useRoomLayoutStore((s) => s.setActivePanel);
 
+  // Reset to Video on mount so re-entering a call always starts on the
+  // call surface rather than reopening a sheet.
+  useEffect(() => {
+    setActivePanel("video");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Blur any focused input on panel change so background typing doesn't
+  // keep writing into a hidden chat field.
+  useEffect(() => {
+    const el = document.activeElement;
+    if (
+      el instanceof HTMLInputElement ||
+      el instanceof HTMLTextAreaElement
+    ) {
+      el.blur();
+    }
+  }, [activePanel]);
+
   const handleSheetOpenChange = (panel: ActivePanel) => (open: boolean) => {
     if (!open && activePanel === panel) {
       setActivePanel("video");
     }
   };
 
-  const handlePanelButtonClick = (panel: "people" | "chat" | "tools") => {
-    setActivePanel(activePanel === panel ? "video" : panel);
-  };
-
   return (
     <>
-      <div className="flex flex-col w-full h-full">
-        <RoomTopbar />
+      <div className="relative flex flex-col w-full h-full">
+        <RoomMobileTopbar />
 
-        {/* Full-screen video grid (or game when active). */}
+        <MobilePanelTabs
+          active={activePanel}
+          onChange={(panel) => setActivePanel(panel)}
+        />
+
+        {/* Full-screen video grid (or game) — sheets cover it on demand. */}
         <div className="flex-1 overflow-hidden">
           {game.gameBoard.isActive ? (
             <GameBoard gameBoard={game.gameBoard} onEnd={game.endGame} />
@@ -93,27 +116,25 @@ export default function MobileSheetShell({
           )}
         </div>
 
-        <RoomControls
+        <RoomMobileControls
           isMicOn={controls.isMicOn}
           isCamOn={controls.isCamOn}
           isScreenSharing={controls.isScreenSharing}
-          isPushToTalk={controls.isPushToTalk}
-          sidebarTab={controls.sidebarTab}
-          settingsOpen={controls.settingsOpen}
           layout={layout}
+          settingsOpen={controls.settingsOpen}
           onToggleMic={controls.toggleMic}
           onToggleCam={controls.toggleCam}
           onToggleScreenShare={controls.toggleScreenShare}
-          onToggleSidebar={controls.toggleSidebar}
-          onToggleSettings={controls.toggleSettings}
-          onTogglePushToTalk={controls.togglePushToTalk}
           onLayoutChange={onLayoutChange}
+          onToggleSettings={controls.toggleSettings}
           onLeave={onLeaveRequest}
-          activePanelOverride={
-            activePanel === "video" ? undefined : activePanel
-          }
-          onPanelButtonClick={handlePanelButtonClick}
-          size="sm"
+        />
+
+        <SettingsPanel
+          isOpen={controls.settingsOpen}
+          onClose={controls.toggleSettings}
+          isPushToTalk={controls.isPushToTalk}
+          onTogglePushToTalk={controls.togglePushToTalk}
         />
 
         <GameInviteToast
@@ -136,7 +157,6 @@ export default function MobileSheetShell({
         />
       </div>
 
-      {/* Three independent bottom sheets keyed off activePanel. */}
       <BottomSheet
         open={activePanel === "people"}
         onOpenChange={handleSheetOpenChange("people")}

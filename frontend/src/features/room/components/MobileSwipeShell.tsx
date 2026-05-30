@@ -6,11 +6,12 @@ import { type SidebarTab } from "../hooks/useRoomControls";
 import VideoGrid from "./VideoGrid";
 import GameBoard from "./GameBoard";
 import GameInviteToast from "./GameInviteToast";
-import RoomTopbar from "./RoomTopbar";
-import RoomControls from "./RoomControls";
+import RoomMobileTopbar from "./RoomMobileTopbar";
+import RoomMobileControls from "./RoomMobileControls";
+import SettingsPanel from "./SettingsPanel";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
 import MobileSwipeStage from "./MobileSwipeStage";
-import MobileSwipeDots from "./MobileSwipeDots";
+import MobilePanelTabs from "./MobilePanelTabs";
 import ParticipantsPanel from "./panels/ParticipantsPanel";
 import ChatPanel from "./panels/ChatPanel";
 import ToolsPanel from "./panels/ToolsPanel";
@@ -19,8 +20,6 @@ import { type useGameBoard } from "../hooks/useGameBoard";
 type LayoutMode = "grid" | "spotlight" | "sidebar";
 
 interface MobileSwipeShellProps {
-  // Shared between docked + mobile shells. Kept as a flat prop bag so each
-  // shell explicitly declares what it needs from the parent RoomContent.
   controls: {
     isMicOn: boolean;
     isCamOn: boolean;
@@ -58,14 +57,19 @@ const indexToPanel = (i: number): ActivePanel =>
 /**
  * Mobile in-call layout — swipe pages variant.
  *
- * Renders four full-screen pages (Video, People, Chat, Tools) inside a
- * MobileSwipeStage, plus pagination dots and the refreshed bottom
- * control bar. The active panel is mirrored into useRoomLayoutStore so
- * other components (e.g., the bottom-sheet shell that may take over if
- * the user resizes) can read it.
+ * Layout (top → bottom):
+ *   1. RoomMobileTopbar       — compact, single-line, overflow menu.
+ *   2. MobilePanelTabs        — Video / People / Chat / Tools tab strip.
+ *   3. MobileSwipeStage       — full-width, full-height pages.
+ *   4. RoomMobileControls     — Mic, Camera, More, Leave only.
  *
- * The leave-confirm modal lives here too, mirroring the docked shell so
- * the recording-aware leave flow keeps working on mobile.
+ * Differences from the previous version:
+ *   - Always opens on the Video page; activePanel is reset on mount so a
+ *     stale store value can't land us in chat first.
+ *   - No swipe-dot indicator (replaced by the top tab strip).
+ *   - When the user leaves the Chat page (typing in the chat input was
+ *     bouncing them back because the input kept focus), we explicitly
+ *     blur any active element on every panel change.
  */
 export default function MobileSwipeShell({
   controls,
@@ -86,11 +90,12 @@ export default function MobileSwipeShell({
   const activePanel = useRoomLayoutStore((s) => s.activePanel);
   const setActivePanel = useRoomLayoutStore((s) => s.setActivePanel);
 
-  // Keep the store and the swipe stage's index in sync.
-  const onIndexChange = useCallback(
-    (next: number) => setActivePanel(indexToPanel(next)),
-    [setActivePanel],
-  );
+  // Force-start on the Video page so re-entering a call never lands the
+  // user on a stale panel choice.
+  useEffect(() => {
+    setActivePanel("video");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // When a game launches, jump to the Video page so the host doesn't
   // have to swipe back from People/Chat/Tools to see it.
@@ -100,18 +105,41 @@ export default function MobileSwipeShell({
     }
   }, [game.gameBoard.isActive, activePanel, setActivePanel]);
 
+  // Whenever the panel changes, blur any focused input. Otherwise the
+  // chat input stays focused after swiping away — typing on another
+  // page keeps writing into the chat field, which we don't want.
+  useEffect(() => {
+    const el = document.activeElement;
+    if (
+      el instanceof HTMLInputElement ||
+      el instanceof HTMLTextAreaElement
+    ) {
+      el.blur();
+    }
+  }, [activePanel]);
+
+  const onIndexChange = useCallback(
+    (next: number) => setActivePanel(indexToPanel(next)),
+    [setActivePanel],
+  );
+
   return (
     <>
-      <div className="flex flex-col w-full h-full">
-        <RoomTopbar />
+      <div className="relative flex flex-col w-full h-full">
+        <RoomMobileTopbar />
+
+        <MobilePanelTabs
+          active={activePanel}
+          onChange={(panel) => setActivePanel(panel)}
+        />
 
         <MobileSwipeStage
           activeIndex={panelToIndex(activePanel)}
           onActiveIndexChange={onIndexChange}
           ariaLabel="Call panels"
         >
-          {/* Page 1 — video grid (or game when active). */}
-          <div className="w-full h-full">
+          {/* Page 1 — Video grid (or the active game board). */}
+          <div className="flex w-full h-full">
             {game.gameBoard.isActive ? (
               <GameBoard gameBoard={game.gameBoard} onEnd={game.endGame} />
             ) : (
@@ -119,57 +147,49 @@ export default function MobileSwipeShell({
             )}
           </div>
 
-          {/* Pages 2-4 — panels with a mini video strip pinned on top. */}
-          <div className="w-full h-full flex flex-col bg-[var(--s0)]">
-            <MiniVideoStrip />
+          {/* Page 2 — Participants. */}
+          <div className="flex w-full h-full bg-[var(--s0)]">
             <div className="flex-1 overflow-y-auto p-3">
               <ParticipantsPanel />
             </div>
           </div>
 
-          <div className="w-full h-full flex flex-col bg-[var(--s0)]">
-            <MiniVideoStrip />
+          {/* Page 3 — Chat. */}
+          <div className="flex w-full h-full bg-[var(--s0)]">
             <div className="flex-1 overflow-hidden p-3">
               <ChatPanel roomCode={activeRoomCode} />
             </div>
           </div>
 
-          <div className="w-full h-full flex flex-col bg-[var(--s0)]">
-            <MiniVideoStrip />
+          {/* Page 4 — Tools. */}
+          <div className="flex w-full h-full bg-[var(--s0)]">
             <div className="flex-1 overflow-y-auto p-3">
               <ToolsPanel />
             </div>
           </div>
         </MobileSwipeStage>
 
-        <MobileSwipeDots
-          count={PANEL_ORDER.length}
-          active={panelToIndex(activePanel)}
-          onSelect={onIndexChange}
-          ariaLabel="Call pages"
-        />
-
-        <RoomControls
+        <RoomMobileControls
           isMicOn={controls.isMicOn}
           isCamOn={controls.isCamOn}
           isScreenSharing={controls.isScreenSharing}
-          isPushToTalk={controls.isPushToTalk}
-          sidebarTab={controls.sidebarTab}
-          settingsOpen={controls.settingsOpen}
           layout={layout}
+          settingsOpen={controls.settingsOpen}
           onToggleMic={controls.toggleMic}
           onToggleCam={controls.toggleCam}
           onToggleScreenShare={controls.toggleScreenShare}
-          onToggleSidebar={controls.toggleSidebar}
-          onToggleSettings={controls.toggleSettings}
-          onTogglePushToTalk={controls.togglePushToTalk}
           onLayoutChange={onLayoutChange}
+          onToggleSettings={controls.toggleSettings}
           onLeave={onLeaveRequest}
-          activePanelOverride={
-            activePanel === "video" ? undefined : activePanel
-          }
-          onPanelButtonClick={(panel) => setActivePanel(panel)}
-          size="sm"
+        />
+
+        {/* SettingsPanel renders its own popover positioning; mounted
+            here so the Settings button in the More menu can open it. */}
+        <SettingsPanel
+          isOpen={controls.settingsOpen}
+          onClose={controls.toggleSettings}
+          isPushToTalk={controls.isPushToTalk}
+          onTogglePushToTalk={controls.togglePushToTalk}
         />
 
         <GameInviteToast
@@ -192,23 +212,5 @@ export default function MobileSwipeShell({
         />
       </div>
     </>
-  );
-}
-
-/**
- * Mini video strip pinned to the top of People / Chat / Tools pages.
- *
- * Shows compact participant tiles in a horizontally scrollable row so
- * the user still has eyes on the call while interacting with a panel.
- *
- * Implementation note: we render VideoGrid in a tiny height-constrained
- * wrapper rather than reimplementing tile layout. The grid handles the
- * tile rendering itself; here we just give it a small viewport.
- */
-function MiniVideoStrip() {
-  return (
-    <div className="h-20 flex-shrink-0 border-b border-[var(--b)] bg-[var(--s1)] overflow-hidden">
-      <VideoGrid layout="grid" onLayoutChange={() => undefined} />
-    </div>
   );
 }

@@ -287,15 +287,20 @@ export default function MobileSwipeStage({
             isDragging || respectsReducedMotion
               ? "none"
               : `transform ${SNAP_TRANSITION_MS}ms ease-out`,
+          // Grid-based track — every child column is forced to exactly
+          // 100% of the viewport's width, no matter how much content it
+          // contains. Avoids the flex-shrink + min-width-auto pitfalls.
+          display: "grid",
+          gridAutoFlow: "column",
+          gridAutoColumns: "100%",
+          height: "100%",
         }}
-        className="flex h-full"
       >
         {Children.map(children, (child, idx) => (
           <div
             key={idx}
             aria-hidden={idx !== activeIndex}
-            className="w-full h-full shrink-0 overflow-hidden"
-            style={{ width: "100%" }}
+            className="w-full h-full overflow-hidden"
           >
             {child}
           </div>
