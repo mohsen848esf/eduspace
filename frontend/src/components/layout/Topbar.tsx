@@ -10,6 +10,10 @@ interface TopbarProps {
   subtitle?: string;
   isDark: boolean;
   onToggleTheme: () => void;
+  /** When true, render a leading hamburger button on the start side. */
+  showHamburger?: boolean;
+  /** Click handler for the hamburger; AppShell wires this to open the drawer. */
+  onHamburgerClick?: () => void;
 }
 
 export default function Topbar({
@@ -17,6 +21,8 @@ export default function Topbar({
   subtitle,
   isDark,
   onToggleTheme,
+  showHamburger = false,
+  onHamburgerClick,
 }: TopbarProps) {
   const navigate = useNavigate();
   const { t } = useTranslation(["dashboard", "common", "auth"]);
@@ -32,17 +38,32 @@ export default function Topbar({
     language === "en" ? t("common:language.persian") : t("common:language.english");
 
   return (
-    <header className="h-14 flex-shrink-0 flex items-center justify-between px-5 bg-[var(--s1)] border-b border-[var(--b)] transition-colors duration-300">
-      <div className="flex flex-col">
-        <span className="text-[14px] font-semibold text-[var(--t1)]">
-          {title}
-        </span>
-        {subtitle && (
-          <span className="text-[11px] text-[var(--t3)]">{subtitle}</span>
+    <header className="h-14 flex-shrink-0 flex items-center justify-between gap-2 px-4 md:px-5 bg-[var(--s1)] border-b border-[var(--b)] transition-colors duration-300">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        {showHamburger && (
+          <Tooltip content={t("dashboard:nav.openMenu")}>
+            <button
+              onClick={onHamburgerClick}
+              aria-label={t("dashboard:nav.openMenu")}
+              className="w-10 h-10 -ms-1 rounded-lg bg-transparent border-none cursor-pointer text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)] flex items-center justify-center transition-colors duration-150 flex-shrink-0"
+            >
+              {Icons.menu}
+            </button>
+          </Tooltip>
         )}
+        <div className="flex flex-col min-w-0">
+          <span className="text-[14px] font-semibold text-[var(--t1)] truncate">
+            {title}
+          </span>
+          {subtitle && (
+            <span className="text-[11px] text-[var(--t3)] truncate">
+              {subtitle}
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 flex-shrink-0">
         <Tooltip
           content={t("common:language.switchTo", {
             language: nextLanguageLabel,
