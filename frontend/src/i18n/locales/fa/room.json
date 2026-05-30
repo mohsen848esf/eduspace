@@ -101,13 +101,7 @@
     "shortcutCamLabel": "تغییر وضعیت دوربین",
     "shortcutCamSub": "روشن / خاموش",
     "noiseCancellation": "حذف نویز",
-    "hdVideo": "ویدیوی HD",
-    "callLayout": "چیدمان تماس",
-    "callLayoutDesc": "فقط روی موبایل — انتخاب کنید پنل افراد / چت / ابزارها چطور باز شوند.",
-    "layoutSwipe": "صفحات کشویی",
-    "layoutSwipeDesc": "بین ویدیو، افراد، چت و ابزارها با کشیدن جابه‌جا شوید.",
-    "layoutSheets": "پنل پایین‌کشویی",
-    "layoutSheetsDesc": "ویدیو تمام‌صفحه می‌ماند؛ پنل‌ها از پایین صفحه باز می‌شوند."
+    "hdVideo": "ویدیوی HD"
   },
   "sidebar": {
     "addPeople": "افزودن افراد",

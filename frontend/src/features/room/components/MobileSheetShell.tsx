@@ -9,7 +9,6 @@ import GameInviteToast from "./GameInviteToast";
 import RoomMobileTopbar from "./RoomMobileTopbar";
 import RoomMobileControls from "./RoomMobileControls";
 import SettingsPanel from "./SettingsPanel";
-import MobilePanelTabs from "./MobilePanelTabs";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
 import BottomSheet from "../../../components/layout/BottomSheet";
 import ParticipantsPanel from "./panels/ParticipantsPanel";
@@ -46,12 +45,22 @@ interface MobileSheetShellProps {
 }
 
 /**
- * Mobile in-call layout — bottom-sheets variant.
+ * Mobile in-call layout — the single mobile mode for the project.
  *
- * Video grid stays full-screen. The MobilePanelTabs strip across the top
- * lets the user open People / Chat / Tools as a bottom sheet (and tap
- * Video to close all sheets and focus the call). The bottom controls
- * carry only the four essentials.
+ * The earlier swipe-pages variant was fragile: a transformed track
+ * captured `position: fixed` modals and `scrollIntoView` calls dragged
+ * the track sideways, leading to the "tab says one thing, content shows
+ * another" bug. We replaced it with a much simpler design:
+ *
+ *   - Video grid is permanently full-screen behind everything.
+ *   - The control bar in the bottom strip carries the panel buttons
+ *     (People / Chat / Tools) alongside Mic / Cam / Leave etc.
+ *   - Tapping a panel button opens a BottomSheet that covers most of
+ *     the screen and hosts the panel's content. Closing the sheet
+ *     returns focus to the call.
+ *
+ * Modals (Invite, etc.) inside panels work correctly because there are
+ * no transformed ancestors to trap their `position: fixed` layer.
  */
 export default function MobileSheetShell({
   controls,
@@ -79,33 +88,33 @@ export default function MobileSheetShell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Blur any focused input on panel change so background typing doesn't
-  // keep writing into a hidden chat field.
+  // Blur any focused input when the sheet closes — otherwise the user
+  // can keep typing into the chat input that was last focused.
   useEffect(() => {
+    if (activePanel !== "video") return;
     const el = document.activeElement;
-    if (
-      el instanceof HTMLInputElement ||
-      el instanceof HTMLTextAreaElement
-    ) {
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
       el.blur();
     }
   }, [activePanel]);
 
+  // Close the active sheet when its dialog asks to close (backdrop / esc /
+  // drag-to-dismiss). Each sheet is bound to a panel id so we can match.
   const handleSheetOpenChange = (panel: ActivePanel) => (open: boolean) => {
     if (!open && activePanel === panel) {
       setActivePanel("video");
     }
   };
 
+  // Panel-button click on the bottom bar toggles its sheet.
+  const handlePanelButtonClick = (panel: "people" | "chat" | "tools") => {
+    setActivePanel(activePanel === panel ? "video" : panel);
+  };
+
   return (
     <>
       <div className="relative flex flex-col w-full h-full">
         <RoomMobileTopbar />
-
-        <MobilePanelTabs
-          active={activePanel}
-          onChange={(panel) => setActivePanel(panel)}
-        />
 
         {/* Full-screen video grid (or game) — sheets cover it on demand. */}
         <div className="flex-1 overflow-hidden">
@@ -122,6 +131,8 @@ export default function MobileSheetShell({
           isScreenSharing={controls.isScreenSharing}
           layout={layout}
           settingsOpen={controls.settingsOpen}
+          activePanel={activePanel === "video" ? null : activePanel}
+          onPanelClick={handlePanelButtonClick}
           onToggleMic={controls.toggleMic}
           onToggleCam={controls.toggleCam}
           onToggleScreenShare={controls.toggleScreenShare}
@@ -157,6 +168,10 @@ export default function MobileSheetShell({
         />
       </div>
 
+      {/* Three independent sheets keyed off activePanel. Each lives at the
+          page root (BottomSheet uses a Radix Portal) so nothing inside a
+          panel — modals, popovers, etc. — gets trapped by an ancestor
+          transform. */}
       <BottomSheet
         open={activePanel === "people"}
         onOpenChange={handleSheetOpenChange("people")}

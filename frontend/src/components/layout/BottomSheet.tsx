@@ -18,8 +18,8 @@ interface BottomSheetProps {
   panelClassName?: string;
   /**
    * Height of the sheet at its expanded snap point, as a viewport-height
-   * percentage. Defaults to 90%. The sheet always opens at this height;
-   * a future iteration could add a peek snap point.
+   * percentage. Defaults to 100% (full-screen) so the sheet feels like
+   * a dedicated mobile screen rather than a peek panel.
    */
   height?: number;
   /** Accessible label when no visible title is provided. */
@@ -49,7 +49,7 @@ export default function BottomSheet({
   title,
   children,
   panelClassName,
-  height = 90,
+  height = 100,
   ariaLabel,
 }: BottomSheetProps) {
   const dragRef = useRef({ active: false, startY: 0, currentY: 0, startTime: 0 });

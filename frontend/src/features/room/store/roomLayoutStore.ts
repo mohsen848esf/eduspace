@@ -1,64 +1,34 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 
 /**
- * Mobile in-call layout style. The user toggles this from the in-call
- * Settings panel; tablet and desktop ignore the value because they use
- * the docked-panel layout regardless.
- *
- *   swipe — four full-screen pages (Video → People → Chat → Tools).
- *   sheet — full-screen video, panel buttons open a bottom sheet.
- */
-export type MobileInCallMode = "swipe" | "sheet";
-
-/**
- * Logical "active" panel inside the call. On mobile this drives both
- * the swipe stage's current page and the bottom-sheet's open state.
+ * Logical "active" panel inside the call. On mobile this drives which
+ * BottomSheet (if any) is open above the always-visible video grid.
  * On tablet/desktop the value is informational; the docked sidebar's
  * own SidebarTab still drives the side panel.
+ *
+ * "video" means no panel sheet is open (the user is looking at the call
+ * surface).
  */
 export type ActivePanel = "video" | "people" | "chat" | "tools";
 
 interface RoomLayoutState {
-  mobileMode: MobileInCallMode;
-  setMobileMode: (m: MobileInCallMode) => void;
-
   activePanel: ActivePanel;
   setActivePanel: (p: ActivePanel) => void;
 }
 
-const VALID_MODES: MobileInCallMode[] = ["swipe", "sheet"];
-
-export const useRoomLayoutStore = create<RoomLayoutState>()(
-  persist(
-    (set) => ({
-      // Default: swipe pages. Matches the user-confirmed default from the spec.
-      mobileMode: "swipe",
-      setMobileMode: (m) => set({ mobileMode: m }),
-
-      // Always start fresh on Video. Not persisted (see partialize below).
-      activePanel: "video",
-      setActivePanel: (p) => set({ activePanel: p }),
-    }),
-    {
-      name: "eduspace.roomLayout",
-      // Bumped to v2 because the pre-v2 store may have persisted
-      // activePanel by mistake; v2 explicitly partializes only mobileMode
-      // so any stale activePanel from old localStorage is dropped on load.
-      version: 2,
-      // Only persist mobileMode; activePanel resets per session.
-      partialize: (state) => ({ mobileMode: state.mobileMode }),
-      // Hydration guard: if the stored value isn't one of the known
-      // options (different version, manual edit, etc.) fall back to swipe.
-      merge: (persisted, current) => {
-        const merged = { ...current, ...(persisted as Partial<RoomLayoutState>) };
-        if (!VALID_MODES.includes(merged.mobileMode)) {
-          merged.mobileMode = "swipe";
-        }
-        // Always reset session-only fields, no matter what was stored.
-        merged.activePanel = "video";
-        return merged;
-      },
-    },
-  ),
-);
+/**
+ * Session-only store. Nothing here is persisted because the only field
+ * (activePanel) should always reset to "video" on a fresh page load.
+ *
+ * The previous version of this store also held a "mobileMode" toggle
+ * (swipe vs. sheet). The swipe shell was removed because a transformed
+ * track captured `position: fixed` modals and `Element.scrollIntoView`
+ * calls inside its descendants (chat auto-scroll, search input focus)
+ * — leading to the visible content desyncing from the active tab. The
+ * single-mode sheet shell is simpler, more robust, and matches the
+ * design language users already know from native mobile apps.
+ */
+export const useRoomLayoutStore = create<RoomLayoutState>()((set) => ({
+  activePanel: "video",
+  setActivePanel: (p) => set({ activePanel: p }),
+}));

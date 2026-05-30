@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "../../../lib/utils";
-import { useIsMobile } from "../../../hooks/useBreakpoint";
-import {
-  useRoomLayoutStore,
-  type MobileInCallMode,
-} from "../store/roomLayoutStore";
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -40,9 +35,6 @@ export default function SettingsPanel({
   onTogglePushToTalk,
 }: SettingsPanelProps) {
   const { t } = useTranslation("room");
-  const isMobile = useIsMobile();
-  const mobileMode = useRoomLayoutStore((s) => s.mobileMode);
-  const setMobileMode = useRoomLayoutStore((s) => s.setMobileMode);
   if (!isOpen) return null;
 
   const shortcuts = [
@@ -61,7 +53,7 @@ export default function SettingsPanel({
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute bottom-[76px] left-1/2 -translate-x-1/2 z-50 w-60 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 fade-in">
+      <div className="absolute bottom-[76px] left-1/2 -translate-x-1/2 z-50 w-60 max-w-[calc(100vw-1.5rem)] bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 fade-in">
         <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2 px-1">
           {t("settings.title")}
         </div>
@@ -117,92 +109,8 @@ export default function SettingsPanel({
             defaultOn={item.defaultOn}
           />
         ))}
-
-        {/* Mobile-only: in-call layout mode picker. */}
-        {isMobile && (
-          <>
-            <div className="h-px bg-[var(--b)] my-1" />
-            <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-1 px-1 mt-2">
-              {t("settings.callLayout")}
-            </div>
-            <p className="text-[10px] text-[var(--t3)] px-1 mb-2 leading-relaxed">
-              {t("settings.callLayoutDesc")}
-            </p>
-            <div className="flex flex-col gap-1">
-              <LayoutModeOption
-                value="swipe"
-                current={mobileMode}
-                label={t("settings.layoutSwipe")}
-                desc={t("settings.layoutSwipeDesc")}
-                onSelect={setMobileMode}
-              />
-              <LayoutModeOption
-                value="sheet"
-                current={mobileMode}
-                label={t("settings.layoutSheets")}
-                desc={t("settings.layoutSheetsDesc")}
-                onSelect={setMobileMode}
-              />
-            </div>
-          </>
-        )}
       </div>
     </>
-  );
-}
-
-function LayoutModeOption({
-  value,
-  current,
-  label,
-  desc,
-  onSelect,
-}: {
-  value: MobileInCallMode;
-  current: MobileInCallMode;
-  label: string;
-  desc: string;
-  onSelect: (m: MobileInCallMode) => void;
-}) {
-  const checked = value === current;
-  return (
-    <button
-      onClick={() => onSelect(value)}
-      role="radio"
-      aria-checked={checked}
-      className={cn(
-        "flex items-start gap-2 px-2 py-2 rounded-lg border-none cursor-pointer transition-colors duration-150 text-start",
-        checked
-          ? "bg-[var(--brand-soft)]"
-          : "bg-transparent hover:bg-[var(--s3)]",
-      )}
-    >
-      <span
-        className={cn(
-          "w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors",
-          checked
-            ? "border-[var(--brand)] bg-[var(--brand)]"
-            : "border-[var(--t3)]",
-        )}
-      >
-        {checked && (
-          <span className="w-1.5 h-1.5 rounded-full bg-white block" />
-        )}
-      </span>
-      <span className="flex-1 min-w-0">
-        <span
-          className={cn(
-            "block text-xs font-semibold",
-            checked ? "text-[var(--brand-text)]" : "text-[var(--t1)]",
-          )}
-        >
-          {label}
-        </span>
-        <span className="block text-[10px] text-[var(--t3)] leading-relaxed">
-          {desc}
-        </span>
-      </span>
-    </button>
   );
 }
 

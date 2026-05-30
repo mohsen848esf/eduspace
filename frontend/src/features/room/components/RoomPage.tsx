@@ -20,9 +20,7 @@ import { useActiveRecordingStore } from "../../recordings/store/activeRecordingS
 import { useGameBoard } from "../hooks/useGameBoard";
 import { RoomGameProvider } from "../hooks/useRoomGameContext";
 import { useBreakpoint } from "../../../hooks/useBreakpoint";
-import { useRoomLayoutStore } from "../store/roomLayoutStore";
 import DockedPanelShell from "./DockedPanelShell";
-import MobileSwipeShell from "./MobileSwipeShell";
 import MobileSheetShell from "./MobileSheetShell";
 
 type LayoutMode = "grid" | "spotlight" | "sidebar";
@@ -129,9 +127,8 @@ function RoomContent({
   }, [localParticipant]);
 
   // Pick the right shell. The docked layout is used on tablet AND desktop;
-  // mobile picks between swipe and sheet based on the persisted setting.
+  // mobile uses a single shell — full-screen video plus bottom-sheet panels.
   const breakpoint = useBreakpoint();
-  const mobileMode = useRoomLayoutStore((s) => s.mobileMode);
 
   const sharedShellProps = {
     controls: {
@@ -159,22 +156,15 @@ function RoomContent({
     roomCode: roomCode || "",
   };
 
-  let shell: React.ReactNode;
-  if (breakpoint === "mobile") {
-    shell =
-      mobileMode === "sheet" ? (
-        <MobileSheetShell {...sharedShellProps} />
-      ) : (
-        <MobileSwipeShell {...sharedShellProps} />
-      );
-  } else {
-    shell = (
+  const shell =
+    breakpoint === "mobile" ? (
+      <MobileSheetShell {...sharedShellProps} />
+    ) : (
       <DockedPanelShell
         {...sharedShellProps}
         size={breakpoint === "tablet" ? "md" : "lg"}
       />
     );
-  }
 
   return <RoomGameProvider value={game}>{shell}</RoomGameProvider>;
 }
