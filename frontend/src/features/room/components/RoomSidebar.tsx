@@ -11,6 +11,8 @@ interface RoomSidebarProps {
   activeTab: SidebarTab;
   onTabChange: (tab: SidebarTab) => void;
   roomCode: string;
+  /** Render width — narrower on tablet (240px), wider on desktop (272px). */
+  width?: "tablet" | "desktop";
 }
 
 /**
@@ -23,6 +25,7 @@ export default function RoomSidebar({
   activeTab,
   onTabChange,
   roomCode,
+  width = "desktop",
 }: RoomSidebarProps) {
   const { t } = useTranslation("room");
   if (!activeTab) return null;
@@ -37,8 +40,15 @@ export default function RoomSidebar({
     { id: "tools", icon: Icons.tools, tooltip: t("tooltips.tools") },
   ];
 
+  const widthClass = width === "tablet" ? "w-60" : "w-[272px]";
+
   return (
-    <div className="w-[272px] bg-[var(--s1)] border-l border-[var(--b)] flex flex-col flex-shrink-0 fade-in">
+    <div
+      className={cn(
+        widthClass,
+        "bg-[var(--s1)] border-s border-[var(--b)] flex flex-col flex-shrink-0 fade-in",
+      )}
+    >
       <div className="flex items-center justify-center gap-1.5 p-2 border-b border-[var(--b)] flex-shrink-0">
         {tabs.map((tab) => (
           <Tooltip key={tab.id} content={tab.tooltip}>

@@ -11,21 +11,19 @@ import { Track } from "livekit-client";
 import { useRoomStore } from "../store/roomStore";
 import { useRoom } from "../hooks/useRoom";
 import { useRoomControls } from "../hooks/useRoomControls";
-import VideoGrid from "./VideoGrid";
-import RoomSidebar from "./RoomSidebar";
-import RoomControls from "./RoomControls";
-import GameBoard from "./GameBoard";
-import GameInviteToast from "./GameInviteToast";
 import PreJoinScreen, { type PreJoinSettings } from "./prejoin/PreJoinScreen";
 import Spinner from "../../../components/ui/Spinner";
-import ConfirmModal from "../../../components/ui/ConfirmModal";
-import RoomTopbar from "./RoomTopbar";
 import { useRoomDisconnect } from "../hooks/useRoomDisconnect";
 import { useBackgroundStore } from "../store/backgroundStore";
 import { useBackgroundBlur } from "../hooks/useBackgroundBlur";
 import { useActiveRecordingStore } from "../../recordings/store/activeRecordingStore";
 import { useGameBoard } from "../hooks/useGameBoard";
 import { RoomGameProvider } from "../hooks/useRoomGameContext";
+import { useBreakpoint } from "../../../hooks/useBreakpoint";
+import { useRoomLayoutStore } from "../store/roomLayoutStore";
+import DockedPanelShell from "./DockedPanelShell";
+import MobileSwipeShell from "./MobileSwipeShell";
+import MobileSheetShell from "./MobileSheetShell";
 
 type LayoutMode = "grid" | "spotlight" | "sidebar";
 
@@ -34,7 +32,6 @@ function RoomContent({
 }: {
   preJoinSettings: PreJoinSettings | null;
 }) {
-  const { t } = useTranslation("recordings");
   const controls = useRoomControls(
     preJoinSettings?.camEnabled ?? true,
     preJoinSettings?.micEnabled ?? true,
@@ -46,8 +43,7 @@ function RoomContent({
   const { roomCode } = useRoomStore();
   const { changeBackground } = useBackgroundBlur();
 
-  // Recording-aware leave flow: if a recording is in flight, surface a
-  // confirm modal so the host doesn't drop the recording by accident.
+  // Recording-aware leave flow.
   const inFlightToken = useActiveRecordingStore((s) => s.inFlightToken);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
@@ -70,15 +66,11 @@ function RoomContent({
     }
   }, [disconnect]);
 
-  // Game state for this room. Lives at this level so VideoGrid can be
-  // swapped for GameBoard when a game is active and the sidebar's Tools
-  // tab can launch new games via context.
+  // Game state.
   const game = useGameBoard();
   const room = useRoomContext();
 
-  // Wire LiveKit's data channel into the game hook so GAME_INVITE /
-  // GAME_ACCEPT / GAME_END messages broadcast over publishData() reach
-  // every participant.
+  // Wire LiveKit data channel into the game hook.
   useEffect(() => {
     if (!room) return;
     const handler = (payload: Uint8Array, participant?: any) => {
@@ -90,6 +82,7 @@ function RoomContent({
     };
   }, [room, game.handleDataMessage]);
 
+  // Camera + background setup once the local participant is ready.
   useEffect(() => {
     if (setupDone.current) return;
     if (!localParticipant) return;
@@ -135,59 +128,55 @@ function RoomContent({
     setup();
   }, [localParticipant]);
 
-  return (
-    <RoomGameProvider value={game}>
-      <div className="flex flex-col w-full h-full">
-        <RoomTopbar />
-        <div className="flex flex-1 overflow-hidden">
-          {game.gameBoard.isActive ? (
-            <GameBoard gameBoard={game.gameBoard} onEnd={game.endGame} />
-          ) : (
-            <VideoGrid layout={layout} onLayoutChange={setLayout} />
-          )}
-          <RoomSidebar
-            activeTab={controls.sidebarTab}
-            onTabChange={controls.toggleSidebar}
-            roomCode={roomCode || ""}
-          />
-        </div>
-        <RoomControls
-          isMicOn={controls.isMicOn}
-          isCamOn={controls.isCamOn}
-          isScreenSharing={controls.isScreenSharing}
-          isPushToTalk={controls.isPushToTalk}
-          sidebarTab={controls.sidebarTab}
-          settingsOpen={controls.settingsOpen}
-          layout={layout}
-          onToggleMic={controls.toggleMic}
-          onToggleCam={controls.toggleCam}
-          onToggleScreenShare={controls.toggleScreenShare}
-          onToggleSidebar={controls.toggleSidebar}
-          onToggleSettings={controls.toggleSettings}
-          onTogglePushToTalk={controls.togglePushToTalk}
-          onLayoutChange={setLayout}
-          onLeave={handleLeaveRequest}
-        />
-        <GameInviteToast
-          invite={game.pendingInvite}
-          onAccept={game.acceptGame}
-          onDecline={game.declineGame}
-        />
-        <ConfirmModal
-          open={showLeaveConfirm}
-          onOpenChange={setShowLeaveConfirm}
-          title={t("leaveModal.title")}
-          description={t("leaveModal.description")}
-          confirmLabel={t("leaveModal.confirm")}
-          cancelLabel={t("leaveModal.cancel")}
-          confirmVariant="danger"
-          isLoading={isLeaving}
-          blocking
-          onConfirm={handleLeaveConfirm}
-        />
-      </div>
-    </RoomGameProvider>
-  );
+  // Pick the right shell. The docked layout is used on tablet AND desktop;
+  // mobile picks between swipe and sheet based on the persisted setting.
+  const breakpoint = useBreakpoint();
+  const mobileMode = useRoomLayoutStore((s) => s.mobileMode);
+
+  const sharedShellProps = {
+    controls: {
+      isMicOn: controls.isMicOn,
+      isCamOn: controls.isCamOn,
+      isScreenSharing: controls.isScreenSharing,
+      isPushToTalk: controls.isPushToTalk,
+      sidebarTab: controls.sidebarTab,
+      settingsOpen: controls.settingsOpen,
+      toggleMic: controls.toggleMic,
+      toggleCam: controls.toggleCam,
+      toggleScreenShare: controls.toggleScreenShare,
+      toggleSidebar: controls.toggleSidebar,
+      toggleSettings: controls.toggleSettings,
+      togglePushToTalk: controls.togglePushToTalk,
+    },
+    layout,
+    onLayoutChange: setLayout,
+    onLeaveRequest: handleLeaveRequest,
+    showLeaveConfirm,
+    onLeaveConfirmOpenChange: setShowLeaveConfirm,
+    onLeaveConfirm: handleLeaveConfirm,
+    isLeaving,
+    game,
+    roomCode: roomCode || "",
+  };
+
+  let shell: React.ReactNode;
+  if (breakpoint === "mobile") {
+    shell =
+      mobileMode === "sheet" ? (
+        <MobileSheetShell {...sharedShellProps} />
+      ) : (
+        <MobileSwipeShell {...sharedShellProps} />
+      );
+  } else {
+    shell = (
+      <DockedPanelShell
+        {...sharedShellProps}
+        size={breakpoint === "tablet" ? "md" : "lg"}
+      />
+    );
+  }
+
+  return <RoomGameProvider value={game}>{shell}</RoomGameProvider>;
 }
 
 export default function RoomPage() {
