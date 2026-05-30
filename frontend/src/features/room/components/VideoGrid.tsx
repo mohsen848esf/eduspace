@@ -40,7 +40,12 @@ function getAvatarGradient(identity: string): string {
 
 function getGridClass(count: number): string {
   if (count === 1) return "grid-cols-1 grid-rows-1";
-  if (count === 2) return "grid-cols-2 grid-rows-1";
+  // 2 participants:
+  //   - mobile / tablet (<lg): 1 column, 2 rows so each tile is full-width
+  //     and roughly half-height. Avoids the "tall narrow strip showing
+  //     half a face" look that 2 columns produces on phones.
+  //   - desktop (lg+): 2 columns side-by-side as before.
+  if (count === 2) return "grid-cols-1 grid-rows-2 lg:grid-cols-2 lg:grid-rows-1";
   // 3 participants: a 2x2 grid where the 3rd tile spans both columns.
   // The col-span is applied directly on the tile via getTileClass below.
   if (count === 3) return "grid-cols-2 grid-rows-2";

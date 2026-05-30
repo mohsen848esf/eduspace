@@ -57,10 +57,6 @@ export default function RoomTopbar() {
       ? t("topbar.participantOne", { count: totalParticipants })
       : t("topbar.participantOther", { count: totalParticipants });
 
-  const isLiveRecording =
-    recording.status.recording?.status === "recording" ||
-    recording.status.recording?.status === "starting";
-
   return (
     <div className="h-12 flex-shrink-0 flex items-center justify-between px-4 bg-[var(--s1)] border-b border-[var(--b)]">
       {/* Left */}
@@ -95,13 +91,9 @@ export default function RoomTopbar() {
 
       {/* Center */}
       <div className="flex items-center gap-3">
-        {/* Tiny indicator visible to all participants while a recording is live */}
-        {isLiveRecording && !isHost && (
-          <div className="flex items-center gap-1.5 text-[var(--red)] text-xs font-semibold">
-            <div className="w-1.5 h-1.5 rounded-full bg-[var(--red)] animate-pulse" />
-            {t("topbar.rec")}
-          </div>
-        )}
+        {/* Recording-state badge moved to RoomRecordingBadge — it's now
+            rendered as an overlay on the call surface so non-hosts see
+            it too, not just inside the host's topbar. */}
         <span className="text-sm font-mono text-[var(--green)] font-semibold force-ltr">
           {duration}
         </span>

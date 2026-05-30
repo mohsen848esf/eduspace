@@ -8,6 +8,7 @@ import GameBoard from "./GameBoard";
 import GameInviteToast from "./GameInviteToast";
 import RoomMobileTopbar from "./RoomMobileTopbar";
 import RoomMobileControls from "./RoomMobileControls";
+import RoomRecordingBadge from "./RoomRecordingBadge";
 import SettingsPanel from "./SettingsPanel";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
 import BottomSheet from "../../../components/layout/BottomSheet";
@@ -121,12 +122,13 @@ export default function MobileSheetShell({
             stretches; without `flex flex-col` here, VideoGrid would
             collapse to its content height and leave the bottom 2/3 of
             the screen black. */}
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div className="relative flex-1 flex flex-col min-h-0 overflow-hidden">
           {game.gameBoard.isActive ? (
             <GameBoard gameBoard={game.gameBoard} onEnd={game.endGame} />
           ) : (
             <VideoGrid layout={layout} onLayoutChange={onLayoutChange} />
           )}
+          <RoomRecordingBadge />
         </div>
 
         <RoomMobileControls

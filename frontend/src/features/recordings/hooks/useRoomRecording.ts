@@ -9,6 +9,11 @@ import recordingsApi, {
 import { useActiveRecordingStore } from "../store/activeRecordingStore";
 
 const POLL_MS = 2500;
+/**
+ * Slower poll for non-hosts. They only consume the read-only state to
+ * render the "this call is being recorded" indicator, so 5s is plenty.
+ */
+const POLL_MS_PARTICIPANT = 5000;
 
 interface UseRoomRecordingOptions {
   roomCode: string | null;
@@ -68,20 +73,26 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
   }, [status.recording, isHost, setInFlight, setPendingEdit]);
 
   const refresh = useCallback(async () => {
-    if (!roomCode || !isHost) return;
+    // Both hosts and participants poll the read-only status endpoint:
+    // hosts because they drive the controls, participants so the room
+    // surface can render a "this call is being recorded" indicator.
+    if (!roomCode) return;
     try {
       const next = await recordingsApi.roomStatus(roomCode);
       if (!cancelled.current) setStatus(next);
     } catch {
-      // 403 / 404 — don't toast.
+      // 403 / 404 — don't toast. The endpoint will 403 only if the user
+      // isn't a participant, which means they shouldn't be in the call
+      // anyway; silent is correct.
     }
-  }, [roomCode, isHost]);
+  }, [roomCode]);
 
   useEffect(() => {
     cancelled.current = false;
     refresh();
-    if (!roomCode || !isHost) return;
-    const id = window.setInterval(refresh, POLL_MS);
+    if (!roomCode) return;
+    const interval = isHost ? POLL_MS : POLL_MS_PARTICIPANT;
+    const id = window.setInterval(refresh, interval);
     return () => {
       cancelled.current = true;
       window.clearInterval(id);
