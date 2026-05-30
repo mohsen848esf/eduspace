@@ -101,7 +101,13 @@
     "shortcutCamLabel": "Toggle Camera",
     "shortcutCamSub": "Camera on / off",
     "noiseCancellation": "Noise Cancellation",
-    "hdVideo": "HD Video"
+    "hdVideo": "HD Video",
+    "callLayout": "Call layout",
+    "callLayoutDesc": "Mobile only — pick how People / Chat / Tools open during a call.",
+    "layoutSwipe": "Swipe pages",
+    "layoutSwipeDesc": "Move between Video, People, Chat and Tools by swiping.",
+    "layoutSheets": "Bottom sheets",
+    "layoutSheetsDesc": "Keep video full-screen; panels open as a bottom sheet."
   },
   "sidebar": {
     "addPeople": "Add People",
