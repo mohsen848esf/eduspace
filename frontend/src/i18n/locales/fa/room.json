@@ -129,8 +129,8 @@
     "failed": "ارسال دعوت ناموفق بود"
   },
   "tools": {
-    "launchGame": "اجرای بازی",
-    "launchGameDesc": "افزودن بازی به جلسه",
+    "launchGame": "میان‌برنامه‌ها",
+    "launchGameDesc": "افزودن میان‌برنامه به جلسه",
     "whiteboard": "وایت‌بورد",
     "whiteboardDesc": "نقاشی مشترک",
     "quickExam": "آزمون سریع",

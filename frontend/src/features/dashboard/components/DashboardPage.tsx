@@ -51,7 +51,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick actions */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             {
               icon: "📹",
@@ -66,7 +66,9 @@ export default function DashboardPage() {
                   is_recorded: false,
                 }),
             },
-            { icon: "🎮", labelKey: "actions.launchGame", nav: "miniapps" },
+            // Mini Apps stays accessible from the sidebar; the
+            // dashboard's quick-actions row keeps only the truly
+            // session-driven actions.
             { icon: "📝", labelKey: "actions.newExam", nav: "exams" },
             { icon: "🎬", labelKey: "actions.recordings", nav: "recordings" },
           ].map((item) => (
