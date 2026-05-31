@@ -22,6 +22,10 @@ interface AppShellProps {
 // Unmapped ids fall back to the parent's onNavigate if provided.
 const NAV_ROUTES: Record<string, string> = {
   dashboard: "/dashboard",
+  // No dedicated calls page yet — the dashboard hosts the Start Call
+  // quick action, so the calls nav entry lands there until the Calls
+  // page lands as part of the dashboard redesign.
+  calls: "/dashboard",
   recordings: "/recordings",
 };
 

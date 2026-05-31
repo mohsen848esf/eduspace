@@ -39,7 +39,7 @@ export function usePreJoinTrack() {
 
     return () => {
       if (localTrack) {
-        // Stop processor اگه داره
+        // Stop processor if one is attached.
         localTrack.stopProcessor().catch(() => {});
         // Stop mediaStreamTrack
         localTrack.mediaStreamTrack?.stop();
@@ -112,7 +112,7 @@ export function usePreJoinTrack() {
           });
         }
 
-        // Timeout برای جلوگیری از hang
+        // Timeout to keep the processor swap from hanging the call.
 
         await Promise.race([
           track.setProcessor(processor),
@@ -125,7 +125,7 @@ export function usePreJoinTrack() {
       } catch (err) {
         console.error("Background error:", err);
         processorRef.current = null;
-        // Reset به none اگه fail شد
+        // Reset to "none" if the processor swap failed.
         setBackground("none");
       } finally {
         setIsLoading(false);
