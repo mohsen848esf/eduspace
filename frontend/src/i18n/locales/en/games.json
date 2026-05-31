@@ -18,11 +18,11 @@
     "endGameTooltip": "End game",
     "endedByHost": "Game ended by host",
     "ended": "Game ended",
-    "launched": "Game \"{{title}}\" launched!"
+    "launched": "\"{{title}}\" launched!"
   },
   "selector": {
-    "title": "Launch a game",
-    "subtitle": "Pick a game to play with everyone in this call.",
+    "title": "Launch a Mini App",
+    "subtitle": "Pick a mini app to share with everyone in this call.",
     "loading": "Loading games...",
     "empty": "No games available",
     "launch": "Launch",
@@ -39,7 +39,7 @@
   "tools": {
     "endGameLabel": "End Game",
     "endGameDesc": "Stop the in-call game",
-    "launchLabel": "Launch Game",
-    "launchDesc": "Add a game to the session"
+    "launchLabel": "Mini Apps",
+    "launchDesc": "Add a mini app to the session"
   }
 }

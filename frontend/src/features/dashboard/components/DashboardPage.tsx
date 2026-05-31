@@ -1,10 +1,20 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import AppShell from "../../../components/layout/AppShell";
 import Button from "../../../components/ui/Button";import { useAuthStore } from "../../auth/store/authStore";
 import { useDashboard } from "../hooks/useDashboard";
 import { useRoom } from "../../room/hooks/useRoom";
 import { useLocale } from "../../../i18n/useLocale";
+
+// Quick-action nav ids that have real routes. Anything not in here
+// stays as a "select but don't navigate" interaction (i.e. just
+// highlights the sidebar entry) — useful for placeholder tabs like
+// `exams` until they get a real page.
+const QUICK_ACTION_ROUTES: Record<string, string> = {
+  miniapps: "/miniapps",
+  recordings: "/recordings",
+};
 
 export default function DashboardPage() {
   const { t } = useTranslation(["dashboard"]);
@@ -12,6 +22,7 @@ export default function DashboardPage() {
   const { user } = useAuthStore();
   const { stats, sessions, isLoading } = useDashboard();
   const [activeNav, setActiveNav] = useState("dashboard");
+  const navigate = useNavigate();
   const { createRoom, isLoading: roomLoading } = useRoom();
 
   const greeting = () => {
@@ -72,7 +83,21 @@ export default function DashboardPage() {
           ].map((item) => (
             <button
               key={item.nav}
-              onClick={item.action || (() => setActiveNav(item.nav))}
+              onClick={
+                item.action ||
+                (() => {
+                  // Mirror AppShell's NAV_ROUTES logic: if the item
+                  // points at a real page, navigate there; otherwise
+                  // just flip the sidebar highlight via setActiveNav
+                  // so the user sees their selection.
+                  const route = QUICK_ACTION_ROUTES[item.nav];
+                  if (route) {
+                    navigate(route);
+                  } else {
+                    setActiveNav(item.nav);
+                  }
+                })
+              }
               disabled={roomLoading}
               className="flex flex-col items-center gap-2 p-4 md:p-5 min-h-[88px] bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none disabled:opacity-50"
             >
