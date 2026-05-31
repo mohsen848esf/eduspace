@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { useRoom } from "../hooks/useRoom";
+import { useTranslation } from "react-i18next";
 import { type SidebarTab } from "../hooks/useRoomControls";
 import { Tooltip } from "../../../components/ui/Tooltip";
+import ControlButton, {
+  type ControlButtonSize,
+} from "../../../components/ui/ControlButton";
 import { Icons } from "../../../lib/constants/icons";
-import { Strings } from "../../../lib/constants/strings";
 import { cn } from "../../../lib/utils";
 import {
   useBackgroundBlur,
@@ -29,6 +31,20 @@ interface RoomControlsProps {
   isPushToTalk: boolean;
   onTogglePushToTalk: () => void;
   onLeave: () => void;
+  /**
+   * Optional override the active panel highlight. Used by mobile shells
+   * that drive their own activePanel state instead of relying on
+   * useRoomControls.sidebarTab.
+   */
+  activePanelOverride?: "video" | "people" | "chat" | "tools";
+  /**
+   * Optional handler called when one of the panel buttons is tapped.
+   * When provided, replaces the default onToggleSidebar dispatch — mobile
+   * shells use this to drive swipe-stage / bottom-sheet state.
+   */
+  onPanelButtonClick?: (panel: "people" | "chat" | "tools") => void;
+  /** Button size token; defaults to md (tablet/desktop sizing). */
+  size?: ControlButtonSize;
 }
 
 // ── Layout Popover ──
@@ -41,24 +57,25 @@ function LayoutPopover({
   onChange: (l: LayoutMode) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation("room");
   const layouts = [
     {
       id: "grid" as LayoutMode,
       icon: "⊞",
-      label: "Grid",
-      desc: "All participants equal size",
+      label: t("layouts.grid"),
+      desc: t("layouts.gridDesc"),
     },
     {
       id: "spotlight" as LayoutMode,
       icon: "□",
-      label: "Spotlight",
-      desc: "One large, others small",
+      label: t("layouts.spotlight"),
+      desc: t("layouts.spotlightDesc"),
     },
     {
       id: "sidebar" as LayoutMode,
       icon: "▤",
-      label: "Sidebar",
-      desc: "Main view with sidebar strip",
+      label: t("layouts.sidebar"),
+      desc: t("layouts.sidebarDesc"),
     },
   ];
 
@@ -67,7 +84,7 @@ function LayoutPopover({
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div className="absolute bottom-[76px] left-1/2 -translate-x-1/2 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-52 fade-in">
         <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2 px-1">
-          Layout
+          {t("layouts.title")}
         </div>
         {layouts.map((l) => (
           <button
@@ -77,7 +94,7 @@ function LayoutPopover({
               onClose();
             }}
             className={cn(
-              "w-full flex items-center gap-2.5 px-2 py-2 rounded-lg border-none cursor-pointer transition-all duration-150 text-left",
+              "w-full flex items-center gap-2.5 px-2 py-2 rounded-lg border-none cursor-pointer transition-all duration-150 text-start",
               layout === l.id
                 ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
                 : "bg-transparent text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
@@ -89,7 +106,7 @@ function LayoutPopover({
               <div className="text-[10px] text-[var(--t3)]">{l.desc}</div>
             </div>
             {layout === l.id && (
-              <span className="ml-auto text-[var(--brand)] text-xs">✓</span>
+              <span className="ms-auto text-[var(--brand)] text-xs">✓</span>
             )}
           </button>
         ))}
@@ -99,6 +116,9 @@ function LayoutPopover({
 }
 
 // ── Ctrl Button ──
+// Thin wrapper around ControlButton that keeps the existing inline call
+// sites in this file readable while letting the shared visual definition
+// live in components/ui/ControlButton.tsx.
 function CtrlBtn({
   icon,
   label,
@@ -106,7 +126,7 @@ function CtrlBtn({
   onClick,
   isOn,
   isOff,
-  className,
+  size = "md",
 }: {
   icon: React.ReactNode;
   label: string;
@@ -114,30 +134,18 @@ function CtrlBtn({
   onClick: () => void;
   isOn?: boolean;
   isOff?: boolean;
-  className?: string;
+  size?: ControlButtonSize;
 }) {
+  const variant = isOn ? "active" : isOff ? "danger" : "default";
   return (
-    <Tooltip content={tooltip}>
-      <button
-        onClick={onClick}
-        className={cn(
-          "flex flex-col items-center justify-center gap-1",
-          "px-2.5 py-2 rounded-xl border-none cursor-pointer",
-          "min-w-[46px] h-[52px] transition-all duration-150 active:scale-[0.96]",
-          isOn
-            ? "bg-[var(--brand-soft)] text-[var(--brand)]"
-            : isOff
-              ? "bg-[var(--red)]/10 text-[var(--red)]"
-              : "bg-[var(--s3)] text-[var(--t2)] hover:bg-[var(--s4)] hover:text-[var(--t1)]",
-          className,
-        )}
-      >
-        <span className="leading-none">{icon}</span>
-        <span className="text-[9px] font-medium whitespace-nowrap">
-          {label}
-        </span>
-      </button>
-    </Tooltip>
+    <ControlButton
+      icon={icon}
+      label={label}
+      tooltip={tooltip}
+      onClick={onClick}
+      variant={variant}
+      size={size}
+    />
   );
 }
 
@@ -174,7 +182,7 @@ function SplitBtn({
           onClick={onMain}
           className={cn(
             "flex flex-col items-center justify-center gap-1",
-            "px-2.5 rounded-l-xl border-none cursor-pointer",
+            "px-2.5 rounded-s-xl border-none cursor-pointer",
             "min-w-[40px] transition-all duration-150 active:scale-[0.96]",
             stateClass,
           )}
@@ -187,7 +195,7 @@ function SplitBtn({
         <button
           onClick={onArrow}
           className={cn(
-            "w-5 rounded-r-xl border-none border-l border-[var(--b)]",
+            "w-5 rounded-e-xl border-none border-s border-[var(--b)]",
             "cursor-pointer text-[10px] transition-all duration-150",
             "flex items-center justify-center",
             stateClass,
@@ -201,9 +209,9 @@ function SplitBtn({
   );
 }
 
-// ── Mic Settings Popover ──
-
+// ── Audio Visualizer ──
 function AudioVisualizer({ isMicOn }: { isMicOn: boolean }) {
+  const { t } = useTranslation("room");
   const [bars, setBars] = useState(Array(20).fill(10));
   const animRef = useRef<number>(0);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -259,13 +267,16 @@ function AudioVisualizer({ isMicOn }: { isMicOn: boolean }) {
       ))}
       {!isMicOn && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[10px] text-[var(--t3)]">Microphone muted</span>
+          <span className="text-[10px] text-[var(--t3)]">
+            {t("audioVisualizer.muted")}
+          </span>
         </div>
       )}
     </div>
   );
 }
 
+// ── Mic Settings Popover ──
 function MicSettingsPopover({
   onClose,
   isMicOn,
@@ -273,6 +284,7 @@ function MicSettingsPopover({
   onClose: () => void;
   isMicOn: boolean;
 }) {
+  const { t } = useTranslation("room");
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedInput, setSelectedInput] = useState("");
   const [selectedOutput, setSelectedOutput] = useState("");
@@ -299,7 +311,7 @@ function MicSettingsPopover({
         </div>
 
         <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-1.5">
-          Microphone
+          {t("preJoin.microphone")}
         </div>
         <select
           value={selectedInput}
@@ -308,13 +320,13 @@ function MicSettingsPopover({
         >
           {inputs.map((d) => (
             <option key={d.deviceId} value={d.deviceId}>
-              {d.label || "Microphone"}
+              {d.label || t("preJoin.deviceLabels.microphone")}
             </option>
           ))}
         </select>
 
         <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-1.5">
-          Speaker
+          {t("preJoin.speaker")}
         </div>
         <select
           value={selectedOutput}
@@ -323,7 +335,7 @@ function MicSettingsPopover({
         >
           {outputs.map((d) => (
             <option key={d.deviceId} value={d.deviceId}>
-              {d.label || "Speaker"}
+              {d.label || t("preJoin.deviceLabels.speaker")}
             </option>
           ))}
         </select>
@@ -334,6 +346,7 @@ function MicSettingsPopover({
 
 // ── Camera Settings Popover ──
 function CamSettingsPopover({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation("room");
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedCam, setSelectedCam] = useState("");
   const { background, isSupported, changeBackground } = useBackgroundBlur();
@@ -348,9 +361,10 @@ function CamSettingsPopover({ onClose }: { onClose: () => void }) {
 
   const cameras = devices.filter((d) => d.kind === "videoinput");
 
+  // Background labels are visual identifiers; reuse keys from preJoin
   const backgrounds: { id: BackgroundType; label: string; preview: string }[] =
     [
-      { id: "none", label: "None", preview: "" },
+      { id: "none", label: t("preJoin.background"), preview: "" },
       { id: "blur", label: "Blur", preview: "" },
       {
         id: "office",
@@ -384,7 +398,7 @@ function CamSettingsPopover({ onClose }: { onClose: () => void }) {
       <div className="absolute bottom-[76px] left-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-64 fade-in">
         {/* Camera device */}
         <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-1.5">
-          Camera
+          {t("preJoin.camera")}
         </div>
         <select
           value={selectedCam}
@@ -393,19 +407,19 @@ function CamSettingsPopover({ onClose }: { onClose: () => void }) {
         >
           {cameras.map((d) => (
             <option key={d.deviceId} value={d.deviceId}>
-              {d.label || "Camera"}
+              {d.label || t("preJoin.deviceLabels.camera")}
             </option>
           ))}
         </select>
 
         {/* Background */}
         <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2">
-          Background
+          {t("preJoin.background")}
         </div>
 
         {!isSupported ? (
           <p className="text-xs text-[var(--t3)] px-1">
-            Background effects not supported in this browser.
+            {t("preJoin.bgNotSupported")}
           </p>
         ) : (
           <div className="grid grid-cols-3 gap-1.5">
@@ -467,15 +481,51 @@ export default function RoomControls({
   isPushToTalk,
   onTogglePushToTalk,
   onLeave,
+  activePanelOverride,
+  onPanelButtonClick,
+  size = "md",
 }: RoomControlsProps) {
-  const { leaveRoom } = useRoom();
-  const s = Strings.room;
+  const { t } = useTranslation("room");
   const [micPopoverOpen, setMicPopoverOpen] = useState(false);
   const [camPopoverOpen, setCamPopoverOpen] = useState(false);
   const [layoutPopoverOpen, setLayoutPopoverOpen] = useState(false);
 
+  // When the parent provides a panel override (mobile shells), highlight
+  // based on that. Otherwise fall back to the docked-panel sidebarTab.
+  const isPanelActive = (panel: "people" | "chat" | "tools"): boolean => {
+    if (activePanelOverride !== undefined) {
+      return activePanelOverride === panel;
+    }
+    if (panel === "people") return sidebarTab === "participants";
+    return sidebarTab === panel;
+  };
+
+  // Same idea for the click handler — let the parent intercept to drive
+  // its own state machine; otherwise dispatch to the docked sidebar.
+  const handlePanelClick = (panel: "people" | "chat" | "tools") => {
+    if (onPanelButtonClick) {
+      onPanelButtonClick(panel);
+      return;
+    }
+    onToggleSidebar(panel === "people" ? "participants" : panel);
+  };
+
+  // Ambient shell padding tightens on small sizes so the bar doesn't
+  // overflow on a 320px viewport.
+  const shellPadding =
+    size === "sm" ? "px-2" : size === "md" ? "px-3" : "px-4";
+  const shellHeight =
+    size === "sm" ? "h-[64px]" : size === "md" ? "h-[68px]" : "h-[72px]";
+
   return (
-    <div className="relative h-[68px] bg-[var(--s1)] border-t border-[var(--b)] flex items-center justify-between px-4 flex-shrink-0">
+    <div
+      className={cn(
+        "relative bg-[var(--s1)] border-t border-[var(--b)]",
+        "flex items-center justify-between gap-2 flex-shrink-0",
+        shellHeight,
+        shellPadding,
+      )}
+    >
       <SettingsPanel
         isOpen={settingsOpen}
         onClose={onToggleSettings}
@@ -483,13 +533,15 @@ export default function RoomControls({
         onTogglePushToTalk={onTogglePushToTalk}
       />
       {/* Left — mic, camera, screen share */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1 md:gap-1.5 min-w-0">
         <SplitBtn
           iconOn={Icons.mic}
           iconOff={Icons.micOff}
-          label={s.mic}
-          tooltipMain={isMicOn ? "Mute · Ctrl+D" : "Unmute · Ctrl+D"}
-          tooltipArrow="Microphone settings"
+          label={t("controls.mic")}
+          tooltipMain={
+            isMicOn ? t("tooltips.muteOn") : t("tooltips.muteOff")
+          }
+          tooltipArrow={t("tooltips.micSettings")}
           onMain={onToggleMic}
           onArrow={() => {
             setMicPopoverOpen((p) => !p);
@@ -508,11 +560,11 @@ export default function RoomControls({
         <SplitBtn
           iconOn={Icons.camera}
           iconOff={Icons.cameraOff}
-          label={s.camera}
+          label={t("controls.camera")}
           tooltipMain={
-            isCamOn ? "Turn off camera · Ctrl+E" : "Turn on camera · Ctrl+E"
+            isCamOn ? t("tooltips.cameraOn") : t("tooltips.cameraOff")
           }
-          tooltipArrow="Camera settings & background"
+          tooltipArrow={t("tooltips.camSettings")}
           onMain={onToggleCam}
           onArrow={() => {
             setCamPopoverOpen((p) => !p);
@@ -527,37 +579,41 @@ export default function RoomControls({
         />
         <CtrlBtn
           icon={Icons.screenShare}
-          label={s.share}
-          tooltip={s.tooltips.screenShare}
+          label={t("controls.share")}
+          tooltip={t("tooltips.screenShare")}
           onClick={onToggleScreenShare}
           isOn={isScreenSharing}
+          size={size}
         />
       </div>
 
       {/* Center */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1 md:gap-1.5 min-w-0">
         <CtrlBtn
           icon={Icons.people}
-          label={s.people}
-          tooltip={s.tooltips.participants}
-          onClick={() => onToggleSidebar("participants")}
-          isOn={sidebarTab === "participants"}
+          label={t("controls.people")}
+          tooltip={t("tooltips.participants")}
+          onClick={() => handlePanelClick("people")}
+          isOn={isPanelActive("people")}
+          size={size}
         />
         <CtrlBtn
           icon={Icons.chat}
-          label={s.chat}
-          tooltip={s.tooltips.chat}
-          onClick={() => onToggleSidebar("chat")}
-          isOn={sidebarTab === "chat"}
+          label={t("controls.chat")}
+          tooltip={t("tooltips.chat")}
+          onClick={() => handlePanelClick("chat")}
+          isOn={isPanelActive("chat")}
+          size={size}
         />
         <CtrlBtn
           icon={Icons.tools}
-          label={s.tools}
-          tooltip={s.tooltips.tools}
-          onClick={() => onToggleSidebar("tools")}
-          isOn={sidebarTab === "tools"}
+          label={t("controls.tools")}
+          tooltip={t("tooltips.tools")}
+          onClick={() => handlePanelClick("tools")}
+          isOn={isPanelActive("tools")}
+          size={size}
         />
-        <div className="w-px h-7 bg-[var(--b)] mx-1" />
+        <div className="hidden md:block w-px h-7 bg-[var(--b)] mx-1" />
 
         {/* Layout button */}
         <div className="relative">
@@ -567,12 +623,13 @@ export default function RoomControls({
                 {layout === "grid" ? "⊞" : layout === "spotlight" ? "□" : "▤"}
               </span>
             }
-            label="Layout"
-            tooltip="Change layout"
+            label={t("controls.layout")}
+            tooltip={t("tooltips.layout")}
             onClick={() => {
               setLayoutPopoverOpen((p) => !p);
             }}
             isOn={layoutPopoverOpen}
+            size={size}
           />
           {layoutPopoverOpen && (
             <LayoutPopover
@@ -585,25 +642,26 @@ export default function RoomControls({
 
         <CtrlBtn
           icon={Icons.settings}
-          label={s.settings}
-          tooltip="General settings"
+          label={t("controls.settings")}
+          tooltip={t("tooltips.settings")}
           onClick={onToggleSettings}
           isOn={settingsOpen}
+          size={size}
         />
       </div>
 
-      {/* Right — leave */}
-      <Tooltip content={s.tooltips.leave}>
-        <button
+      {/* Right — leave (refreshed: solid rose with a subtle divider). */}
+      <div className="flex items-center gap-2">
+        <div className="hidden md:block w-px h-7 bg-[var(--b)]" />
+        <ControlButton
+          icon={Icons.leave}
+          label={t("controls.leave")}
+          tooltip={t("tooltips.leave")}
           onClick={onLeave}
-          className="flex items-center gap-2 px-4 h-[52px] bg-[var(--red)] hover:bg-red-500 active:scale-[0.97] text-white font-semibold text-sm rounded-xl border-none cursor-pointer transition-all duration-150"
-        >
-          {Icons.leave}
-          {s.leave}
-        </button>
-      </Tooltip>
+          variant="leave"
+          size={size}
+        />
+      </div>
     </div>
   );
 }
-
-import React from "react";

@@ -8,6 +8,7 @@ import {
 } from "@livekit/components-react";
 import { RemoteParticipant, Track, type Participant } from "livekit-client";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Icons } from "../../../lib/constants/icons";
 import { Tooltip } from "../../../components/ui/Tooltip";
 import { cn } from "../../../lib/utils";
@@ -39,11 +40,32 @@ function getAvatarGradient(identity: string): string {
 
 function getGridClass(count: number): string {
   if (count === 1) return "grid-cols-1 grid-rows-1";
-  if (count === 2) return "grid-cols-2 grid-rows-1";
+  // 2 participants:
+  //   - mobile / tablet (<lg): 1 column, 2 rows so each tile is full-width
+  //     and roughly half-height. Avoids the "tall narrow strip showing
+  //     half a face" look that 2 columns produces on phones.
+  //   - desktop (lg+): 2 columns side-by-side as before.
+  if (count === 2) return "grid-cols-1 grid-rows-2 lg:grid-cols-2 lg:grid-rows-1";
+  // 3 participants: a 2x2 grid where the 3rd tile spans both columns.
+  // The col-span is applied directly on the tile via getTileClass below.
+  if (count === 3) return "grid-cols-2 grid-rows-2";
   if (count <= 4) return "grid-cols-2 grid-rows-2";
   if (count <= 6) return "grid-cols-3 grid-rows-2";
   if (count <= 9) return "grid-cols-3 grid-rows-3";
   return "grid-cols-4 grid-rows-3";
+}
+
+/**
+ * Per-tile class overrides. Returns a class for the Nth (0-based) tile
+ * given the total count, used to make a single tile span when the row
+ * would otherwise leave it lonely.
+ */
+function getTileClass(index: number, count: number): string {
+  if (count === 3 && index === 2) {
+    // 3rd tile gets a full-width row at the bottom.
+    return "col-span-2";
+  }
+  return "";
 }
 
 function getTrackRefs(participant: Participant, tracks: any[]) {
@@ -65,13 +87,13 @@ function ParticipantTile({
   participant,
   camTrackRef,
   screenTrackRef,
-  isLocal,
   compact = false,
   localIdentity,
   isHost,
   onMute,
   onKick,
   mutedByHost,
+  className,
 }: {
   participant: Participant;
   camTrackRef: any;
@@ -83,7 +105,14 @@ function ParticipantTile({
   onMute?: (p: RemoteParticipant) => void;
   onKick?: (p: RemoteParticipant) => void;
   mutedByHost?: Set<string>;
+  /**
+   * Extra Tailwind classes appended to the tile root. Used by the grid
+   * layout to make a single tile span when the row would otherwise leave
+   * it lonely (e.g., 3 participants → 3rd tile spans both columns).
+   */
+  className?: string;
 }) {
+  const { t } = useTranslation("room");
   const isSpeaking = useIsSpeaking(participant);
   const [hovered, setHovered] = useState(false);
   const [pinned, setPinned] = useState(false);
@@ -111,6 +140,7 @@ function ParticipantTile({
         "relative bg-[var(--s2)] rounded-xl overflow-hidden transition-all duration-200 w-full h-full",
         isSpeaking &&
           "ring-2 ring-[var(--green)] ring-offset-2 ring-offset-[var(--s0)]",
+        className,
         pinned &&
           "ring-2 ring-[var(--brand)] ring-offset-2 ring-offset-[var(--s0)]",
       )}
@@ -118,13 +148,6 @@ function ParticipantTile({
       onMouseLeave={() => setHovered(false)}
     >
       {primaryTrack ? (
-        // <VideoTrack
-        //   trackRef={primaryTrack}
-        //   className={cn(
-        //     "absolute inset-0 w-full h-full object-cover",
-        //     isLocalParticipant && !hasScreen && "scale-x-[-1]",
-        //   )}
-        // />
         <VideoTrack
           trackRef={primaryTrack}
           className={cn("absolute inset-0 w-full h-full object-cover")}
@@ -147,7 +170,7 @@ function ParticipantTile({
       )}
 
       {hasScreen && hasVideo && !compact && (
-        <div className="absolute bottom-10 right-2 w-20 h-14 rounded-lg overflow-hidden border-2 border-[var(--s0)] shadow-lg">
+        <div className="absolute bottom-10 end-2 w-20 h-14 rounded-lg overflow-hidden border-2 border-[var(--s0)] shadow-lg">
           <VideoTrack
             trackRef={camTrackRef}
             className={cn(
@@ -159,20 +182,20 @@ function ParticipantTile({
       )}
 
       {hasScreen && !compact && (
-        <div className="absolute top-2 left-2 bg-[var(--brand)]/80 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
+        <div className="absolute top-2 start-2 bg-[var(--brand)]/80 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
           {Icons.screenShare}
-          <span>Sharing</span>
+          <span>{t("tile.sharing")}</span>
         </div>
       )}
 
       {pinned && !compact && (
-        <div className="absolute top-2 right-2 bg-[var(--brand)]/80 backdrop-blur-sm text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md">
+        <div className="absolute top-2 end-2 bg-[var(--brand)]/80 backdrop-blur-sm text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md">
           📌
         </div>
       )}
 
       {isSpeaking && (
-        <div className="absolute top-2 right-2 flex gap-0.5 items-end h-4">
+        <div className="absolute top-2 end-2 flex gap-0.5 items-end h-4">
           {[1, 2, 3, 2, 1].map((h, i) => (
             <div
               key={i}
@@ -186,43 +209,14 @@ function ParticipantTile({
         </div>
       )}
 
-      {/* {hovered && !compact && (
-        <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px] flex items-center justify-center gap-2 fade-in">
-          <Tooltip content="Zoom in">
-            <button className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 border-none cursor-pointer text-white text-base flex items-center justify-center transition-all active:scale-95">
-              🔍
-            </button>
-          </Tooltip>
-          <Tooltip content={pinned ? "Unpin" : "Pin"}>
-            <button
-              className={cn(
-                "w-9 h-9 rounded-full border-none cursor-pointer text-white text-base flex items-center justify-center transition-all active:scale-95",
-                pinned
-                  ? "bg-[var(--brand)]/60 hover:bg-[var(--brand)]/80"
-                  : "bg-white/15 hover:bg-white/25",
-              )}
-              onClick={() => setPinned((p) => !p)}
-            >
-              📌
-            </button>
-          </Tooltip>
-          {!isLocalParticipant && (
-            <Tooltip content="Mute">
-              <button className="w-9 h-9 rounded-full bg-white/15 hover:bg-[var(--red)]/50 border-none cursor-pointer text-white text-base flex items-center justify-center transition-all active:scale-95">
-                🔇
-              </button>
-            </Tooltip>
-          )}
-        </div>
-      )} */}
       {hovered && !compact && (
         <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px] flex items-center justify-center gap-2 fade-in">
-          <Tooltip content="Zoom in">
+          <Tooltip content={t("tile.zoomIn")}>
             <button className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 border-none cursor-pointer text-white text-base flex items-center justify-center transition-all active:scale-95">
               🔍
             </button>
           </Tooltip>
-          <Tooltip content={pinned ? "Unpin" : "Pin"}>
+          <Tooltip content={pinned ? t("tile.unpin") : t("tile.pin")}>
             <button
               className={cn(
                 "w-9 h-9 rounded-full border-none cursor-pointer text-white text-base flex items-center justify-center transition-all active:scale-95",
@@ -239,7 +233,9 @@ function ParticipantTile({
             <>
               <Tooltip
                 content={
-                  mutedByHost?.has(participant.identity) ? "Unmute" : "Mute"
+                  mutedByHost?.has(participant.identity)
+                    ? t("tile.unmute")
+                    : t("tile.mute")
                 }
               >
                 <button
@@ -254,7 +250,7 @@ function ParticipantTile({
                   {mutedByHost?.has(participant.identity) ? "🎙" : "🔇"}
                 </button>
               </Tooltip>
-              <Tooltip content="Remove from call">
+              <Tooltip content={t("tile.remove")}>
                 <button
                   className="w-9 h-9 rounded-full bg-white/15 hover:bg-[var(--red)]/50 border-none cursor-pointer text-white text-base flex items-center justify-center transition-all active:scale-95"
                   onClick={() => onKick?.(participant as RemoteParticipant)}
@@ -266,14 +262,14 @@ function ParticipantTile({
           )}
         </div>
       )}
-      <div className="absolute bottom-0 left-0 right-0 p-1.5 flex items-center gap-1 bg-gradient-to-t from-black/60 to-transparent">
+      <div className="absolute bottom-0 start-0 end-0 p-1.5 flex items-center gap-1 bg-gradient-to-t from-black/60 to-transparent">
         <span
           className={cn(
             "font-semibold text-white bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded-md truncate flex-1",
             compact ? "text-[9px]" : "text-[11px]",
           )}
         >
-          {isLocalParticipant ? `${name} (You)` : name}
+          {isLocalParticipant ? `${name} ${t("tile.you")}` : name}
         </span>
       </div>
     </div>
@@ -304,7 +300,7 @@ function GridLayout({
         getGridClass(allParticipants.length),
       )}
     >
-      {allParticipants.map((p) => {
+      {allParticipants.map((p, idx) => {
         const { cam, screen } = getTrackRefs(p, tracks);
         return (
           <ParticipantTile
@@ -318,6 +314,7 @@ function GridLayout({
             onMute={onMute}
             onKick={onKick}
             mutedByHost={mutedByHost}
+            className={getTileClass(idx, allParticipants.length)}
           />
         );
       })}
@@ -459,7 +456,7 @@ interface VideoGridProps {
   onLayoutChange: (l: LayoutMode) => void;
 }
 
-export default function VideoGrid({ layout, onLayoutChange }: VideoGridProps) {
+export default function VideoGrid({ layout }: VideoGridProps) {
   const { localParticipant } = useLocalParticipant();
   const remoteParticipants = useParticipants();
   const { isHost, muteParticipant, kickParticipant } = useHostControls();

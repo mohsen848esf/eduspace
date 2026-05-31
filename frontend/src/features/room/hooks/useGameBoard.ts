@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useRoomContext,
   useLocalParticipant,
@@ -25,9 +26,11 @@ const GAME_MESSAGES = {
 } as const;
 
 export function useGameBoard() {
+  const { t } = useTranslation("games");
   const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
-  const participants = useParticipants();
+  // remote participants are read by callers; the hook itself doesn't need them
+  useParticipants();
   const { isHost } = useRoomStore();
 
   const [gameBoard, setGameBoard] = useState<GameBoardState>({
@@ -63,7 +66,6 @@ export function useGameBoard() {
     async (gameId: string, gameTitle: string, gameUrl: string) => {
       if (!isHost) return;
 
-      // Send invite to all participants
       await sendMessage(GAME_MESSAGES.GAME_INVITE, {
         gameId,
         gameTitle,
@@ -71,7 +73,6 @@ export function useGameBoard() {
         from: localParticipant.name || localParticipant.identity,
       });
 
-      // Host auto-joins
       setGameBoard({
         isActive: true,
         gameId,
@@ -81,12 +82,11 @@ export function useGameBoard() {
         acceptedParticipants: [localParticipant.identity],
       });
 
-      toast.success(`Game "${gameTitle}" launched!`);
+      toast.success(t("board.launched", { title: gameTitle }));
     },
-    [isHost, localParticipant, sendMessage],
+    [isHost, localParticipant, sendMessage, t],
   );
 
-  // Participant accepts invite
   const acceptGame = useCallback(async () => {
     if (!pendingInvite) return;
 
@@ -107,12 +107,10 @@ export function useGameBoard() {
     setPendingInvite(null);
   }, [pendingInvite, localParticipant, sendMessage]);
 
-  // Decline invite
   const declineGame = useCallback(() => {
     setPendingInvite(null);
   }, []);
 
-  // End game (host only)
   const endGame = useCallback(async () => {
     if (!isHost) return;
     await sendMessage(GAME_MESSAGES.GAME_END, {});
@@ -124,10 +122,9 @@ export function useGameBoard() {
       hostIdentity: null,
       acceptedParticipants: [],
     });
-    toast("Game ended", { icon: "🎮" });
-  }, [isHost, sendMessage]);
+    toast(t("board.ended"), { icon: "🎮" });
+  }, [isHost, sendMessage, t]);
 
-  // Handle incoming messages
   const handleDataMessage = useCallback(
     (payload: Uint8Array, participant: any) => {
       try {
@@ -164,12 +161,14 @@ export function useGameBoard() {
               acceptedParticipants: [],
             });
             setPendingInvite(null);
-            toast("Game ended by host", { icon: "🎮" });
+            toast(t("board.endedByHost"), { icon: "🎮" });
             break;
         }
-      } catch {}
+      } catch {
+        /* swallow malformed */
+      }
     },
-    [],
+    [t],
   );
 
   return {

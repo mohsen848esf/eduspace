@@ -1,5 +1,6 @@
 import { Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { routes } from "./routes";
 import PrivateRoute from "./PrivateRoute";
 import PublicRoute from "./PublicRoute";
@@ -16,6 +17,21 @@ function PageLoader() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--s0)]">
       <Spinner size="lg" />
+    </div>
+  );
+}
+
+function UnauthorizedScreen() {
+  const { t } = useTranslation("common");
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[var(--s0)]">
+      <div className="text-center">
+        <p className="text-4xl mb-4">🚫</p>
+        <h1 className="text-xl font-bold text-[var(--t1)] mb-2">
+          {t("errors.accessDenied")}
+        </h1>
+        <p className="text-[var(--t2)] text-sm">{t("errors.noPermission")}</p>
+      </div>
     </div>
   );
 }
@@ -66,22 +82,7 @@ export default function AppRouter() {
               />
             ))}
 
-            <Route
-              path="/unauthorized"
-              element={
-                <div className="min-h-screen flex items-center justify-center bg-[var(--s0)]">
-                  <div className="text-center">
-                    <p className="text-4xl mb-4">🚫</p>
-                    <h1 className="text-xl font-bold text-[var(--t1)] mb-2">
-                      Access Denied
-                    </h1>
-                    <p className="text-[var(--t2)] text-sm">
-                      You don't have permission to view this page.
-                    </p>
-                  </div>
-                </div>
-              }
-            />
+            <Route path="/unauthorized" element={<UnauthorizedScreen />} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

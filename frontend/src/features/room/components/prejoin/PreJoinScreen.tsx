@@ -1,8 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import {
-  useBackgroundBlur,
-  type BackgroundType,
-} from "../../hooks/useBackgroundBlur";
+import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import { type BackgroundType } from "../../hooks/useBackgroundBlur";
 import { Icons } from "../../../../lib/constants/icons";
 import { Tooltip } from "../../../../components/ui/Tooltip";
 import Button from "../../../../components/ui/Button";
@@ -28,37 +26,37 @@ export interface PreJoinSettings {
 
 const BG_OPTIONS: {
   id: BackgroundType;
-  label: string;
+  labelKey: string;
   preview?: string;
   className?: string;
 }[] = [
-  { id: "none", label: "None", className: "bg-[var(--s3)]" },
+  { id: "none", labelKey: "preJoin.background", className: "bg-[var(--s3)]" },
   {
     id: "blur",
-    label: "Blur",
+    labelKey: "preJoin.background",
     className: "bg-gradient-to-br from-gray-400 to-gray-600",
   },
   {
     id: "office",
-    label: "Office",
+    labelKey: "preJoin.background",
     preview:
       "https://images.unsplash.com/photo-1497366216548-37526070297c?w=120&q=60",
   },
   {
     id: "nature",
-    label: "Nature",
+    labelKey: "preJoin.background",
     preview:
       "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=120&q=60",
   },
   {
     id: "studio",
-    label: "Studio",
+    labelKey: "preJoin.background",
     preview:
       "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=120&q=60",
   },
   {
     id: "minimal",
-    label: "Minimal",
+    labelKey: "preJoin.background",
     preview:
       "https://images.unsplash.com/photo-1557683316-973673baf926?w=120&q=60",
   },
@@ -104,7 +102,9 @@ function AudioLevelMeter({
           animRef.current = requestAnimationFrame(tick);
         };
         tick();
-      } catch {}
+      } catch {
+        /* swallow */
+      }
     };
     start();
     return () => {
@@ -135,6 +135,7 @@ export default function PreJoinScreen({
   onJoin,
   onCancel,
 }: PreJoinScreenProps) {
+  const { t } = useTranslation("room");
   const [micEnabled, setMicEnabled] = useState(true);
   const [camEnabled, setCamEnabled] = useState(true);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
@@ -149,7 +150,6 @@ export default function PreJoinScreen({
   const streamRef = useRef<MediaStream | null>(null);
   const animRef = useRef<number>(0);
   const {
-    track: previewTrack,
     background: selectedBg,
     isLoading: bgLoading,
     isSupported: bgSupported,
@@ -171,6 +171,7 @@ export default function PreJoinScreen({
         if (cam) setSelectedCam(cam.deviceId);
         if (speaker) setSelectedSpeaker(speaker.deviceId);
       } catch {
+        /* swallow */
       } finally {
         setIsLoadingDevices(false);
       }
@@ -200,7 +201,9 @@ export default function PreJoinScreen({
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
         }
-      } catch {}
+      } catch {
+        /* swallow */
+      }
     };
 
     start();
@@ -234,14 +237,11 @@ export default function PreJoinScreen({
       canvas.height = video.videoHeight;
 
       if (selectedBg === "blur") {
-        // Draw blurred version first
         ctx.filter = "blur(12px)";
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         ctx.filter = "none";
-        // Draw person on top (just the video scaled slightly to show person)
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       } else {
-        // Color backgrounds
         const colors: Record<string, string> = {
           office: "#7c3f1e",
           nature: "#166534",
@@ -277,16 +277,28 @@ export default function PreJoinScreen({
     });
   };
 
+  // Visual labels for backgrounds (these stay english because they map to the
+  // image asset; the section header above translates).
+  const bgVisualLabel: Record<BackgroundType, string> = {
+    none: "None",
+    blur: "Blur",
+    office: "Office",
+    nature: "Nature",
+    studio: "Studio",
+    minimal: "Minimal",
+  };
+
   return (
-    <div className="min-h-screen bg-[var(--s0)] flex items-center justify-center p-4">
-      <div className="w-full max-w-3xl fade-in">
+    <div className="min-h-screen bg-[var(--s0)] flex flex-col md:items-center md:justify-center md:p-4">
+      {/* Scrollable content area; on desktop the whole thing is centered. */}
+      <div className="flex-1 overflow-y-auto md:overflow-visible md:flex-none md:w-full md:max-w-3xl px-4 pt-6 pb-4 md:p-0 fade-in">
         {/* Header */}
-        <div className="text-center mb-6">
-          <div className="text-2xl font-bold text-[var(--t1)] mb-1">
+        <div className="text-center mb-5 md:mb-6">
+          <div className="text-xl md:text-2xl font-bold text-[var(--t1)] mb-1">
             {roomName}
           </div>
           <div className="text-sm text-[var(--t3)]">
-            Room code:{" "}
+            {t("preJoin.roomCodeLabel")}{" "}
             <span className="font-mono text-[var(--brand-text)]">
               {roomCode}
             </span>
@@ -294,7 +306,6 @@ export default function PreJoinScreen({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Left — Camera preview */}
           {/* Left — Camera preview */}
           <div className="flex flex-col gap-3">
             <div className="relative bg-[var(--s2)] rounded-2xl overflow-hidden aspect-video">
@@ -325,13 +336,19 @@ export default function PreJoinScreen({
                   <div className="w-16 h-16 rounded-full bg-[var(--s3)] flex items-center justify-center text-[var(--t3)]">
                     {Icons.cameraOff}
                   </div>
-                  <p className="text-sm text-[var(--t3)]">Camera is off</p>
+                  <p className="text-sm text-[var(--t3)]">
+                    {t("preJoin.cameraOff")}
+                  </p>
                 </div>
               )}
 
               {/* Mic/Cam toggles overlay */}
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-30">
-                <Tooltip content={micEnabled ? "Mute mic" : "Unmute mic"}>
+                <Tooltip
+                  content={
+                    micEnabled ? t("preJoin.muteMic") : t("preJoin.unmuteMic")
+                  }
+                >
                   <button
                     onClick={() => setMicEnabled((p) => !p)}
                     className={cn(
@@ -345,7 +362,11 @@ export default function PreJoinScreen({
                   </button>
                 </Tooltip>
                 <Tooltip
-                  content={camEnabled ? "Turn off camera" : "Turn on camera"}
+                  content={
+                    camEnabled
+                      ? t("preJoin.turnOffCamera")
+                      : t("preJoin.turnOnCamera")
+                  }
                 >
                   <button
                     onClick={() => setCamEnabled((p) => !p)}
@@ -365,11 +386,11 @@ export default function PreJoinScreen({
             {/* Background selector */}
             <div>
               <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2">
-                Background
+                {t("preJoin.background")}
               </div>
               <div className="grid grid-cols-6 gap-1.5">
                 {BG_OPTIONS.map((bg) => (
-                  <Tooltip key={bg.id} content={bg.label}>
+                  <Tooltip key={bg.id} content={bgVisualLabel[bg.id]}>
                     <button
                       onClick={() => changeBackground(bg.id)}
                       disabled={bgLoading || !bgSupported}
@@ -384,7 +405,7 @@ export default function PreJoinScreen({
                       {bg.preview ? (
                         <img
                           src={bg.preview}
-                          alt={bg.label}
+                          alt={bgVisualLabel[bg.id]}
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -401,12 +422,12 @@ export default function PreJoinScreen({
               </div>
               {!bgSupported && (
                 <p className="text-[10px] text-[var(--t3)] mt-1.5">
-                  Background effects not supported in this browser.
+                  {t("preJoin.bgNotSupported")}
                 </p>
               )}
               {bgLoading && (
                 <p className="text-[10px] text-[var(--brand-text)] mt-1.5 animate-pulse">
-                  Applying background...
+                  {t("preJoin.bgApplying")}
                 </p>
               )}
             </div>
@@ -427,12 +448,13 @@ export default function PreJoinScreen({
                       : "bg-transparent text-[var(--t3)] hover:text-[var(--t1)]",
                   )}
                 >
-                  {tab === "camera" ? "📹 Camera" : "🎙 Audio"}
+                  {tab === "camera"
+                    ? t("preJoin.tabCamera")
+                    : t("preJoin.tabAudio")}
                 </button>
               ))}
             </div>
 
-            {/* Fixed height tab content — prevents layout shift */}
             <div
               className="flex flex-col"
               style={{ height: "200px", overflow: "hidden" }}
@@ -446,7 +468,7 @@ export default function PreJoinScreen({
               >
                 <div>
                   <label className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider block mb-1.5">
-                    Camera
+                    {t("preJoin.camera")}
                   </label>
                   <select
                     value={selectedCam}
@@ -456,7 +478,7 @@ export default function PreJoinScreen({
                   >
                     {cameras.map((d) => (
                       <option key={d.deviceId} value={d.deviceId}>
-                        {d.label || "Camera"}
+                        {d.label || t("preJoin.deviceLabels.camera")}
                       </option>
                     ))}
                   </select>
@@ -472,7 +494,7 @@ export default function PreJoinScreen({
               >
                 <div>
                   <label className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider block mb-1.5">
-                    Microphone
+                    {t("preJoin.microphone")}
                   </label>
                   <select
                     value={selectedMic}
@@ -482,14 +504,14 @@ export default function PreJoinScreen({
                   >
                     {mics.map((d) => (
                       <option key={d.deviceId} value={d.deviceId}>
-                        {d.label || "Microphone"}
+                        {d.label || t("preJoin.deviceLabels.microphone")}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <label className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider block mb-1.5">
-                    Speaker
+                    {t("preJoin.speaker")}
                   </label>
                   <select
                     value={selectedSpeaker}
@@ -498,14 +520,14 @@ export default function PreJoinScreen({
                   >
                     {speakers.map((d) => (
                       <option key={d.deviceId} value={d.deviceId}>
-                        {d.label || "Speaker"}
+                        {d.label || t("preJoin.deviceLabels.speaker")}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <label className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider block mb-1.5">
-                    Mic Level
+                    {t("preJoin.micLevel")}
                   </label>
                   <AudioLevelMeter
                     micEnabled={micEnabled}
@@ -515,17 +537,28 @@ export default function PreJoinScreen({
               </div>
             </div>
 
-            {/* Join buttons */}
-            <div className="flex flex-col gap-2 flex-shrink-0">
+            {/* Join buttons — in-card on tablet/desktop. Mobile uses the
+                sticky footer below the scrollable content. */}
+            <div className="hidden md:flex flex-col gap-2 flex-shrink-0">
               <Button fullWidth onClick={handleJoin}>
-                Join Now
+                {t("preJoin.join")}
               </Button>
               <Button variant="ghost" fullWidth onClick={onCancel}>
-                Cancel
+                {t("preJoin.cancel")}
               </Button>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Mobile sticky CTA — sits at the page bottom; hidden at md+. */}
+      <div className="md:hidden flex-shrink-0 border-t border-[var(--b)] bg-[var(--s1)] p-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] flex flex-col gap-2">
+        <Button fullWidth onClick={handleJoin} className="min-h-12 text-base">
+          {t("preJoin.join")}
+        </Button>
+        <Button variant="ghost" fullWidth onClick={onCancel} className="min-h-11">
+          {t("preJoin.cancel")}
+        </Button>
       </div>
     </div>
   );

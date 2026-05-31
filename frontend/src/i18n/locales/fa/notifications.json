@@ -1,0 +1,32 @@
+{
+  "roomInvite": {
+    "title": "📹 {{from}} شما را دعوت کرد",
+    "joinNow": "ورود به جلسه",
+    "dismiss": "بستن"
+  },
+  "recordingPublished": {
+    "title": "🎬 {{from}} یک ضبط را به اشتراک گذاشت",
+    "subtitle": "{{roomName}} · {{duration}}",
+    "watch": "تماشا",
+    "dismiss": "بعداً"
+  },
+  "recordingPermission": {
+    "grantedTitle": "🎙 {{from}} اجازه ضبط را به شما داد",
+    "revokedTitle": "🚫 {{from}} اجازه ضبط شما را لغو کرد",
+    "grantedToast": "{{from}} در {{roomName}} اجازه ضبط را به شما داد",
+    "revokedToast": "{{from}} اجازه ضبط شما را در {{roomName}} لغو کرد",
+    "openRoom": "ورود به اتاق"
+  },
+  "inbox": {
+    "title": "اعلان‌ها",
+    "empty": "هنوز اعلانی ندارید",
+    "emptyHint": "دعوت‌ها و ضبط‌های اشتراک‌گذاری‌شده اینجا نمایش داده می‌شوند.",
+    "unreadCount_one": "{{count}} خوانده‌نشده",
+    "unreadCount_other": "{{count}} خوانده‌نشده",
+    "markAllRead": "همه را خوانده‌شده علامت بزن",
+    "markRead": "خوانده شد",
+    "remove": "حذف",
+    "clearAll": "پاک کردن همه",
+    "unreadDot": "خوانده‌نشده"
+  }
+}

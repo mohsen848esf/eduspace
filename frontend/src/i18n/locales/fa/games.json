@@ -1,0 +1,45 @@
+{
+  "container": {
+    "poweredBy": "ارائه‌شده توسط",
+    "loading": "در حال بارگذاری {{name}}...",
+    "loadingGame": "در حال بارگذاری بازی...",
+    "start": "شروع",
+    "pause": "توقف",
+    "resume": "ادامه",
+    "next": "بعدی ←",
+    "fullscreen": "تمام صفحه",
+    "exitFullscreen": "خروج از تمام صفحه",
+    "branding": "EduSpace"
+  },
+  "board": {
+    "playersOne": "{{count}} بازیکن",
+    "playersOther": "{{count}} بازیکن",
+    "endGame": "پایان بازی",
+    "endGameTooltip": "پایان بازی",
+    "endedByHost": "میزبان بازی را پایان داد",
+    "ended": "بازی پایان یافت",
+    "launched": "بازی «{{title}}» شروع شد!"
+  },
+  "selector": {
+    "title": "اجرای بازی",
+    "subtitle": "یک بازی را برای همه‌ی شرکت‌کنندگان انتخاب کنید.",
+    "loading": "در حال بارگذاری بازی‌ها...",
+    "empty": "بازی‌ای موجود نیست",
+    "launch": "شروع",
+    "comingSoon": "به‌زودی",
+    "free": "رایگان",
+    "premium": "پولی"
+  },
+  "invite": {
+    "title": "🎮 {{from}} یک بازی را شروع کرد",
+    "subtitle": "{{title}}",
+    "join": "ورود",
+    "decline": "رد کردن"
+  },
+  "tools": {
+    "endGameLabel": "پایان بازی",
+    "endGameDesc": "بازی درون‌تماس را متوقف کن",
+    "launchLabel": "اجرای بازی",
+    "launchDesc": "افزودن بازی به جلسه"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "container": {
+    "poweredBy": "Powered by",
+    "loading": "Loading {{name}}...",
+    "loadingGame": "Loading game...",
+    "start": "Start",
+    "pause": "Pause",
+    "resume": "Resume",
+    "next": "Next →",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "branding": "EduSpace"
+  },
+  "board": {
+    "playersOne": "{{count}} player",
+    "playersOther": "{{count}} players",
+    "endGame": "End Game",
+    "endGameTooltip": "End game",
+    "endedByHost": "Game ended by host",
+    "ended": "Game ended",
+    "launched": "Game \"{{title}}\" launched!"
+  },
+  "selector": {
+    "title": "Launch a game",
+    "subtitle": "Pick a game to play with everyone in this call.",
+    "loading": "Loading games...",
+    "empty": "No games available",
+    "launch": "Launch",
+    "comingSoon": "Coming soon",
+    "free": "Free",
+    "premium": "Premium"
+  },
+  "invite": {
+    "title": "🎮 {{from}} started a game",
+    "subtitle": "{{title}}",
+    "join": "Join",
+    "decline": "Decline"
+  },
+  "tools": {
+    "endGameLabel": "End Game",
+    "endGameDesc": "Stop the in-call game",
+    "launchLabel": "Launch Game",
+    "launchDesc": "Add a game to the session"
+  }
+}

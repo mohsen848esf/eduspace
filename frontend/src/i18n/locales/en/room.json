@@ -1,0 +1,164 @@
+{
+  "preJoin": {
+    "roomCodeLabel": "Room code:",
+    "join": "Join Now",
+    "cancel": "Cancel",
+    "tabCamera": "📹 Camera",
+    "tabAudio": "🎙 Audio",
+    "cameraOff": "Camera is off",
+    "muteMic": "Mute mic",
+    "unmuteMic": "Unmute mic",
+    "turnOffCamera": "Turn off camera",
+    "turnOnCamera": "Turn on camera",
+    "background": "Background",
+    "bgNotSupported": "Background effects not supported in this browser.",
+    "bgApplying": "Applying background...",
+    "camera": "Camera",
+    "microphone": "Microphone",
+    "speaker": "Speaker",
+    "micLevel": "Mic Level",
+    "deviceLabels": {
+      "camera": "Camera",
+      "microphone": "Microphone",
+      "speaker": "Speaker"
+    }
+  },
+  "controls": {
+    "mic": "Mic",
+    "camera": "Camera",
+    "share": "Share",
+    "people": "People",
+    "chat": "Chat",
+    "tools": "Tools",
+    "settings": "Settings",
+    "leave": "Leave",
+    "layout": "Layout"
+  },
+  "tooltips": {
+    "muteOn": "Mute · Ctrl+D",
+    "muteOff": "Unmute · Ctrl+D",
+    "cameraOn": "Turn off camera · Ctrl+E",
+    "cameraOff": "Turn on camera · Ctrl+E",
+    "micSettings": "Microphone settings",
+    "camSettings": "Camera settings & background",
+    "screenShare": "Share your screen",
+    "participants": "Participants",
+    "chat": "Chat",
+    "tools": "Session tools",
+    "layout": "Change layout",
+    "settings": "General settings",
+    "leave": "Leave session"
+  },
+  "layouts": {
+    "title": "Layout",
+    "grid": "Grid",
+    "gridDesc": "All participants equal size",
+    "spotlight": "Spotlight",
+    "spotlightDesc": "One large, others small",
+    "sidebar": "Sidebar",
+    "sidebarDesc": "Main view with sidebar strip"
+  },
+  "topbar": {
+    "defaultRoomName": "EduSpace Room",
+    "host": "Host",
+    "copy": "Copy invite link",
+    "copied": "Copied!",
+    "copiedToast": "Invite link copied!",
+    "rec": "REC",
+    "participantOne": "{{count}} participant",
+    "participantOther": "{{count}} participants",
+    "info": "Room info",
+    "infoTitle": "Room Info",
+    "infoName": "Name",
+    "infoCode": "Code",
+    "infoDuration": "Duration",
+    "infoParticipants": "Participants",
+    "infoYourRole": "Your role",
+    "roleHost": "Host",
+    "roleParticipant": "Participant"
+  },
+  "tile": {
+    "you": "(You)",
+    "sharing": "Sharing",
+    "zoomIn": "Zoom in",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "remove": "Remove from call"
+  },
+  "audioVisualizer": {
+    "muted": "Microphone muted"
+  },
+  "settings": {
+    "title": "Settings",
+    "pushToTalk": "Push to Talk",
+    "pttHold": "Hold Space to unmute",
+    "pttDisabled": "Space key disabled",
+    "shortcuts": "Shortcuts",
+    "shortcutMicLabel": "Toggle Mic",
+    "shortcutMicSub": "Mute / unmute",
+    "shortcutCamLabel": "Toggle Camera",
+    "shortcutCamSub": "Camera on / off",
+    "noiseCancellation": "Noise Cancellation",
+    "hdVideo": "HD Video"
+  },
+  "sidebar": {
+    "addPeople": "Add People",
+    "host": "Host",
+    "students": "Students ({{count}})",
+    "noMessages": "No messages yet",
+    "messagePlaceholder": "Message..."
+  },
+  "invite": {
+    "title": "Add People",
+    "shareLink": "Share Link",
+    "copy": "Copy",
+    "copied": "✓ Copied",
+    "copiedToast": "Link copied!",
+    "inviteByUsername": "Invite by Username",
+    "searchPlaceholder": "Search by username or name...",
+    "noUsers": "No users found",
+    "invite": "Invite",
+    "invited": "✓ Sent",
+    "invitedToast": "Invited {{username}}",
+    "failed": "Failed to send invite"
+  },
+  "tools": {
+    "launchGame": "Launch Game",
+    "launchGameDesc": "Add game to session",
+    "whiteboard": "Whiteboard",
+    "whiteboardDesc": "Collaborative drawing",
+    "quickExam": "Quick Exam",
+    "quickExamDesc": "Start exam in session",
+    "aiSummary": "AI Summary",
+    "aiSummaryDesc": "Auto-summarize session",
+    "fileShare": "File Share",
+    "fileShareDesc": "Share presentations",
+    "ready": "Ready"
+  },
+  "host": {
+    "muted": "Muted {{name}}",
+    "unmuted": "Unmuted {{name}}",
+    "muteFailed": "Failed to update participant",
+    "removed": "Removed {{name}}",
+    "removeFailed": "Failed to remove participant",
+    "screenShareGranted": "Granted screen share to {{name}}",
+    "screenShareFailed": "Failed to grant permission",
+    "youWereMuted": "You were muted by the host",
+    "hostUnmuted": "Host unmuted your microphone",
+    "hostTurnedOffCamera": "Your camera was turned off by the host"
+  },
+  "join": {
+    "joining": "Joining room...",
+    "createFailed": "Failed to create room",
+    "joinFailed": "Failed to join room"
+  },
+  "recordingGrant": {
+    "grant": "Allow {{username}} to record",
+    "revoke": "Revoke {{username}}'s recording permission",
+    "toastGranted": "{{name}} can now control recording",
+    "toastRevoked": "{{name}} can no longer control recording",
+    "toastFailed": "Could not update recording permission"
+  }
+}

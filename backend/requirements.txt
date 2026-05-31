@@ -1,0 +1,42 @@
+# Django & DRF
+Django==6.0.5
+djangorestframework==3.17.1
+djangorestframework_simplejwt==5.5.1
+django-cors-headers==4.9.0
+
+# Channels (WebSocket)
+channels==4.2.0
+channels-redis==4.2.0
+daphne==4.2.1
+
+# ASGI server
+uvicorn==0.48.0
+httptools==0.8.0
+watchfiles==1.2.0
+websockets==16.0
+
+# Database
+psycopg2-binary==2.9.12
+
+# Cache / channel layer
+redis==7.4.0
+
+# Auth helpers
+PyJWT==2.12.1
+
+# Image handling
+pillow==12.2.0
+
+# LiveKit
+livekit-api==1.1.0
+livekit-protocol==1.1.9
+
+# Media post-processing (trim / probe)
+ffmpeg-python==0.2.0
+
+# Settings
+python-dotenv==1.2.2
+
+# Misc transitive helpers we depend on directly
+requests==2.34.2
+PyYAML==6.0.3

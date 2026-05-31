@@ -1,0 +1,32 @@
+{
+  "roomInvite": {
+    "title": "📹 {{from}} invited you",
+    "joinNow": "Join Now",
+    "dismiss": "Dismiss"
+  },
+  "recordingPublished": {
+    "title": "🎬 {{from}} shared a recording",
+    "subtitle": "{{roomName}} · {{duration}}",
+    "watch": "Watch",
+    "dismiss": "Later"
+  },
+  "recordingPermission": {
+    "grantedTitle": "🎙 {{from}} let you record",
+    "revokedTitle": "🚫 {{from}} revoked your recording permission",
+    "grantedToast": "{{from}} let you record in {{roomName}}",
+    "revokedToast": "{{from}} revoked your recording permission in {{roomName}}",
+    "openRoom": "Open room"
+  },
+  "inbox": {
+    "title": "Notifications",
+    "empty": "No notifications yet",
+    "emptyHint": "Invites and shared recordings will show up here.",
+    "unreadCount_one": "{{count}} unread",
+    "unreadCount_other": "{{count}} unread",
+    "markAllRead": "Mark all read",
+    "markRead": "Mark read",
+    "remove": "Remove",
+    "clearAll": "Clear all",
+    "unreadDot": "Unread"
+  }
+}

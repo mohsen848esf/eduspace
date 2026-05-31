@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "../../../lib/utils";
 
 interface SettingsPanelProps {
@@ -33,29 +34,40 @@ export default function SettingsPanel({
   isPushToTalk,
   onTogglePushToTalk,
 }: SettingsPanelProps) {
+  const { t } = useTranslation("room");
   if (!isOpen) return null;
 
   const shortcuts = [
-    { label: "Toggle Mic", sub: "Mute / unmute", key: "Ctrl+D" },
-    { label: "Toggle Camera", sub: "Camera on / off", key: "Ctrl+E" },
+    {
+      label: t("settings.shortcutMicLabel"),
+      sub: t("settings.shortcutMicSub"),
+      key: "Ctrl+D",
+    },
+    {
+      label: t("settings.shortcutCamLabel"),
+      sub: t("settings.shortcutCamSub"),
+      key: "Ctrl+E",
+    },
   ];
 
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute bottom-[76px] left-1/2 -translate-x-1/2 z-50 w-60 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 fade-in">
+      <div className="absolute bottom-[76px] left-1/2 -translate-x-1/2 z-50 w-60 max-w-[calc(100vw-1.5rem)] bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 fade-in">
         <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2 px-1">
-          Settings
+          {t("settings.title")}
         </div>
 
         {/* Push to Talk */}
         <div className="flex items-center justify-between py-2 px-1 mb-1">
           <div>
             <div className="text-xs font-medium text-[var(--t1)]">
-              Push to Talk
+              {t("settings.pushToTalk")}
             </div>
             <div className="text-[10px] text-[var(--t3)]">
-              {isPushToTalk ? "Hold Space to unmute" : "Space key disabled"}
+              {isPushToTalk
+                ? t("settings.pttHold")
+                : t("settings.pttDisabled")}
             </div>
           </div>
           <Toggle on={isPushToTalk} onClick={onTogglePushToTalk} />
@@ -65,7 +77,7 @@ export default function SettingsPanel({
 
         {/* Keyboard shortcuts */}
         <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-1 px-1 mt-2">
-          Shortcuts
+          {t("settings.shortcuts")}
         </div>
         {shortcuts.map((item) => (
           <div
@@ -88,8 +100,8 @@ export default function SettingsPanel({
 
         {/* Toggles */}
         {[
-          { label: "Noise Cancellation", defaultOn: true },
-          { label: "HD Video", defaultOn: false },
+          { label: t("settings.noiseCancellation"), defaultOn: true },
+          { label: t("settings.hdVideo"), defaultOn: false },
         ].map((item) => (
           <ToggleRow
             key={item.label}

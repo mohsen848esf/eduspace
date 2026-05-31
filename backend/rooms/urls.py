@@ -1,5 +1,7 @@
 from django.urls import path
+
 from . import views
+from .recording import views as recording_views
 
 urlpatterns = [
     path('create/', views.create_room, name='create_room'),
@@ -9,4 +11,24 @@ urlpatterns = [
     path('<str:room_code>/invite/', views.invite_to_room, name='invite_to_room'),
     path('<str:room_code>/kick/', views.kick_participant, name='kick_participant'),
     path('<str:room_code>/grant-screen-share/', views.grant_screen_share, name='grant_screen_share'),
+    path('<str:room_code>/participants-history/', views.room_participants_history, name='room_participants_history'),
+
+    # --- Recording control (host only, except status which is participant-level) ---
+    path('<str:room_code>/recording/start/', recording_views.start_recording, name='recording_start'),
+    path('<str:room_code>/recording/stop/', recording_views.stop_recording, name='recording_stop'),
+    path('<str:room_code>/recording/pause/', recording_views.pause_recording, name='recording_pause'),
+    path('<str:room_code>/recording/resume/', recording_views.resume_recording, name='recording_resume'),
+    path('<str:room_code>/recording/status/', recording_views.recording_status, name='recording_status'),
+    # Host delegates recording control to a participant; participant polls
+    # to learn whether they're allowed to drive the controls.
+    path(
+        '<str:room_code>/recording/permission/',
+        recording_views.recording_permission,
+        name='recording_permission',
+    ),
+    path(
+        '<str:room_code>/recording/permission/set/',
+        recording_views.set_recording_permission,
+        name='recording_permission_set',
+    ),
 ]

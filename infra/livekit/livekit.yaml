@@ -1,0 +1,22 @@
+# LiveKit server configuration for the EduSpace dev stack.
+# Keys must match LIVEKIT_API_KEY / LIVEKIT_API_SECRET in backend/.env
+# (and the matching api_key/api_secret used by the egress worker).
+port: 7880
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  use_external_ip: false
+
+keys:
+  devkey: devsecret
+
+redis:
+  address: redis:6379
+
+# Forward egress lifecycle events to Django.
+# host.docker.internal is the dev-time hostname the docker container
+# uses to reach services running on the Windows host (Django dev server).
+webhook:
+  api_key: devkey
+  urls:
+    - http://host.docker.internal:8000/api/recordings/webhook/

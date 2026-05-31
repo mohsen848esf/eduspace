@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useParticipants,
   useLocalParticipant,
@@ -44,6 +45,7 @@ function ParticipantStrip({
 }: {
   acceptedParticipants: string[];
 }) {
+  const { t } = useTranslation("room");
   const { localParticipant } = useLocalParticipant();
   const remoteParticipants = useParticipants();
   const tracks = useTracks([
@@ -55,12 +57,12 @@ function ParticipantStrip({
   );
 
   return (
-    <div className="flex flex-col gap-1.5 w-20 bg-[var(--s1)] border-r border-[var(--b)] p-1.5 overflow-y-auto">
+    <div className="flex flex-col gap-1.5 w-20 bg-[var(--s1)] border-e border-[var(--b)] p-1.5 overflow-y-auto">
       {allParticipants.map((participant) => {
         const camTrack = tracks.find(
-          (t) =>
-            t.participant.identity === participant.identity &&
-            t.source === Track.Source.Camera,
+          (tr) =>
+            tr.participant.identity === participant.identity &&
+            tr.source === Track.Source.Camera,
         );
         const hasVideo =
           camTrack &&
@@ -97,7 +99,7 @@ function ParticipantStrip({
             )}
             <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-1 py-0.5">
               <span className="text-[8px] text-white truncate block">
-                {isLocal ? "You" : name}
+                {isLocal ? t("tile.you").replace(/[()]/g, "") : name}
               </span>
             </div>
           </div>
@@ -113,6 +115,7 @@ export default function GameBoard({
   onScoreUpdate,
   onGameOver,
 }: GameBoardProps) {
+  const { t } = useTranslation("games");
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { isHost } = useRoomStore();
   const { localParticipant } = useLocalParticipant();
@@ -127,29 +130,32 @@ export default function GameBoard({
 
       switch (type) {
         case "GAME_READY":
-          // Init game with participants
-          const allParticipants = [localParticipant, ...remoteParticipants]
-            .filter((p) => gameBoard.acceptedParticipants.includes(p.identity))
-            .map((p) => ({
-              userId: p.identity,
-              username: p.identity,
-              fullName: p.name || p.identity,
-            }));
+          {
+            const allParticipants = [localParticipant, ...remoteParticipants]
+              .filter((p) =>
+                gameBoard.acceptedParticipants.includes(p.identity),
+              )
+              .map((p) => ({
+                userId: p.identity,
+                username: p.identity,
+                fullName: p.name || p.identity,
+              }));
 
-          iframeRef.current?.contentWindow?.postMessage(
-            {
-              type: "GAME_INIT",
-              payload: {
-                mode: "in-call",
-                players: allParticipants,
-                currentPlayer: {
-                  userId: localParticipant.identity,
-                  isHost,
+            iframeRef.current?.contentWindow?.postMessage(
+              {
+                type: "GAME_INIT",
+                payload: {
+                  mode: "in-call",
+                  players: allParticipants,
+                  currentPlayer: {
+                    userId: localParticipant.identity,
+                    isHost,
+                  },
                 },
               },
-            },
-            "*",
-          );
+              "*",
+            );
+          }
           break;
 
         case "SCORE_UPDATE":
@@ -169,7 +175,16 @@ export default function GameBoard({
     remoteParticipants,
     gameBoard.acceptedParticipants,
     isHost,
+    onScoreUpdate,
+    onGameOver,
   ]);
+
+  const playersLabel =
+    gameBoard.acceptedParticipants.length === 1
+      ? t("board.playersOne", { count: gameBoard.acceptedParticipants.length })
+      : t("board.playersOther", {
+          count: gameBoard.acceptedParticipants.length,
+        });
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -185,19 +200,17 @@ export default function GameBoard({
             <span className="text-sm font-semibold text-[var(--t1)]">
               {gameBoard.gameTitle}
             </span>
-            <span className="text-[10px] text-[var(--t3)]">
-              {gameBoard.acceptedParticipants.length} players
-            </span>
+            <span className="text-[10px] text-[var(--t3)]">{playersLabel}</span>
           </div>
 
           {isHost && (
-            <Tooltip content="End game">
+            <Tooltip content={t("board.endGameTooltip")}>
               <button
                 onClick={onEnd}
                 className="flex items-center gap-1.5 px-2.5 py-1 bg-[var(--red)]/10 hover:bg-[var(--red)]/20 text-[var(--red)] text-xs font-semibold rounded-lg border-none cursor-pointer transition-all"
               >
                 {Icons.leave}
-                End Game
+                {t("board.endGame")}
               </button>
             </Tooltip>
           )}

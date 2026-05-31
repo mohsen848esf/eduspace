@@ -8,6 +8,15 @@ const DashboardPage = lazy(
   () => import("../features/dashboard/components/DashboardPage"),
 );
 const RoomPage = lazy(() => import("../features/room/components/RoomPage"));
+const RecordingsPage = lazy(
+  () => import("../features/recordings/components/RecordingsPage"),
+);
+const RecordingEditPage = lazy(
+  () => import("../features/recordings/components/RecordingEditPage"),
+);
+const RecordingViewPage = lazy(
+  () => import("../features/recordings/components/RecordingViewPage"),
+);
 
 export type UserRole = "student" | "teacher" | "admin";
 
@@ -38,6 +47,24 @@ export const routes: RouteConfig[] = [
   {
     path: "/room/:roomCode",
     component: RoomPage,
+    isPrivate: true,
+    roles: ["student", "teacher", "admin"],
+  },
+  {
+    path: "/recordings",
+    component: RecordingsPage,
+    isPrivate: true,
+    roles: ["student", "teacher", "admin"],
+  },
+  {
+    path: "/recordings/:token",
+    component: RecordingViewPage,
+    isPrivate: true,
+    roles: ["student", "teacher", "admin"],
+  },
+  {
+    path: "/recordings/:token/edit",
+    component: RecordingEditPage,
     isPrivate: true,
     roles: ["student", "teacher", "admin"],
   },
