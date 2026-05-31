@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import AppShell from "../../../components/layout/AppShell";
 import Spinner from "../../../components/ui/Spinner";
 import { cn } from "../../../lib/utils";
@@ -7,6 +8,7 @@ import gamesApi, {
   type GameSummary,
   gameAssetUrl,
 } from "../../games/api/games.api";
+import { miniAppPlayerHref } from "./MiniAppPlayerPage";
 
 /**
  * Categories shown as filter chips on top of the gallery. The `id` is
@@ -89,7 +91,9 @@ function gameToCard(g: GameSummary): MiniAppCard {
             : "🎮",
     accent: "from-[#e879f9] to-[#6366f1]",
     category: "games",
-    href: url ?? undefined,
+    // Link into the SPA player so the user keeps the EduSpace chrome
+    // and a Back button. A null url keeps the card in "Soon" state.
+    href: url ? miniAppPlayerHref(g) ?? undefined : undefined,
     premium: !g.is_free,
   };
 }
@@ -268,16 +272,12 @@ function MiniAppTile({ card, t }: MiniAppTileProps) {
     </>
   );
 
-  // Render as <a> when ready (so cmd-click opens in new tab), otherwise
-  // a non-interactive div with reduced opacity. We deliberately don't
-  // disable clicks with `pointer-events-none` because it kills focus
-  // ring outlines for keyboard users — the visual cue + lack of href
-  // is enough to communicate the "soon" state.
+  // Render as <Link> when ready so navigation stays inside the SPA
+  // and the user keeps the AppShell chrome (back button lives in the
+  // player page). Soon cards render as a non-interactive div.
   return isReady ? (
-    <a
-      href={card.href}
-      target="_blank"
-      rel="noopener noreferrer"
+    <Link
+      to={card.href!}
       className={cn(
         "flex flex-col bg-[var(--s2)] rounded-xl p-2 md:p-3 border border-[var(--b)]",
         "hover:border-[var(--bh)] transition-colors no-underline",
@@ -285,7 +285,7 @@ function MiniAppTile({ card, t }: MiniAppTileProps) {
       )}
     >
       {inner}
-    </a>
+    </Link>
   ) : (
     <div
       className={cn(
