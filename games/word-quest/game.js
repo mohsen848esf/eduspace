@@ -151,6 +151,80 @@
     setTimeout(() => t.remove(), 3000);
   }
 
+  /**
+   * Promise-based confirm dialog rendered inside the game iframe.
+   *
+   * Replaces window.confirm(), which:
+   *   - shows native browser chrome (clashes with the EduSpace UI),
+   *   - is blocked or muted in some embedded contexts (mobile webviews,
+   *     in-call iframes), so the user could click the Back button and
+   *     nothing would happen,
+   *   - can't be styled to match the rest of the app.
+   *
+   * Usage:
+   *   const ok = await confirmModal({
+   *     title: 'Quit run?',
+   *     message: 'Your progress this round will be lost.',
+   *     confirmLabel: 'Quit',
+   *     cancelLabel: 'Stay',
+   *   });
+   *   if (ok) endSession(false);
+   */
+  function confirmModal({
+    title = 'Are you sure?',
+    message = '',
+    confirmLabel = 'Confirm',
+    cancelLabel = 'Cancel',
+  } = {}) {
+    return new Promise((resolve) => {
+      const modal = $('#confirm-modal');
+      if (!modal) {
+        // Fallback if the page hasn't been updated to include the
+        // confirm modal markup. We don't fall back to window.confirm
+        // because it doesn't work in some embedded contexts.
+        console.warn('confirm-modal markup missing; auto-confirming');
+        resolve(true);
+        return;
+      }
+
+      const titleEl = $('#confirm-modal-title', modal);
+      const msgEl = $('#confirm-modal-message', modal);
+      const okBtn = $('#confirm-modal-ok', modal);
+      const cancelBtn = $('#confirm-modal-cancel', modal);
+      const backdrop = modal.querySelector('.modal-backdrop');
+
+      titleEl.textContent = title;
+      msgEl.textContent = message;
+      okBtn.textContent = confirmLabel;
+      cancelBtn.textContent = cancelLabel;
+
+      const cleanup = (result) => {
+        modal.hidden = true;
+        okBtn.removeEventListener('click', onOk);
+        cancelBtn.removeEventListener('click', onCancel);
+        backdrop.removeEventListener('click', onCancel);
+        document.removeEventListener('keydown', onKey);
+        resolve(result);
+      };
+      const onOk = () => cleanup(true);
+      const onCancel = () => cleanup(false);
+      const onKey = (e) => {
+        if (e.key === 'Escape') onCancel();
+        else if (e.key === 'Enter') onOk();
+      };
+
+      okBtn.addEventListener('click', onOk);
+      cancelBtn.addEventListener('click', onCancel);
+      backdrop.addEventListener('click', onCancel);
+      document.addEventListener('keydown', onKey);
+
+      modal.hidden = false;
+      // Move focus into the modal so keyboard users land on a real
+      // control instead of whatever was focused beneath.
+      setTimeout(() => okBtn.focus(), 30);
+    });
+  }
+
   // ----------------------------------------------------------
   // AUDIO (Web Audio API tones)
   // ----------------------------------------------------------
@@ -943,8 +1017,8 @@
       return;
     }
     ul.innerHTML = ranked.map(p => `
-      <li data-id="${p.id}">
-        <span class="rr-name">${escapeHtml(p.name)}</span>
+      <li data-id="${p.id}"${p.isLocal ? ' class="is-you"' : ''}>
+        <span class="rr-name">${escapeHtml(p.name)}${p.isLocal ? ' <span class="rr-you">You</span>' : ''}</span>
         <span class="rr-score">${p.score}</span>
         <button class="rr-remove" data-remove-home="${p.id}" aria-label="Remove ${escapeHtml(p.name)}">×</button>
       </li>
@@ -1364,18 +1438,39 @@ Play yours →`;
     document.addEventListener('keydown', e => {
       const active = $('#screen-game.screen--active');
       if (!active) return;
+      // Don't hijack typing in inputs/textareas (e.g. roster name field).
+      const tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       const key = e.key.toUpperCase();
       if (/^[A-Z]$/.test(key)) onGuess(key);
-      else if (key === 'ESCAPE') { if (confirm('Quit run?')) { endSession(false); renderHome(); showScreen('home'); } }
+      else if (key === 'ESCAPE') {
+        confirmModal({
+          title: 'Quit run?',
+          message: 'You will lose any progress in this round.',
+          confirmLabel: 'Quit',
+          cancelLabel: 'Stay',
+        }).then((ok) => {
+          if (!ok) return;
+          endSession(false);
+          renderHome();
+          showScreen('home');
+        });
+      }
     });
 
     // Game back
     $('#game-back').addEventListener('click', () => {
-      if (confirm('Quit this run?')) {
+      confirmModal({
+        title: 'Quit this run?',
+        message: 'You will lose any progress in this round.',
+        confirmLabel: 'Quit',
+        cancelLabel: 'Stay',
+      }).then((ok) => {
+        if (!ok) return;
         endSession(false);
         renderHome();
         showScreen('home');
-      }
+      });
     });
 
     // Hints
@@ -1437,12 +1532,20 @@ Play yours →`;
       saveState();
     });
     $('#reset-btn').addEventListener('click', () => {
-      if (!confirm('Reset all stats, achievements, and leaderboard? This cannot be undone.')) return;
-      localStorage.removeItem(STORAGE_KEY);
-      state = defaultState();
-      saveState();
-      toast('All progress reset', 'warn');
-      renderHome();
+      confirmModal({
+        title: 'Reset everything?',
+        message:
+          'This wipes all stats, achievements, and the leaderboard. This cannot be undone.',
+        confirmLabel: 'Reset',
+        cancelLabel: 'Cancel',
+      }).then((ok) => {
+        if (!ok) return;
+        localStorage.removeItem(STORAGE_KEY);
+        state = defaultState();
+        saveState();
+        renderHome();
+        toast('All progress reset', 'warn');
+      });
     });
 
     // Share modal close
@@ -1493,6 +1596,50 @@ Play yours →`;
       showScreen('home');
     }, 1500);
   }
+
+  /**
+   * Hook called by game-bridge.js when the platform sends GAME_INIT.
+   *
+   * In-call mode auto-populates the campaign roster from the
+   * participants the host invited (and who accepted), so the teacher
+   * doesn't have to retype names. Each participant's `userId` is the
+   * stable LiveKit identity, which the parent uses for the live score
+   * relay; storing it under `id` makes future score updates from the
+   * platform line up by id rather than name.
+   *
+   * Solo / class modes don't touch the roster — they keep the
+   * existing behaviour where the teacher manages it themselves.
+   */
+  window.onPlatformInit = function onPlatformInit(payload) {
+    if (!payload || payload.mode !== 'in-call') return;
+    const players = Array.isArray(payload.players) ? payload.players : [];
+    if (players.length === 0) return;
+
+    // Replace the in-memory roster only; persistence is intentionally
+    // skipped because in-call rosters are call-scoped and shouldn't
+    // overwrite the teacher's own students for solo / campaign mode.
+    state.campaign.roster = players.map((p) => ({
+      id: String(p.userId || p.username || p.fullName || ''),
+      name: String(p.fullName || p.username || p.userId || 'Player'),
+      score: 0,
+      solved: 0,
+      // Tag in-call entries so renderRosterInline could highlight the
+      // local user later. Read in renderRosterInline below.
+      isLocal:
+        !!payload.currentPlayer &&
+        p.userId === payload.currentPlayer.userId,
+    }));
+
+    // Force campaign mode so the existing attribution + leaderboard
+    // flow lights up.
+    const modeSelect = document.getElementById('mode-select');
+    if (modeSelect) {
+      modeSelect.value = 'campaign';
+      modeSelect.dispatchEvent(new Event('change'));
+    }
+    if (typeof renderRosterInline === 'function') renderRosterInline();
+    if (typeof renderHome === 'function') renderHome();
+  };
 
   document.addEventListener('DOMContentLoaded', boot);
 })();

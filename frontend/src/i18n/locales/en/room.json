@@ -129,8 +129,8 @@
     "failed": "Failed to send invite"
   },
   "tools": {
-    "launchGame": "Launch Game",
-    "launchGameDesc": "Add game to session",
+    "launchGame": "Mini Apps",
+    "launchGameDesc": "Add a mini app to the session",
     "whiteboard": "Whiteboard",
     "whiteboardDesc": "Collaborative drawing",
     "quickExam": "Quick Exam",

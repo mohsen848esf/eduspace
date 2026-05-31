@@ -6,6 +6,7 @@ import {
   useParticipants,
 } from "@livekit/components-react";
 import { useRoomStore } from "../store/roomStore";
+import { useActiveRecordingStore } from "../../recordings/store/activeRecordingStore";
 import toast from "react-hot-toast";
 
 export interface GameBoardState {
@@ -92,6 +93,19 @@ export function useGameBoard() {
       });
 
       toast.success(t("board.launched", { title: gameTitle }));
+
+      // Heads-up: the LiveKit egress recorder captures the room
+      // composite (camera + screen-share tracks). Mini apps run inside
+      // an iframe in the React shell, so they aren't part of that
+      // composite — i.e. they don't show up in the saved recording
+      // yet. Surfacing this once at launch keeps the host informed
+      // while we work on a proper recording layout.
+      if (useActiveRecordingStore.getState().inFlightToken) {
+        toast(t("board.notInRecording"), {
+          icon: "🎬",
+          duration: 6000,
+        });
+      }
     },
     [isHost, localParticipant, sendMessage, t],
   );

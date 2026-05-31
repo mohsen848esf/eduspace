@@ -110,3 +110,13 @@ in your app code.
 
 - `frontend/public/games/word-quest/` — full reference. Solo mode,
   in-call score relay, achievements, leaderboard.
+
+## Known limitations
+
+- **Mini apps don't appear in the call recording yet.** LiveKit
+  Egress records the room composite (camera + screen-share tracks);
+  the mini-app iframe lives inside the React shell, not the composite.
+  We surface a heads-up toast to the host when they launch a mini app
+  during an active recording so they don't expect it in the saved
+  file. Fix path is a custom recorder layout that includes the iframe
+  alongside participants — tracked as a follow-up.
