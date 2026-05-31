@@ -85,7 +85,10 @@
     "unpin": "حذف سنجاق",
     "mute": "بستن صدا",
     "unmute": "باز کردن صدا",
-    "remove": "حذف از تماس"
+    "remove": "حذف از تماس",
+    "overflowMore_one": "{{count}} نفر دیگر",
+    "overflowMore_other": "{{count}} نفر دیگر",
+    "overflowLabel": "بیشتر"
   },
   "audioVisualizer": {
     "muted": "میکروفون بسته است"
@@ -108,7 +111,8 @@
     "host": "میزبان",
     "students": "دانش‌آموزان ({{count}})",
     "noMessages": "هنوز پیامی نیست",
-    "messagePlaceholder": "پیام..."
+    "messagePlaceholder": "پیام...",
+    "collapse": "بستن پنل"
   },
   "invite": {
     "title": "افزودن افراد",

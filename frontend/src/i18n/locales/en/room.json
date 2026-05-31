@@ -85,7 +85,10 @@
     "unpin": "Unpin",
     "mute": "Mute",
     "unmute": "Unmute",
-    "remove": "Remove from call"
+    "remove": "Remove from call",
+    "overflowMore_one": "{{count}} more participant",
+    "overflowMore_other": "{{count}} more participants",
+    "overflowLabel": "more"
   },
   "audioVisualizer": {
     "muted": "Microphone muted"
@@ -108,7 +111,8 @@
     "host": "Host",
     "students": "Students ({{count}})",
     "noMessages": "No messages yet",
-    "messagePlaceholder": "Message..."
+    "messagePlaceholder": "Message...",
+    "collapse": "Hide panel"
   },
   "invite": {
     "title": "Add People",

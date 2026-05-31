@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useEffect } from "react";
 import { useRoomStore } from "../store/roomStore";
 import { type SidebarTab } from "../hooks/useRoomControls";
 import VideoGrid from "./VideoGrid";
@@ -65,6 +66,15 @@ export default function DockedPanelShell({
 }: DockedPanelShellProps) {
   const { t } = useTranslation("recordings");
   const { roomCode } = useRoomStore();
+
+  // Pinned-share overflow button asks the shell to open the People
+  // tab. Docked shell flips the sidebar to "participants".
+  useEffect(() => {
+    const handler = () => controls.toggleSidebar("participants");
+    window.addEventListener("eduspace:open-people-tab", handler);
+    return () =>
+      window.removeEventListener("eduspace:open-people-tab", handler);
+  }, [controls.toggleSidebar]);
 
   return (
     <div className="flex flex-col w-full h-full">
