@@ -153,5 +153,12 @@
     "joining": "Joining room...",
     "createFailed": "Failed to create room",
     "joinFailed": "Failed to join room"
+  },
+  "recordingGrant": {
+    "grant": "Allow {{username}} to record",
+    "revoke": "Revoke {{username}}'s recording permission",
+    "toastGranted": "{{name}} can now control recording",
+    "toastRevoked": "{{name}} can no longer control recording",
+    "toastFailed": "Could not update recording permission"
   }
 }

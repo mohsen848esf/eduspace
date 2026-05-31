@@ -7,7 +7,11 @@ import { persist } from "zustand/middleware";
  * render it. The shape of `data` mirrors what NotificationConsumer
  * sends from the backend.
  */
-export type NotificationKind = "ROOM_INVITE" | "RECORDING_PUBLISHED";
+export type NotificationKind =
+  | "ROOM_INVITE"
+  | "RECORDING_PUBLISHED"
+  | "RECORDING_PERMISSION_GRANTED"
+  | "RECORDING_PERMISSION_REVOKED";
 
 export interface NotificationItem {
   /**

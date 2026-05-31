@@ -153,5 +153,12 @@
     "joining": "در حال ورود به اتاق...",
     "createFailed": "ساخت اتاق ناموفق بود",
     "joinFailed": "ورود به اتاق ناموفق بود"
+  },
+  "recordingGrant": {
+    "grant": "اجازه ضبط به {{username}} داده شود",
+    "revoke": "لغو اجازه ضبط {{username}}",
+    "toastGranted": "{{name}} اکنون می‌تواند ضبط را مدیریت کند",
+    "toastRevoked": "{{name}} دیگر نمی‌تواند ضبط را مدیریت کند",
+    "toastFailed": "به‌روزرسانی مجوز ضبط ناموفق بود"
   }
 }

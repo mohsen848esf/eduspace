@@ -19,4 +19,16 @@ urlpatterns = [
     path('<str:room_code>/recording/pause/', recording_views.pause_recording, name='recording_pause'),
     path('<str:room_code>/recording/resume/', recording_views.resume_recording, name='recording_resume'),
     path('<str:room_code>/recording/status/', recording_views.recording_status, name='recording_status'),
+    # Host delegates recording control to a participant; participant polls
+    # to learn whether they're allowed to drive the controls.
+    path(
+        '<str:room_code>/recording/permission/',
+        recording_views.recording_permission,
+        name='recording_permission',
+    ),
+    path(
+        '<str:room_code>/recording/permission/set/',
+        recording_views.set_recording_permission,
+        name='recording_permission_set',
+    ),
 ]

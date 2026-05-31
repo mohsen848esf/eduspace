@@ -28,7 +28,9 @@ export function useNotifications() {
       // to call on every message including reconnect-replays.
       if (
         notification?.type === "ROOM_INVITE" ||
-        notification?.type === "RECORDING_PUBLISHED"
+        notification?.type === "RECORDING_PUBLISHED" ||
+        notification?.type === "RECORDING_PERMISSION_GRANTED" ||
+        notification?.type === "RECORDING_PERMISSION_REVOKED"
       ) {
         addToInbox(notification.type, notification);
       }
@@ -130,6 +132,29 @@ export function useNotifications() {
               padding: "12px",
             },
           },
+        );
+        return;
+      }
+      if (notification.type === "RECORDING_PERMISSION_GRANTED") {
+        toast.success(
+          t("notifications:recordingPermission.grantedToast", {
+            from: notification.from,
+            roomName:
+              notification.room_name || notification.room_code || "",
+          }),
+          { duration: 6000 },
+        );
+        return;
+      }
+
+      if (notification.type === "RECORDING_PERMISSION_REVOKED") {
+        toast(
+          t("notifications:recordingPermission.revokedToast", {
+            from: notification.from,
+            roomName:
+              notification.room_name || notification.room_code || "",
+          }),
+          { duration: 6000, icon: "🚫" },
         );
         return;
       }

@@ -150,15 +150,17 @@ export default function RoomMobileTopbar() {
               </div>
             </div>
 
-            {/* Host-only recording block */}
-            {isHost && (
+            {/* Recording block — visible to anyone the host has
+                authorized to drive recording (host implicitly, or
+                grantees via Room.recording_grants). */}
+            {recording.canControl && (
               <div className="border-t border-[var(--b)] pt-3">
                 <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2">
                   {t("controls.start")}
                 </div>
                 <RecordControls
                   roomCode={roomCode}
-                  isHost={isHost}
+                  canControl={recording.canControl}
                   status={recording.status}
                   isMutating={recording.isMutating}
                   onStart={recording.start}

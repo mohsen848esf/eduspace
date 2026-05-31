@@ -104,7 +104,7 @@ export default function RoomTopbar() {
       <div className="flex items-center gap-2 relative">
         <RecordControls
           roomCode={roomCode}
-          isHost={isHost}
+          canControl={recording.canControl}
           status={recording.status}
           isMutating={recording.isMutating}
           onStart={recording.start}

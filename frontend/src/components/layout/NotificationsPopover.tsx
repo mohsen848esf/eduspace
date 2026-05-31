@@ -100,6 +100,17 @@ export default function NotificationsPopover({
           ? `/recordings/${item.data.recording_token}`
           : "/recordings");
       navigate(link);
+    } else if (
+      item.kind === "RECORDING_PERMISSION_GRANTED" ||
+      item.kind === "RECORDING_PERMISSION_REVOKED"
+    ) {
+      // Both kinds have a room_code; the action takes the user back
+      // into that room so the new permission state is immediately
+      // useful (or the revoke is acknowledged).
+      const link = item.data.room_code
+        ? `/room/${item.data.room_code}`
+        : "/dashboard";
+      navigate(link);
     }
     onClose();
   };
@@ -219,6 +230,22 @@ function NotificationRow({
       (data.room_code as string) ||
       t("recordings:notification.watch");
     actionLabel = t("recordings:notification.watch");
+  } else if (item.kind === "RECORDING_PERMISSION_GRANTED") {
+    icon = Icons.film;
+    title = t("notifications:recordingPermission.grantedTitle", {
+      from: data.from ?? "",
+    });
+    subtitle =
+      (data.room_name as string) || (data.room_code as string) || "";
+    actionLabel = t("notifications:recordingPermission.openRoom");
+  } else if (item.kind === "RECORDING_PERMISSION_REVOKED") {
+    icon = Icons.film;
+    title = t("notifications:recordingPermission.revokedTitle", {
+      from: data.from ?? "",
+    });
+    subtitle =
+      (data.room_name as string) || (data.room_code as string) || "";
+    actionLabel = t("notifications:recordingPermission.openRoom");
   }
 
   return (

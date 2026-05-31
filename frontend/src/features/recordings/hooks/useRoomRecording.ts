@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import recordingsApi, {
   type Recording,
   type RecordingQuality,
+  type RoomRecordingPermission,
   type RoomRecordingStatus,
 } from "../api/recordings.api";
 import { useActiveRecordingStore } from "../store/activeRecordingStore";
@@ -14,6 +15,11 @@ const POLL_MS = 2500;
  * render the "this call is being recorded" indicator, so 5s is plenty.
  */
 const POLL_MS_PARTICIPANT = 5000;
+/**
+ * Permission grants change rarely (host clicks a switch). 5s is a good
+ * balance between "feels live" and "doesn't hammer the endpoint".
+ */
+const POLL_MS_PERMISSION = 5000;
 
 interface UseRoomRecordingOptions {
   roomCode: string | null;
@@ -40,11 +46,20 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
     status: "idle",
     recording: null,
   });
+  const [permission, setPermission] = useState<RoomRecordingPermission>({
+    can_control: false,
+    is_host: false,
+    grants: null,
+  });
   const [isMutating, setIsMutating] = useState(false);
   const cancelled = useRef(false);
   const lastTokenRef = useRef<string | null>(null);
   const setInFlight = useActiveRecordingStore((s) => s.setInFlight);
   const setPendingEdit = useActiveRecordingStore((s) => s.setPendingEdit);
+
+  // The host implicitly can always control. For non-hosts, the server
+  // is the source of truth via the polled permission endpoint.
+  const canControl = isHost || permission.can_control;
 
   // Reflect status changes into the cross-component store.
   useEffect(() => {
@@ -87,6 +102,22 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
     }
   }, [roomCode]);
 
+  /**
+   * Pull the recording-control permission for this user. Hosts use the
+   * `grants` list to render the per-participant toggle; non-hosts use
+   * `can_control` to decide whether to show the record buttons.
+   */
+  const refreshPermission = useCallback(async () => {
+    if (!roomCode) return;
+    try {
+      const next = await recordingsApi.getRecordingPermission(roomCode);
+      if (!cancelled.current) setPermission(next);
+    } catch {
+      // Silent — 403 here means the user isn't a participant and the
+      // outer guard will already kick them out of the room view.
+    }
+  }, [roomCode]);
+
   useEffect(() => {
     cancelled.current = false;
     refresh();
@@ -98,6 +129,15 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
       window.clearInterval(id);
     };
   }, [refresh, roomCode, isHost]);
+
+  // Permission polling runs separately on its own (slower) cadence so
+  // the cheaper status poll stays unaffected.
+  useEffect(() => {
+    if (!roomCode) return;
+    refreshPermission();
+    const id = window.setInterval(refreshPermission, POLL_MS_PERMISSION);
+    return () => window.clearInterval(id);
+  }, [refreshPermission, roomCode]);
 
   const wrapMutation = useCallback(
     async <T extends Recording>(
@@ -159,11 +199,14 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
 
   return {
     status,
+    permission,
+    canControl,
     isMutating,
     start,
     stop,
     pause,
     resume,
     refresh,
+    refreshPermission,
   };
 }

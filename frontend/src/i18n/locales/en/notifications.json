@@ -10,6 +10,13 @@
     "watch": "Watch",
     "dismiss": "Later"
   },
+  "recordingPermission": {
+    "grantedTitle": "🎙 {{from}} let you record",
+    "revokedTitle": "🚫 {{from}} revoked your recording permission",
+    "grantedToast": "{{from}} let you record in {{roomName}}",
+    "revokedToast": "{{from}} revoked your recording permission in {{roomName}}",
+    "openRoom": "Open room"
+  },
   "inbox": {
     "title": "Notifications",
     "empty": "No notifications yet",

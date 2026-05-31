@@ -86,6 +86,22 @@ def _require_host(request, room) -> Response | None:
     return None
 
 
+def _require_recording_controller(request, room) -> Response | None:
+    """
+    Allow access when the user is the host OR has been explicitly granted
+    recording control by the host (Room.recording_grants).
+
+    Used by the start/stop/pause/resume endpoints so a designated
+    co-host can drive the recording without becoming a full host.
+    """
+    if room.can_control_recording(request.user):
+        return None
+    return Response(
+        {'error': 'You are not allowed to control recording in this room'},
+        status=http.HTTP_403_FORBIDDEN,
+    )
+
+
 def _require_participant(request, room) -> Response | None:
     if room.host_id == request.user.id:
         return None
@@ -181,7 +197,7 @@ def start_recording(request, room_code: str):
     room = _get_room_or_404(room_code)
     if not room:
         return Response({'error': 'Room not found'}, status=http.HTTP_404_NOT_FOUND)
-    forbidden = _require_host(request, room)
+    forbidden = _require_recording_controller(request, room)
     if forbidden:
         return forbidden
 
@@ -247,7 +263,7 @@ def stop_recording(request, room_code: str):
     room = _get_room_or_404(room_code)
     if not room:
         return Response({'error': 'Room not found'}, status=http.HTTP_404_NOT_FOUND)
-    forbidden = _require_host(request, room)
+    forbidden = _require_recording_controller(request, room)
     if forbidden:
         return forbidden
 
@@ -287,7 +303,7 @@ def pause_recording(request, room_code: str):
     room = _get_room_or_404(room_code)
     if not room:
         return Response({'error': 'Room not found'}, status=http.HTTP_404_NOT_FOUND)
-    forbidden = _require_host(request, room)
+    forbidden = _require_recording_controller(request, room)
     if forbidden:
         return forbidden
 
@@ -323,7 +339,7 @@ def resume_recording(request, room_code: str):
     room = _get_room_or_404(room_code)
     if not room:
         return Response({'error': 'Room not found'}, status=http.HTTP_404_NOT_FOUND)
-    forbidden = _require_host(request, room)
+    forbidden = _require_recording_controller(request, room)
     if forbidden:
         return forbidden
 
@@ -381,6 +397,172 @@ def recording_status(request, room_code: str):
     if recording is None:
         return Response({'status': 'idle', 'recording': None})
     return Response({'status': recording.status, 'recording': _serialize(recording)})
+
+
+# ---------------------------------------------------------------------------
+# Recording control grants (host delegating control to a participant)
+# ---------------------------------------------------------------------------
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def recording_permission(request, room_code: str):
+    """
+    Returns whether the requesting user is allowed to control recording
+    in this room, plus (host-only) the list of currently authorized
+    non-host participants. Endpoint is participant-readable so each
+    user's own UI can decide whether to surface the record buttons.
+
+    Response shape:
+        {
+            "can_control": <bool>,
+            "is_host":     <bool>,
+            "grants":      [{user_id, username, full_name}, ...] | null
+        }
+    `grants` is null for non-hosts (they don't need to know who else
+    is allowed; their own permission is in `can_control`).
+    """
+    room = _get_room_or_404(room_code)
+    if not room:
+        return Response({'error': 'Room not found'}, status=http.HTTP_404_NOT_FOUND)
+
+    forbidden = _require_participant(request, room)
+    if forbidden:
+        return forbidden
+
+    is_host = room.host_id == request.user.id
+    can_control = room.can_control_recording(request.user)
+
+    grants = None
+    if is_host:
+        grants = [
+            {
+                'user_id': u.id,
+                'username': u.username,
+                'full_name': u.full_name or u.username,
+            }
+            for u in room.recording_grants.all()
+        ]
+
+    return Response({
+        'can_control': can_control,
+        'is_host': is_host,
+        'grants': grants,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def set_recording_permission(request, room_code: str):
+    """
+    Host grants or revokes recording-control permission for one of the
+    room's participants.
+
+    Body: { "user_id": <int>, "granted": <bool> }
+    """
+    room = _get_room_or_404(room_code)
+    if not room:
+        return Response({'error': 'Room not found'}, status=http.HTTP_404_NOT_FOUND)
+    forbidden = _require_host(request, room)
+    if forbidden:
+        return forbidden
+
+    raw_id = request.data.get('user_id')
+    raw_username = request.data.get('username')
+    granted = bool(request.data.get('granted'))
+
+    # Accept either user_id (preferred) or username (LiveKit identity ==
+    # username, so the participants panel can pass it through directly).
+    target: User | None = None
+    if raw_id is not None:
+        try:
+            user_id = int(raw_id)
+        except (TypeError, ValueError):
+            return Response(
+                {'error': 'user_id must be an integer'},
+                status=http.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            target = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'User not found'},
+                status=http.HTTP_404_NOT_FOUND,
+            )
+    elif raw_username:
+        try:
+            target = User.objects.get(username=str(raw_username))
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'User not found'},
+                status=http.HTTP_404_NOT_FOUND,
+            )
+    else:
+        return Response(
+            {'error': 'user_id or username is required'},
+            status=http.HTTP_400_BAD_REQUEST,
+        )
+
+    if target.id == room.host_id:
+        return Response(
+            {'error': 'The host already controls recording'},
+            status=http.HTTP_400_BAD_REQUEST,
+        )
+
+    is_participant = RoomParticipant.objects.filter(
+        room=room, user=target,
+    ).exists()
+    if not is_participant:
+        return Response(
+            {'error': 'Target user is not a participant of this room'},
+            status=http.HTTP_400_BAD_REQUEST,
+        )
+
+    if granted:
+        room.recording_grants.add(target)
+    else:
+        room.recording_grants.remove(target)
+
+    # Real-time notification so the grantee's UI flips immediately.
+    layer = get_channel_layer()
+    if layer:
+        try:
+            async_to_sync(layer.group_send)(
+                f'notifications_{target.id}',
+                {
+                    'type': 'send_notification',
+                    'data': {
+                        'type': (
+                            'RECORDING_PERMISSION_GRANTED'
+                            if granted
+                            else 'RECORDING_PERMISSION_REVOKED'
+                        ),
+                        'room_code': room.room_code,
+                        'room_name': room.name or room.room_code,
+                        'from': (
+                            request.user.full_name or request.user.username
+                        ),
+                    },
+                },
+            )
+        except Exception:
+            logger.exception(
+                'failed to notify recording-permission change to user=%s',
+                target.id,
+            )
+
+    logger.info(
+        'recording permission %s for user=%s room=%s',
+        'granted' if granted else 'revoked',
+        target.username,
+        room.room_code,
+    )
+
+    return Response({
+        'user_id': target.id,
+        'username': target.username,
+        'full_name': target.full_name or target.username,
+        'granted': granted,
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -1015,6 +1197,8 @@ __all__ = [
     'pause_recording',
     'resume_recording',
     'recording_status',
+    'recording_permission',
+    'set_recording_permission',
     'egress_webhook',
     'list_recordings',
     'recording_detail_or_delete',

@@ -10,6 +10,13 @@
     "watch": "تماشا",
     "dismiss": "بعداً"
   },
+  "recordingPermission": {
+    "grantedTitle": "🎙 {{from}} اجازه ضبط را به شما داد",
+    "revokedTitle": "🚫 {{from}} اجازه ضبط شما را لغو کرد",
+    "grantedToast": "{{from}} در {{roomName}} اجازه ضبط را به شما داد",
+    "revokedToast": "{{from}} اجازه ضبط شما را در {{roomName}} لغو کرد",
+    "openRoom": "ورود به اتاق"
+  },
   "inbox": {
     "title": "اعلان‌ها",
     "empty": "هنوز اعلانی ندارید",

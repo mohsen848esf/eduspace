@@ -18,12 +18,39 @@ class Room(models.Model):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.WAITING)
     max_participants = models.PositiveIntegerField(default=20)
     is_recorded = models.BooleanField(default=False)
+
+    # Per-room set of non-host users the host has explicitly authorized
+    # to start / stop / pause / resume recording during the call. The
+    # host themselves is implicitly always allowed and does NOT need to
+    # be in this set.
+    recording_grants = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name='rooms_with_recording_grant',
+        help_text=(
+            'Non-host participants the host has authorized to control '
+            'recording in this specific room.'
+        ),
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.name} ({self.room_code})"
+
+    def can_control_recording(self, user) -> bool:
+        """
+        True if `user` may start/stop/pause/resume recording in this
+        room. The host always passes; other users pass when they're in
+        ``recording_grants``.
+        """
+        if not user or not user.is_authenticated:
+            return False
+        if user.id == self.host_id:
+            return True
+        return self.recording_grants.filter(pk=user.pk).exists()
 
 
 class RoomParticipant(models.Model):

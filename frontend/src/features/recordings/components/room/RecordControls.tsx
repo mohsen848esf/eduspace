@@ -9,7 +9,13 @@ import {
 
 interface RecordControlsProps {
   roomCode: string | null;
-  isHost: boolean;
+  /**
+   * True when the current user is allowed to drive the recording —
+   * either the host, or a participant the host has explicitly granted
+   * recording control to. Renamed from `isHost` so grantees see the
+   * same record buttons.
+   */
+  canControl: boolean;
   status: RoomRecordingStatus;
   isMutating: boolean;
   onStart: (quality: RecordingQuality) => Promise<unknown>;
@@ -84,7 +90,7 @@ function useElapsed(
 
 export default function RecordControls({
   roomCode,
-  isHost,
+  canControl,
   status,
   isMutating,
   onStart,
@@ -96,7 +102,7 @@ export default function RecordControls({
   const [showQuality, setShowQuality] = useState(false);
   const [quality, setQuality] = useState<RecordingQuality>("720p");
 
-  if (!isHost || !roomCode) return null;
+  if (!canControl || !roomCode) return null;
 
   const recording = status.recording;
   const isIdle =

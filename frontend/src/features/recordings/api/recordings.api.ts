@@ -55,6 +55,35 @@ export interface RoomRecordingStatus {
   recording: Recording | null;
 }
 
+/**
+ * Shape returned by GET /rooms/<code>/recording/permission/.
+ *
+ * Every participant can read their own slice — `can_control` reflects
+ * whether the *requesting* user may drive the record buttons. Only the
+ * host gets the populated `grants` array; for everyone else it's null.
+ */
+export interface RecordingGrantUser {
+  user_id: number;
+  username: string;
+  full_name: string;
+}
+
+export interface RoomRecordingPermission {
+  can_control: boolean;
+  is_host: boolean;
+  grants: RecordingGrantUser[] | null;
+}
+
+/**
+ * Shape returned by POST /rooms/<code>/recording/permission/set/.
+ */
+export interface RecordingGrantUpdate {
+  user_id: number;
+  username: string;
+  full_name: string;
+  granted: boolean;
+}
+
 const recordingsApi = {
   // ── In-room control plane ─────────────────────────────────────────────
   start: async (
@@ -84,6 +113,41 @@ const recordingsApi = {
 
   roomStatus: async (roomCode: string): Promise<RoomRecordingStatus> => {
     const res = await client.get(`/rooms/${roomCode}/recording/status/`);
+    return res.data;
+  },
+
+  /**
+   * Read who can control recording in this room. Anyone who is a
+   * participant can call this; the response shows their own permission
+   * (`can_control`) and, if they're the host, the list of currently
+   * authorized non-host participants.
+   */
+  getRecordingPermission: async (
+    roomCode: string,
+  ): Promise<RoomRecordingPermission> => {
+    const res = await client.get(`/rooms/${roomCode}/recording/permission/`);
+    return res.data;
+  },
+
+  /**
+   * Host-only — grant or revoke a participant's recording control.
+   *
+   * The participant can be addressed by either user_id (preferred, when
+   * we have it) or username (the LiveKit identity, which is what the
+   * in-call participants panel has on hand).
+   */
+  setRecordingPermission: async (
+    roomCode: string,
+    target: { userId?: number; username?: string },
+    granted: boolean,
+  ): Promise<RecordingGrantUpdate> => {
+    const body: Record<string, unknown> = { granted };
+    if (target.userId !== undefined) body.user_id = target.userId;
+    if (target.username !== undefined) body.username = target.username;
+    const res = await client.post(
+      `/rooms/${roomCode}/recording/permission/set/`,
+      body,
+    );
     return res.data;
   },
 
