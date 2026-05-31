@@ -220,29 +220,27 @@ def invite_to_room(request, room_code):
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    # Real-time notification through the user's notifications channel group.
-    from asgiref.sync import async_to_sync
-    from channels.layers import get_channel_layer
-    channel_layer = get_channel_layer()
-    if channel_layer:
-        try:
-            async_to_sync(channel_layer.group_send)(
-                f'notifications_{invited_user.id}',
-                {
-                    'type': 'send_notification',
-                    'data': {
-                        'type': 'ROOM_INVITE',
-                        'room_code': room_code,
-                        'room_name': room.name or room_code,
-                        'from': request.user.full_name or request.user.username,
-                        'invite_link': f'/room/{room_code}',
-                    },
-                },
-            )
-        except Exception:
-            # Notification delivery is best-effort: don't fail the invite API.
-            import traceback
-            traceback.print_exc()
+    # Persist + push the notification through the user's
+    # notifications channel group. record_and_dispatch handles the WS
+    # group_send and writes a Notification row so a user who logs in
+    # later still sees the invite in their inbox.
+    from accounts.notifications import record_and_dispatch
+    try:
+        record_and_dispatch(
+            invited_user.id,
+            'ROOM_INVITE',
+            {
+                'type': 'ROOM_INVITE',
+                'room_code': room_code,
+                'room_name': room.name or room_code,
+                'from': request.user.full_name or request.user.username,
+                'invite_link': f'/room/{room_code}',
+            },
+        )
+    except Exception:
+        # Notification delivery is best-effort: don't fail the invite API.
+        import traceback
+        traceback.print_exc()
 
     return Response({
         'message': f'Invited {invited_user.username}',

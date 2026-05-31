@@ -522,33 +522,36 @@ def set_recording_permission(request, room_code: str):
     else:
         room.recording_grants.remove(target)
 
-    # Real-time notification so the grantee's UI flips immediately.
-    layer = get_channel_layer()
-    if layer:
-        try:
-            async_to_sync(layer.group_send)(
-                f'notifications_{target.id}',
-                {
-                    'type': 'send_notification',
-                    'data': {
-                        'type': (
-                            'RECORDING_PERMISSION_GRANTED'
-                            if granted
-                            else 'RECORDING_PERMISSION_REVOKED'
-                        ),
-                        'room_code': room.room_code,
-                        'room_name': room.name or room.room_code,
-                        'from': (
-                            request.user.full_name or request.user.username
-                        ),
-                    },
-                },
-            )
-        except Exception:
-            logger.exception(
-                'failed to notify recording-permission change to user=%s',
-                target.id,
-            )
+    # Persist + push the notification so the grantee's UI flips
+    # immediately AND they have a record of the grant/revoke even if
+    # they were offline.
+    from accounts.notifications import record_and_dispatch
+    try:
+        record_and_dispatch(
+            target.id,
+            (
+                'RECORDING_PERMISSION_GRANTED'
+                if granted
+                else 'RECORDING_PERMISSION_REVOKED'
+            ),
+            {
+                'type': (
+                    'RECORDING_PERMISSION_GRANTED'
+                    if granted
+                    else 'RECORDING_PERMISSION_REVOKED'
+                ),
+                'room_code': room.room_code,
+                'room_name': room.name or room.room_code,
+                'from': (
+                    request.user.full_name or request.user.username
+                ),
+            },
+        )
+    except Exception:
+        logger.exception(
+            'failed to notify recording-permission change to user=%s',
+            target.id,
+        )
 
     logger.info(
         'recording permission %s for user=%s room=%s',
@@ -793,34 +796,33 @@ def _finalize_path(recording: Recording) -> Path:
 
 def _send_publish_notifications(recording: Recording, target_user_ids: list[int]) -> None:
     """
-    Notify each target user via the existing NotificationConsumer group.
-    Best-effort: failures are logged but don't fail the publish.
+    Notify each target user via the existing NotificationConsumer group
+    AND persist a Notification row so a recipient who was offline still
+    sees the share when they next log in. Best-effort: failures are
+    logged but don't fail the publish.
     """
     if not target_user_ids:
         return
-    layer = get_channel_layer()
-    if not layer:
-        logger.warning('channel layer unavailable; skipping publish notifications')
-        return
+
+    from accounts.notifications import record_and_dispatch_many
 
     sender = recording.owner
-    payload = {
-        'type': 'send_notification',
-        'data': {
-            'type': 'RECORDING_PUBLISHED',
-            'recording_token': recording.public_token,
-            'room_code': recording.room.room_code,
-            'room_name': recording.room.name or recording.room.room_code,
-            'from': sender.full_name or sender.username,
-            'duration_seconds': recording.duration_seconds,
-            'watch_link': f'/recordings/{recording.public_token}',
-        },
+    data = {
+        'type': 'RECORDING_PUBLISHED',
+        'recording_token': recording.public_token,
+        'room_code': recording.room.room_code,
+        'room_name': recording.room.name or recording.room.room_code,
+        'from': sender.full_name or sender.username,
+        'duration_seconds': recording.duration_seconds,
+        'watch_link': f'/recordings/{recording.public_token}',
     }
-    for user_id in target_user_ids:
-        try:
-            async_to_sync(layer.group_send)(f'notifications_{user_id}', payload)
-        except Exception:
-            logger.exception('failed to deliver RECORDING_PUBLISHED to user=%s', user_id)
+    try:
+        record_and_dispatch_many(target_user_ids, 'RECORDING_PUBLISHED', data)
+    except Exception:
+        logger.exception(
+            'failed to deliver RECORDING_PUBLISHED batch to %d users',
+            len(target_user_ids),
+        )
 
 
 @api_view(['POST'])
