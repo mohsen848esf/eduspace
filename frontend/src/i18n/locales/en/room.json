@@ -111,7 +111,8 @@
     "host": "Host",
     "students": "Students ({{count}})",
     "noMessages": "No messages yet",
-    "messagePlaceholder": "Message..."
+    "messagePlaceholder": "Message...",
+    "collapse": "Hide panel"
   },
   "invite": {
     "title": "Add People",

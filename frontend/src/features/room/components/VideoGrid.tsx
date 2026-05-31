@@ -91,6 +91,13 @@ interface TileViewProps {
   pinnedKey: string | null;
   /** Pin / unpin handler. */
   onTogglePin: (key: string) => void;
+  /**
+   * Visual density flag. Compact tiles use smaller avatar circles,
+   * smaller name labels, and skip the secondary badges (sharing, pin
+   * indicator). They DO keep their hover/tap controls — the user must
+   * always be able to pin or moderate from any tile, regardless of
+   * size.
+   */
   compact?: boolean;
   /** Extra Tailwind classes for grid spans. */
   className?: string;
@@ -226,17 +233,23 @@ function TileView({
         </div>
       )}
 
-      {hovered && !compact && (
+      {hovered && (
         <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px] flex items-center justify-center gap-2 fade-in">
           <Tooltip content={t("tile.zoomIn")}>
-            <button className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 border-none cursor-pointer text-white text-base flex items-center justify-center transition-all active:scale-95">
+            <button
+              className={cn(
+                "rounded-full bg-white/15 hover:bg-white/25 border-none cursor-pointer text-white flex items-center justify-center transition-all active:scale-95",
+                compact ? "w-7 h-7 text-xs" : "w-9 h-9 text-base",
+              )}
+            >
               🔍
             </button>
           </Tooltip>
           <Tooltip content={pinned ? t("tile.unpin") : t("tile.pin")}>
             <button
               className={cn(
-                "w-9 h-9 rounded-full border-none cursor-pointer text-white text-base flex items-center justify-center transition-all active:scale-95",
+                "rounded-full border-none cursor-pointer text-white flex items-center justify-center transition-all active:scale-95",
+                compact ? "w-7 h-7 text-xs" : "w-9 h-9 text-base",
                 pinned
                   ? "bg-[var(--brand)]/60 hover:bg-[var(--brand)]/80"
                   : "bg-white/15 hover:bg-white/25",
@@ -260,7 +273,8 @@ function TileView({
               >
                 <button
                   className={cn(
-                    "w-9 h-9 rounded-full border-none cursor-pointer text-white text-base flex items-center justify-center transition-all active:scale-95",
+                    "rounded-full border-none cursor-pointer text-white flex items-center justify-center transition-all active:scale-95",
+                    compact ? "w-7 h-7 text-xs" : "w-9 h-9 text-base",
                     mutedByHost?.has(participant.identity)
                       ? "bg-[var(--amber)]/60 hover:bg-[var(--amber)]/80"
                       : "bg-white/15 hover:bg-[var(--amber)]/50",
@@ -272,7 +286,10 @@ function TileView({
               </Tooltip>
               <Tooltip content={t("tile.remove")}>
                 <button
-                  className="w-9 h-9 rounded-full bg-white/15 hover:bg-[var(--red)]/50 border-none cursor-pointer text-white text-base flex items-center justify-center transition-all active:scale-95"
+                  className={cn(
+                    "rounded-full bg-white/15 hover:bg-[var(--red)]/50 border-none cursor-pointer text-white flex items-center justify-center transition-all active:scale-95",
+                    compact ? "w-7 h-7 text-xs" : "w-9 h-9 text-base",
+                  )}
                   onClick={() => onKick?.(participant as RemoteParticipant)}
                 >
                   ✕
@@ -326,7 +343,7 @@ function GridLayout(props: LayoutCommonProps) {
   return (
     <div
       className={cn(
-        "flex-1 grid gap-1.5 p-1.5 bg-[var(--s0)]",
+        "flex-1 grid gap-2 md:gap-3 p-2 md:p-3 bg-[var(--s0)]",
         getGridClass(tiles.length),
       )}
     >
@@ -353,16 +370,110 @@ function GridLayout(props: LayoutCommonProps) {
  * Layout used when there's a pinned tile (auto-pinned screen share or
  * a manual user pin). The pinned tile takes the top third of the
  * viewport at full width; the remaining tiles flow into a responsive
- * strip below it.
- *
- * On mobile portrait we cap the strip at 6 tiles and add a "+N more"
- * pill that, when clicked, opens the People tab so the user can see
- * everyone. On tablet/desktop the cap is bigger because there's more
- * room.
+ * strip below it. See `planStrip` for the row/col math.
  */
-const STRIP_CAP_MOBILE = 6;
-const STRIP_CAP_TABLET = 8;
-const STRIP_CAP_DESKTOP = 12;
+
+/**
+ * Strip layout for tiles below the pinned share. Returns:
+ *   - `cols` (Tailwind grid-cols-*)
+ *   - `visibleCount`: number of "real" tiles shown
+ *   - `showOverflow`: whether to render the +N pill (one of the cells)
+ *
+ * The math follows the user's spec, which is:
+ *   * 1 other  → 1 col (full width)
+ *   * 2 others → 2 cols × 1 row
+ *   * 3 others → 2 cols × 2 rows, last tile spans both
+ *   * 4 others → 2 cols × 2 rows
+ *   * 5 others → 3 cols × 2 rows, with the 5 + an empty cell padding
+ *                — actually we treat 5 as `3 cols, fills naturally`
+ *   * 6 others → 3 cols × 2 rows
+ *   * >6       → 5 visible + 1 +N pill in the 6th slot (3 cols × 2 rows)
+ */
+const PINNED_STRIP_VISIBLE_CAP = 6;
+
+interface StripPlan {
+  cols: string;
+  /** Tiles to actually render (subset of rest). */
+  visible: CallTile[];
+  /** Count omitted because of the cap. 0 means no pill. */
+  overflow: number;
+  /** If overflow > 0, we drop one visible tile and show the pill, so
+   *  the strip stays at cap_total cells. */
+  showOverflow: boolean;
+  /** Class applied to the very last visible tile when count === 3 so
+   *  it spans both columns. */
+  lastSpanClass: string;
+}
+
+function planStrip(rest: CallTile[]): StripPlan {
+  const total = rest.length;
+
+  if (total === 0) {
+    return {
+      cols: "grid-cols-1",
+      visible: [],
+      overflow: 0,
+      showOverflow: false,
+      lastSpanClass: "",
+    };
+  }
+  if (total === 1) {
+    return {
+      cols: "grid-cols-1",
+      visible: rest,
+      overflow: 0,
+      showOverflow: false,
+      lastSpanClass: "",
+    };
+  }
+  if (total === 2) {
+    return {
+      cols: "grid-cols-2",
+      visible: rest,
+      overflow: 0,
+      showOverflow: false,
+      lastSpanClass: "",
+    };
+  }
+  if (total === 3) {
+    // 2 cols × 2 rows, last tile spans both columns so the row doesn't
+    // leave a lonely cell.
+    return {
+      cols: "grid-cols-2",
+      visible: rest,
+      overflow: 0,
+      showOverflow: false,
+      lastSpanClass: "col-span-2",
+    };
+  }
+  if (total === 4) {
+    return {
+      cols: "grid-cols-2",
+      visible: rest,
+      overflow: 0,
+      showOverflow: false,
+      lastSpanClass: "",
+    };
+  }
+  if (total <= PINNED_STRIP_VISIBLE_CAP) {
+    return {
+      cols: "grid-cols-3",
+      visible: rest,
+      overflow: 0,
+      showOverflow: false,
+      lastSpanClass: "",
+    };
+  }
+  // > cap: keep 5 real tiles + 1 +N pill so the grid stays at 6 cells.
+  const visibleCap = PINNED_STRIP_VISIBLE_CAP - 1;
+  return {
+    cols: "grid-cols-3",
+    visible: rest.slice(0, visibleCap),
+    overflow: total - visibleCap,
+    showOverflow: true,
+    lastSpanClass: "",
+  };
+}
 
 function PinnedShareLayout(props: LayoutCommonProps) {
   const { tiles, pinnedKey } = props;
@@ -372,34 +483,31 @@ function PinnedShareLayout(props: LayoutCommonProps) {
   const focus = tiles.find((tt) => tt.key === pinnedKey)!;
   const rest = tiles.filter((tt) => tt.key !== focus.key);
 
-  // Tier the strip cap by viewport. We can't read CSS breakpoints here
-  // without a hook call, so we read it from window.innerWidth on each
-  // render — cheap, no resize listener needed because the parent
-  // remounts when the breakpoint changes anyway.
-  let cap = STRIP_CAP_DESKTOP;
-  if (typeof window !== "undefined") {
-    const w = window.innerWidth;
-    if (w < 768) cap = STRIP_CAP_MOBILE;
-    else if (w < 1024) cap = STRIP_CAP_TABLET;
+  // Edge case: only the pinned tile exists (e.g. user is alone in the
+  // call and shares their screen). Don't waste 2/3 of the screen on an
+  // empty strip — render the share full-bleed.
+  if (rest.length === 0) {
+    return (
+      <div className="flex-1 flex p-2 md:p-3 bg-[var(--s0)]">
+        <TileView
+          tile={focus}
+          tracks={props.tracks}
+          localIdentity={props.localIdentity}
+          isHost={props.isHost}
+          onMute={props.onMute}
+          onKick={props.onKick}
+          mutedByHost={props.mutedByHost}
+          pinnedKey={pinnedKey}
+          onTogglePin={props.onTogglePin}
+        />
+      </div>
+    );
   }
 
-  const visibleRest = rest.slice(0, cap);
-  const overflowCount = rest.length - visibleRest.length;
-
-  // Strip column count: tries to keep the tiles roughly square.
-  // Portrait (especially mobile) wants 3 cols; landscape on phones is
-  // narrow vertically so we go denser to avoid tile squash.
-  let stripCols = "grid-cols-3";
-  if (orientation === "landscape") {
-    stripCols = cap === STRIP_CAP_MOBILE ? "grid-cols-2" : "grid-cols-3";
-  } else {
-    if (cap === STRIP_CAP_TABLET) stripCols = "grid-cols-4";
-    else if (cap === STRIP_CAP_DESKTOP) stripCols = "grid-cols-6";
-  }
+  const plan = planStrip(rest);
 
   const handleOverflowClick = () => {
-    // Best-effort: the shells listen for this event and open the
-    // People tab. If no shell catches it we just no-op.
+    // The shells listen for this event and open the People tab.
     window.dispatchEvent(new CustomEvent("eduspace:open-people-tab"));
   };
 
@@ -408,16 +516,18 @@ function PinnedShareLayout(props: LayoutCommonProps) {
   // collapses to nothing on a phone in rotation.
   const containerCls =
     orientation === "landscape"
-      ? "flex-1 flex flex-row gap-1.5 p-1.5 bg-[var(--s0)]"
-      : "flex-1 flex flex-col gap-1.5 p-1.5 bg-[var(--s0)]";
+      ? "flex-1 flex flex-row gap-2 md:gap-3 p-2 md:p-3 bg-[var(--s0)]"
+      : "flex-1 flex flex-col gap-2 md:gap-3 p-2 md:p-3 bg-[var(--s0)]";
   const focusCls =
     orientation === "landscape"
       ? "basis-2/3 grow-0 shrink-0 min-w-[200px] relative"
       : "basis-1/3 grow-0 shrink-0 min-h-[180px] relative";
+  // The strip uses the count-driven cols from planStrip, plus auto-rows
+  // so the rows stretch to fill the remaining space.
   const stripCls =
     orientation === "landscape"
-      ? cn("flex-1 grid gap-1.5 auto-rows-fr min-w-0", stripCols)
-      : cn("flex-1 grid gap-1.5 auto-rows-fr min-h-0", stripCols);
+      ? cn("flex-1 grid gap-2 md:gap-3 auto-rows-fr min-w-0", plan.cols)
+      : cn("flex-1 grid gap-2 md:gap-3 auto-rows-fr min-h-0", plan.cols);
 
   return (
     <div className={containerCls}>
@@ -436,40 +546,43 @@ function PinnedShareLayout(props: LayoutCommonProps) {
         />
       </div>
 
-      {/* Strip of remaining tiles. */}
-      {visibleRest.length > 0 && (
-        <div className={stripCls}>
-          {visibleRest.map((tile) => (
-            <TileView
-              key={tile.key}
-              tile={tile}
-              tracks={props.tracks}
-              localIdentity={props.localIdentity}
-              mutedByHost={props.mutedByHost}
-              pinnedKey={pinnedKey}
-              onTogglePin={props.onTogglePin}
-              compact
-            />
-          ))}
-          {overflowCount > 0 && (
-            <button
-              type="button"
-              onClick={handleOverflowClick}
-              className={cn(
-                "rounded-xl border-none cursor-pointer transition-colors",
-                "bg-[var(--s2)] hover:bg-[var(--s3)]",
-                "text-[var(--t1)] text-sm font-bold flex flex-col items-center justify-center gap-0.5",
-              )}
-              aria-label={t("tile.overflowMore", { count: overflowCount })}
-            >
-              <span className="text-xl leading-none">+{overflowCount}</span>
-              <span className="text-[10px] font-medium text-[var(--t3)] uppercase tracking-wider">
-                {t("tile.overflowLabel")}
-              </span>
-            </button>
-          )}
-        </div>
-      )}
+      <div className={stripCls}>
+        {plan.visible.map((tile, idx) => (
+          <TileView
+            key={tile.key}
+            tile={tile}
+            tracks={props.tracks}
+            localIdentity={props.localIdentity}
+            isHost={props.isHost}
+            onMute={props.onMute}
+            onKick={props.onKick}
+            mutedByHost={props.mutedByHost}
+            pinnedKey={pinnedKey}
+            onTogglePin={props.onTogglePin}
+            compact
+            className={
+              idx === plan.visible.length - 1 ? plan.lastSpanClass : ""
+            }
+          />
+        ))}
+        {plan.showOverflow && plan.overflow > 0 && (
+          <button
+            type="button"
+            onClick={handleOverflowClick}
+            className={cn(
+              "rounded-xl border-none cursor-pointer transition-colors",
+              "bg-[var(--s2)] hover:bg-[var(--s3)]",
+              "text-[var(--t1)] text-sm font-bold flex flex-col items-center justify-center gap-0.5",
+            )}
+            aria-label={t("tile.overflowMore", { count: plan.overflow })}
+          >
+            <span className="text-xl leading-none">+{plan.overflow}</span>
+            <span className="text-[10px] font-medium text-[var(--t3)] uppercase tracking-wider">
+              {t("tile.overflowLabel")}
+            </span>
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -495,7 +608,7 @@ function SpotlightLayout(props: LayoutCommonProps) {
   if (!focus) return null;
 
   return (
-    <div className="flex-1 flex gap-1.5 p-1.5 bg-[var(--s0)]">
+    <div className="flex-1 flex gap-2 md:gap-3 p-2 md:p-3 bg-[var(--s0)]">
       <div className="flex-1 relative">
         <TileView
           tile={focus}
@@ -510,7 +623,7 @@ function SpotlightLayout(props: LayoutCommonProps) {
         />
       </div>
       {rest.length > 0 && (
-        <div className="flex flex-col gap-1.5 w-32">
+        <div className="flex flex-col gap-2 md:gap-3 w-32">
           {rest.map((tile) => (
             <div
               key={tile.key}
@@ -547,7 +660,7 @@ function SidebarLayout(props: LayoutCommonProps) {
   if (!focus) return null;
 
   return (
-    <div className="flex-1 flex gap-1.5 p-1.5 bg-[var(--s0)]">
+    <div className="flex-1 flex gap-2 md:gap-3 p-2 md:p-3 bg-[var(--s0)]">
       <div className="flex-1 relative">
         <TileView
           tile={focus}
@@ -561,7 +674,7 @@ function SidebarLayout(props: LayoutCommonProps) {
           onTogglePin={onTogglePin}
         />
       </div>
-      <div className="flex flex-col gap-1.5 w-28">
+      <div className="flex flex-col gap-2 md:gap-3 w-28">
         {rest.map((tile) => (
           <div key={tile.key} className="h-20 rounded-xl overflow-hidden">
             <TileView

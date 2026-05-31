@@ -111,7 +111,8 @@
     "host": "میزبان",
     "students": "دانش‌آموزان ({{count}})",
     "noMessages": "هنوز پیامی نیست",
-    "messagePlaceholder": "پیام..."
+    "messagePlaceholder": "پیام...",
+    "collapse": "بستن پنل"
   },
   "invite": {
     "title": "افزودن افراد",

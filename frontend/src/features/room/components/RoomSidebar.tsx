@@ -17,9 +17,21 @@ interface RoomSidebarProps {
 
 /**
  * Docked side panel used on tablet (240px) and desktop (272px) in-call
- * layouts. Hosts the Participants / Chat / Tools tab content extracted
- * into reusable Panel components so the mobile shells (swipe stage,
- * bottom sheets) can render the same UI without duplication.
+ * layouts. Hosts the Participants / Chat / Tools tab content.
+ *
+ * Collapse behaviour
+ * ------------------
+ * When `activeTab` is null (the user clicked an active tab to dismiss
+ * it, or hit the close button), we don't unmount the sidebar — we
+ * collapse its width to zero with a smooth transition so the video
+ * grid grows into the freed space gracefully. Bringing the sidebar
+ * back from the bottom-bar buttons reverses the same animation.
+ *
+ * Why not unmount? Two reasons:
+ *   1. WebSocket subscriptions in ChatPanel would re-establish on every
+ *      open, dropping recent messages while the socket reconnects.
+ *   2. The animation would be janky: a width transition can't run on
+ *      an element that's just been added to the DOM the same frame.
  */
 export default function RoomSidebar({
   activeTab,
@@ -28,9 +40,8 @@ export default function RoomSidebar({
   width = "desktop",
 }: RoomSidebarProps) {
   const { t } = useTranslation("room");
-  if (!activeTab) return null;
 
-  const tabs: { id: SidebarTab; icon: React.ReactNode; tooltip: string }[] = [
+  const tabs: { id: NonNullable<SidebarTab>; icon: React.ReactNode; tooltip: string }[] = [
     {
       id: "participants",
       icon: Icons.people,
@@ -40,38 +51,64 @@ export default function RoomSidebar({
     { id: "tools", icon: Icons.tools, tooltip: t("tooltips.tools") },
   ];
 
-  const widthClass = width === "tablet" ? "w-60" : "w-[272px]";
+  const isOpen = activeTab !== null;
+  const openWidthClass = width === "tablet" ? "w-60" : "w-[272px]";
 
   return (
     <div
+      // The width animates between full-open and zero. `overflow-hidden`
+      // hides the panel content during the transition so it doesn't
+      // bleed into the video grid as it shrinks.
       className={cn(
-        widthClass,
-        "bg-[var(--s1)] border-s border-[var(--b)] flex flex-col flex-shrink-0 fade-in",
+        "bg-[var(--s1)] border-s border-[var(--b)] flex flex-col flex-shrink-0",
+        "transition-[width] duration-300 ease-out overflow-hidden",
+        isOpen ? openWidthClass : "w-0",
       )}
+      aria-hidden={!isOpen}
     >
-      <div className="flex items-center justify-center gap-1.5 p-2 border-b border-[var(--b)] flex-shrink-0">
-        {tabs.map((tab) => (
-          <Tooltip key={tab.id} content={tab.tooltip}>
+      {/* Inner wrapper at the open width so the children don't reflow
+          while the outer width animates. Once collapsed, overflow-hidden
+          on the parent clips this neatly. */}
+      <div className={cn("flex flex-col h-full", openWidthClass)}>
+        <div className="flex items-center justify-between gap-1.5 p-2 border-b border-[var(--b)] flex-shrink-0">
+          <div className="flex items-center gap-1.5">
+            {tabs.map((tab) => (
+              <Tooltip key={tab.id} content={tab.tooltip}>
+                <button
+                  onClick={() => onTabChange(tab.id)}
+                  className={cn(
+                    "w-9 h-9 rounded-lg border-none cursor-pointer",
+                    "flex items-center justify-center transition-all duration-150",
+                    activeTab === tab.id
+                      ? "bg-[var(--brand-soft)] text-[var(--brand)]"
+                      : "bg-transparent text-[var(--t3)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
+                  )}
+                >
+                  {tab.icon}
+                </button>
+              </Tooltip>
+            ))}
+          </div>
+          <Tooltip content={t("sidebar.collapse")}>
             <button
-              onClick={() => onTabChange(tab.id)}
+              onClick={() => onTabChange(activeTab)}
+              aria-label={t("sidebar.collapse")}
               className={cn(
-                "w-9 h-9 rounded-lg border-none cursor-pointer",
-                "flex items-center justify-center transition-all duration-150",
-                activeTab === tab.id
-                  ? "bg-[var(--brand-soft)] text-[var(--brand)]"
-                  : "bg-transparent text-[var(--t3)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
+                "w-7 h-7 rounded-md border-none cursor-pointer",
+                "bg-transparent text-[var(--t3)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
+                "flex items-center justify-center transition-colors text-base",
               )}
             >
-              {tab.icon}
+              ›
             </button>
           </Tooltip>
-        ))}
-      </div>
+        </div>
 
-      <div className="flex-1 overflow-hidden flex flex-col p-3">
-        {activeTab === "participants" && <ParticipantsPanel />}
-        {activeTab === "chat" && <ChatPanel roomCode={roomCode} />}
-        {activeTab === "tools" && <ToolsPanel />}
+        <div className="flex-1 overflow-hidden flex flex-col p-3">
+          {activeTab === "participants" && <ParticipantsPanel />}
+          {activeTab === "chat" && <ChatPanel roomCode={roomCode} />}
+          {activeTab === "tools" && <ToolsPanel />}
+        </div>
       </div>
     </div>
   );
