@@ -17,6 +17,7 @@ export function useNotifications() {
   const { t } = useTranslation(["notifications", "recordings"]);
   const { isAuthenticated } = useAuthStore();
   const addToInbox = useNotificationsStore((s) => s.add);
+  const hydrate = useNotificationsStore((s) => s.hydrate);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeout = useRef<number>(0);
   const isUnmounted = useRef(false);
@@ -24,18 +25,41 @@ export function useNotifications() {
   const handleNotification = useCallback(
     (notification: any) => {
       // Persist into the inbox first so the user can come back to it
-      // even if they miss the toast. The store de-dupes, so this is safe
-      // to call on every message including reconnect-replays.
+      // even if they miss the toast. The store de-dupes by serverId
+      // when present, otherwise by a 5-second kind+payload window, so
+      // it's safe to call on every message including reconnect-replays.
+      const kind = notification?.type ?? notification?.kind;
       if (
-        notification?.type === "ROOM_INVITE" ||
-        notification?.type === "RECORDING_PUBLISHED" ||
-        notification?.type === "RECORDING_PERMISSION_GRANTED" ||
-        notification?.type === "RECORDING_PERMISSION_REVOKED"
+        kind === "ROOM_INVITE" ||
+        kind === "RECORDING_PUBLISHED" ||
+        kind === "RECORDING_PERMISSION_GRANTED" ||
+        kind === "RECORDING_PERMISSION_REVOKED"
       ) {
-        addToInbox(notification.type, notification);
+        addToInbox(kind, notification, {
+          serverId:
+            typeof notification.id === "number" ? notification.id : undefined,
+          createdAt:
+            typeof notification.created_at === "string"
+              ? notification.created_at
+              : undefined,
+        });
       }
 
-      if (notification.type === "ROOM_INVITE") {
+      // Suppress toasts for messages that are clearly stale (>30s old)
+      // — keeps the inbox correct without slamming the user with old
+      // toasts on a fresh login. We only have created_at on items
+      // that came from record_and_dispatch (i.e. all of them after
+      // this PR ships).
+      if (typeof notification.created_at === "string") {
+        const ageMs = Date.now() - Date.parse(notification.created_at);
+        if (Number.isFinite(ageMs) && ageMs > 30_000) {
+          return;
+        }
+      }
+
+      const type = kind;
+
+      if (type === "ROOM_INVITE") {
         toast(
           (toastInstance) => (
             <div className="flex flex-col gap-2">
@@ -80,7 +104,7 @@ export function useNotifications() {
         return;
       }
 
-      if (notification.type === "RECORDING_PUBLISHED") {
+      if (type === "RECORDING_PUBLISHED") {
         const watchLink =
           notification.watch_link ||
           (notification.recording_token
@@ -135,7 +159,7 @@ export function useNotifications() {
         );
         return;
       }
-      if (notification.type === "RECORDING_PERMISSION_GRANTED") {
+      if (type === "RECORDING_PERMISSION_GRANTED") {
         toast.success(
           t("notifications:recordingPermission.grantedToast", {
             from: notification.from,
@@ -147,7 +171,7 @@ export function useNotifications() {
         return;
       }
 
-      if (notification.type === "RECORDING_PERMISSION_REVOKED") {
+      if (type === "RECORDING_PERMISSION_REVOKED") {
         toast(
           t("notifications:recordingPermission.revokedToast", {
             from: notification.from,
@@ -180,6 +204,10 @@ export function useNotifications() {
     ws.onopen = () => {
       console.log("Notification WS connected ✅");
       reconnectTimeout.current = 0;
+      // Pull any notifications that landed while the user was offline
+      // or between sessions. The store dedupes by serverId so this is
+      // safe to call repeatedly on every reconnect.
+      hydrate();
     };
 
     ws.onmessage = (event) => {
@@ -208,7 +236,7 @@ export function useNotifications() {
     ws.onerror = () => {
       ws.close();
     };
-  }, [isAuthenticated, handleNotification]);
+  }, [isAuthenticated, handleNotification, hydrate]);
 
   useEffect(() => {
     isUnmounted.current = false;
