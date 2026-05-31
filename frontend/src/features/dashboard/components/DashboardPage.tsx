@@ -66,7 +66,7 @@ export default function DashboardPage() {
                   is_recorded: false,
                 }),
             },
-            { icon: "🎮", labelKey: "actions.launchGame", nav: "games" },
+            { icon: "🎮", labelKey: "actions.launchGame", nav: "miniapps" },
             { icon: "📝", labelKey: "actions.newExam", nav: "exams" },
             { icon: "🎬", labelKey: "actions.recordings", nav: "recordings" },
           ].map((item) => (
