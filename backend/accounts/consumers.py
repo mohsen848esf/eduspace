@@ -49,7 +49,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             from accounts.models import User
             decoded = AccessToken(token)
             user_id = decoded.get('user_id')
-            # user_id ممکنه string باشه
+            # user_id may come back as a string from the JWT payload.
             user = User.objects.get(id=int(user_id))
             print(f'WS auth: {user.username} (id={user.id})')
             return user
