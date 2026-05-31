@@ -35,3 +35,55 @@
   --brand-soft: rgba(99, 102, 241, 0.08);
   --brand-text: #4f46e5;
 }
+
+
+/* ──────────────────────────────────────────────────────────────────
+ * Animations
+ *
+ * `fade-in` is referenced widely across the app for popovers, sheets,
+ * and the call grid. It was previously a class with no definition —
+ * we kept the class name and gave it a real keyframe so existing
+ * usages animate consistently.
+ *
+ * `tile-enter` is used by the in-call video grid: when a participant
+ * joins or starts/stops sharing, the new tiles fade + scale in instead
+ * of popping into place. Cheap (transform + opacity), so it's safe on
+ * every tile.
+ * ──────────────────────────────────────────────────────────────── */
+
+@keyframes eduspace-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes eduspace-tile-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.fade-in {
+  animation: eduspace-fade-in 180ms ease-out both;
+}
+
+.tile-enter {
+  animation: eduspace-tile-enter 220ms cubic-bezier(0.2, 0.7, 0.2, 1.05) both;
+}
+
+/* Honor reduced-motion preferences — drop the transforms but keep the
+ * minimal opacity fade so the user still sees the tile arrive. */
+@media (prefers-reduced-motion: reduce) {
+  .fade-in,
+  .tile-enter {
+    animation-duration: 1ms;
+  }
+}

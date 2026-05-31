@@ -112,6 +112,15 @@ export default function MobileSheetShell({
     setActivePanel(activePanel === panel ? "video" : panel);
   };
 
+  // The +N overflow button on the pinned-share layout dispatches this
+  // event — open the People sheet so the user can see everyone.
+  useEffect(() => {
+    const handler = () => setActivePanel("people");
+    window.addEventListener("eduspace:open-people-tab", handler);
+    return () =>
+      window.removeEventListener("eduspace:open-people-tab", handler);
+  }, [setActivePanel]);
+
   return (
     <>
       <div className="relative flex flex-col w-full h-full">

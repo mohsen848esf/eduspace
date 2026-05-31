@@ -85,7 +85,10 @@
     "unpin": "حذف سنجاق",
     "mute": "بستن صدا",
     "unmute": "باز کردن صدا",
-    "remove": "حذف از تماس"
+    "remove": "حذف از تماس",
+    "overflowMore_one": "{{count}} نفر دیگر",
+    "overflowMore_other": "{{count}} نفر دیگر",
+    "overflowLabel": "بیشتر"
   },
   "audioVisualizer": {
     "muted": "میکروفون بسته است"
