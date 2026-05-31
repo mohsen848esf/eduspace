@@ -13,7 +13,7 @@ interface NavItem {
 const mainNav: NavItem[] = [
   { icon: "⊞", labelKey: "nav.dashboard", id: "dashboard" },
   { icon: "📹", labelKey: "nav.videoCalls", id: "calls" },
-  { icon: "🎮", labelKey: "nav.games", id: "games" },
+  { icon: "🎮", labelKey: "nav.miniApps", id: "miniapps" },
   { icon: "📝", labelKey: "nav.exams", id: "exams" },
 ];
 

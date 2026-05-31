@@ -23,6 +23,7 @@ interface AppShellProps {
 const NAV_ROUTES: Record<string, string> = {
   dashboard: "/dashboard",
   recordings: "/recordings",
+  miniapps: "/miniapps",
 };
 
 /**

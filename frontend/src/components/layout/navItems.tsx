@@ -32,7 +32,12 @@ export interface NavItem {
 export const mainNavItems: NavItem[] = [
   { id: "dashboard", icon: Icons.home, labelKey: "nav.dashboard", to: "/dashboard" },
   { id: "calls", icon: Icons.camera, labelKey: "nav.videoCalls" },
-  { id: "games", icon: Icons.game, labelKey: "nav.games" },
+  // Renamed: Games → Mini Apps. The id stays `games` so existing
+  // active-id state and analytics keep working; only the label and
+  // route change. The destination page is now a gallery of all
+  // embeddable apps (games, whiteboards, polls, exams) — see
+  // `/miniapps` route in routes.tsx.
+  { id: "miniapps", icon: Icons.game, labelKey: "nav.miniApps", to: "/miniapps" },
   { id: "exams", icon: Icons.exam, labelKey: "nav.exams" },
 ];
 
@@ -51,7 +56,7 @@ export const manageNavItems: NavItem[] = [
 export const bottomNavPrimary: NavItem[] = [
   { id: "dashboard", icon: Icons.home, labelKey: "nav.dashboard", to: "/dashboard" },
   { id: "calls", icon: Icons.camera, labelKey: "nav.videoCalls" },
-  { id: "games", icon: Icons.game, labelKey: "nav.games" },
+  { id: "miniapps", icon: Icons.game, labelKey: "nav.miniApps", to: "/miniapps" },
   { id: "exams", icon: Icons.exam, labelKey: "nav.exams" },
 ];
 

@@ -1,0 +1,26 @@
+{
+  "page": {
+    "title": "Mini Apps",
+    "subtitle": "Embeddable apps you can launch into a session — games, whiteboards, exams, and polls."
+  },
+  "categories": {
+    "all": "All",
+    "games": "Games & Fun",
+    "whiteboard": "Whiteboard",
+    "exams": "Exams",
+    "polls": "Polls"
+  },
+  "card": {
+    "ready": "Ready",
+    "soon": "Soon",
+    "premium": "Premium",
+    "open": "Open",
+    "preview": "Preview"
+  },
+  "empty": {
+    "title": "Nothing here yet",
+    "hint": "We'll surface the apps you can launch into a session right here."
+  },
+  "loading": "Loading mini apps...",
+  "errorLoading": "Could not load mini apps. Please try again."
+}

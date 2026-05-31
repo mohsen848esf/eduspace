@@ -8,7 +8,7 @@
   "role": "نقش",
   "actions": {
     "startCall": "شروع تماس",
-    "launchGame": "اجرای بازی",
+    "launchGame": "میان‌برنامه‌ها",
     "newExam": "آزمون جدید",
     "recordings": "ضبط‌ها"
   },
@@ -32,6 +32,7 @@
     "dashboard": "داشبورد",
     "videoCalls": "تماس‌های ویدیویی",
     "games": "بازی‌ها",
+    "miniApps": "میان‌برنامه‌ها",
     "exams": "آزمون‌ها",
     "students": "دانش‌آموزان",
     "reports": "گزارش‌ها",
