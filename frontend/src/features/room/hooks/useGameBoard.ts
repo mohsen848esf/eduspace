@@ -15,6 +15,12 @@ export interface GameBoardState {
   gameTitle: string | null;
   hostIdentity: string | null;
   acceptedParticipants: string[];
+  /**
+   * Live game scores keyed by participant identity. Populated from
+   * SCORE_UPDATE messages that the local iframe broadcasts and from
+   * GAME_SCORE data-channel messages relayed by remote participants.
+   */
+  scores: Record<string, number>;
 }
 
 const GAME_MESSAGES = {
@@ -23,6 +29,7 @@ const GAME_MESSAGES = {
   GAME_DECLINE: "GAME_DECLINE",
   GAME_START: "GAME_START",
   GAME_END: "GAME_END",
+  GAME_SCORE: "GAME_SCORE",
 } as const;
 
 export function useGameBoard() {
@@ -40,6 +47,7 @@ export function useGameBoard() {
     gameTitle: null,
     hostIdentity: null,
     acceptedParticipants: [],
+    scores: {},
   });
 
   const [pendingInvite, setPendingInvite] = useState<{
@@ -80,6 +88,7 @@ export function useGameBoard() {
         gameTitle,
         hostIdentity: localParticipant.identity,
         acceptedParticipants: [localParticipant.identity],
+        scores: {},
       });
 
       toast.success(t("board.launched", { title: gameTitle }));
@@ -121,9 +130,32 @@ export function useGameBoard() {
       gameTitle: null,
       hostIdentity: null,
       acceptedParticipants: [],
+      scores: {},
     });
     toast(t("board.ended"), { icon: "🎮" });
   }, [isHost, sendMessage, t]);
+
+  /**
+   * Broadcast the local player's score over the data channel so every
+   * peer's GameBoard can render the live roster. Called from
+   * GameBoard whenever the iframe emits SCORE_UPDATE for the local
+   * user.
+   */
+  const relayScore = useCallback(
+    async (score: number) => {
+      // Update local state immediately so the host's UI reacts even
+      // before the data channel round-trip completes.
+      setGameBoard((prev) => ({
+        ...prev,
+        scores: { ...prev.scores, [localParticipant.identity]: score },
+      }));
+      await sendMessage(GAME_MESSAGES.GAME_SCORE, {
+        identity: localParticipant.identity,
+        score,
+      });
+    },
+    [localParticipant.identity, sendMessage],
+  );
 
   const handleDataMessage = useCallback(
     (payload: Uint8Array, participant: any) => {
@@ -159,10 +191,26 @@ export function useGameBoard() {
               gameTitle: null,
               hostIdentity: null,
               acceptedParticipants: [],
+              scores: {},
             });
             setPendingInvite(null);
             toast(t("board.endedByHost"), { icon: "🎮" });
             break;
+
+          case GAME_MESSAGES.GAME_SCORE: {
+            // Trust the wire participant identity (LiveKit sets it
+            // server-side); fall back to the payload for clients that
+            // can't read the participant context.
+            const id =
+              (participant && participant.identity) || data.identity;
+            if (!id) break;
+            const score = Number(data.score ?? 0);
+            setGameBoard((prev) => ({
+              ...prev,
+              scores: { ...prev.scores, [id]: score },
+            }));
+            break;
+          }
         }
       } catch {
         /* swallow malformed */
@@ -178,6 +226,7 @@ export function useGameBoard() {
     acceptGame,
     declineGame,
     endGame,
+    relayScore,
     handleDataMessage,
   };
 }

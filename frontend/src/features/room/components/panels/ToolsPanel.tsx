@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "../../../../lib/utils";
 import { useRoomGame } from "../../hooks/useRoomGameContext";
 import { useRoomStore } from "../../store/roomStore";
-import GameSelectorModal from "../GameSelectorModal";
+import MiniAppSelectorModal from "../MiniAppSelectorModal";
 
 /**
  * In-call tools panel — game launcher, whiteboard, quick exam, etc.
@@ -47,24 +47,6 @@ export default function ToolsPanel() {
 
   const tools = [
     gameTool,
-    {
-      icon: "📋",
-      name: t("tools.whiteboard"),
-      desc: t("tools.whiteboardDesc"),
-      status: "ready" as const,
-      onClick: () => undefined,
-      bg: "bg-[rgba(56,189,248,0.12)]",
-      disabled: false,
-    },
-    {
-      icon: "📝",
-      name: t("tools.quickExam"),
-      desc: t("tools.quickExamDesc"),
-      status: "ready" as const,
-      onClick: () => undefined,
-      bg: "bg-[rgba(34,197,94,0.12)]",
-      disabled: false,
-    },
     {
       icon: "🤖",
       name: t("tools.aiSummary"),
@@ -124,7 +106,7 @@ export default function ToolsPanel() {
         ))}
       </div>
 
-      <GameSelectorModal
+      <MiniAppSelectorModal
         open={showSelector}
         onClose={() => setShowSelector(false)}
         onLaunch={(args) =>
