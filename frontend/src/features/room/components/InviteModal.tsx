@@ -75,7 +75,16 @@ export default function InviteModal({ onClose }: InviteModalProps) {
       await client.post(`/rooms/${roomCode}/invite/`, { user_id: userId });
       toast.success(t("invite.invitedToast", { username: user.username }));
 
+      // Mark sent for 10 seconds, then revert to "Invite" so the host
+      // can resend if needed (network blip, recipient missed it, etc.).
       setInvited((prev) => new Set(prev).add(userId));
+      setTimeout(() => {
+        setInvited((prev) => {
+          const next = new Set(prev);
+          next.delete(userId);
+          return next;
+        });
+      }, 10_000);
     } catch (err: any) {
       toast.error(t("invite.failed"));
       setError(err.response?.data?.error || t("invite.failed"));

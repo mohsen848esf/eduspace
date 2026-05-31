@@ -58,6 +58,41 @@
   let state = loadState();
   let session = null; // active game session
 
+  // ── Platform bridge helpers (in-call mode) ───────────────
+  // The game runs identically in solo mode; these helpers no-op when
+  // the game isn't embedded in a call. We use the `GameBridge` global
+  // exposed by game-bridge.js, which carries the postMessage protocol
+  // documented at the top of that file.
+
+  function bridge() {
+    return (window && window.GameBridge) || null;
+  }
+
+  function notifyPlatformScore() {
+    const b = bridge();
+    if (!b || !b.isInCall || !b.isInCall()) return;
+    const me = b.getCurrentPlayer && b.getCurrentPlayer();
+    if (!me || !me.userId) return;
+    try {
+      b.onScoreUpdate(me.userId, session.score, session.idx);
+    } catch (e) {
+      console.warn('platform score broadcast failed', e);
+    }
+  }
+
+  function notifyPlatformGameOver() {
+    const b = bridge();
+    if (!b || !b.isInCall || !b.isInCall()) return;
+    const me = b.getCurrentPlayer && b.getCurrentPlayer();
+    const scores = {};
+    if (me && me.userId) scores[me.userId] = session.score;
+    try {
+      b.onGameOver(scores);
+    } catch (e) {
+      console.warn('platform game-over broadcast failed', e);
+    }
+  }
+
   function loadState() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -725,6 +760,11 @@
     session.score += breakdown.total;
     session.finalBreakdown.push(breakdown);
 
+    // Broadcast to the platform (in-call mode) so the host overlay
+    // can show this user's current score. No-op in solo mode because
+    // GameBridge.isInCall() is false.
+    notifyPlatformScore();
+
     // Powerup grants
     grantPowerups();
 
@@ -1095,6 +1135,7 @@
 
     saveState();
     renderGameOver();
+    notifyPlatformGameOver();
   }
 
   function renderGameOver() {

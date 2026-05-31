@@ -133,7 +133,13 @@ export default function MobileSheetShell({
             the screen black. */}
         <div className="relative flex-1 flex flex-col min-h-0 overflow-hidden">
           {game.gameBoard.isActive ? (
-            <GameBoard gameBoard={game.gameBoard} onEnd={game.endGame} />
+            <GameBoard
+              gameBoard={game.gameBoard}
+              onEnd={game.endGame}
+              onScoreUpdate={(userId, score) => {
+                if (userId) game.relayScore(score);
+              }}
+            />
           ) : (
             <VideoGrid layout={layout} onLayoutChange={onLayoutChange} />
           )}
