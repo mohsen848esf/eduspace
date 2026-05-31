@@ -11,6 +11,9 @@ const RoomPage = lazy(() => import("../features/room/components/RoomPage"));
 const MiniAppsPage = lazy(
   () => import("../features/miniapps/components/MiniAppsPage"),
 );
+const MiniAppPlayerPage = lazy(
+  () => import("../features/miniapps/components/MiniAppPlayerPage"),
+);
 const RecordingsPage = lazy(
   () => import("../features/recordings/components/RecordingsPage"),
 );
@@ -56,6 +59,12 @@ export const routes: RouteConfig[] = [
   {
     path: "/miniapps",
     component: MiniAppsPage,
+    isPrivate: true,
+    roles: ["student", "teacher", "admin"],
+  },
+  {
+    path: "/miniapps/play/:slug",
+    component: MiniAppPlayerPage,
     isPrivate: true,
     roles: ["student", "teacher", "admin"],
   },
