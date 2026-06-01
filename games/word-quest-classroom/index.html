@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0f172a" />
+    <title>Jobzlingo Word Quest</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Poppins:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Animated background canvas -->
+    <canvas id="bg-canvas" aria-hidden="true"></canvas>
+    <canvas id="confetti-canvas" aria-hidden="true"></canvas>
+
+    <!-- Toast container -->
+    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- ============ LOADING SCREEN ============ -->
+    <section class="screen screen--active" id="screen-loading">
+      <div class="loading-wrap">
+        <div class="loading-logo">
+          <img
+            src="assets/mascot-waving.svg"
+            alt="Jobzlingo"
+            class="logo-img"
+            onerror="
+              this.style.display = 'none';
+              this.nextElementSibling.style.display = 'block';
+            "
+          />
+          <div class="logo-fallback" style="display: none">Jobzlingo</div>
+        </div>
+        <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+        <p class="loading-text">Word Quest</p>
+      </div>
+    </section>
+
+    <!-- ============ CLASSROOM: ROLE PICK ============ -->
+    <!--
+      Shown only inside an EduSpace call. The host picks whether to
+      run the session as the host (mode + difficulty + start
+      controls) or as a regular player. The choice is stashed in
+      memory and drives every other classroom screen.
+    -->
+    <section class="screen" id="screen-classroom-role">
+      <main class="hero glass classroom-hero">
+        <div class="hero-text">
+          <h1>How are you joining?</h1>
+          <p class="hero-sub">
+            You're inside a live call. Pick how you want to play.
+          </p>
+        </div>
+        <div class="classroom-role-grid">
+          <button class="btn btn--primary btn--xl" data-role="host">
+            🎙 Host the game
+            <small>Pick mode + difficulty, run pause / resume / next.</small>
+          </button>
+          <button class="btn btn--ghost btn--xl" data-role="player">
+            🧑‍🎓 Join as a player
+            <small>Race through the questions with everyone else.</small>
+          </button>
+        </div>
+      </main>
+    </section>
+
+    <!-- ============ CLASSROOM: LOBBY ============ -->
+    <!--
+      Shared screen for host + players before the questions roll.
+      The host sees the mode + difficulty pickers and a Start button;
+      players see a "Waiting for the host to start" panel. Both
+      screens render the participant roster (with the host omitted —
+      the host doesn't play).
+    -->
+    <section class="screen" id="screen-classroom-lobby">
+      <header class="app-header">
+        <div class="logo-row">
+          <span class="header-logo-fallback">Word Quest · Classroom</span>
+          <span class="header-sub" id="classroom-lobby-sub">Lobby</span>
+        </div>
+        <div class="header-actions">
+          <button
+            class="icon-btn"
+            id="classroom-leave"
+            aria-label="Leave the classroom"
+            title="Back to role pick"
+          >
+            ←
+          </button>
+        </div>
+      </header>
+
+      <main class="hero glass classroom-lobby">
+        <!-- HOST-only controls. Hidden on the player-side via the
+             data-role attribute on the screen element. -->
+        <div class="classroom-host-controls" id="classroom-host-controls">
+          <h3>Host controls</h3>
+          <div class="play-card">
+            <label class="control-label" for="classroom-mode">Mode</label>
+            <select
+              class="select"
+              id="classroom-mode"
+              aria-label="Game mode"
+            >
+              <option value="quick">Quick — 10 words</option>
+              <option value="speed">Speed — 30s timer</option>
+              <option value="marathon">Marathon — endless</option>
+            </select>
+
+            <label class="control-label" for="classroom-difficulty">
+              Difficulty
+            </label>
+            <select
+              class="select"
+              id="classroom-difficulty"
+              aria-label="Difficulty"
+            >
+              <option value="mixed">Mixed</option>
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+
+            <button
+              class="btn btn--primary btn--xl"
+              id="classroom-start"
+              type="button"
+            >
+              Start the game
+            </button>
+            <p
+              class="hero-sub classroom-lobby-hint"
+              id="classroom-host-hint"
+            >
+              Players are joining below — start once everyone is in.
+            </p>
+          </div>
+        </div>
+
+        <!-- PLAYER-only message. Toggled into view when the role is
+             "player". -->
+        <div
+          class="classroom-player-wait"
+          id="classroom-player-wait"
+          hidden
+        >
+          <div class="play-card">
+            <span class="lb-rank-badge">Waiting</span>
+            <h3>Waiting for the host to start</h3>
+            <p class="hero-sub" id="classroom-player-status">
+              Hang tight — the host hasn't kicked off the round yet.
+            </p>
+          </div>
+        </div>
+
+        <!-- Roster shared between roles. The host doesn't appear in
+             this list because the host doesn't play. -->
+        <div class="classroom-roster">
+          <h3>Players in this round</h3>
+          <ol class="lb-list classroom-player-list" id="classroom-roster">
+            <li class="lb-empty">No players have accepted yet.</li>
+          </ol>
+        </div>
+      </main>
+    </section>
+
+    <!-- ============ CLASSROOM: COUNTDOWN ============ -->
+    <!--
+      Big 3-2-1 splash shown to every connected client when the host
+      taps Start. Once the count reaches 0 the screen swaps to the
+      regular game screen.
+    -->
+    <section class="screen classroom-countdown" id="screen-classroom-countdown">
+      <div class="classroom-countdown-card">
+        <span class="classroom-countdown-tag">Get ready</span>
+        <span class="classroom-countdown-num" id="classroom-countdown-num">3</span>
+        <span class="classroom-countdown-foot">The first word is on its way</span>
+      </div>
+    </section>
+
+    <!-- ============ HOME SCREEN ============ -->
+    <section class="screen" id="screen-home">
+      <header class="app-header">
+        <div class="logo-row">
+          <img
+            src="assets/mascot-happy.svg"
+            alt="Jobzlingo"
+            class="header-logo"
+            onerror="
+              this.style.display = 'none';
+              this.nextElementSibling.style.display = 'inline-block';
+            "
+          />
+          <span class="header-logo-fallback" style="display: none"
+            >Jobzlingo</span
+          >
+          <span class="header-sub">Word Quest</span>
+        </div>
+        <div class="header-actions">
+          <button class="icon-btn" data-nav="profile" aria-label="Profile">
+            <svg
+              viewBox="0 0 24 24"
+              width="22"
+              height="22"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
+            </svg>
+          </button>
+          <button
+            class="icon-btn"
+            data-nav="leaderboard"
+            aria-label="Leaderboard"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="22"
+              height="22"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M6 21V10M12 21V4M18 21v-7" />
+            </svg>
+          </button>
+          <button class="icon-btn" data-nav="settings" aria-label="Settings">
+            <svg
+              viewBox="0 0 24 24"
+              width="22"
+              height="22"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5h0a1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"
+              />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <main class="home-main">
+        <div class="hero glass">
+          <div class="hero-text">
+            <h1 class="hero-title">
+              Master career vocabulary, one word at a time.
+            </h1>
+            <p class="hero-sub">
+              Solve career-themed puzzles, build streaks, and climb the
+              leaderboard.
+            </p>
+            <div class="hero-stats">
+              <div class="stat-pill" title="Daily streak">
+                <span class="stat-emoji">🔥</span
+                ><span id="home-streak">0</span> day streak
+              </div>
+              <div class="stat-pill" title="Lifetime points">
+                <span class="stat-emoji">⭐</span
+                ><span id="home-points">0</span> pts
+              </div>
+            </div>
+          </div>
+          <div class="hero-mascot">
+            <img
+              src="assets/mascot-happy.svg"
+              alt=""
+              class="mascot mascot--home"
+              onerror="
+                this.style.display = 'none';
+                this.nextElementSibling.style.display = 'block';
+              "
+            />
+            <div class="mascot-fallback" style="display: none">🤖</div>
+          </div>
+        </div>
+
+        <div class="play-card glass">
+          <div class="play-card-row">
+            <label class="field">
+              <span class="field-label">Mode</span>
+              <select id="mode-select" class="select">
+                <option value="quick">Quick Play · 10 words</option>
+                <option value="marathon">Marathon · until 3 wrong</option>
+                <option value="daily">Daily Challenge · 5 words</option>
+                <option value="speed">Speed Run · 30s/word</option>
+                <option value="campaign">Campaign · all 59 words</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">Difficulty</span>
+              <select id="difficulty-select" class="select">
+                <option value="mixed">Mixed</option>
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </label>
+          </div>
+          <button id="play-btn" class="btn btn--primary btn--xl">
+            <span>Start Quest</span>
+            <svg
+              viewBox="0 0 24 24"
+              width="22"
+              height="22"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+            >
+              <path d="M5 12h14M13 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="home-grid">
+          <div class="wotd-card glass">
+            <div class="card-head">
+              <span class="card-tag">Word of the Day</span>
+              <span id="wotd-category" class="card-cat">—</span>
+            </div>
+            <p id="wotd-sentence" class="wotd-sentence">
+              Loading today's word…
+            </p>
+            <button id="wotd-play" class="btn btn--ghost btn--sm">
+              Play this word
+            </button>
+          </div>
+
+          <div class="lb-preview glass" id="lb-preview-card">
+            <div class="card-head">
+              <span class="card-tag" id="lb-card-tag">Top Scores</span>
+              <button class="link-btn" data-nav="leaderboard">
+                View all →
+              </button>
+            </div>
+            <ol id="lb-preview-list" class="lb-list lb-list--compact">
+              <li class="lb-empty">No scores yet. Be the first!</li>
+            </ol>
+
+            <!-- Campaign roster panel (shown when mode === 'campaign') -->
+            <div class="roster-inline" id="roster-inline" hidden>
+              <div class="roster-add">
+                <input
+                  type="text"
+                  id="roster-input-home"
+                  class="text-input"
+                  placeholder="Add a student…"
+                  maxlength="20"
+                />
+                <button
+                  class="btn btn--primary roster-add-btn"
+                  id="roster-add-home"
+                >
+                  +
+                </button>
+              </div>
+              <ol
+                class="lb-list lb-list--compact roster-rank"
+                id="roster-rank-list"
+              ></ol>
+              <button class="link-btn" id="roster-reset-home">
+                Reset all scores
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </section>
+
+    <!-- Live campaign mini-leaderboard (only visible during campaign mode) -->
+    <aside class="campaign-mini" id="campaign-mini" hidden>
+      <h4>Campaign Top 5</h4>
+      <ol id="campaign-mini-list"></ol>
+    </aside>
+
+    <!-- ============ GAME SCREEN ============ -->
+    <section class="screen" id="screen-game">
+      <header class="game-header">
+        <button class="icon-btn" id="game-back" aria-label="Quit to home">
+          <svg
+            viewBox="0 0 24 24"
+            width="22"
+            height="22"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <div class="game-meta">
+          <div class="meta-pill">
+            <span class="meta-label">Score</span><span id="game-score">0</span>
+          </div>
+          <div class="meta-pill">
+            <span class="meta-label">Streak</span
+            ><span id="game-streak">0</span> 🔥
+          </div>
+          <div class="meta-pill">
+            <span class="meta-label">Word</span
+            ><span id="game-progress">1/10</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="timer-wrap">
+        <div class="timer-bar">
+          <div class="timer-fill" id="timer-fill"></div>
+        </div>
+        <span class="timer-text" id="timer-text">60</span>
+      </div>
+
+      <main class="game-main">
+        <div class="sentence-card glass">
+          <div class="sentence-head">
+            <span class="diff-chip" id="word-diff">easy</span>
+          </div>
+          <p class="sentence" id="word-sentence">—</p>
+          <div
+            class="letter-row"
+            id="letter-row"
+            aria-label="Answer letters"
+          ></div>
+          <div class="hint-reveal" id="hint-reveal"></div>
+          <div class="mascot-game">
+            <img
+              src="assets/mascot-thinking.svg"
+              alt=""
+              id="game-mascot"
+              class="mascot mascot--game"
+              onerror="
+                this.style.display = 'none';
+                this.nextElementSibling.style.display = 'block';
+              "
+            />
+            <div
+              class="mascot-fallback"
+              id="game-mascot-fallback"
+              style="display: none"
+            >
+              🤔
+            </div>
+          </div>
+        </div>
+
+        <div class="hints-row">
+          <button class="hint-btn" data-hint="1">
+            <span class="hint-num">1</span>
+            <span class="hint-label">Category</span>
+            <span class="hint-cost">−10</span>
+          </button>
+          <button class="hint-btn" data-hint="2">
+            <span class="hint-num">2</span>
+            <span class="hint-label">First &amp; Last</span>
+            <span class="hint-cost">−20</span>
+          </button>
+          <button class="hint-btn" data-hint="3">
+            <span class="hint-num">3</span>
+            <span class="hint-label">Middle Letter</span>
+            <span class="hint-cost">−30</span>
+          </button>
+        </div>
+
+        <div class="powerups-row" id="powerups-row">
+          <button
+            class="power-btn"
+            data-power="skip"
+            disabled
+            title="Earned at streak 3"
+          >
+            ⏭ Skip
+          </button>
+          <button
+            class="power-btn"
+            data-power="time"
+            disabled
+            title="Earned at streak 5"
+          >
+            ⏱ +15s
+          </button>
+          <button
+            class="power-btn"
+            data-power="5050"
+            disabled
+            title="Earned at streak 7"
+          >
+            🎯 50/50
+          </button>
+        </div>
+
+        <div class="wrongs-wrap">
+          <span class="wrongs-label">Wrong:</span>
+          <div class="wrongs-dots" id="wrongs-dots"></div>
+        </div>
+
+        <div class="keyboard" id="keyboard"></div>
+      </main>
+    </section>
+
+    <!-- ============ RESULT SCREEN ============ -->
+    <section class="screen" id="screen-result">
+      <main class="result-main">
+        <div class="result-card glass">
+          <div class="result-hero">
+            <div class="result-mascot">
+              <img
+                src="assets/mascot-excited.svg"
+                alt=""
+                id="result-mascot"
+                class="mascot mascot--result"
+                onerror="
+                  this.style.display = 'none';
+                  this.nextElementSibling.style.display = 'block';
+                "
+              />
+              <div
+                class="mascot-fallback"
+                id="result-mascot-fallback"
+                style="display: none"
+              >
+                🎉
+              </div>
+            </div>
+            <h2 id="result-title" class="result-title">Solved!</h2>
+            <div class="result-word" id="result-word">—</div>
+            <div class="result-cat" id="result-cat">—</div>
+          </div>
+
+          <div class="tip-box">
+            <span class="tip-label">💡 Career tip</span>
+            <p id="result-tip">—</p>
+          </div>
+
+          <div class="score-breakdown" id="score-breakdown"></div>
+
+          <div class="achievements-strip" id="achievements-strip"></div>
+
+          <div class="result-actions">
+            <button class="btn btn--primary" id="result-next">Next Word</button>
+            <button class="btn btn--ghost" id="result-share">Share</button>
+            <button class="btn btn--ghost" id="result-home">Home</button>
+          </div>
+        </div>
+      </main>
+    </section>
+
+    <!-- ============ GAME OVER SCREEN ============ -->
+    <section class="screen" id="screen-gameover">
+      <main class="result-main">
+        <div class="result-card glass">
+          <h2 class="result-title">Run Complete!</h2>
+          <div class="final-score" id="final-score">0</div>
+          <p class="final-meta" id="final-meta">—</p>
+          <div class="campaign-final" id="campaign-final" hidden>
+            <h3>🏆 Campaign Leaderboard</h3>
+            <ol id="campaign-final-list"></ol>
+          </div>
+          <div class="score-breakdown" id="final-breakdown"></div>
+          <div class="result-actions">
+            <button class="btn btn--primary" id="gameover-play">
+              Play Again
+            </button>
+            <button class="btn btn--ghost" id="gameover-share">
+              Share Result
+            </button>
+            <button class="btn btn--ghost" id="gameover-home">Home</button>
+          </div>
+        </div>
+      </main>
+    </section>
+
+    <!-- ============ LEADERBOARD SCREEN ============ -->
+    <section class="screen" id="screen-leaderboard">
+      <header class="sub-header">
+        <button class="icon-btn" data-nav="home" aria-label="Back">
+          <svg
+            viewBox="0 0 24 24"
+            width="22"
+            height="22"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <h2>Leaderboard</h2>
+      </header>
+      <main class="sub-main">
+        <div class="tabs" id="lb-tabs">
+          <button class="tab tab--active" data-tab="all">All</button>
+          <button class="tab" data-tab="quick">Quick</button>
+          <button class="tab" data-tab="marathon">Marathon</button>
+          <button class="tab" data-tab="daily">Daily</button>
+          <button class="tab" data-tab="speed">Speed</button>
+          <button class="tab" data-tab="campaign">Campaign</button>
+        </div>
+        <ol class="lb-list" id="lb-full-list"></ol>
+      </main>
+    </section>
+
+    <!-- ============ PROFILE SCREEN ============ -->
+    <section class="screen" id="screen-profile">
+      <header class="sub-header">
+        <button class="icon-btn" data-nav="home" aria-label="Back">
+          <svg
+            viewBox="0 0 24 24"
+            width="22"
+            height="22"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <h2>Profile</h2>
+      </header>
+      <main class="sub-main">
+        <div class="profile-head glass">
+          <div class="profile-avatar">
+            <img
+              src="assets/mascot-proud.svg"
+              alt=""
+              onerror="
+                this.style.display = 'none';
+                this.nextElementSibling.style.display = 'block';
+              "
+            />
+            <div class="mascot-fallback" style="display: none">🤖</div>
+          </div>
+          <div>
+            <div class="profile-name" id="profile-name">Player</div>
+            <div class="profile-sub" id="profile-since">Joined recently</div>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card glass">
+            <span class="stat-num" id="stat-games">0</span
+            ><span class="stat-lbl">Games</span>
+          </div>
+          <div class="stat-card glass">
+            <span class="stat-num" id="stat-wins">0%</span
+            ><span class="stat-lbl">Win Rate</span>
+          </div>
+          <div class="stat-card glass">
+            <span class="stat-num" id="stat-best">0</span
+            ><span class="stat-lbl">Best Streak</span>
+          </div>
+          <div class="stat-card glass">
+            <span class="stat-num" id="stat-avg">—</span
+            ><span class="stat-lbl">Avg Solve</span>
+          </div>
+          <div class="stat-card glass">
+            <span class="stat-num" id="stat-lifetime">0</span
+            ><span class="stat-lbl">Lifetime Pts</span>
+          </div>
+          <div class="stat-card glass">
+            <span class="stat-num" id="stat-daystreak">0</span
+            ><span class="stat-lbl">Day Streak</span>
+          </div>
+        </div>
+
+        <h3 class="section-h">Achievements</h3>
+        <div class="badges-grid" id="badges-grid"></div>
+      </main>
+    </section>
+
+    <!-- ============ SETTINGS SCREEN ============ -->
+    <section class="screen" id="screen-settings">
+      <header class="sub-header">
+        <button class="icon-btn" data-nav="home" aria-label="Back">
+          <svg
+            viewBox="0 0 24 24"
+            width="22"
+            height="22"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <h2>Settings</h2>
+      </header>
+      <main class="sub-main">
+        <div class="settings-card glass">
+          <label class="field">
+            <span class="field-label">Player Name</span>
+            <input
+              type="text"
+              id="name-input"
+              class="text-input"
+              maxlength="20"
+              placeholder="Your name"
+            />
+          </label>
+
+          <div class="toggle-row">
+            <span class="toggle-lbl">Sound effects</span>
+            <button
+              class="toggle"
+              id="toggle-sound"
+              role="switch"
+              aria-checked="true"
+            >
+              <span class="toggle-knob"></span>
+            </button>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-lbl">Haptic feedback</span>
+            <button
+              class="toggle"
+              id="toggle-haptic"
+              role="switch"
+              aria-checked="true"
+            >
+              <span class="toggle-knob"></span>
+            </button>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-lbl">High-contrast theme</span>
+            <button
+              class="toggle"
+              id="toggle-theme"
+              role="switch"
+              aria-checked="false"
+            >
+              <span class="toggle-knob"></span>
+            </button>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-lbl">Reduce motion</span>
+            <button
+              class="toggle"
+              id="toggle-reduce-motion"
+              role="switch"
+              aria-checked="false"
+            >
+              <span class="toggle-knob"></span>
+            </button>
+          </div>
+
+          <button class="btn btn--danger btn--sm" id="reset-btn">
+            Reset all stats
+          </button>
+        </div>
+      </main>
+    </section>
+
+    <!-- Campaign setup modal -->
+    <div class="modal" id="campaign-setup-modal" hidden>
+      <div class="modal-backdrop" data-close></div>
+      <div class="modal-card glass campaign-modal">
+        <button class="modal-close" data-close aria-label="Close">×</button>
+        <h3>Campaign Players</h3>
+        <p class="modal-sub">
+          Add everyone playing. Tap a name later to credit them when they shout
+          the word first.
+        </p>
+        <div class="roster-add">
+          <input
+            type="text"
+            id="roster-input"
+            class="text-input"
+            placeholder="Player name"
+            maxlength="20"
+          />
+          <button class="btn btn--primary roster-add-btn" id="roster-add-btn">
+            + Add
+          </button>
+        </div>
+        <ul class="roster-list" id="roster-list"></ul>
+        <div class="modal-actions roster-actions">
+          <button class="btn btn--ghost" id="roster-reset">Reset scores</button>
+          <button class="btn btn--primary" id="roster-begin">
+            Begin Campaign →
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Attribution modal: who solved this word? -->
+    <div class="modal" id="attribution-modal" hidden>
+      <div class="modal-backdrop"></div>
+      <div class="modal-card glass attribution-card">
+        <h3>Who solved <span id="attribution-word">—</span>?</h3>
+        <p class="modal-sub" id="attribution-points">+0 points</p>
+        <div class="attribution-grid" id="attribution-grid"></div>
+        <button class="btn btn--ghost" id="attribution-skip">
+          Nobody — skip
+        </button>
+      </div>
+    </div>
+
+    <!-- Share modal -->
+    <div class="modal" id="share-modal" hidden>
+      <div class="modal-backdrop" data-close></div>
+      <div class="modal-card glass">
+        <button class="modal-close" data-close aria-label="Close">×</button>
+        <h3>Share your result</h3>
+        <pre id="share-text" class="share-text"></pre>
+        <div class="modal-actions">
+          <button class="btn btn--primary" id="share-copy">
+            Copy to Clipboard
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generic confirm modal: replaces window.confirm() -->
+    <div class="modal" id="confirm-modal" hidden>
+      <div class="modal-backdrop" data-close></div>
+      <div class="modal-card glass" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+        <h3 id="confirm-modal-title">Are you sure?</h3>
+        <p class="modal-sub" id="confirm-modal-message"></p>
+        <div class="modal-actions">
+          <button class="btn btn--ghost" id="confirm-modal-cancel">Cancel</button>
+          <button class="btn btn--primary" id="confirm-modal-ok">Confirm</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="game-bridge.js"></script>
+
+    <script src="words.js"></script>
+    <script src="game.js"></script>
+  </body>
+</html>

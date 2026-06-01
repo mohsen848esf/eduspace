@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useRoomContext,
@@ -31,6 +31,15 @@ const GAME_MESSAGES = {
   GAME_START: "GAME_START",
   GAME_END: "GAME_END",
   GAME_SCORE: "GAME_SCORE",
+  /**
+   * Generic envelope for classroom-mode events. The iframe broadcasts
+   * via `GameBridge.broadcast(type, payload)`; the shell wraps the
+   * envelope in this kind and pushes it over the LiveKit data
+   * channel. On receive, the shell unwraps and posts the original
+   * `{type, payload}` into every iframe's window via postMessage,
+   * which the bridge forwards to `window.onClassroomEvent`.
+   */
+  CLASSROOM_RELAY: "CLASSROOM_RELAY",
 } as const;
 
 export function useGameBoard() {
@@ -171,6 +180,48 @@ export function useGameBoard() {
     [localParticipant.identity, sendMessage],
   );
 
+  /**
+   * Subscribers to classroom relay events. GameBoard registers a
+   * listener that re-emits the wrapped event into its iframe via
+   * postMessage so the game's own message handler receives it.
+   */
+  const classroomListenersRef = useRef<
+    Set<(type: string, payload: unknown, fromIdentity?: string) => void>
+  >(new Set());
+
+  const subscribeClassroomEvents = useCallback(
+    (
+      fn: (type: string, payload: unknown, fromIdentity?: string) => void,
+    ) => {
+      classroomListenersRef.current.add(fn);
+      return () => {
+        classroomListenersRef.current.delete(fn);
+      };
+    },
+    [],
+  );
+
+  /**
+   * Push a CLASSROOM_* event from the local iframe out to every peer.
+   * The local iframe is also called back so the host's own iframe
+   * stays in sync without depending on echo from the wire.
+   */
+  const broadcastClassroomEvent = useCallback(
+    async (type: string, payload: Record<string, unknown> = {}) => {
+      if (!type.startsWith("CLASSROOM_")) return;
+      // Local fan-out first — instant feedback for the sender.
+      classroomListenersRef.current.forEach((fn) => {
+        try {
+          fn(type, payload, localParticipant.identity);
+        } catch (e) {
+          console.warn("classroom listener threw", e);
+        }
+      });
+      await sendMessage(GAME_MESSAGES.CLASSROOM_RELAY, { type, payload });
+    },
+    [localParticipant.identity, sendMessage],
+  );
+
   const handleDataMessage = useCallback(
     (payload: Uint8Array, participant: any) => {
       try {
@@ -225,6 +276,34 @@ export function useGameBoard() {
             }));
             break;
           }
+
+          case GAME_MESSAGES.CLASSROOM_RELAY: {
+            // Unwrap and fan out to local listeners. We don't echo to
+            // the sender — they fan out locally before publishing.
+            if (
+              participant &&
+              participant.identity === localParticipant.identity
+            ) {
+              break;
+            }
+            const inner = (data && data.type) || null;
+            if (typeof inner !== "string" || !inner.startsWith("CLASSROOM_")) {
+              break;
+            }
+            const innerPayload = (data && data.payload) || {};
+            classroomListenersRef.current.forEach((fn) => {
+              try {
+                fn(
+                  inner,
+                  innerPayload,
+                  participant && participant.identity,
+                );
+              } catch (e) {
+                console.warn("classroom listener threw", e);
+              }
+            });
+            break;
+          }
         }
       } catch {
         /* swallow malformed */
@@ -241,6 +320,8 @@ export function useGameBoard() {
     declineGame,
     endGame,
     relayScore,
+    broadcastClassroomEvent,
+    subscribeClassroomEvents,
     handleDataMessage,
   };
 }

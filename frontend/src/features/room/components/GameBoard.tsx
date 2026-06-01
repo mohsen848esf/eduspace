@@ -26,6 +26,23 @@ interface GameBoardProps {
    */
   onScoreUpdate?: (userId: string, score: number) => void;
   onGameOver?: (scores: Record<string, number>) => void;
+  /**
+   * Forward a classroom-mode event from the local iframe out to every
+   * peer. Wired by the shell to `useGameBoard.broadcastClassroomEvent`.
+   */
+  onBroadcastClassroom?: (
+    type: string,
+    payload: Record<string, unknown>,
+  ) => void;
+  /**
+   * Subscribe to classroom-mode events from the data channel. The
+   * GameBoard re-emits each one into its iframe so the game's own
+   * postMessage handler receives it. Wired by the shell to
+   * `useGameBoard.subscribeClassroomEvents`.
+   */
+  subscribeClassroomEvents?: (
+    fn: (type: string, payload: unknown, fromIdentity?: string) => void,
+  ) => () => void;
 }
 
 function getInitials(name: string) {
@@ -161,6 +178,8 @@ export default function GameBoard({
   onEnd,
   onScoreUpdate,
   onGameOver,
+  onBroadcastClassroom,
+  subscribeClassroomEvents,
 }: GameBoardProps) {
   const { t } = useTranslation(["games", "room"]);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -252,12 +271,43 @@ export default function GameBoard({
         case "GAME_OVER":
           onGameOver?.(payload?.scores ?? {});
           break;
+
+        default:
+          // Forward CLASSROOM_* messages out to peers via the data
+          // channel. The shell echoes them back into the local
+          // iframe via the subscribeClassroomEvents path.
+          if (
+            typeof type === "string" &&
+            type.startsWith("CLASSROOM_") &&
+            onBroadcastClassroom
+          ) {
+            onBroadcastClassroom(type, payload || {});
+          }
+          break;
       }
     };
 
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [roster, localParticipant, isHost, onScoreUpdate, onGameOver]);
+  }, [
+    roster,
+    localParticipant,
+    isHost,
+    onScoreUpdate,
+    onGameOver,
+    onBroadcastClassroom,
+  ]);
+
+  // Push CLASSROOM_* events from the data channel into the iframe.
+  useEffect(() => {
+    if (!subscribeClassroomEvents) return;
+    return subscribeClassroomEvents((type, payload) => {
+      iframeRef.current?.contentWindow?.postMessage(
+        { type, payload: payload ?? {} },
+        "*",
+      );
+    });
+  }, [subscribeClassroomEvents]);
 
   // Auto-focus iframe on mount and on src changes so the user doesn't
   // have to click into it before typing.

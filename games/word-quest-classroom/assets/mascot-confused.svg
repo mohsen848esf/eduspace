@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 500" width="600" height="500" role="img" aria-label="Jobzlingo mascot — Confused">
+
+<defs>
+  <linearGradient id="cover" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#56C285"/>
+    <stop offset="0.55" stop-color="#2E9A5F"/>
+    <stop offset="1" stop-color="#1F7A4D"/>
+  </linearGradient>
+  <linearGradient id="page" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#FFFFFF"/>
+    <stop offset="1" stop-color="#EFE9D8"/>
+  </linearGradient>
+  <radialGradient id="floor" cx="0.5" cy="0.5" r="0.5">
+    <stop offset="0" stop-color="#000" stop-opacity="0.32"/>
+    <stop offset="1" stop-color="#000" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="hi" cx="0.3" cy="0.18" r="0.7">
+    <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.4"/>
+    <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="blush" cx="0.5" cy="0.5" r="0.5">
+    <stop offset="0" stop-color="#FF7A8A" stop-opacity="0.6"/>
+    <stop offset="1" stop-color="#FF7A8A" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="limb" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#56C285"/>
+    <stop offset="1" stop-color="#1F7A4D"/>
+  </linearGradient>
+  <linearGradient id="shoe" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#3A4F42"/>
+    <stop offset="1" stop-color="#1A2E22"/>
+  </linearGradient>
+</defs>
+
+
+
+<ellipse cx="300" cy="475" rx="170" ry="14" fill="url(#floor)"/>
+
+<g font-family="Courier New, monospace" font-size="15" font-weight="700" fill="#1A2E22" opacity="0.85">
+  <text x="65" y="80" transform="rotate(-12 65 80)">undefined</text>
+  <text x="410" y="100" transform="rotate(8 410 100)">stack trace</text>
+  <text x="55" y="170" transform="rotate(6 55 170)">async/await</text>
+  <text x="455" y="190" transform="rotate(-10 455 190)">CORS</text>
+  <text x="80" y="285" transform="rotate(-4 80 285)">webhook</text>
+  <text x="455" y="295" transform="rotate(8 455 295)">null</text>
+</g>
+
+
+        <g id="legs">
+          <rect x="244" y="395" width="32" height="46" rx="16" fill="url(#limb)" stroke="#1A2E22" stroke-width="2"/>
+
+        <path d="M 236.0 446 Q 236.0 428 244.0 428
+                 L 268.0 428
+                 Q 284.0 430 284.0 444
+                 Q 284.0 455.0 272.0 455.0
+                 L 244.0 455.0
+                 Q 236.0 455.0 236.0 446 Z"
+              fill="url(#shoe)" stroke="#1A2E22" stroke-width="2"/>
+        <ellipse cx="258" cy="454.0" rx="18.0" ry="3" fill="#1A2E22"/>
+
+          <rect x="324" y="395" width="32" height="46" rx="16" fill="url(#limb)" stroke="#1A2E22" stroke-width="2"/>
+
+        <path d="M 320.0 446 Q 320.0 428 328.0 428
+                 L 352.0 428
+                 Q 360.0 430 360.0 444
+                 Q 360.0 455.0 356.0 455.0
+                 L 328.0 455.0
+                 Q 320.0 455.0 320.0 446 Z"
+              fill="url(#shoe)" stroke="#1A2E22" stroke-width="2"/>
+        <ellipse cx="342" cy="454.0" rx="18.0" ry="3" fill="#1A2E22"/>
+
+        </g>
+
+
+<g id="body" transform="translate(300 270) rotate(-2)">
+
+  <path d="M -136 -118 Q -132 -126 -120 -126 L 122 -126 Q 134 -126 138 -118
+           L 138 118 Q 134 126 122 126 L -120 126 Q -132 126 -136 118 Z"
+        fill="#1F7A4D" opacity="0.5"/>
+
+  <path d="M 118 -120 L 134 -110 L 134 116 L 118 122 Z"
+        fill="url(#page)" stroke="#D4CDB8" stroke-width="1.2"/>
+  <g stroke="#D4CDB8" stroke-width="1">
+    <line x1="120" y1="-100" x2="132" y2="-92"/>
+    <line x1="120" y1="-80" x2="132" y2="-72"/>
+    <line x1="120" y1="-60" x2="132" y2="-52"/>
+    <line x1="120" y1="-40" x2="132" y2="-32"/>
+    <line x1="120" y1="-20" x2="132" y2="-12"/>
+    <line x1="120" y1="0"   x2="132" y2="8"/>
+    <line x1="120" y1="20"  x2="132" y2="28"/>
+    <line x1="120" y1="40"  x2="132" y2="48"/>
+    <line x1="120" y1="60"  x2="132" y2="68"/>
+    <line x1="120" y1="80"  x2="132" y2="88"/>
+  </g>
+
+  <path d="M -118 -120 L -134 -110 L -134 116 L -118 122 Z"
+        fill="url(#page)" stroke="#D4CDB8" stroke-width="1.2"/>
+  <g stroke="#D4CDB8" stroke-width="1">
+    <line x1="-132" y1="-92" x2="-120" y2="-100"/>
+    <line x1="-132" y1="-72" x2="-120" y2="-80"/>
+    <line x1="-132" y1="-52" x2="-120" y2="-60"/>
+    <line x1="-132" y1="-32" x2="-120" y2="-40"/>
+    <line x1="-132" y1="-12" x2="-120" y2="-20"/>
+    <line x1="-132" y1="8"   x2="-120" y2="0"/>
+    <line x1="-132" y1="28"  x2="-120" y2="20"/>
+    <line x1="-132" y1="48"  x2="-120" y2="40"/>
+    <line x1="-132" y1="68"  x2="-120" y2="60"/>
+    <line x1="-132" y1="88"  x2="-120" y2="80"/>
+  </g>
+
+  <path d="M -118 -120 Q -118 -130 -108 -130 L 108 -130 Q 118 -130 118 -120
+           L 118 120 Q 118 130 108 130 L -108 130 Q -118 130 -118 120 Z"
+        fill="url(#cover)"/>
+  <path d="M -118 -120 Q -118 -130 -108 -130 L 108 -130 Q 118 -130 118 -120
+           L 118 120 Q 118 130 108 130 L -108 130 Q -118 130 -118 120 Z"
+        fill="url(#hi)"/>
+
+  <rect x="-104" y="-116" width="208" height="232" rx="6"
+        fill="none" stroke="#F5A623" stroke-width="2" stroke-dasharray="3 5" opacity="0.85"/>
+
+  <circle cx="-100" cy="-110" r="3" fill="#FFFFFF" opacity="0.7"/>
+  <circle cx="100"  cy="-110" r="3" fill="#FFFFFF" opacity="0.7"/>
+  <circle cx="-100" cy="110"  r="3" fill="#FFFFFF" opacity="0.7"/>
+  <circle cx="100"  cy="110"  r="3" fill="#FFFFFF" opacity="0.7"/>
+
+  <text x="-46" y="100" font-family="Verdana, Geneva, sans-serif" font-weight="900"
+        font-size="24" fill="#FFFFFF" letter-spacing="0.5" text-anchor="start">Job</text>
+  <text x="-3" y="102" font-family="Verdana, Geneva, sans-serif" font-weight="900"
+        font-size="28" fill="#F5A623" letter-spacing="0" text-anchor="start">z</text>
+  <text x="13" y="100" font-family="Verdana, Geneva, sans-serif" font-weight="900"
+        font-size="24" fill="#FFFFFF" letter-spacing="0.5" text-anchor="start">lingo</text>
+</g>
+
+<path d="M 175 220 Q 135 290 130 360" stroke="url(#limb)" stroke-width="28" fill="none" stroke-linecap="round"/><ellipse cx="110" cy="364" rx="7" ry="11" fill="#FFD7A8" stroke="#1A2E22" stroke-width="2.5" transform="rotate(-20 110 364)"/><circle cx="130" cy="360" r="22" fill="#FFD7A8" stroke="#1A2E22" stroke-width="2.5"/><path d="M 120 364 Q 130 370 140 364" stroke="#9B7142" stroke-width="1.5" fill="none"/>
+<path d="M 425 220 Q 465 290 470 360" stroke="url(#limb)" stroke-width="28" fill="none" stroke-linecap="round"/><ellipse cx="450" cy="364" rx="7" ry="11" fill="#FFD7A8" stroke="#1A2E22" stroke-width="2.5" transform="rotate(-20 450 364)"/><circle cx="470" cy="360" r="22" fill="#FFD7A8" stroke="#1A2E22" stroke-width="2.5"/><path d="M 460 364 Q 470 370 480 364" stroke="#9B7142" stroke-width="1.5" fill="none"/>
+<g id='face'>
+        <g transform="translate(254 205)">
+          <rect x="-26" y="-10" width="52" height="22" rx="4" fill="#1A2E22"/>
+          <rect x="-22" y="-7"  width="14" height="14" fill="#FFFFFF"/>
+          <rect x="-4"  y="-7"  width="14" height="14" fill="#FFFFFF"/>
+          <rect x="-19" y="-3"  width="6"  height="6"  fill="#1F7A4D"/>
+          <rect x="-1"  y="-3"  width="6"  height="6"  fill="#1F7A4D"/>
+        </g>
+        <g transform="translate(346 208)">
+          <rect x="-26" y="-3" width="52" height="12" rx="4" fill="#1A2E22"/>
+          <rect x="-12" y="-1" width="24" height="8" fill="#FFFFFF"/>
+          <rect x="-2"  y="0" width="6" height="6" fill="#1F7A4D"/>
+        </g>
+        <line x1="280" y1="205" x2="320" y2="205"
+              stroke="#1A2E22" stroke-width="3" stroke-linecap="round"/>
+        <path d="M 228 185 L 278 189" stroke="#1A2E22" stroke-width="4"
+              fill="none" stroke-linecap="round"/>
+        <path d="M 322 193 L 372 185" stroke="#1A2E22" stroke-width="4"
+              fill="none" stroke-linecap="round"/>
+
+        <path d="M 282 245 Q 296 237 304 245
+                 Q 312 253 322 243"
+              stroke="#1A2E22" stroke-width="4" fill="none" stroke-linecap="round"/>
+        </g>
+
+<path d="M 388 178 Q 382 195 388 205 Q 394 195 388 178 Z" fill="#3A7BD5" stroke="#1A2E22" stroke-width="1.5"/>
+<circle cx="388" cy="180" r="3" fill="#FFFFFF" opacity="0.7"/>
+
+
+</svg>
