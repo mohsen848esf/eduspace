@@ -118,15 +118,24 @@ if (Test-Path $dockerExe) {
 
 Write-Host 'Waiting for Docker daemon...' -ForegroundColor Yellow
 $tries = 0
+# Docker Desktop on Windows takes 15-30 s to start the Linux engine
+# and create the named pipe. Give it a head-start before the first
+# probe so we don't print a scary error on the first attempt.
+Start-Sleep -Seconds 8
 do {
-    Start-Sleep -Seconds 3
-    docker info 2>$null | Out-Null
+    # Redirect both stdout and stderr to null so the "failed to connect"
+    # message never reaches the terminal. $LASTEXITCODE is still set
+    # correctly by the process exit code, which is what we check.
+    $null = & docker info 2>&1
+    if ($LASTEXITCODE -eq 0) { break }
     $tries += 1
     if ($tries -gt 40) {
-        Write-Host 'Docker did not become ready within 2 minutes. Aborting.' -ForegroundColor Red
+        Write-Host 'Docker did not become ready within ~2 minutes. Aborting.' -ForegroundColor Red
         exit 1
     }
-} while ($LASTEXITCODE -ne 0)
+    Write-Host ("  still waiting... ({0})" -f $tries) -ForegroundColor DarkGray
+    Start-Sleep -Seconds 4
+} while ($true)
 
 Write-Host 'Docker is ready.' -ForegroundColor Green
 
