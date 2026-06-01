@@ -5,6 +5,7 @@ from accounts.models import User
 class Game(models.Model):
     class GameType(models.TextChoices):
         WORD_GUESS = 'word_guess', 'Word Guess'
+        WORD_GUESS_CLASSROOM = 'word_guess_classroom', 'Word Guess (Classroom)'
         GRAMMAR = 'grammar', 'Grammar'
         VOCAB = 'vocab', 'Vocabulary'
 
@@ -18,6 +19,11 @@ class Game(models.Model):
     description = models.TextField(blank=True)
     thumbnail = models.ImageField(upload_to='games/', null=True, blank=True)
     is_free = models.BooleanField(default=True)
+    # When true, the gallery and the in-call selector hide this entry
+    # outside of an active call. Used for classroom-style variants
+    # whose host-vs-player flow only makes sense when there's a real
+    # group of participants on the line.
+    is_in_call_only = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

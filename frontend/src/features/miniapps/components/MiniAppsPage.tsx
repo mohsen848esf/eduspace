@@ -126,9 +126,17 @@ export default function MiniAppsPage() {
 
   // Build the full card list once games arrive; STATIC_APPS first so
   // the gallery never looks empty even if the backend is down.
+  // Filter out is_in_call_only games — they're meaningful only inside
+  // a call, where the in-call selector handles them.
   const cards: MiniAppCard[] = useMemo(() => {
     const result: MiniAppCard[] = [];
-    if (games) result.push(...games.map(gameToCard));
+    if (games) {
+      result.push(
+        ...games
+          .filter((g) => !g.is_in_call_only)
+          .map(gameToCard),
+      );
+    }
     result.push(...STATIC_APPS);
     return result;
   }, [games]);

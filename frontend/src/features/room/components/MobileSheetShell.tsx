@@ -139,6 +139,8 @@ export default function MobileSheetShell({
               onScoreUpdate={(userId, score) => {
                 if (userId) game.relayScore(score);
               }}
+              onBroadcastClassroom={game.broadcastClassroomEvent}
+              subscribeClassroomEvents={game.subscribeClassroomEvents}
             />
           ) : (
             <VideoGrid layout={layout} onLayoutChange={onLayoutChange} />

@@ -15,7 +15,8 @@ def generate_room_code():
 @permission_classes([IsAuthenticated])
 def game_list(request):
     games = Game.objects.all().values(
-        'id', 'title', 'game_type', 'description', 'thumbnail', 'is_free'
+        'id', 'title', 'game_type', 'description', 'thumbnail',
+        'is_free', 'is_in_call_only',
     )
     return Response(list(games))
 

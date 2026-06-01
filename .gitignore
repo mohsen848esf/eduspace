@@ -31,3 +31,11 @@ backend/media/recordings/*
 # Per-developer local overrides (editor preferences, machine-specific bits)
 .editors.local
 *.local
+
+
+# AI-context snapshots — manually regenerated, never committed.
+ai-context.frontend.md
+ai-context.backend.md
+ai-context.project.md
+ai-context.tasks.md
+COMMIT_EDITMSG.txt

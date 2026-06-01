@@ -3,10 +3,17 @@ import client from "../../../lib/api/client";
 export interface GameSummary {
   id: number;
   title: string;
-  game_type: "word_guess" | "grammar" | "vocab" | string;
+  game_type: "word_guess" | "word_guess_classroom" | "grammar" | "vocab" | string;
   description: string;
   thumbnail: string | null;
   is_free: boolean;
+  /**
+   * When true, the game is hidden from the standalone /miniapps
+   * gallery and only surfaces inside an active call. Used for the
+   * classroom variants whose host-vs-player flow only makes sense
+   * with a real group on the line.
+   */
+  is_in_call_only?: boolean;
 }
 
 /**
@@ -19,9 +26,8 @@ export interface GameSummary {
  */
 const GAME_TYPE_TO_SLUG: Record<string, string> = {
   word_guess: "word-quest",
-  // Future games map their game_type -> slug here. The selector falls
-  // back to a generic placeholder if a game doesn't have a static asset
-  // yet, so the modal renders something sensible.
+  word_guess_classroom: "word-quest-classroom",
+  // Future games map their game_type -> slug here.
 };
 
 export function gameAssetUrl(game: Pick<GameSummary, "game_type">): string | null {
