@@ -1168,6 +1168,28 @@ html.reduce-motion *::after {
  * are reused unchanged once the round actually starts.
  * =================================================================== */
 
+/* Classroom screens fit the viewport — no scroll. The hero card scales
+ * down so the role pick / lobby render entirely above the fold even on
+ * shorter laptops (~600px height). */
+#screen-classroom-role.screen--active,
+#screen-classroom-lobby.screen--active,
+#screen-classroom-countdown.screen--active {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100vh;
+  height: 100vh;
+  padding: 16px;
+  overflow: hidden;
+}
+
+#screen-classroom-lobby.screen--active {
+  /* Lobby has the most content. Top-anchor it so the host controls
+   * sit just under the header rather than floating mid-screen. */
+  justify-content: flex-start;
+  padding: 12px 16px 16px;
+}
+
 .classroom-hero {
   display: flex;
   flex-direction: column;
@@ -1205,7 +1227,9 @@ html.reduce-motion *::after {
   display: grid;
   grid-template-columns: 1fr;
   gap: 18px;
-  padding: 24px;
+  padding: 20px;
+  max-height: calc(100vh - 80px);
+  overflow: hidden;
 }
 @media (min-width: 720px) {
   .classroom-lobby {
@@ -1222,6 +1246,11 @@ html.reduce-motion *::after {
   text-transform: uppercase;
   color: var(--text-dim);
 }
+/* Visual gap before the Start button so it doesn't sit flush with the
+ * difficulty select. */
+.classroom-host-controls #classroom-start {
+  margin-top: 16px;
+}
 .classroom-lobby-hint {
   margin-top: 12px;
   font-size: 13px;
@@ -1231,12 +1260,24 @@ html.reduce-motion *::after {
   text-align: center;
 }
 
+.classroom-roster {
+  /* Allow the roster to scroll on its own when there are many players
+   * — the surrounding lobby still doesn't scroll. */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 .classroom-roster h3 {
   margin: 0 0 10px;
   font-size: 14px;
   letter-spacing: 0.4px;
   text-transform: uppercase;
   color: var(--text-dim);
+}
+.classroom-player-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 .classroom-player-list .lb-empty {
   padding: 14px 12px;
@@ -1277,4 +1318,15 @@ html.reduce-motion *::after {
 .classroom-countdown-foot {
   font-size: 14px;
   color: var(--text-dim);
+}
+
+
+/* Host-only control strip on the game screen. Sits above the regular
+ * game header so the host can pause / resume / advance without
+ * leaving the game view. */
+.classroom-host-bar {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 8px 16px 0;
 }

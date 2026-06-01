@@ -70,7 +70,7 @@ export default function RoomSidebar({
           while the outer width animates. Once collapsed, overflow-hidden
           on the parent clips this neatly. */}
       <div className={cn("flex flex-col h-full", openWidthClass)}>
-        <div className="flex items-center justify-between gap-1.5 p-2 border-b border-[var(--b)] flex-shrink-0">
+        <div className="relative flex items-center justify-center p-2 border-b border-[var(--b)] flex-shrink-0">
           <div className="flex items-center gap-1.5">
             {tabs.map((tab) => (
               <Tooltip key={tab.id} content={tab.tooltip}>
@@ -94,6 +94,7 @@ export default function RoomSidebar({
               onClick={() => onTabChange(activeTab)}
               aria-label={t("sidebar.collapse")}
               className={cn(
+                "absolute end-2 top-1/2 -translate-y-1/2",
                 "w-7 h-7 rounded-md border-none cursor-pointer",
                 "bg-transparent text-[var(--t3)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
                 "flex items-center justify-center transition-colors text-base",

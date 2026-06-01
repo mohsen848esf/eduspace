@@ -309,6 +309,37 @@ export default function GameBoard({
     });
   }, [subscribeClassroomEvents]);
 
+  // Re-push GAME_INIT to the iframe whenever the roster changes
+  // (someone joined / left the game). The classroom variant uses
+  // this to keep the lobby roster + scoreboard in sync without us
+  // exposing a dedicated message kind. Solo apps that don't track
+  // a roster get a harmless extra init message.
+  useEffect(() => {
+    const win = iframeRef.current?.contentWindow;
+    if (!win) return;
+    win.postMessage(
+      {
+        type: "GAME_INIT",
+        payload: {
+          mode: "in-call",
+          players: roster.map((r) => ({
+            userId: r.identity,
+            username: r.identity,
+            fullName: r.name,
+          })),
+          currentPlayer: {
+            userId: localParticipant.identity,
+            isHost,
+          },
+        },
+      },
+      "*",
+    );
+    // Note: this fires on the first roster snapshot too, so the
+    // classroom variant gets its onPlatformInit call even if
+    // GAME_READY arrived earlier than the React effect committed.
+  }, [roster, localParticipant.identity, isHost]);
+
   // Auto-focus iframe on mount and on src changes so the user doesn't
   // have to click into it before typing.
   useEffect(() => {
