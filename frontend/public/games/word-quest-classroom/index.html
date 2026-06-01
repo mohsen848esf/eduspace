@@ -848,6 +848,20 @@
       </div>
     </div>
 
+    <!-- Classroom: paused overlay shown to players when the host
+         pauses the round. Click events on the underlying screen are
+         blocked because the overlay covers everything (z-index high,
+         pointer-events: auto). -->
+    <div class="classroom-paused-overlay" id="classroom-paused-overlay" hidden>
+      <div class="classroom-paused-card">
+        <span class="classroom-paused-tag">Paused</span>
+        <h2 class="classroom-paused-title">Game paused by the host</h2>
+        <p class="classroom-paused-sub">
+          The host will resume the round shortly.
+        </p>
+      </div>
+    </div>
+
     <script src="game-bridge.js"></script>
 
     <script src="words.js"></script>

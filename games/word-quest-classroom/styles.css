@@ -1072,6 +1072,24 @@ button:focus-visible, select:focus-visible, input:focus-visible {
 
 /* ====== Compact game screen (fit-to-viewport, no scroll) ====== */
 #screen-game.screen { padding: 10px 18px 16px; }
+/* Force the game screen to fit the iframe viewport. The default
+ * .screen rule sets min-height:100vh but lets content overflow; that
+ * works for tall solo desktops but in the in-call iframe the host bar
+ * + game header + sentence + keyboard adds up to more than the
+ * available height. Locking to 100vh + flex-column with the keyboard
+ * staying at the bottom keeps everything visible without scroll. */
+#screen-game.screen--active {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 100vh;
+  overflow: hidden;
+}
+#screen-game .game-main {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
 #screen-game .game-header { padding: 4px 4px 8px; }
 #screen-game .timer-wrap { padding: 0 4px 8px; }
 #screen-game .sentence-card { padding: 14px 18px; margin-bottom: 10px; }
@@ -1321,12 +1339,70 @@ html.reduce-motion *::after {
 }
 
 
-/* Host-only control strip on the game screen. Sits above the regular
- * game header so the host can pause / resume / advance without
- * leaving the game view. */
+/* Host-only control strip on the game screen. Compact pill row at the
+ * top so it doesn't eat too much vertical space. */
 .classroom-host-bar {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-  padding: 8px 16px 0;
+  padding: 6px 4px 8px;
+  flex-shrink: 0;
+}
+.classroom-host-bar .btn {
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+
+/* Classroom: full-screen paused overlay for players. The overlay
+ * sits on top of every game screen and blocks pointer events so the
+ * player can't interact while the host has the round paused. */
+.classroom-paused-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  pointer-events: auto;
+  animation: eduspace-fade-in 220ms ease-out both;
+}
+.classroom-paused-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 28px;
+  border-radius: 18px;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.45);
+  text-align: center;
+  max-width: 320px;
+}
+.classroom-paused-tag {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--warning, #f59e0b);
+}
+.classroom-paused-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+}
+.classroom-paused-sub {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(226, 232, 240, 0.78);
+}
+
+@keyframes eduspace-fade-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
 }

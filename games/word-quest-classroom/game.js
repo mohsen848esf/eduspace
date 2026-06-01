@@ -584,6 +584,10 @@
     if (!p.timerMax) p.timerMax = TIMER_PER_MODE[session.mode];
     updateTimerUI(p.timer, p.timerMax);
     p.timerHandle = setInterval(() => {
+      // Classroom mode pauses the timer when the host pauses. We
+      // skip the decrement and the SFX/timeout checks until the
+      // host resumes.
+      if (window.__classroomPaused) return;
       p.timer--;
       updateTimerUI(p.timer, p.timerMax);
       if (p.timer <= 5 && p.timer > 0) SFX.tick();
@@ -1813,16 +1817,24 @@ Play yours →`;
       return;
     }
     if (type === 'CLASSROOM_PAUSE') {
-      // Toggle Pause/Resume button state on the host's own iframe.
+      // Freeze the timer for everyone (the host's iframe also has a
+      // running timer if they're testing, even though hosts don't
+      // play). Players additionally see the blocking overlay.
+      window.__classroomPaused = true;
+      const isHost = classroom && classroom.role === 'host';
+      const overlay = document.getElementById('classroom-paused-overlay');
+      if (overlay) overlay.hidden = isHost; // host sees no overlay
+      // Toggle host's Pause/Resume button visibility.
       const pauseBtn = document.getElementById('classroom-pause');
       const resumeBtn = document.getElementById('classroom-resume');
       if (pauseBtn) pauseBtn.hidden = true;
       if (resumeBtn) resumeBtn.hidden = false;
-      // Real timer pause + player blur overlay are part 2; the
-      // event still fans out so the round-trip is visible.
       return;
     }
     if (type === 'CLASSROOM_RESUME') {
+      window.__classroomPaused = false;
+      const overlay = document.getElementById('classroom-paused-overlay');
+      if (overlay) overlay.hidden = true;
       const pauseBtn = document.getElementById('classroom-pause');
       const resumeBtn = document.getElementById('classroom-resume');
       if (pauseBtn) pauseBtn.hidden = false;
@@ -1832,7 +1844,6 @@ Play yours →`;
     // CLASSROOM_NEXT — part 2 will advance everyone's question. For
     // now we just log so the wiring is exercised.
     if (type === 'CLASSROOM_NEXT') {
-      // No-op until the per-question sync lands.
       return;
     }
   };
@@ -1852,20 +1863,16 @@ Play yours →`;
     const localId =
       (payload.currentPlayer && payload.currentPlayer.userId) || null;
     const isHost = !!(payload.currentPlayer && payload.currentPlayer.isHost);
-    // Whoever launched the game is the host. The platform marks them
-    // via currentPlayer.isHost; players see isHost === false. We
-    // identify the actual host's identity by finding the one whose
-    // entry has `isHost`. The platform doesn't currently flag it on
-    // remote players, so fall back to the launcher convention: if
-    // I'm the host, my id is the host id; otherwise we use the
-    // accepted-list's first entry which the shell seeds with the
-    // host's identity (see useGameBoard.acceptGame).
+    // The shell now passes the canonical host identity through. Fall
+    // back to "I am host -> use my id" for older shells that don't
+    // include hostUserId yet, then to the first roster entry as a
+    // last resort.
     let hostId = null;
-    if (isHost && localId) {
+    if (payload.hostUserId) {
+      hostId = String(payload.hostUserId);
+    } else if (isHost && localId) {
       hostId = localId;
     } else {
-      // The shell adds the host first to acceptedParticipants on
-      // accept; the bridge passes that list through `players`.
       const first = rawPlayers[0];
       if (first) hostId = String(first.userId || first.username || '');
     }

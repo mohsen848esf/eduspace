@@ -243,6 +243,7 @@ export default function GameBoard({
                   username: r.identity,
                   fullName: r.name,
                 })),
+                hostUserId: gameBoard.hostIdentity,
                 currentPlayer: {
                   userId: localParticipant.identity,
                   isHost,
@@ -296,6 +297,7 @@ export default function GameBoard({
     onScoreUpdate,
     onGameOver,
     onBroadcastClassroom,
+    gameBoard.hostIdentity,
   ]);
 
   // Push CLASSROOM_* events from the data channel into the iframe.
@@ -327,6 +329,7 @@ export default function GameBoard({
             username: r.identity,
             fullName: r.name,
           })),
+          hostUserId: gameBoard.hostIdentity,
           currentPlayer: {
             userId: localParticipant.identity,
             isHost,
@@ -338,7 +341,7 @@ export default function GameBoard({
     // Note: this fires on the first roster snapshot too, so the
     // classroom variant gets its onPlatformInit call even if
     // GAME_READY arrived earlier than the React effect committed.
-  }, [roster, localParticipant.identity, isHost]);
+  }, [roster, localParticipant.identity, isHost, gameBoard.hostIdentity]);
 
   // Auto-focus iframe on mount and on src changes so the user doesn't
   // have to click into it before typing.
