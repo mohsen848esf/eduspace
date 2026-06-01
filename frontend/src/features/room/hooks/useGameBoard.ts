@@ -32,6 +32,13 @@ const GAME_MESSAGES = {
   GAME_END: "GAME_END",
   GAME_SCORE: "GAME_SCORE",
   /**
+   * Host -> everyone snapshot of the current `acceptedParticipants`
+   * list. Sent right after the host registers a new accept so a
+   * participant who accepted late learns about everyone who joined
+   * before them.
+   */
+  GAME_ROSTER: "GAME_ROSTER",
+  /**
    * Generic envelope for classroom-mode events. The iframe broadcasts
    * via `GameBridge.broadcast(type, payload)`; the shell wraps the
    * envelope in this kind and pushes it over the LiveKit data
@@ -134,6 +141,21 @@ export function useGameBoard() {
       gameUrl: pendingInvite.gameUrl,
       gameTitle: pendingInvite.gameTitle,
       hostIdentity: pendingInvite.from,
+      // Seed with both the host and the accepting player so the
+      // participant strip and the in-game roster both render
+      // immediately. Future accepts from peers fan in via the
+      // GAME_ACCEPT data-channel handler below. The dedupe in
+      // GAME_ACCEPT keeps this idempotent if a peer's message
+      // races our own setState.
+      acceptedParticipants: Array.from(
+        new Set([
+          ...prev.acceptedParticipants,
+          // hostIdentity in `pendingInvite.from` is the host's
+          // identity (we set it on launch).
+          pendingInvite.from,
+          localParticipant.identity,
+        ]),
+      ),
     }));
 
     setPendingInvite(null);
@@ -239,13 +261,61 @@ export function useGameBoard() {
             break;
 
           case GAME_MESSAGES.GAME_ACCEPT:
-            setGameBoard((prev) => ({
-              ...prev,
-              acceptedParticipants: [
-                ...prev.acceptedParticipants,
-                data.identity,
-              ],
-            }));
+            setGameBoard((prev) => {
+              if (prev.acceptedParticipants.includes(data.identity)) {
+                return prev;
+              }
+              const next = {
+                ...prev,
+                acceptedParticipants: [
+                  ...prev.acceptedParticipants,
+                  data.identity,
+                ],
+              };
+              // Only the host broadcasts the snapshot. Everyone else
+              // receives it and updates locally; we want exactly one
+              // canonical source.
+              if (
+                next.hostIdentity === localParticipant.identity &&
+                Array.isArray(next.acceptedParticipants)
+              ) {
+                // Fire-and-forget — sendMessage is async but we can
+                // schedule it here without awaiting because the
+                // setState reducer must stay synchronous.
+                sendMessage(GAME_MESSAGES.GAME_ROSTER, {
+                  identities: next.acceptedParticipants,
+                  hostIdentity: next.hostIdentity,
+                }).catch(() => undefined);
+              }
+              return next;
+            });
+            break;
+
+          case GAME_MESSAGES.GAME_ROSTER:
+            // Trust the host's snapshot; only react when the sender
+            // is actually the host so a misbehaving peer can't rewrite
+            // the roster.
+            setGameBoard((prev) => {
+              const sender =
+                (participant && participant.identity) || data.hostIdentity;
+              if (!sender) return prev;
+              if (
+                prev.hostIdentity &&
+                sender !== prev.hostIdentity &&
+                sender !== data.hostIdentity
+              ) {
+                return prev;
+              }
+              const ids: string[] = Array.isArray(data.identities)
+                ? data.identities.map(String)
+                : [];
+              if (ids.length === 0) return prev;
+              return {
+                ...prev,
+                acceptedParticipants: Array.from(new Set(ids)),
+                hostIdentity: data.hostIdentity || prev.hostIdentity,
+              };
+            });
             break;
 
           case GAME_MESSAGES.GAME_END:
@@ -309,7 +379,7 @@ export function useGameBoard() {
         /* swallow malformed */
       }
     },
-    [t],
+    [t, localParticipant, sendMessage],
   );
 
   return {

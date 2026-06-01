@@ -145,7 +145,11 @@ export default function MobileSheetShell({
           ) : (
             <VideoGrid layout={layout} onLayoutChange={onLayoutChange} />
           )}
-          <RoomRecordingBadge />
+          <RoomRecordingBadge
+            className={
+              game.gameBoard.isActive ? "top-12 end-3" : undefined
+            }
+          />
         </div>
 
         <RoomMobileControls

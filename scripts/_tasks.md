@@ -32,22 +32,32 @@ snapshots if you need it to plan against current state.
 ## In progress
 
 - **T-26 — Word Quest Classroom (in-call game variant)** —
-  Part 1 in this PR; Part 2 follows.
-  - **Part 1 (this PR, `feature/word-quest-classroom`):**
-    AI-context docs system (`scripts/build_ai_context.py` +
-    gitignored `ai-context.*.md`), classroom game folder copied to
-    `word-quest-classroom`, registered as a Game with
-    `is_in_call_only=true` and the `WORD_GUESS_CLASSROOM` type, new
-    backend management command `seed_classroom_game`, gallery hides
-    in-call-only games, generic `CLASSROOM_RELAY` data-channel
-    envelope in `useGameBoard` plus `GameBridge.broadcast()` /
-    `window.onClassroomEvent` plumbing, three new screens (role
-    pick → lobby → 3-2-1 countdown) inside the classroom variant.
+  Part 1 in PR #26 plus this fix-up; Part 2 follows.
+  - **Part 1 (PR #26 + fix-up commit on the same branch):**
+    AI-context docs system, classroom game folder
+    (`word-quest-classroom`), `is_in_call_only` catalogue flag,
+    `seed_classroom_game` management command, generic
+    `CLASSROOM_RELAY` data-channel envelope plus
+    `GameBridge.broadcast()` / `window.onClassroomEvent`, three
+    classroom screens (role pick → lobby → 3-2-1 countdown),
+    direct hand-off into the game with the host's mode/difficulty
+    instead of the solo home page, host-only role-pick (players
+    skip straight to the lobby), `GAME_ROSTER` snapshot so late
+    joiners see the full accepted-list, accepting players seed
+    themselves + the host into `acceptedParticipants`, GameBoard
+    re-pushes `GAME_INIT` whenever the roster changes,
+    centred sidebar tab strip with the close button absolute-end,
+    REC badge offset when a game is active, host bar on the game
+    screen with Pause / Resume / Next buttons (broadcast wired,
+    timer/blur are part 2), classroom screens fit-to-viewport
+    with no scroll, gap before Start button.
   - **Part 2 (next PR, `feature/word-quest-classroom-host-controls`):**
-    Pause / Resume / Next host controls, blur-and-disable overlay
-    for players, anti-inspect (right-click + F12 + DevTools detect),
-    mid-game rejoin from current question, podium end screen with
-    avatars, recording-game include/exclude toggle.
+    Real pause logic (timer freeze + player blur overlay),
+    anti-inspect (right-click + F12 + DevTools detect),
+    per-question sync (host advances → everyone follows),
+    mid-game rejoin from the current question (not the missed
+    ones), podium end screen with 1st/2nd/3rd avatars, Mini Apps
+    selector entry to "Join active game" for late joiners.
 
 ## Pending — not started
 

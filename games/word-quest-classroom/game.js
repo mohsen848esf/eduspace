@@ -584,6 +584,10 @@
     if (!p.timerMax) p.timerMax = TIMER_PER_MODE[session.mode];
     updateTimerUI(p.timer, p.timerMax);
     p.timerHandle = setInterval(() => {
+      // Classroom mode pauses the timer when the host pauses. We
+      // skip the decrement and the SFX/timeout checks until the
+      // host resumes.
+      if (window.__classroomPaused) return;
       p.timer--;
       updateTimerUI(p.timer, p.timerMax);
       if (p.timer <= 5 && p.timer > 0) SFX.tick();
@@ -1600,16 +1604,19 @@ Play yours →`;
   // ── Classroom mode ──────────────────────────────────────────────
   // The variant adds three screens (role pick, lobby, countdown) on
   // top of the regular flow and only activates when the platform
-  // tells us we're in-call. Once the host hits Start, all clients
-  // run the same 3-2-1 countdown, then fall back to the regular
-  // game screen for the rest of the round.
+  // tells us we're in-call. The role pick is host-only — players
+  // skip straight to the waiting lobby.
   //
-  // This PR ships the lobby + countdown sync. Pause / Resume / Next
-  // and per-question sync land in a follow-up.
-  let classroom = null; // null | { role: 'host'|'player', players: [...], localId, hostId }
+  // Once the host hits Start, all clients run the same 3-2-1
+  // countdown, then hand off to the regular game screen with the
+  // mode + difficulty the host picked.
+  let classroom = null;
+  // Flag set the first time wireClassroomScreens runs so we don't
+  // double-attach listeners across re-inits.
+  let classroomWired = false;
 
   function isClassroomMode() {
-    return !!(classroom && classroom.role);
+    return !!classroom;
   }
 
   function classroomRoster() {
@@ -1638,9 +1645,8 @@ Play yours →`;
   }
 
   function showClassroomLobby() {
-    const screen = document.getElementById('screen-classroom-lobby');
-    if (!screen) return;
-    const isHost = classroom && classroom.role === 'host';
+    if (!classroom) return;
+    const isHost = classroom.role === 'host';
     const hostBox = document.getElementById('classroom-host-controls');
     const playerBox = document.getElementById('classroom-player-wait');
     if (hostBox) hostBox.hidden = !isHost;
@@ -1650,35 +1656,37 @@ Play yours →`;
   }
 
   function wireClassroomScreens() {
-    // Role pick.
+    if (classroomWired) return;
+    classroomWired = true;
+
+    // Role pick — only the call host ever lands here.
     const roleScreen = document.getElementById('screen-classroom-role');
     if (roleScreen) {
       roleScreen.querySelectorAll('button[data-role]').forEach((btn) => {
         btn.addEventListener('click', () => {
           if (!classroom) return;
           classroom.role = btn.getAttribute('data-role') === 'host' ? 'host' : 'player';
-          // If the local user picked Host, take them out of the
-          // visible roster — hosts don't play.
-          classroom.players = classroom.players.filter(
-            (p) => !(classroom.role === 'host' && p.id === classroom.localId),
-          );
+          classroomRecomputePlayers();
           showClassroomLobby();
         });
       });
     }
 
-    // Lobby leave button — go back to role pick.
+    // Lobby leave button — return to role pick if the host opened it,
+    // otherwise no-op for players (they don't get the back button).
     const leaveBtn = document.getElementById('classroom-leave');
     if (leaveBtn) {
       leaveBtn.addEventListener('click', () => {
         if (!classroom) return;
-        classroom.role = null;
-        classroomRecomputePlayers();
-        showScreen('classroom-role');
+        if (classroom.canChooseRole) {
+          classroom.role = null;
+          classroomRecomputePlayers();
+          showScreen('classroom-role');
+        }
       });
     }
 
-    // Host: Start the round.
+    // Host: start the round.
     const startBtn = document.getElementById('classroom-start');
     if (startBtn) {
       startBtn.addEventListener('click', () => {
@@ -1687,7 +1695,6 @@ Play yours →`;
           (document.getElementById('classroom-mode') || {}).value || 'quick';
         const difficulty =
           (document.getElementById('classroom-difficulty') || {}).value || 'mixed';
-        // Broadcast to everyone (including self via the local fan-out).
         const bridge = window.GameBridge;
         if (bridge && typeof bridge.broadcast === 'function') {
           bridge.broadcast('CLASSROOM_START', {
@@ -1696,25 +1703,62 @@ Play yours →`;
             startedAt: Date.now(),
           });
         } else {
-          // Fallback when running standalone — just kick off locally.
           startClassroomCountdown({ mode, difficulty });
         }
+      });
+    }
+
+    // Host: pause / resume / next during the round. We broadcast the
+    // intent; reacting to it (blur overlay for players, pausing the
+    // timer, advancing the question) is wired in Part 2.
+    const broadcastClassroom = (type, payload) => {
+      const bridge = window.GameBridge;
+      if (bridge && typeof bridge.broadcast === 'function') {
+        bridge.broadcast(type, payload || {});
+      }
+    };
+    const pauseBtn = document.getElementById('classroom-pause');
+    const resumeBtn = document.getElementById('classroom-resume');
+    const nextBtn = document.getElementById('classroom-next');
+    if (pauseBtn) {
+      pauseBtn.addEventListener('click', () => {
+        if (!classroom || classroom.role !== 'host') return;
+        broadcastClassroom('CLASSROOM_PAUSE', {});
+      });
+    }
+    if (resumeBtn) {
+      resumeBtn.addEventListener('click', () => {
+        if (!classroom || classroom.role !== 'host') return;
+        broadcastClassroom('CLASSROOM_RESUME', {});
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        if (!classroom || classroom.role !== 'host') return;
+        broadcastClassroom('CLASSROOM_NEXT', {});
       });
     }
   }
 
   /**
-   * Re-derive `classroom.players` from the latest GAME_INIT roster,
-   * applying the host-not-a-player rule. Called when the role
-   * changes so going Host -> back -> Player puts the local user
-   * back into the roster cleanly.
+   * Re-derive `classroom.players` from the latest call roster.
+   *
+   * The host is excluded from the player list always — host doesn't
+   * play. The local user is included unless the local user IS the
+   * host.
    */
   function classroomRecomputePlayers() {
     if (!classroom || !Array.isArray(classroom.basePlayers)) return;
-    const isHost = classroom.role === 'host';
+    const hostId = classroom.hostId;
+    const localId = classroom.localId;
     classroom.players = classroom.basePlayers.filter(
-      (p) => !(isHost && p.id === classroom.localId),
+      (p) => p.id !== hostId,
     );
+    // Re-tag isLocal in case basePlayers got rebuilt.
+    classroom.players = classroom.players.map((p) => ({
+      ...p,
+      isLocal: p.id === localId,
+    }));
   }
 
   function startClassroomCountdown({ mode, difficulty }) {
@@ -1729,28 +1773,40 @@ Play yours →`;
         window.setTimeout(tick, 1000);
         return;
       }
-      // Hand off to the regular game flow.
       if (numEl) numEl.textContent = 'Go!';
       window.setTimeout(() => {
-        const modeSelect = document.getElementById('mode-select');
-        const diffSelect = document.getElementById('difficulty-select');
-        if (modeSelect) modeSelect.value = mode || 'quick';
-        if (diffSelect) diffSelect.value = difficulty || 'mixed';
-        // The existing wireHome handler watches #play-btn click; we
-        // can call startSession-style code here once the per-question
-        // sync lands. For now we just go to the home screen so the
-        // host can see they reached the entry point.
-        // TODO(part-2): drive the question loop directly so the host
-        //               doesn't have to hit play again.
-        if (typeof renderHome === 'function') renderHome();
-        showScreen('home');
+        // Bypass the solo home + select screens entirely. Set the
+        // mode/difficulty hidden selects and call startSession
+        // directly so the user never sees the original landing page.
+        try {
+          const modeSelect = document.getElementById('mode-select');
+          const diffSelect = document.getElementById('difficulty-select');
+          if (modeSelect) modeSelect.value = mode || 'quick';
+          if (diffSelect) diffSelect.value = difficulty || 'mixed';
+          // Show host bar before transitioning to the game screen so
+          // it's already mounted when the host arrives. Players keep
+          // it hidden.
+          const hostBar = document.getElementById('classroom-host-bar');
+          if (hostBar) {
+            hostBar.hidden = !(classroom && classroom.role === 'host');
+          }
+          if (typeof startSession === 'function') {
+            startSession(mode || 'quick', difficulty || 'mixed');
+          } else if (typeof renderHome === 'function') {
+            renderHome();
+            showScreen('home');
+          }
+        } catch (e) {
+          console.warn('classroom hand-off failed', e);
+          if (typeof renderHome === 'function') renderHome();
+          showScreen('home');
+        }
       }, 700);
     };
     window.setTimeout(tick, 1000);
   }
 
-  // Classroom-relay messages from peers. The shell forwards them via
-  // the bridge; we react locally.
+  // Classroom-relay messages from peers.
   window.onClassroomEvent = function onClassroomEvent(type, payload) {
     if (!isClassroomMode()) return;
     if (type === 'CLASSROOM_START') {
@@ -1758,21 +1814,46 @@ Play yours →`;
         mode: (payload && payload.mode) || 'quick',
         difficulty: (payload && payload.difficulty) || 'mixed',
       });
+      return;
+    }
+    if (type === 'CLASSROOM_PAUSE') {
+      // Freeze the timer for everyone (the host's iframe also has a
+      // running timer if they're testing, even though hosts don't
+      // play). Players additionally see the blocking overlay.
+      window.__classroomPaused = true;
+      const isHost = classroom && classroom.role === 'host';
+      const overlay = document.getElementById('classroom-paused-overlay');
+      if (overlay) overlay.hidden = isHost; // host sees no overlay
+      // Toggle host's Pause/Resume button visibility.
+      const pauseBtn = document.getElementById('classroom-pause');
+      const resumeBtn = document.getElementById('classroom-resume');
+      if (pauseBtn) pauseBtn.hidden = true;
+      if (resumeBtn) resumeBtn.hidden = false;
+      return;
+    }
+    if (type === 'CLASSROOM_RESUME') {
+      window.__classroomPaused = false;
+      const overlay = document.getElementById('classroom-paused-overlay');
+      if (overlay) overlay.hidden = true;
+      const pauseBtn = document.getElementById('classroom-pause');
+      const resumeBtn = document.getElementById('classroom-resume');
+      if (pauseBtn) pauseBtn.hidden = false;
+      if (resumeBtn) resumeBtn.hidden = true;
+      return;
+    }
+    // CLASSROOM_NEXT — part 2 will advance everyone's question. For
+    // now we just log so the wiring is exercised.
+    if (type === 'CLASSROOM_NEXT') {
+      return;
     }
   };
 
   /**
    * Hook called by game-bridge.js when the platform sends GAME_INIT.
    *
-   * In-call mode now boots the classroom flow:
-   *   1. Show the role-pick screen.
-   *   2. After the user picks, route to the lobby (host or player).
-   *   3. Once the host hits Start, every iframe runs the 3-2-1
-   *      countdown in sync via CLASSROOM_START.
-   *
-   * Solo and class modes keep the original behaviour — the home
-   * screen renders normally, so this build remains playable
-   * outside of a call.
+   * Hosts (the participant who launched the game) get the role-pick
+   * screen so they can choose to run as host or jump in as a player.
+   * Everyone else goes straight to the lobby in player mode.
    */
   window.onPlatformInit = function onPlatformInit(payload) {
     if (!payload || payload.mode !== 'in-call') return;
@@ -1781,22 +1862,61 @@ Play yours →`;
 
     const localId =
       (payload.currentPlayer && payload.currentPlayer.userId) || null;
+    const isHost = !!(payload.currentPlayer && payload.currentPlayer.isHost);
+    // The shell now passes the canonical host identity through. Fall
+    // back to "I am host -> use my id" for older shells that don't
+    // include hostUserId yet, then to the first roster entry as a
+    // last resort.
+    let hostId = null;
+    if (payload.hostUserId) {
+      hostId = String(payload.hostUserId);
+    } else if (isHost && localId) {
+      hostId = localId;
+    } else {
+      const first = rawPlayers[0];
+      if (first) hostId = String(first.userId || first.username || '');
+    }
 
-    classroom = {
-      role: null, // chosen on the role-pick screen
-      basePlayers: rawPlayers.map((p) => ({
-        id: String(p.userId || p.username || p.fullName || ''),
-        name: String(p.fullName || p.username || p.userId || 'Player'),
-        score: 0,
-        isLocal: localId !== null && p.userId === localId,
-      })),
-      players: [],
-      localId,
-      hostId: localId, // host launched the game; will be relayed later
-    };
+    const isReinit = !!classroom;
+    if (!isReinit) {
+      classroom = {
+        role: null,
+        canChooseRole: isHost,
+        basePlayers: [],
+        players: [],
+        localId,
+        hostId,
+      };
+    }
+    classroom.basePlayers = rawPlayers.map((p) => ({
+      id: String(p.userId || p.username || p.fullName || ''),
+      name: String(p.fullName || p.username || p.userId || 'Player'),
+      score: 0,
+      isLocal: localId !== null && p.userId === localId,
+    }));
+    classroom.localId = localId;
+    classroom.hostId = hostId;
+
+    // Players default to 'player' role; only the actual host can
+    // choose. Re-init keeps whatever role was already picked.
+    if (!classroom.role) {
+      classroom.role = isHost ? null : 'player';
+    }
+
     classroomRecomputePlayers();
     wireClassroomScreens();
-    showScreen('classroom-role');
+
+    // Re-init updates the lobby roster live; first init routes the
+    // user to the right starting screen.
+    if (isReinit) {
+      renderClassroomRoster();
+      return;
+    }
+    if (isHost) {
+      showScreen('classroom-role');
+    } else {
+      showClassroomLobby();
+    }
   };
 
   document.addEventListener('DOMContentLoaded', boot);

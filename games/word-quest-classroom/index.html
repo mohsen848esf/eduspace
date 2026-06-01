@@ -387,6 +387,20 @@
 
     <!-- ============ GAME SCREEN ============ -->
     <section class="screen" id="screen-game">
+      <!-- Classroom-only host controls. Hidden in solo mode; the
+           classroom JS unhides this strip when the local user is
+           the host so they can pause / resume / advance. -->
+      <div class="classroom-host-bar" id="classroom-host-bar" hidden>
+        <button class="btn btn--ghost btn--sm" id="classroom-pause">
+          ⏸ Pause
+        </button>
+        <button class="btn btn--ghost btn--sm" id="classroom-resume" hidden>
+          ▶ Resume
+        </button>
+        <button class="btn btn--primary btn--sm" id="classroom-next">
+          Next →
+        </button>
+      </div>
       <header class="game-header">
         <button class="icon-btn" id="game-back" aria-label="Quit to home">
           <svg
@@ -831,6 +845,20 @@
           <button class="btn btn--ghost" id="confirm-modal-cancel">Cancel</button>
           <button class="btn btn--primary" id="confirm-modal-ok">Confirm</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Classroom: paused overlay shown to players when the host
+         pauses the round. Click events on the underlying screen are
+         blocked because the overlay covers everything (z-index high,
+         pointer-events: auto). -->
+    <div class="classroom-paused-overlay" id="classroom-paused-overlay" hidden>
+      <div class="classroom-paused-card">
+        <span class="classroom-paused-tag">Paused</span>
+        <h2 class="classroom-paused-title">Game paused by the host</h2>
+        <p class="classroom-paused-sub">
+          The host will resume the round shortly.
+        </p>
       </div>
     </div>
 

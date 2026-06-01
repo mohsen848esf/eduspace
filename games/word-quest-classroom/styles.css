@@ -1072,6 +1072,24 @@ button:focus-visible, select:focus-visible, input:focus-visible {
 
 /* ====== Compact game screen (fit-to-viewport, no scroll) ====== */
 #screen-game.screen { padding: 10px 18px 16px; }
+/* Force the game screen to fit the iframe viewport. The default
+ * .screen rule sets min-height:100vh but lets content overflow; that
+ * works for tall solo desktops but in the in-call iframe the host bar
+ * + game header + sentence + keyboard adds up to more than the
+ * available height. Locking to 100vh + flex-column with the keyboard
+ * staying at the bottom keeps everything visible without scroll. */
+#screen-game.screen--active {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 100vh;
+  overflow: hidden;
+}
+#screen-game .game-main {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
 #screen-game .game-header { padding: 4px 4px 8px; }
 #screen-game .timer-wrap { padding: 0 4px 8px; }
 #screen-game .sentence-card { padding: 14px 18px; margin-bottom: 10px; }
@@ -1168,6 +1186,28 @@ html.reduce-motion *::after {
  * are reused unchanged once the round actually starts.
  * =================================================================== */
 
+/* Classroom screens fit the viewport — no scroll. The hero card scales
+ * down so the role pick / lobby render entirely above the fold even on
+ * shorter laptops (~600px height). */
+#screen-classroom-role.screen--active,
+#screen-classroom-lobby.screen--active,
+#screen-classroom-countdown.screen--active {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100vh;
+  height: 100vh;
+  padding: 16px;
+  overflow: hidden;
+}
+
+#screen-classroom-lobby.screen--active {
+  /* Lobby has the most content. Top-anchor it so the host controls
+   * sit just under the header rather than floating mid-screen. */
+  justify-content: flex-start;
+  padding: 12px 16px 16px;
+}
+
 .classroom-hero {
   display: flex;
   flex-direction: column;
@@ -1205,7 +1245,9 @@ html.reduce-motion *::after {
   display: grid;
   grid-template-columns: 1fr;
   gap: 18px;
-  padding: 24px;
+  padding: 20px;
+  max-height: calc(100vh - 80px);
+  overflow: hidden;
 }
 @media (min-width: 720px) {
   .classroom-lobby {
@@ -1222,6 +1264,11 @@ html.reduce-motion *::after {
   text-transform: uppercase;
   color: var(--text-dim);
 }
+/* Visual gap before the Start button so it doesn't sit flush with the
+ * difficulty select. */
+.classroom-host-controls #classroom-start {
+  margin-top: 16px;
+}
 .classroom-lobby-hint {
   margin-top: 12px;
   font-size: 13px;
@@ -1231,12 +1278,24 @@ html.reduce-motion *::after {
   text-align: center;
 }
 
+.classroom-roster {
+  /* Allow the roster to scroll on its own when there are many players
+   * — the surrounding lobby still doesn't scroll. */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 .classroom-roster h3 {
   margin: 0 0 10px;
   font-size: 14px;
   letter-spacing: 0.4px;
   text-transform: uppercase;
   color: var(--text-dim);
+}
+.classroom-player-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 .classroom-player-list .lb-empty {
   padding: 14px 12px;
@@ -1277,4 +1336,79 @@ html.reduce-motion *::after {
 .classroom-countdown-foot {
   font-size: 14px;
   color: var(--text-dim);
+}
+
+
+/* Host-only control strip on the game screen. Compact pill row at the
+ * top so it doesn't eat too much vertical space. */
+.classroom-host-bar {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 6px 4px 8px;
+  flex-shrink: 0;
+}
+.classroom-host-bar .btn {
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+
+/* Classroom: full-screen paused overlay for players. The overlay
+ * sits on top of every game screen and blocks pointer events so the
+ * player can't interact while the host has the round paused. */
+.classroom-paused-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  pointer-events: auto;
+  animation: eduspace-fade-in 220ms ease-out both;
+}
+/* The HTML `hidden` attribute must win over the `display: flex` above.
+ * Without this rule, the overlay is always visible because CSS display
+ * overrides the attribute's built-in `display: none`. */
+.classroom-paused-overlay[hidden] {
+  display: none;
+}
+.classroom-paused-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 28px;
+  border-radius: 18px;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.45);
+  text-align: center;
+  max-width: 320px;
+}
+.classroom-paused-tag {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--warning, #f59e0b);
+}
+.classroom-paused-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+}
+.classroom-paused-sub {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(226, 232, 240, 0.78);
+}
+
+@keyframes eduspace-fade-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
 }

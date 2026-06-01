@@ -94,7 +94,16 @@ export default function DockedPanelShell({
           ) : (
             <VideoGrid layout={layout} onLayoutChange={onLayoutChange} />
           )}
-          <RoomRecordingBadge />
+          <RoomRecordingBadge
+            className={
+              game.gameBoard.isActive
+                // Game topbar lives on the top edge with its End Game
+                // button at the right; nudge the badge below it so
+                // they don't collide.
+                ? "top-12 end-3"
+                : undefined
+            }
+          />
         </div>
         <RoomSidebar
           activeTab={controls.sidebarTab}
