@@ -1230,7 +1230,39 @@
     `;
     renderCampaignFinal();
     $('#campaign-mini').hidden = true;
-    showScreen('gameover');
+
+    // In classroom mode, show podium instead of game over
+    if (isClassroomMode() && classroom && classroom.players && classroom.players.length > 0) {
+      renderPodium();
+    } else {
+      showScreen('gameover');
+    }
+  }
+
+  function renderPodium() {
+    // Get scores from classroom players
+    const players = classroom.players || [];
+    // Sort by score descending
+    const sorted = [...players].sort((a, b) => (b.score || 0) - (a.score || 0));
+
+    // Update podium slots
+    const ranks = [1, 2, 3];
+    ranks.forEach(rank => {
+      const player = sorted[rank - 1];
+      const nameEl = document.getElementById(`podium-${rank}-name`);
+      const scoreEl = document.getElementById(`podium-${rank}-score`);
+      if (nameEl && scoreEl) {
+        if (player) {
+          nameEl.textContent = player.name || 'Unknown';
+          scoreEl.textContent = player.score || 0;
+        } else {
+          nameEl.textContent = '—';
+          scoreEl.textContent = '0';
+        }
+      }
+    });
+
+    showScreen('podium');
   }
 
   function renderCampaignFinal() {
@@ -1566,6 +1598,12 @@ Play yours →`;
       }
     });
 
+    // Podium home button
+    $('#podium-home').addEventListener('click', () => {
+      renderHome();
+      showScreen('home');
+    });
+
     // Easter egg: type "jobzlingo" on home screen
     let buffer = '';
     document.addEventListener('keydown', e => {
@@ -1841,9 +1879,16 @@ Play yours →`;
       if (resumeBtn) resumeBtn.hidden = true;
       return;
     }
-    // CLASSROOM_NEXT — part 2 will advance everyone's question. For
-    // now we just log so the wiring is exercised.
+    // CLASSROOM_NEXT — advance everyone's question when the host taps
+    // the Next button in their host bar.
     if (type === 'CLASSROOM_NEXT') {
+      if (session) {
+        stopTimer();
+        session.idx++;
+        session.streak = 0;
+        if ($('#game-streak')) $('#game-streak').textContent = '0';
+        nextWord();
+      }
       return;
     }
   };
@@ -1919,5 +1964,76 @@ Play yours →`;
     }
   };
 
+  // ── Classroom pause/resume/next handlers (called by game-bridge.js) ──
+  function pauseGame() {
+    if (!isClassroomMode()) return;
+    // The host triggers pause via the UI button, which broadcasts
+    // CLASSROOM_PAUSE. This function is only called when the platform
+    // forwards GAME_PAUSE (for symmetry with resume/next).
+    // In practice, the host uses the UI button, players receive the
+    // broadcast and freeze via onClassroomEvent.
+  }
+
+  function resumeGame() {
+    if (!isClassroomMode()) return;
+    // Similar to pauseGame, the host uses the UI button to resume.
+  }
+
+  function nextQuestion() {
+    if (!isClassroomMode() || !session) return;
+    // Advance to the next word immediately, skipping the current one.
+    // This is called when the host taps "Next" in the host bar.
+    stopTimer();
+    session.idx++;
+    session.streak = 0;
+    $('#game-streak').textContent = '0';
+    nextWord();
+  }
+
   document.addEventListener('DOMContentLoaded', boot);
+
+  // ── Anti-inspect: prevent right-click, F12, DevTools ──
+  (function() {
+    // Disable right-click
+    document.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    // Disable F12 and other dev tools shortcuts
+    document.addEventListener('keydown', (e) => {
+      // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C, Ctrl+U
+      if (
+        e.key === 'F12' ||
+        (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key)) ||
+        (e.ctrlKey && e.key === 'u')
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+
+    // DevTools detection via debugger
+    let isDevToolsOpen = false;
+    const checkDevTools = () => {
+      const start = performance.now();
+      /* eslint no-debugger: "warn" */
+      debugger; // This line triggers DevTools if open
+      const end = performance.now();
+      if (end - start > 100) {
+        isDevToolsOpen = true;
+        // Hide game content when DevTools detected
+        document.body.style.display = 'none';
+        document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f172a;color:#fff;font-family:sans-serif;"><div style="text-align:center;"><h1>DevTools detected</h1><p>Game access is restricted.</p></div></div>';
+      } else if (isDevToolsOpen) {
+        isDevToolsOpen = false;
+        document.body.style.display = '';
+      }
+    };
+
+    // Check periodically
+    setInterval(checkDevTools, 2000);
+    // Also check on focus
+    window.addEventListener('focus', checkDevTools);
+  })();
 })();

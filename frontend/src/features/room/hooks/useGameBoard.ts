@@ -258,6 +258,11 @@ export function useGameBoard() {
               gameUrl: data.gameUrl,
               from: participant?.identity || data.from,
             });
+            // Show toast notification when a game is launched
+            toast(t("invite.launched", { from: data.from, title: data.gameTitle }), {
+              icon: "🎮",
+              duration: 5000,
+            });
             break;
 
           case GAME_MESSAGES.GAME_ACCEPT:
