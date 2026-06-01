@@ -1370,6 +1370,12 @@ html.reduce-motion *::after {
   pointer-events: auto;
   animation: eduspace-fade-in 220ms ease-out both;
 }
+/* The HTML `hidden` attribute must win over the `display: flex` above.
+ * Without this rule, the overlay is always visible because CSS display
+ * overrides the attribute's built-in `display: none`. */
+.classroom-paused-overlay[hidden] {
+  display: none;
+}
 .classroom-paused-card {
   display: flex;
   flex-direction: column;
