@@ -21,6 +21,7 @@ import ParticipantsPanel from "./panels/ParticipantsPanel";
 import ChatPanel from "./panels/ChatPanel";
 import ToolsPanel from "./panels/ToolsPanel";
 import { type useGameBoard } from "../hooks/useGameBoard";
+import { type useWhiteboard } from "../hooks/useWhiteboard";
 import { cn } from "../../../lib/utils";
 
 type LayoutMode = "grid" | "spotlight" | "sidebar";
@@ -62,6 +63,7 @@ export default function UnifiedRoomShell({
   onLeaveConfirm,
   isLeaving,
   game,
+  whiteboard,
   roomCode,
 }: UnifiedRoomShellProps) {
   const { t } = useTranslation("recordings");
