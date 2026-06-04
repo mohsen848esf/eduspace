@@ -61,6 +61,8 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
   const [isClientRecording, setIsClientRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const chunkIndexRef = useRef<number>(0);
   const uploadPromisesRef = useRef<Promise<any>[]>([]);
   const activeTokenRef = useRef<string | null>(null);
@@ -134,12 +136,20 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
     return () => window.clearInterval(id);
   }, [refreshPermission, roomCode]);
 
-  // Cleanup screen capture stream on unmount
+  // Cleanup screen capture and mic streams on unmount
   useEffect(() => {
     return () => {
       const stream = streamRef.current;
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
+      }
+      const micStream = micStreamRef.current;
+      if (micStream) {
+        micStream.getTracks().forEach((track) => track.stop());
+      }
+      const audioCtx = audioCtxRef.current;
+      if (audioCtx) {
+        audioCtx.close().catch(() => {});
       }
     };
   }, []);
@@ -178,18 +188,86 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
     [roomCode, isMutating, refresh, t],
   );
 
+  const stop = useCallback(
+    async () => {
+      if (isClientRecording) {
+        const recorder = mediaRecorderRef.current;
+        if (recorder && recorder.state !== "inactive") {
+          recorder.stop();
+        }
+        const stream = streamRef.current;
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+        const micStream = micStreamRef.current;
+        if (micStream) {
+          micStream.getTracks().forEach((track) => track.stop());
+          micStreamRef.current = null;
+        }
+        const audioCtx = audioCtxRef.current;
+        if (audioCtx) {
+          audioCtx.close().catch(() => {});
+          audioCtxRef.current = null;
+        }
+        setIsClientRecording(false);
+        activeTokenRef.current = null;
+        streamRef.current = null;
+        mediaRecorderRef.current = null;
+        toast.success(t("controls.stopped", "Recording stopped"), { icon: "🎥" });
+        return null;
+      } else {
+        return wrapMutation(() => recordingsApi.stop(roomCode!), "errorStop");
+      }
+    },
+    [roomCode, isClientRecording, wrapMutation, t],
+  );
+
   const start = useCallback(
     async (quality: RecordingQuality) => {
       if (!roomCode || isMutating) return null;
       setIsMutating(true);
       try {
         // 1. Try to acquire DisplayMedia for Client-Side Recording
-        const stream = await navigator.mediaDevices.getDisplayMedia({
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({
           video: { displaySurface: "browser" } as any,
           audio: true,
         });
 
-        streamRef.current = stream;
+        let combinedStream = displayStream;
+
+        // Try to mix local microphone audio
+        try {
+          const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          micStreamRef.current = micStream;
+
+          const displayAudioTracks = displayStream.getAudioTracks();
+          const micAudioTracks = micStream.getAudioTracks();
+
+          if (displayAudioTracks.length > 0 && micAudioTracks.length > 0) {
+            const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+            const audioCtx = new AudioCtxClass();
+            audioCtxRef.current = audioCtx;
+
+            const displaySource = audioCtx.createMediaStreamSource(new MediaStream([displayAudioTracks[0]]));
+            const micSource = audioCtx.createMediaStreamSource(new MediaStream([micAudioTracks[0]]));
+            const destination = audioCtx.createMediaStreamDestination();
+
+            displaySource.connect(destination);
+            micSource.connect(destination);
+
+            const videoTrack = displayStream.getVideoTracks()[0];
+            const mixedAudioTrack = destination.stream.getAudioTracks()[0];
+
+            combinedStream = new MediaStream([videoTrack, mixedAudioTrack]);
+          } else if (micAudioTracks.length > 0) {
+            const videoTrack = displayStream.getVideoTracks()[0];
+            combinedStream = new MediaStream([videoTrack, micAudioTracks[0]]);
+          }
+        } catch (micErr) {
+          console.warn("Could not acquire microphone stream for recording mix", micErr);
+        }
+
+        streamRef.current = combinedStream;
         chunkIndexRef.current = 0;
         uploadPromisesRef.current = [];
 
@@ -203,9 +281,9 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
         const options = { mimeType: "video/webm;codecs=vp8,opus" };
         let recorder: MediaRecorder;
         try {
-          recorder = new MediaRecorder(stream, options);
+          recorder = new MediaRecorder(combinedStream, options);
         } catch (e) {
-          recorder = new MediaRecorder(stream);
+          recorder = new MediaRecorder(combinedStream);
         }
 
         mediaRecorderRef.current = recorder;
@@ -247,7 +325,7 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
         recorder.start(10000);
 
         // Listen for screen share stopped by user in browser UI
-        stream.getVideoTracks()[0].onended = () => {
+        displayStream.getVideoTracks()[0].onended = () => {
           stop();
         };
 
@@ -266,31 +344,7 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
         setIsMutating(false);
       }
     },
-    [roomCode, isMutating, wrapMutation, setInFlight, setPendingEdit, t],
-  );
-
-  const stop = useCallback(
-    async () => {
-      if (isClientRecording) {
-        const recorder = mediaRecorderRef.current;
-        if (recorder && recorder.state !== "inactive") {
-          recorder.stop();
-        }
-        const stream = streamRef.current;
-        if (stream) {
-          stream.getTracks().forEach((track) => track.stop());
-        }
-        setIsClientRecording(false);
-        activeTokenRef.current = null;
-        streamRef.current = null;
-        mediaRecorderRef.current = null;
-        toast.success(t("controls.stopped", "Recording stopped"), { icon: "🎥" });
-        return null;
-      } else {
-        return wrapMutation(() => recordingsApi.stop(roomCode!), "errorStop");
-      }
-    },
-    [roomCode, isClientRecording, wrapMutation, t],
+    [roomCode, isMutating, wrapMutation, setInFlight, setPendingEdit, t, stop],
   );
 
   const pause = useCallback(
