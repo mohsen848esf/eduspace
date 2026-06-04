@@ -28,9 +28,13 @@ backend/media/recordings/*
 .??*/hooks/
 .??*/agents/
 
-# Per-developer local overrides (editor preferences, machine-specific bits)
-.editors.local
+# Local-only files, documentation, and notes (never push these)
+# Use .local in the filename (e.g., filename.local.md) or place them in a local/ directory
+*.local.*
+*_local.*
 *.local
+/local/
+/docs/local/
 
 
 # AI-context snapshots — manually regenerated, never committed.

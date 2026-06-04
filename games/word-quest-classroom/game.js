@@ -394,13 +394,16 @@
     const d = new Date();
     return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
   }
-  function pickSessionWords(mode, difficulty) {
+  function pickSessionWords(mode, difficulty, seed) {
     const pool = filterWords(difficulty);
     if (mode === 'daily') {
-      const seed = dailySeed();
-      return shuffle(pool, seed).slice(0, DAILY_WORDS);
+      const seedVal = dailySeed();
+      return shuffle(pool, seedVal).slice(0, DAILY_WORDS);
     }
     if (mode === 'quick' || mode === 'speed') {
+      if (isClassroomMode() && seed != null) {
+        return shuffle(pool, seed).slice(0, QUICK_WORDS);
+      }
       return shuffle(pool).slice(0, QUICK_WORDS);
     }
     if (mode === 'campaign') {
@@ -409,17 +412,20 @@
       return [...pool].sort((a, b) => (order[a.difficulty] ?? 9) - (order[b.difficulty] ?? 9));
     }
     // marathon: full shuffled pool, loops back to start
+    if (isClassroomMode() && seed != null) {
+      return shuffle(pool, seed);
+    }
     return shuffle(pool);
   }
 
   // ----------------------------------------------------------
   // SESSION (game run)
   // ----------------------------------------------------------
-  function startSession(mode, difficulty) {
+  function startSession(mode, difficulty, seed) {
     session = {
       mode,
       difficulty,
-      words: pickSessionWords(mode, difficulty),
+      words: pickSessionWords(mode, difficulty, seed),
       idx: 0,
       score: 0,
       streak: 0,
@@ -593,9 +599,20 @@
       if (p.timer <= 5 && p.timer > 0) SFX.tick();
       if (p.timer <= 0) {
         stopTimer();
-        onTimeout();
+        if (classroom && classroom.role === 'host') {
+          revealFullWord();
+        } else {
+          onTimeout();
+        }
       }
     }, 1000);
+  }
+  function revealFullWord() {
+    if (!session || !session.perWord) return;
+    const p = session.perWord;
+    [...p.word.word].forEach((_, i) => p.revealedIdx.add(i));
+    paintLetters();
+    setMascotImg('game-mascot', 'happy');
   }
   function stopTimer() {
     if (session && session.perWord && session.perWord.timerHandle) {
@@ -617,6 +634,7 @@
   // ----------------------------------------------------------
   function onGuess(letter) {
     if (!session || !session.perWord) return;
+    if (classroom && classroom.role === 'host') return; // Hosts don't guess!
     const p = session.perWord;
     letter = letter.toUpperCase();
     const w = p.word.word;
@@ -697,6 +715,7 @@
   // ----------------------------------------------------------
   function useHint(num) {
     if (!session) return;
+    if (classroom && classroom.role === 'host') return; // Hosts don't use hints!
     const p = session.perWord;
     if (p.hintsUsed.has(num)) return;
     p.hintsUsed.add(num);
@@ -773,6 +792,7 @@
   // ----------------------------------------------------------
   function usePower(key) {
     if (!session || !session.powerups[key]) return;
+    if (classroom && classroom.role === 'host') return; // Hosts don't use powerups!
     session.powerups[key]--;
     if (key === 'skip') {
       toast('Skipped!', 'warn');
@@ -981,7 +1001,18 @@
     // Next button: marathon-end check
     const isRunOver = (session.mode === 'marathon' && session.wrongsTotalRun >= 3) ||
                       (session.mode !== 'marathon' && session.idx + 1 >= session.words.length);
-    $('#result-next').textContent = isRunOver ? 'See Final Score' : 'Next Word';
+    const nextBtn = $('#result-next');
+    if (isClassroomMode()) {
+      nextBtn.textContent = 'Waiting for host...';
+      nextBtn.disabled = true;
+      nextBtn.style.opacity = '0.5';
+      nextBtn.style.pointerEvents = 'none';
+    } else {
+      nextBtn.textContent = isRunOver ? 'See Final Score' : 'Next Word';
+      nextBtn.disabled = false;
+      nextBtn.style.opacity = '';
+      nextBtn.style.pointerEvents = '';
+    }
 
     showScreen('result');
   }
@@ -1230,7 +1261,39 @@
     `;
     renderCampaignFinal();
     $('#campaign-mini').hidden = true;
-    showScreen('gameover');
+
+    // In classroom mode, show podium instead of game over
+    if (isClassroomMode() && classroom && classroom.players && classroom.players.length > 0) {
+      renderPodium();
+    } else {
+      showScreen('gameover');
+    }
+  }
+
+  function renderPodium() {
+    // Get scores from classroom players
+    const players = classroom.players || [];
+    // Sort by score descending
+    const sorted = [...players].sort((a, b) => (b.score || 0) - (a.score || 0));
+
+    // Update podium slots
+    const ranks = [1, 2, 3];
+    ranks.forEach(rank => {
+      const player = sorted[rank - 1];
+      const nameEl = document.getElementById(`podium-${rank}-name`);
+      const scoreEl = document.getElementById(`podium-${rank}-score`);
+      if (nameEl && scoreEl) {
+        if (player) {
+          nameEl.textContent = player.name || 'Unknown';
+          scoreEl.textContent = player.score || 0;
+        } else {
+          nameEl.textContent = '—';
+          scoreEl.textContent = '0';
+        }
+      }
+    });
+
+    showScreen('podium');
   }
 
   function renderCampaignFinal() {
@@ -1456,8 +1519,12 @@ Play yours →`;
         }).then((ok) => {
           if (!ok) return;
           endSession(false);
-          renderHome();
-          showScreen('home');
+          if (isClassroomMode()) {
+            showClassroomLobby();
+          } else {
+            renderHome();
+            showScreen('home');
+          }
         });
       }
     });
@@ -1472,8 +1539,12 @@ Play yours →`;
       }).then((ok) => {
         if (!ok) return;
         endSession(false);
-        renderHome();
-        showScreen('home');
+        if (isClassroomMode()) {
+          showClassroomLobby();
+        } else {
+          renderHome();
+          showScreen('home');
+        }
       });
     });
 
@@ -1491,13 +1562,27 @@ Play yours →`;
       else { nextWord(); showScreen('game'); }
     });
     $('#result-share').addEventListener('click', () => showShare(buildShareCard()));
-    $('#result-home').addEventListener('click', () => { renderHome(); showScreen('home'); });
+    $('#result-home').addEventListener('click', () => {
+      if (isClassroomMode()) {
+        showClassroomLobby();
+      } else {
+        renderHome();
+        showScreen('home');
+      }
+    });
 
     $('#gameover-play').addEventListener('click', () => {
       startSession(session.mode, session.difficulty);
     });
     $('#gameover-share').addEventListener('click', () => showShare(buildShareCard()));
-    $('#gameover-home').addEventListener('click', () => { renderHome(); showScreen('home'); });
+    $('#gameover-home').addEventListener('click', () => {
+      if (isClassroomMode()) {
+        showClassroomLobby();
+      } else {
+        renderHome();
+        showScreen('home');
+      }
+    });
 
     // Leaderboard tabs
     $$('#lb-tabs .tab').forEach(t => {
@@ -1566,6 +1651,16 @@ Play yours →`;
       }
     });
 
+    // Podium home button
+    $('#podium-home').addEventListener('click', () => {
+      if (isClassroomMode()) {
+        showClassroomLobby();
+      } else {
+        renderHome();
+        showScreen('home');
+      }
+    });
+
     // Easter egg: type "jobzlingo" on home screen
     let buffer = '';
     document.addEventListener('keydown', e => {
@@ -1595,9 +1690,13 @@ Play yours →`;
     initBackground();
     wireEvents();
     renderHome();
+    // Check if we are running inside an iframe (in-call/classroom mode)
+    const isEmbedded = window.parent && window.parent !== window;
     // Fade out loading screen after a beat
     setTimeout(() => {
-      showScreen('home');
+      if (!isEmbedded) {
+        showScreen('home');
+      }
     }, 1500);
   }
 
@@ -1651,6 +1750,13 @@ Play yours →`;
     const playerBox = document.getElementById('classroom-player-wait');
     if (hostBox) hostBox.hidden = !isHost;
     if (playerBox) playerBox.hidden = isHost;
+
+    // Hide the leave button if they cannot choose their role (i.e. they are players)
+    const leaveBtn = document.getElementById('classroom-leave');
+    if (leaveBtn) {
+      leaveBtn.hidden = !classroom.canChooseRole;
+    }
+
     renderClassroomRoster();
     showScreen('classroom-lobby');
   }
@@ -1695,15 +1801,17 @@ Play yours →`;
           (document.getElementById('classroom-mode') || {}).value || 'quick';
         const difficulty =
           (document.getElementById('classroom-difficulty') || {}).value || 'mixed';
+        const seed = Math.floor(Math.random() * 1000000);
         const bridge = window.GameBridge;
         if (bridge && typeof bridge.broadcast === 'function') {
           bridge.broadcast('CLASSROOM_START', {
             mode,
             difficulty,
             startedAt: Date.now(),
+            seed,
           });
         } else {
-          startClassroomCountdown({ mode, difficulty });
+          startClassroomCountdown({ mode, difficulty, seed });
         }
       });
     }
@@ -1723,19 +1831,22 @@ Play yours →`;
     if (pauseBtn) {
       pauseBtn.addEventListener('click', () => {
         if (!classroom || classroom.role !== 'host') return;
-        broadcastClassroom('CLASSROOM_PAUSE', {});
+        const currentTimer = (session && session.perWord) ? session.perWord.timer : null;
+        broadcastClassroom('CLASSROOM_PAUSE', { timer: currentTimer });
       });
     }
     if (resumeBtn) {
       resumeBtn.addEventListener('click', () => {
         if (!classroom || classroom.role !== 'host') return;
-        broadcastClassroom('CLASSROOM_RESUME', {});
+        const currentTimer = (session && session.perWord) ? session.perWord.timer : null;
+        broadcastClassroom('CLASSROOM_RESUME', { timer: currentTimer });
       });
     }
     if (nextBtn) {
       nextBtn.addEventListener('click', () => {
         if (!classroom || classroom.role !== 'host') return;
-        broadcastClassroom('CLASSROOM_NEXT', {});
+        const nextIdx = (session ? session.idx + 1 : 0);
+        broadcastClassroom('CLASSROOM_NEXT', { questionIdx: nextIdx });
       });
     }
   }
@@ -1761,7 +1872,7 @@ Play yours →`;
     }));
   }
 
-  function startClassroomCountdown({ mode, difficulty }) {
+  function startClassroomCountdown({ mode, difficulty, seed }) {
     const numEl = document.getElementById('classroom-countdown-num');
     let n = 3;
     if (numEl) numEl.textContent = String(n);
@@ -1791,7 +1902,7 @@ Play yours →`;
             hostBar.hidden = !(classroom && classroom.role === 'host');
           }
           if (typeof startSession === 'function') {
-            startSession(mode || 'quick', difficulty || 'mixed');
+            startSession(mode || 'quick', difficulty || 'mixed', seed);
           } else if (typeof renderHome === 'function') {
             renderHome();
             showScreen('home');
@@ -1813,6 +1924,7 @@ Play yours →`;
       startClassroomCountdown({
         mode: (payload && payload.mode) || 'quick',
         difficulty: (payload && payload.difficulty) || 'mixed',
+        seed: (payload && payload.seed) || null,
       });
       return;
     }
@@ -1821,6 +1933,10 @@ Play yours →`;
       // running timer if they're testing, even though hosts don't
       // play). Players additionally see the blocking overlay.
       window.__classroomPaused = true;
+      if (session && session.perWord && payload && typeof payload.timer === 'number') {
+        session.perWord.timer = payload.timer;
+        updateTimerUI(session.perWord.timer, session.perWord.timerMax);
+      }
       const isHost = classroom && classroom.role === 'host';
       const overlay = document.getElementById('classroom-paused-overlay');
       if (overlay) overlay.hidden = isHost; // host sees no overlay
@@ -1833,6 +1949,10 @@ Play yours →`;
     }
     if (type === 'CLASSROOM_RESUME') {
       window.__classroomPaused = false;
+      if (session && session.perWord && payload && typeof payload.timer === 'number') {
+        session.perWord.timer = payload.timer;
+        updateTimerUI(session.perWord.timer, session.perWord.timerMax);
+      }
       const overlay = document.getElementById('classroom-paused-overlay');
       if (overlay) overlay.hidden = true;
       const pauseBtn = document.getElementById('classroom-pause');
@@ -1841,9 +1961,17 @@ Play yours →`;
       if (resumeBtn) resumeBtn.hidden = true;
       return;
     }
-    // CLASSROOM_NEXT — part 2 will advance everyone's question. For
-    // now we just log so the wiring is exercised.
+    // CLASSROOM_NEXT — advance everyone's question when the host taps
+    // the Next button in their host bar.
     if (type === 'CLASSROOM_NEXT') {
+      if (session) {
+        stopTimer();
+        session.idx = (payload && typeof payload.questionIdx === 'number') ? payload.questionIdx : session.idx + 1;
+        session.streak = 0;
+        if ($('#game-streak')) $('#game-streak').textContent = '0';
+        nextWord();
+        showScreen('game');
+      }
       return;
     }
   };
@@ -1888,12 +2016,16 @@ Play yours →`;
         hostId,
       };
     }
-    classroom.basePlayers = rawPlayers.map((p) => ({
-      id: String(p.userId || p.username || p.fullName || ''),
-      name: String(p.fullName || p.username || p.userId || 'Player'),
-      score: 0,
-      isLocal: localId !== null && p.userId === localId,
-    }));
+    classroom.basePlayers = rawPlayers.map((p) => {
+      const existing = (classroom && classroom.basePlayers) ? classroom.basePlayers.find(bp => bp.id === String(p.userId || p.username || p.fullName || '')) : null;
+      const score = typeof p.score === 'number' ? p.score : (existing ? existing.score : 0);
+      return {
+        id: String(p.userId || p.username || p.fullName || ''),
+        name: String(p.fullName || p.username || p.userId || 'Player'),
+        score: score,
+        isLocal: localId !== null && p.userId === localId,
+      };
+    });
     classroom.localId = localId;
     classroom.hostId = hostId;
 
@@ -1905,6 +2037,64 @@ Play yours →`;
 
     classroomRecomputePlayers();
     wireClassroomScreens();
+
+    // Check for mid-game rejoin if classroomState is provided
+    if (payload.classroomState && payload.classroomState.mode) {
+      const cs = payload.classroomState;
+      const mode = cs.mode || 'quick';
+      const difficulty = cs.difficulty || 'mixed';
+      
+      const modeSelect = document.getElementById('mode-select');
+      const diffSelect = document.getElementById('difficulty-select');
+      if (modeSelect) modeSelect.value = mode;
+      if (diffSelect) diffSelect.value = difficulty;
+
+      const hostBar = document.getElementById('classroom-host-bar');
+      if (hostBar) {
+        hostBar.hidden = !(classroom && classroom.role === 'host');
+      }
+
+      if (typeof startSession === 'function') {
+        startSession(mode, difficulty, cs.seed);
+        if (session && typeof cs.currentQuestionIdx === 'number') {
+          session.idx = cs.currentQuestionIdx;
+          if (session.idx >= session.words.length) {
+            endSession(true);
+          } else {
+            const w = session.words[session.idx];
+            session.perWord = {
+              word: w,
+              guesses: new Set(),
+              wrongs: 0,
+              hintsUsed: new Set(),
+              revealedIdx: new Set(),
+              hintPenalty: 0,
+              timer: typeof cs.timer === 'number' ? cs.timer : TIMER_PER_MODE[session.mode],
+              timerMax: TIMER_PER_MODE[session.mode],
+              timerHandle: null,
+              startedAt: Date.now(),
+              eliminated: new Set(),
+              forcedRevealedByHint: new Set()
+            };
+            if (cs.isPaused) {
+              window.__classroomPaused = true;
+              const overlay = document.getElementById('classroom-paused-overlay');
+              if (overlay) overlay.hidden = (classroom && classroom.role === 'host');
+              const pauseBtn = document.getElementById('classroom-pause');
+              const resumeBtn = document.getElementById('classroom-resume');
+              if (pauseBtn) pauseBtn.hidden = true;
+              if (resumeBtn) resumeBtn.hidden = false;
+            } else {
+              window.__classroomPaused = false;
+            }
+            renderGameWord();
+            startTimer();
+            showScreen('game');
+          }
+        }
+      }
+      return;
+    }
 
     // Re-init updates the lobby roster live; first init routes the
     // user to the right starting screen.
@@ -1919,5 +2109,76 @@ Play yours →`;
     }
   };
 
+  // ── Classroom pause/resume/next handlers (called by game-bridge.js) ──
+  function pauseGame() {
+    if (!isClassroomMode()) return;
+    // The host triggers pause via the UI button, which broadcasts
+    // CLASSROOM_PAUSE. This function is only called when the platform
+    // forwards GAME_PAUSE (for symmetry with resume/next).
+    // In practice, the host uses the UI button, players receive the
+    // broadcast and freeze via onClassroomEvent.
+  }
+
+  function resumeGame() {
+    if (!isClassroomMode()) return;
+    // Similar to pauseGame, the host uses the UI button to resume.
+  }
+
+  function nextQuestion() {
+    if (!isClassroomMode() || !session) return;
+    // Advance to the next word immediately, skipping the current one.
+    // This is called when the host taps "Next" in the host bar.
+    stopTimer();
+    session.idx++;
+    session.streak = 0;
+    $('#game-streak').textContent = '0';
+    nextWord();
+  }
+
   document.addEventListener('DOMContentLoaded', boot);
+
+  // ── Anti-inspect: prevent right-click, F12, DevTools ──
+  (function() {
+    // Disable right-click
+    document.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    // Disable F12 and other dev tools shortcuts
+    document.addEventListener('keydown', (e) => {
+      // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C, Ctrl+U
+      if (
+        e.key === 'F12' ||
+        (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key)) ||
+        (e.ctrlKey && e.key === 'u')
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+
+    // DevTools detection via debugger
+    let isDevToolsOpen = false;
+    const checkDevTools = () => {
+      const start = performance.now();
+      /* eslint no-debugger: "warn" */
+      debugger; // This line triggers DevTools if open
+      const end = performance.now();
+      if (end - start > 100) {
+        isDevToolsOpen = true;
+        // Hide game content when DevTools detected
+        document.body.style.display = 'none';
+        document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f172a;color:#fff;font-family:sans-serif;"><div style="text-align:center;"><h1>DevTools detected</h1><p>Game access is restricted.</p></div></div>';
+      } else if (isDevToolsOpen) {
+        isDevToolsOpen = false;
+        document.body.style.display = '';
+      }
+    };
+
+    // Check periodically
+    setInterval(checkDevTools, 2000);
+    // Also check on focus
+    window.addEventListener('focus', checkDevTools);
+  })();
 })();

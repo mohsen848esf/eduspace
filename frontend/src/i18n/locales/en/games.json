@@ -35,7 +35,8 @@
     "title": "🎮 {{from}} started a game",
     "subtitle": "{{title}}",
     "join": "Join",
-    "decline": "Decline"
+    "decline": "Decline",
+    "launched": "🎮 {{from}} launched {{title}}"
   },
   "tools": {
     "endGameLabel": "End Game",

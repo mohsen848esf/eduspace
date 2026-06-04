@@ -112,6 +112,12 @@ export default function ToolsPanel() {
         onLaunch={(args) =>
           launchGame(args.gameId, args.gameTitle, args.gameUrl)
         }
+        activeGame={isGameActive ? {
+          gameId: gameBoard.gameId || "",
+          gameTitle: gameBoard.gameTitle || "",
+          gameUrl: gameBoard.gameUrl || "",
+          hostIdentity: gameBoard.hostIdentity || "",
+        } : null}
       />
     </>
   );

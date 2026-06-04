@@ -35,7 +35,8 @@
     "title": "🎮 {{from}} یک بازی را شروع کرد",
     "subtitle": "{{title}}",
     "join": "ورود",
-    "decline": "رد کردن"
+    "decline": "رد کردن",
+    "launched": "🎮 {{from}} {{title}} را شروع کرد"
   },
   "tools": {
     "endGameLabel": "پایان بازی",

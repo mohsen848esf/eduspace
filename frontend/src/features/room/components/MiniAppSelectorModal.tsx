@@ -81,6 +81,13 @@ const GAME_TYPE_ICON: Record<string, string> = {
   vocab: "🧠",
 };
 
+interface ActiveGameInfo {
+  gameId: string;
+  gameTitle: string;
+  gameUrl: string;
+  hostIdentity: string;
+}
+
 interface MiniAppSelectorModalProps {
   open: boolean;
   onClose: () => void;
@@ -93,6 +100,10 @@ interface MiniAppSelectorModalProps {
     gameTitle: string;
     gameUrl: string;
   }) => Promise<unknown> | unknown;
+  /**
+   * Optional active game info to show a "Join active game" entry.
+   */
+  activeGame?: ActiveGameInfo | null;
 }
 
 function gameToEntry(g: GameSummary): MiniAppEntry {
@@ -110,10 +121,32 @@ function gameToEntry(g: GameSummary): MiniAppEntry {
   };
 }
 
+function activeGameToEntry(game: ActiveGameInfo): MiniAppEntry {
+  return {
+    id: `active:${game.gameId}`,
+    title: `Join: ${game.gameTitle}`,
+    description: `Hosted by ${game.hostIdentity}`,
+    icon: "🎮",
+    accent: "from-[#10b981] to-[#3b82f6]",
+    category: "games",
+    game: {
+      id: Number(game.gameId),
+      title: game.gameTitle,
+      description: "Active classroom game",
+      game_type: "word_guess_classroom",
+      thumbnail: null,
+      is_free: true,
+      is_in_call_only: true,
+    },
+    ready: true,
+  };
+}
+
 export default function MiniAppSelectorModal({
   open,
   onClose,
   onLaunch,
+  activeGame,
 }: MiniAppSelectorModalProps) {
   const { t } = useTranslation(["miniapps", "games", "common"]);
   const [activeCategory, setActiveCategory] = useState<CategoryId>("all");
@@ -145,9 +178,14 @@ export default function MiniAppSelectorModal({
   const entries: MiniAppEntry[] = useMemo(() => {
     const out: MiniAppEntry[] = [];
     if (games) out.push(...games.map(gameToEntry));
+    // Add active game entry if provided (late joiners can join without
+    // going through the host's selector)
+    if (activeGame) {
+      out.push(activeGameToEntry(activeGame));
+    }
     out.push(...STATIC_ENTRIES);
     return out;
-  }, [games]);
+  }, [games, activeGame]);
 
   const filtered = useMemo(() => {
     if (activeCategory === "all") return entries;
@@ -155,10 +193,21 @@ export default function MiniAppSelectorModal({
   }, [entries, activeCategory]);
 
   const selected = entries.find((e) => e.id === selectedId);
-  const launchable = !!selected && selected.ready && !!selected.game;
+  // Launchable if: regular game with URL, OR active game (join existing)
+  const launchable = !!selected && (selected.ready && !!selected.game || selected.id.startsWith("active:"));
 
   const handleLaunch = async () => {
-    if (!selected || !selected.game) return;
+    if (!selected) return;
+    
+    // Handle active game join (no URL needed, just accept the invite)
+    if (selected.id.startsWith("active:")) {
+      // The active game is already launched, we just need to accept
+      // and the game will receive the GAME_ROSTER update
+      onClose();
+      return;
+    }
+    
+    if (!selected.game) return;
     const url = gameAssetUrl(selected.game);
     if (!url) return;
     setIsLaunching(true);

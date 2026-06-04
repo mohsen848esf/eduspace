@@ -19,9 +19,9 @@ import { useBackgroundBlur } from "../hooks/useBackgroundBlur";
 import { useActiveRecordingStore } from "../../recordings/store/activeRecordingStore";
 import { useGameBoard } from "../hooks/useGameBoard";
 import { RoomGameProvider } from "../hooks/useRoomGameContext";
-import { useBreakpoint } from "../../../hooks/useBreakpoint";
-import DockedPanelShell from "./DockedPanelShell";
-import MobileSheetShell from "./MobileSheetShell";
+import { useWhiteboard } from "../hooks/useWhiteboard";
+import { RoomWhiteboardProvider } from "../hooks/useRoomWhiteboardContext";
+import UnifiedRoomShell from "./UnifiedRoomShell";
 
 type LayoutMode = "grid" | "spotlight" | "sidebar";
 
@@ -64,21 +64,23 @@ function RoomContent({
     }
   }, [disconnect]);
 
-  // Game state.
+  // Game & Whiteboard state.
   const game = useGameBoard();
+  const whiteboard = useWhiteboard();
   const room = useRoomContext();
 
-  // Wire LiveKit data channel into the game hook.
+  // Wire LiveKit data channel into the game and whiteboard hooks.
   useEffect(() => {
     if (!room) return;
     const handler = (payload: Uint8Array, participant?: any) => {
       game.handleDataMessage(payload, participant);
+      whiteboard.handleDataMessage(payload, participant);
     };
     room.on("dataReceived", handler);
     return () => {
       room.off("dataReceived", handler);
     };
-  }, [room, game.handleDataMessage]);
+  }, [room, game.handleDataMessage, whiteboard.handleDataMessage]);
 
   // Camera + background setup once the local participant is ready.
   useEffect(() => {
@@ -126,10 +128,6 @@ function RoomContent({
     setup();
   }, [localParticipant]);
 
-  // Pick the right shell. The docked layout is used on tablet AND desktop;
-  // mobile uses a single shell — full-screen video plus bottom-sheet panels.
-  const breakpoint = useBreakpoint();
-
   const sharedShellProps = {
     controls: {
       isMicOn: controls.isMicOn,
@@ -149,24 +147,24 @@ function RoomContent({
     onLayoutChange: setLayout,
     onLeaveRequest: handleLeaveRequest,
     showLeaveConfirm,
+    onOpenChange: setShowLeaveConfirm,
     onLeaveConfirmOpenChange: setShowLeaveConfirm,
     onLeaveConfirm: handleLeaveConfirm,
     isLeaving,
     game,
+    whiteboard,
     roomCode: roomCode || "",
   };
 
-  const shell =
-    breakpoint === "mobile" ? (
-      <MobileSheetShell {...sharedShellProps} />
-    ) : (
-      <DockedPanelShell
-        {...sharedShellProps}
-        size={breakpoint === "tablet" ? "md" : "lg"}
-      />
-    );
+  const shell = <UnifiedRoomShell {...sharedShellProps} />;
 
-  return <RoomGameProvider value={game}>{shell}</RoomGameProvider>;
+  return (
+    <RoomGameProvider value={game}>
+      <RoomWhiteboardProvider value={whiteboard}>
+        {shell}
+      </RoomWhiteboardProvider>
+    </RoomGameProvider>
+  );
 }
 
 export default function RoomPage() {
