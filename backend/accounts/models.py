@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
 
 
 class User(AbstractUser):
@@ -76,3 +77,139 @@ class Notification(models.Model):
             from django.utils import timezone
             self.read_at = timezone.now()
             self.save(update_fields=['read_at'])
+
+
+# ---------------------------------------------------------------------------
+# Core Multi-Tenant RBAC Models
+# ---------------------------------------------------------------------------
+
+class Organization(models.Model):
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=100, unique=True)
+    logo = models.ImageField(upload_to='org_logos/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Permission(models.Model):
+    codename = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default='')
+
+    def __str__(self):
+        return self.name
+
+
+class Role(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, default='')
+    permissions = models.ManyToManyField(Permission, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
+class OrgMember(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='members')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='org_memberships')
+    role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True)
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('organization', 'user')
+
+    def __str__(self):
+        return f"{self.user.username} in {self.organization.name} ({self.role.name if self.role else 'No Role'})"
+
+
+# ---------------------------------------------------------------------------
+# Academy CRM Models
+# ---------------------------------------------------------------------------
+
+class Course(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='courses')
+    title = models.CharField(max_length=255)
+    code = models.CharField(max_length=50)  # e.g. CS101
+    description = models.TextField(blank=True, default='')
+    price = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('organization', 'code')
+
+    def __str__(self):
+        return f"{self.title} ({self.code})"
+
+
+class AcademyClass(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='classes')
+    teacher = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='teaching_classes')
+    name = models.CharField(max_length=255)  # e.g. "Summer 2026 Section A"
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    room = models.ForeignKey('rooms.Room', on_delete=models.SET_NULL, null=True, blank=True, related_name='academy_classes')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.course.code} - {self.name}"
+
+
+class Enrollment(models.Model):
+    academy_class = models.ForeignKey(AcademyClass, on_delete=models.CASCADE, related_name='enrollments')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='enrollments')
+    enrolled_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('academy_class', 'student')
+
+    def __str__(self):
+        return f"{self.student.username} enrolled in {self.academy_class.name}"
+
+
+# ---------------------------------------------------------------------------
+# Financial Expense Ledger Models
+# ---------------------------------------------------------------------------
+
+class TuitionInvoice(models.Model):
+    class Status(models.TextChoices):
+        UNPAID = 'unpaid', 'Unpaid'
+        PAID = 'paid', 'Paid'
+        CANCELLED = 'cancelled', 'Cancelled'
+
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='invoices')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='invoices')
+    academy_class = models.ForeignKey(AcademyClass, on_delete=models.SET_NULL, null=True, blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.UNPAID)
+    due_date = models.DateField(null=True, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Invoice {self.id} for {self.student.username} - {self.amount} ({self.status})"
+
+
+class ExpenseItem(models.Model):
+    class Category(models.TextChoices):
+        TEACHER_PAYOUT = 'teacher_payout', 'Teacher Payout'
+        INFRASTRUCTURE = 'infrastructure', 'Infrastructure/Server'
+        MARKETING = 'marketing', 'Marketing'
+        RENT = 'rent', 'Rent/Utilities'
+        OTHER = 'other', 'Other'
+
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='expenses')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    category = models.CharField(max_length=30, choices=Category.choices, default=Category.OTHER)
+    description = models.TextField(blank=True, default='')
+    recipient = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='received_payments')
+    incurred_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Expense {self.id} - {self.category} - {self.amount}"
+
