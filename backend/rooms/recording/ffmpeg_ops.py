@@ -220,3 +220,52 @@ def trim_inplace(
         str(output_path),
     ]
     _run(cmd)
+
+
+def concat_webm_to_mp4(
+    webm_paths: Iterable[Path],
+    output_path: Path,
+) -> None:
+    """
+    Concatenate WebM chunks and transcode them to a web-playable H.264/AAC MP4.
+    """
+    paths = [Path(p) for p in webm_paths]
+    if not paths:
+        raise FFmpegError('concat_webm_to_mp4 needs at least one input')
+    for p in paths:
+        if not p.exists():
+            raise FFmpegError(f'chunk missing: {p}')
+
+    ffmpeg = _which('ffmpeg')
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.NamedTemporaryFile(
+        mode='w', suffix='.txt', delete=False, encoding='utf-8',
+    ) as listf:
+        for p in paths:
+            escaped = str(p.resolve()).replace("'", "'\\''")
+            listf.write(f"file '{escaped}'\n")
+        list_path = Path(listf.name)
+
+    try:
+        _run([
+            ffmpeg,
+            '-y',
+            '-hide_banner',
+            '-loglevel', 'error',
+            '-f', 'concat',
+            '-safe', '0',
+            '-i', str(list_path),
+            '-c:v', 'libx264',
+            '-preset', 'fast',
+            '-crf', '23',
+            '-c:a', 'aac',
+            '-movflags', '+faststart',
+            str(output_path),
+        ])
+    finally:
+        try:
+            list_path.unlink()
+        except OSError:
+            pass
+

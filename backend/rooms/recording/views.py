@@ -399,6 +399,175 @@ def recording_status(request, room_code: str):
     return Response({'status': recording.status, 'recording': _serialize(recording)})
 
 
+def _finalize_client_recording_bg(recording_pk: int):
+    from django.db import connection
+    connection.close()
+
+    try:
+        recording = Recording.objects.get(pk=recording_pk)
+        chunks_dir = Path(settings.RECORDING_OUTPUT_DIR) / recording.public_token / 'chunks'
+        if not chunks_dir.exists():
+            logger.error("Chunks directory %s does not exist", chunks_dir)
+            recording.status = Recording.Status.FAILED
+            recording.save(update_fields=['status'])
+            return
+
+        # Find and sort chunks by index
+        chunk_files = sorted(chunks_dir.glob('chunk_*.webm'), key=lambda p: int(p.name.split('_')[1].split('.')[0]))
+        if not chunk_files:
+            logger.error("No chunks found in %s", chunks_dir)
+            recording.status = Recording.Status.FAILED
+            recording.save(update_fields=['status'])
+            return
+
+        final_path = Path(settings.RECORDING_OUTPUT_DIR) / recording.public_token / 'final.mp4'
+        final_path.parent.mkdir(parents=True, exist_ok=True)
+
+        ffmpeg_ops.concat_webm_to_mp4(chunk_files, final_path)
+
+        probe_result = ffmpeg_ops.probe(final_path)
+
+        recording.file_path = f'{recording.public_token}/final.mp4'
+        recording.duration_seconds = int(round(probe_result.duration_seconds))
+        recording.size_bytes = probe_result.size_bytes
+        recording.status = Recording.Status.COMPLETED
+        recording.completed_at = timezone.now()
+        recording.save(update_fields=['file_path', 'duration_seconds', 'size_bytes', 'status', 'completed_at'])
+
+        # Clean up chunks
+        try:
+            shutil.rmtree(chunks_dir)
+        except OSError:
+            logger.exception('failed to remove chunks dir %s', chunks_dir)
+
+        logger.info("Successfully finalized client-side recording %s", recording.public_token)
+    except Exception:
+        logger.exception("Failed to finalize client-side recording in background")
+        try:
+            recording = Recording.objects.get(pk=recording_pk)
+            recording.status = Recording.Status.FAILED
+            recording.save(update_fields=['status'])
+        except Exception:
+            pass
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def start_client_recording(request, room_code: str):
+    """
+    Initialize a client-side recording session.
+    """
+    room = _get_room_or_404(room_code)
+    if not room:
+        return Response({'error': 'Room not found'}, status=http.HTTP_404_NOT_FOUND)
+    forbidden = _require_recording_controller(request, room)
+    if forbidden:
+        return forbidden
+
+    if room.status == Room.Status.ENDED:
+        return Response(
+            {'error': 'Cannot record an ended room'},
+            status=http.HTTP_400_BAD_REQUEST,
+        )
+
+    if _active_recording(room):
+        return Response(
+            {'error': 'A recording is already in progress for this room'},
+            status=http.HTTP_409_CONFLICT,
+        )
+
+    quality = (request.data.get('quality') or '').strip().lower()
+    if quality not in {'720p', '1080p'}:
+        from django.conf import settings as dj_settings
+        quality = dj_settings.RECORDING_DEFAULT_QUALITY
+
+    with transaction.atomic():
+        recording = Recording.objects.create(
+            room=room,
+            owner=request.user,
+            quality=quality,
+            status=Recording.Status.RECORDING,
+        )
+
+    logger.info('client_recording.start room=%s token=%s', room.room_code, recording.public_token)
+    return Response(_serialize(recording), status=http.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_recording_chunk(request, token: str):
+    """
+    Upload a single 10-second WebM recording chunk.
+    """
+    recording = _get_recording_or_404(token)
+    if recording is None:
+        return Response({'error': 'Recording not found'}, status=http.HTTP_404_NOT_FOUND)
+
+    if recording.owner_id != request.user.id and not request.user.is_superuser:
+        return Response(
+            {'error': 'Only the owner can upload chunks to this recording'},
+            status=http.HTTP_403_FORBIDDEN,
+        )
+
+    chunk_file = request.FILES.get('chunk')
+    if not chunk_file:
+        return Response({'error': 'No chunk file provided'}, status=http.HTTP_400_BAD_REQUEST)
+
+    try:
+        index = int(request.data.get('index'))
+    except (TypeError, ValueError):
+        return Response({'error': 'Invalid chunk index'}, status=http.HTTP_400_BAD_REQUEST)
+
+    chunks_dir = Path(settings.RECORDING_OUTPUT_DIR) / recording.public_token / 'chunks'
+    chunks_dir.mkdir(parents=True, exist_ok=True)
+    chunk_path = chunks_dir / f'chunk_{index}.webm'
+
+    try:
+        with open(chunk_path, 'wb+') as destination:
+            for block in chunk_file.chunks():
+                destination.write(block)
+    except Exception as exc:
+        logger.exception("Failed to write chunk %d for recording %s", index, token)
+        return Response({'error': f'Failed to write chunk: {exc}'}, status=http.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    return Response({'success': True, 'index': index})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def complete_client_recording(request, token: str):
+    """
+    Mark a client-side recording session as complete and trigger background concatenation.
+    """
+    recording = _get_recording_or_404(token)
+    if recording is None:
+        return Response({'error': 'Recording not found'}, status=http.HTTP_404_NOT_FOUND)
+
+    if recording.owner_id != request.user.id and not request.user.is_superuser:
+        return Response(
+            {'error': 'Only the owner can finalize this recording'},
+            status=http.HTTP_403_FORBIDDEN,
+        )
+
+    if recording.status != Recording.Status.RECORDING:
+        return Response(
+            {'error': 'Recording is not in recording state'},
+            status=http.HTTP_409_CONFLICT,
+        )
+
+    recording.status = Recording.Status.PROCESSING
+    recording.save(update_fields=['status'])
+
+    import threading
+    thread = threading.Thread(target=_finalize_client_recording_bg, args=(recording.pk,))
+    thread.daemon = True
+    thread.start()
+
+    logger.info('client_recording.complete token=%s triggered background processing', token)
+    return Response(_serialize(recording))
+
+
+
 # ---------------------------------------------------------------------------
 # Recording control grants (host delegating control to a participant)
 # ---------------------------------------------------------------------------
@@ -1210,4 +1379,7 @@ __all__ = [
     'unpublish_recording',
     'recording_heartbeat',
     'recording_views',
+    'start_client_recording',
+    'upload_recording_chunk',
+    'complete_client_recording',
 ]
