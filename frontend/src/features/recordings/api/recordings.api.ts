@@ -111,6 +111,37 @@ const recordingsApi = {
     return res.data;
   },
 
+  startClient: async (
+    roomCode: string,
+    quality: RecordingQuality,
+  ): Promise<Recording> => {
+    const res = await client.post(`/rooms/${roomCode}/recording/start-client/`, {
+      quality,
+    });
+    return res.data;
+  },
+
+  uploadChunk: async (
+    token: string,
+    chunk: Blob,
+    index: number,
+  ): Promise<{ success: boolean; index: number }> => {
+    const formData = new FormData();
+    formData.append("chunk", chunk, `chunk_${index}.webm`);
+    formData.append("index", String(index));
+    const res = await client.post(`/recordings/${token}/upload-chunk/`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return res.data;
+  },
+
+  completeClient: async (token: string): Promise<Recording> => {
+    const res = await client.post(`/recordings/${token}/complete-client/`);
+    return res.data;
+  },
+
   roomStatus: async (roomCode: string): Promise<RoomRecordingStatus> => {
     const res = await client.get(`/rooms/${roomCode}/recording/status/`);
     return res.data;
