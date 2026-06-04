@@ -1304,7 +1304,7 @@ html.reduce-motion *::after {
 }
 
 /* Countdown overlay — full viewport, brand colour, centered. */
-.classroom-countdown {
+.classroom-countdown.screen--active {
   background: linear-gradient(135deg, var(--bg-0) 0%, var(--bg-1) 100%);
   display: flex;
   align-items: center;

@@ -23,6 +23,102 @@ Set-Location $projectRoot
 Write-Host 'Starting EduSpace...' -ForegroundColor Cyan
 
 # ---------------------------------------------------------------------------
+# Interactive Arrow-Key Menu Selector
+# ---------------------------------------------------------------------------
+function Show-Menu {
+    param(
+        [string]$Question,
+        [string[]]$Options,
+        [int]$DefaultIndex = 0
+    )
+
+    $isInteractive = $true
+    try {
+        $startRow = [Console]::CursorTop
+        $startCol = [Console]::CursorLeft
+        $null = [Console]::KeyAvailable
+    } catch {
+        $isInteractive = $false
+    }
+
+    if (-not $isInteractive) {
+        Write-Host $Question -ForegroundColor Cyan
+        for ($i = 0; $i -lt $Options.Count; $i++) {
+            Write-Host ("  [{0}] {1}" -f ($i + 1), $Options[$i])
+        }
+        $raw = Read-Host ("Enter choice (default {0})" -f ($DefaultIndex + 1))
+        if ([string]::IsNullOrWhiteSpace($raw)) { return $DefaultIndex }
+        if ([int]::TryParse($raw, [ref]$val)) {
+            $idx = $val - 1
+            if ($idx -ge 0 -and $idx -lt $Options.Count) { return $idx }
+        }
+        return $DefaultIndex
+    }
+
+    $selectedIndex = $DefaultIndex
+    $running = $true
+
+    $cursorVisible = $true
+    try {
+        $cursorVisible = [Console]::CursorVisible
+        [Console]::CursorVisible = $false
+    } catch {}
+
+    # Clear key buffer
+    while ([Console]::KeyAvailable) {
+        $null = [Console]::ReadKey($true)
+    }
+
+    while ($running) {
+        try {
+            [Console]::SetCursorPosition($startCol, $startRow)
+        } catch {}
+
+        Write-Host $Question -ForegroundColor Cyan
+        for ($i = 0; $i -lt $Options.Count; $i++) {
+            if ($i -eq $selectedIndex) {
+                Write-Host (" > {0}" -f $Options[$i]) -ForegroundColor Green
+            } else {
+                Write-Host ("   {0}" -f $Options[$i]) -ForegroundColor Gray
+            }
+        }
+
+        $keyInfo = [Console]::ReadKey($true)
+        switch ($keyInfo.Key) {
+            'UpArrow' {
+                $selectedIndex = ($selectedIndex - 1 + $Options.Count) % $Options.Count
+            }
+            'DownArrow' {
+                $selectedIndex = ($selectedIndex + 1) % $Options.Count
+            }
+            'Enter' {
+                $running = $false
+            }
+        }
+    }
+
+    try {
+        [Console]::CursorVisible = $cursorVisible
+    } catch {}
+
+    # Clear the menu lines from console
+    try {
+        [Console]::SetCursorPosition($startCol, $startRow)
+        $bufferWidth = 80
+        try { $bufferWidth = [Console]::BufferWidth } catch {}
+        $linesToClear = $Options.Count + 1
+        for ($i = 0; $i -lt $linesToClear; $i++) {
+            Write-Host (" " * ($bufferWidth - 1))
+        }
+        [Console]::SetCursorPosition($startCol, $startRow)
+    } catch {}
+
+    Write-Host ("{0} Selected: {1}" -f $Question, $Options[$selectedIndex]) -ForegroundColor Green
+    return $selectedIndex
+}
+
+
+# ---------------------------------------------------------------------------
 # Pick an editor
 # ---------------------------------------------------------------------------
 function Get-EditorCandidates {
@@ -82,16 +178,14 @@ if (-not $editorChoice) {
         Write-Host ("Only {0} found, using it." -f $editorChoice) -ForegroundColor DarkGray
     }
     else {
-        Write-Host ''
-        Write-Host 'Which editor do you want to open?' -ForegroundColor Cyan
-        for ($i = 0; $i -lt $available.Count; $i++) {
-            Write-Host ("  [{0}] {1}" -f ($i + 1), $available[$i].Name)
+        $options = @()
+        foreach ($av in $available) {
+            $options += $av.Name
         }
-        Write-Host ("  [{0}] don't open any editor" -f ($available.Count + 1))
-        $raw = Read-Host 'Enter choice (default 1)'
-        if ([string]::IsNullOrWhiteSpace($raw)) { $raw = '1' }
-        $idx = [int]$raw - 1
-        if ($idx -ge 0 -and $idx -lt $available.Count) {
+        $options += "don't open any editor"
+        
+        $idx = Show-Menu -Question 'Which editor do you want to open?' -Options $options -DefaultIndex 0
+        if ($idx -lt $available.Count) {
             $editorChoice = $available[$idx].Name
         }
         else {
@@ -123,10 +217,9 @@ $tries = 0
 # probe so we don't print a scary error on the first attempt.
 Start-Sleep -Seconds 8
 do {
-    # Redirect both stdout and stderr to null so the "failed to connect"
-    # message never reaches the terminal. $LASTEXITCODE is still set
-    # correctly by the process exit code, which is what we check.
-    $null = & docker info 2>&1
+    # Run docker info via cmd to completely avoid PowerShell stream conversion/crash
+    # when $ErrorActionPreference = 'Stop'
+    $null = cmd /c "docker info 2>nul"
     if ($LASTEXITCODE -eq 0) { break }
     $tries += 1
     if ($tries -gt 40) {
@@ -145,13 +238,44 @@ docker compose up -d
 # ---------------------------------------------------------------------------
 # Backend & frontend in their own terminals
 # ---------------------------------------------------------------------------
+$serviceOptions = @(
+    'Both (Backend & Frontend)',
+    'Frontend only',
+    'Backend only',
+    'None'
+)
+Write-Host ''
+$serviceIdx = Show-Menu -Question 'Which services do you want to start?' -Options $serviceOptions -DefaultIndex 0
+
+$startBackend = $false
+$startFrontend = $false
+
+if ($serviceIdx -eq 0) {
+    $startBackend = $true
+    $startFrontend = $true
+} elseif ($serviceIdx -eq 1) {
+    $startFrontend = $true
+} elseif ($serviceIdx -eq 2) {
+    $startBackend = $true
+}
+
 $backendCmd = "cd '$projectRoot\backend'; .\venv\Scripts\activate; uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --reload"
 $frontendCmd = "cd '$projectRoot\frontend'; npm run dev"
 
-Start-Process powershell -ArgumentList '-NoExit', '-Command', $backendCmd
-Start-Process powershell -ArgumentList '-NoExit', '-Command', $frontendCmd
+if ($startBackend) {
+    Write-Host 'Starting Backend in a new window...' -ForegroundColor Yellow
+    Start-Process powershell -ArgumentList '-NoExit', '-Command', $backendCmd
+}
+if ($startFrontend) {
+    Write-Host 'Starting Frontend in a new window...' -ForegroundColor Yellow
+    Start-Process powershell -ArgumentList '-NoExit', '-Command', $frontendCmd
+}
 
 Write-Host ''
-Write-Host 'All services started.' -ForegroundColor Green
-Write-Host '  Frontend: http://localhost:5173' -ForegroundColor Cyan
-Write-Host '  Backend:  http://localhost:8000' -ForegroundColor Cyan
+if ($startBackend -or $startFrontend) {
+    Write-Host 'Selected services started.' -ForegroundColor Green
+    if ($startFrontend) { Write-Host '  Frontend: http://localhost:5173' -ForegroundColor Cyan }
+    if ($startBackend)  { Write-Host '  Backend:  http://localhost:8000' -ForegroundColor Cyan }
+} else {
+    Write-Host 'No services started.' -ForegroundColor Yellow
+}

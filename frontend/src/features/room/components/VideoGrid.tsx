@@ -160,10 +160,10 @@ function TileView({
       className={cn(
         "relative bg-[var(--s2)] rounded-xl overflow-hidden transition-all duration-200 w-full h-full tile-enter",
         isSpeaking &&
-          kind === "camera" &&
-          "ring-2 ring-[var(--green)] ring-offset-2 ring-offset-[var(--s0)]",
+        kind === "camera" &&
+        "ring-2 ring-[var(--green)] ring-offset-2 ring-offset-[var(--s0)]",
         pinned &&
-          "ring-2 ring-[var(--brand)] ring-offset-2 ring-offset-[var(--s0)]",
+        "ring-2 ring-[var(--brand)] ring-offset-2 ring-offset-[var(--s0)]",
         className,
       )}
       onMouseEnter={() => setHovered(true)}
@@ -174,9 +174,8 @@ function TileView({
           trackRef={primaryTrack}
           className={cn("absolute inset-0 w-full h-full", fitClass)}
           style={
-            kind === "camera" && isLocal
-              ? { transform: "scaleX(-1)" }
-              : undefined
+            { transform: "scaleX(-1)" }
+
           }
         />
       ) : (

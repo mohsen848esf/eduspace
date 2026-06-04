@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useRoomContext,
@@ -22,6 +22,14 @@ export interface GameBoardState {
    * GAME_SCORE data-channel messages relayed by remote participants.
    */
   scores: Record<string, number>;
+  classroomState?: {
+    currentQuestionIdx: number;
+    isPaused: boolean;
+    timer?: number;
+    seed?: number | null;
+    mode?: string;
+    difficulty?: string;
+  };
 }
 
 const GAME_MESSAGES = {
@@ -47,6 +55,8 @@ const GAME_MESSAGES = {
    * which the bridge forwards to `window.onClassroomEvent`.
    */
   CLASSROOM_RELAY: "CLASSROOM_RELAY",
+  GAME_REQUEST_STATE: "GAME_REQUEST_STATE",
+  GAME_SYNC: "GAME_SYNC",
 } as const;
 
 export function useGameBoard() {
@@ -67,6 +77,14 @@ export function useGameBoard() {
     scores: {},
   });
 
+  const gameBoardRef = useRef(gameBoard);
+  const isHostRef = useRef(isHost);
+
+  useEffect(() => {
+    gameBoardRef.current = gameBoard;
+    isHostRef.current = isHost;
+  });
+
   const [pendingInvite, setPendingInvite] = useState<{
     gameId: string;
     gameTitle: string;
@@ -75,7 +93,7 @@ export function useGameBoard() {
   } | null>(null);
 
   const sendMessage = useCallback(
-    async (type: string, payload: any, destinations?: string[]) => {
+    async (type: string, payload: unknown, destinations?: string[]) => {
       const encoder = new TextEncoder();
       const data = encoder.encode(JSON.stringify({ type, payload }));
       await room.localParticipant.publishData(data, {
@@ -176,6 +194,7 @@ export function useGameBoard() {
       hostIdentity: null,
       acceptedParticipants: [],
       scores: {},
+      classroomState: undefined,
     });
     toast(t("board.ended"), { icon: "🎮" });
   }, [isHost, sendMessage, t]);
@@ -239,16 +258,53 @@ export function useGameBoard() {
           console.warn("classroom listener threw", e);
         }
       });
+
+      // Update state locally for host/sender if they are host
+      setGameBoard((prev) => {
+        if (prev.hostIdentity !== localParticipant.identity) return prev;
+
+        let nextState = prev.classroomState ? { ...prev.classroomState } : {
+          currentQuestionIdx: 0,
+          isPaused: false,
+        };
+
+        if (type === "CLASSROOM_START") {
+          nextState = {
+            currentQuestionIdx: 0,
+            isPaused: false,
+            mode: String(payload.mode || "quick"),
+            difficulty: String(payload.difficulty || "mixed"),
+            seed: typeof payload.seed === "number" ? payload.seed : null,
+          };
+        } else if (type === "CLASSROOM_NEXT") {
+          nextState.currentQuestionIdx = typeof payload.questionIdx === "number" ? payload.questionIdx : nextState.currentQuestionIdx + 1;
+        } else if (type === "CLASSROOM_PAUSE") {
+          nextState.isPaused = true;
+          if (typeof payload.timer === "number") {
+            nextState.timer = payload.timer;
+          }
+        } else if (type === "CLASSROOM_RESUME") {
+          nextState.isPaused = false;
+          if (typeof payload.timer === "number") {
+            nextState.timer = payload.timer;
+          }
+        }
+
+        return { ...prev, classroomState: nextState };
+      });
+
       await sendMessage(GAME_MESSAGES.CLASSROOM_RELAY, { type, payload });
     },
     [localParticipant.identity, sendMessage],
   );
 
   const handleDataMessage = useCallback(
-    (payload: Uint8Array, participant: any) => {
+    (payload: Uint8Array, participant: unknown) => {
       try {
         const decoder = new TextDecoder();
         const { type, payload: data } = JSON.parse(decoder.decode(payload));
+
+        const pMember = participant as { identity?: string } | undefined;
 
         switch (type) {
           case GAME_MESSAGES.GAME_INVITE:
@@ -256,7 +312,7 @@ export function useGameBoard() {
               gameId: data.gameId,
               gameTitle: data.gameTitle,
               gameUrl: data.gameUrl,
-              from: participant?.identity || data.from,
+              from: pMember?.identity || data.from,
             });
             // Show toast notification when a game is launched
             toast(t("invite.launched", { from: data.from, title: data.gameTitle }), {
@@ -302,7 +358,7 @@ export function useGameBoard() {
             // the roster.
             setGameBoard((prev) => {
               const sender =
-                (participant && participant.identity) || data.hostIdentity;
+                (pMember && pMember.identity) || data.hostIdentity;
               if (!sender) return prev;
               if (
                 prev.hostIdentity &&
@@ -332,6 +388,7 @@ export function useGameBoard() {
               hostIdentity: null,
               acceptedParticipants: [],
               scores: {},
+              classroomState: undefined,
             });
             setPendingInvite(null);
             toast(t("board.endedByHost"), { icon: "🎮" });
@@ -342,7 +399,7 @@ export function useGameBoard() {
             // server-side); fall back to the payload for clients that
             // can't read the participant context.
             const id =
-              (participant && participant.identity) || data.identity;
+              (pMember && pMember.identity) || data.identity;
             if (!id) break;
             const score = Number(data.score ?? 0);
             setGameBoard((prev) => ({
@@ -352,12 +409,48 @@ export function useGameBoard() {
             break;
           }
 
+          case GAME_MESSAGES.GAME_REQUEST_STATE: {
+            const currentGB = gameBoardRef.current;
+            if (isHostRef.current && currentGB.isActive) {
+              sendMessage(
+                GAME_MESSAGES.GAME_SYNC,
+                {
+                  gameId: currentGB.gameId,
+                  gameTitle: currentGB.gameTitle,
+                  gameUrl: currentGB.gameUrl,
+                  hostIdentity: currentGB.hostIdentity,
+                  acceptedParticipants: currentGB.acceptedParticipants,
+                  scores: currentGB.scores,
+                  classroomState: currentGB.classroomState,
+                },
+                pMember?.identity ? [pMember.identity] : undefined
+              ).catch(() => undefined);
+            }
+            break;
+          }
+
+          case GAME_MESSAGES.GAME_SYNC: {
+            setGameBoard({
+              isActive: true,
+              gameId: data.gameId,
+              gameUrl: data.gameUrl,
+              gameTitle: data.gameTitle,
+              hostIdentity: data.hostIdentity,
+              acceptedParticipants: Array.isArray(data.acceptedParticipants)
+                ? data.acceptedParticipants.map(String)
+                : [],
+              scores: data.scores || {},
+              classroomState: data.classroomState,
+            });
+            break;
+          }
+
           case GAME_MESSAGES.CLASSROOM_RELAY: {
             // Unwrap and fan out to local listeners. We don't echo to
             // the sender — they fan out locally before publishing.
             if (
-              participant &&
-              participant.identity === localParticipant.identity
+              pMember &&
+              pMember.identity === localParticipant.identity
             ) {
               break;
             }
@@ -366,12 +459,45 @@ export function useGameBoard() {
               break;
             }
             const innerPayload = (data && data.payload) || {};
+
+            // Update participant's local classroomState
+            setGameBoard((prev) => {
+              let nextState = prev.classroomState ? { ...prev.classroomState } : {
+                currentQuestionIdx: 0,
+                isPaused: false,
+              };
+
+              if (inner === "CLASSROOM_START") {
+                nextState = {
+                  currentQuestionIdx: 0,
+                  isPaused: false,
+                  mode: String(innerPayload.mode || "quick"),
+                  difficulty: String(innerPayload.difficulty || "mixed"),
+                  seed: typeof innerPayload.seed === "number" ? innerPayload.seed : null,
+                };
+              } else if (inner === "CLASSROOM_NEXT") {
+                nextState.currentQuestionIdx = typeof innerPayload.questionIdx === "number" ? innerPayload.questionIdx : nextState.currentQuestionIdx + 1;
+              } else if (inner === "CLASSROOM_PAUSE") {
+                nextState.isPaused = true;
+                if (typeof innerPayload.timer === "number") {
+                  nextState.timer = innerPayload.timer;
+                }
+              } else if (inner === "CLASSROOM_RESUME") {
+                nextState.isPaused = false;
+                if (typeof innerPayload.timer === "number") {
+                  nextState.timer = innerPayload.timer;
+                }
+              }
+
+              return { ...prev, classroomState: nextState };
+            });
+
             classroomListenersRef.current.forEach((fn) => {
               try {
                 fn(
                   inner,
                   innerPayload,
-                  participant && participant.identity,
+                  pMember && pMember.identity,
                 );
               } catch (e) {
                 console.warn("classroom listener threw", e);
@@ -386,6 +512,22 @@ export function useGameBoard() {
     },
     [t, localParticipant, sendMessage],
   );
+
+  // Automatically request game state on mount/reconnect if we are not the host
+  useEffect(() => {
+    if (!room || room.state !== "connected" || isHost) return;
+
+    const requestSync = async () => {
+      // Delay slightly to ensure host's listeners are fully wired
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      try {
+        await sendMessage(GAME_MESSAGES.GAME_REQUEST_STATE, {});
+      } catch (e) {
+        console.warn("failed to send GAME_REQUEST_STATE", e);
+      }
+    };
+    requestSync();
+  }, [room, isHost, sendMessage]);
 
   return {
     gameBoard,
