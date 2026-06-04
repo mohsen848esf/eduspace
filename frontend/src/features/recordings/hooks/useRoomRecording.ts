@@ -57,6 +57,14 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
   const setInFlight = useActiveRecordingStore((s) => s.setInFlight);
   const setPendingEdit = useActiveRecordingStore((s) => s.setPendingEdit);
 
+  // Client-side recording states and refs
+  const [isClientRecording, setIsClientRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const chunkIndexRef = useRef<number>(0);
+  const uploadPromisesRef = useRef<Promise<any>[]>([]);
+  const activeTokenRef = useRef<string | null>(null);
+
   // The host implicitly can always control. For non-hosts, the server
   // is the source of truth via the polled permission endpoint.
   const canControl = isHost || permission.can_control;
@@ -77,8 +85,6 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
     ) {
       setInFlight(rec.public_token);
     } else if (rec.status === "completed" || rec.status === "failed") {
-      // Only flag for-edit on the moment of transition (token-newness check)
-      // so revisits / re-polls don't keep re-triggering.
       if (rec.public_token !== lastTokenRef.current) {
         lastTokenRef.current = rec.public_token;
         setInFlight(null);
@@ -88,33 +94,23 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
   }, [status.recording, isHost, setInFlight, setPendingEdit]);
 
   const refresh = useCallback(async () => {
-    // Both hosts and participants poll the read-only status endpoint:
-    // hosts because they drive the controls, participants so the room
-    // surface can render a "this call is being recorded" indicator.
-    if (!roomCode) return;
+    // Skip status polling if local client-side recording is active
+    if (!roomCode || isClientRecording) return;
     try {
       const next = await recordingsApi.roomStatus(roomCode);
       if (!cancelled.current) setStatus(next);
     } catch {
-      // 403 / 404 — don't toast. The endpoint will 403 only if the user
-      // isn't a participant, which means they shouldn't be in the call
-      // anyway; silent is correct.
+      // Silent
     }
-  }, [roomCode]);
+  }, [roomCode, isClientRecording]);
 
-  /**
-   * Pull the recording-control permission for this user. Hosts use the
-   * `grants` list to render the per-participant toggle; non-hosts use
-   * `can_control` to decide whether to show the record buttons.
-   */
   const refreshPermission = useCallback(async () => {
     if (!roomCode) return;
     try {
       const next = await recordingsApi.getRecordingPermission(roomCode);
       if (!cancelled.current) setPermission(next);
     } catch {
-      // Silent — 403 here means the user isn't a participant and the
-      // outer guard will already kick them out of the room view.
+      // Silent
     }
   }, [roomCode]);
 
@@ -130,14 +126,23 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
     };
   }, [refresh, roomCode, isHost]);
 
-  // Permission polling runs separately on its own (slower) cadence so
-  // the cheaper status poll stays unaffected.
+  // Permission polling runs separately
   useEffect(() => {
     if (!roomCode) return;
     refreshPermission();
     const id = window.setInterval(refreshPermission, POLL_MS_PERMISSION);
     return () => window.clearInterval(id);
   }, [refreshPermission, roomCode]);
+
+  // Cleanup screen capture stream on unmount
+  useEffect(() => {
+    return () => {
+      const stream = streamRef.current;
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
 
   const wrapMutation = useCallback(
     async <T extends Recording>(
@@ -174,27 +179,158 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
   );
 
   const start = useCallback(
-    (quality: RecordingQuality) =>
-      wrapMutation(
-        () => recordingsApi.start(roomCode!, quality),
-        "errorStart",
-      ),
-    [roomCode, wrapMutation],
+    async (quality: RecordingQuality) => {
+      if (!roomCode || isMutating) return null;
+      setIsMutating(true);
+      try {
+        // 1. Try to acquire DisplayMedia for Client-Side Recording
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: { displaySurface: "browser" } as any,
+          audio: true,
+        });
+
+        streamRef.current = stream;
+        chunkIndexRef.current = 0;
+        uploadPromisesRef.current = [];
+
+        // 2. Start the database recording session on Django backend
+        const initRec = await recordingsApi.startClient(roomCode, quality);
+        activeTokenRef.current = initRec.public_token;
+        setStatus({ status: initRec.status, recording: initRec });
+        setInFlight(initRec.public_token);
+        setIsClientRecording(true);
+
+        const options = { mimeType: "video/webm;codecs=vp8,opus" };
+        let recorder: MediaRecorder;
+        try {
+          recorder = new MediaRecorder(stream, options);
+        } catch (e) {
+          recorder = new MediaRecorder(stream);
+        }
+
+        mediaRecorderRef.current = recorder;
+
+        recorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            const chunk = event.data;
+            const index = chunkIndexRef.current;
+            chunkIndexRef.current++;
+            const token = activeTokenRef.current;
+            if (token) {
+              const uploadPromise = recordingsApi.uploadChunk(token, chunk, index).catch((err) => {
+                console.error(`Failed to upload chunk ${index}`, err);
+              });
+              uploadPromisesRef.current.push(uploadPromise);
+            }
+          }
+        };
+
+        recorder.onstop = async () => {
+          const token = activeTokenRef.current;
+          await Promise.all(uploadPromisesRef.current);
+          if (token) {
+            try {
+              const next = await recordingsApi.completeClient(token);
+              if (!cancelled.current) {
+                setStatus({ status: next.status, recording: next });
+                setInFlight(null);
+                setPendingEdit(token);
+              }
+            } catch (e) {
+              console.error("Failed to complete client recording", e);
+              toast.error(t("controls.errorStop"));
+            }
+          }
+        };
+
+        // Start chunked recording in 10-second intervals
+        recorder.start(10000);
+
+        // Listen for screen share stopped by user in browser UI
+        stream.getVideoTracks()[0].onended = () => {
+          stop();
+        };
+
+        toast.success(t("controls.started", "Recording started (Client-side)"), { icon: "🎥" });
+        return initRec;
+      } catch (err: any) {
+        console.warn("Client-side recording failed or cancelled, falling back to server-side", err);
+        
+        // Fallback to server-side recording
+        setIsMutating(false); // reset so wrapMutation is allowed to execute
+        return wrapMutation(
+          () => recordingsApi.start(roomCode!, quality),
+          "errorStart",
+        );
+      } finally {
+        setIsMutating(false);
+      }
+    },
+    [roomCode, isMutating, wrapMutation, setInFlight, setPendingEdit, t],
   );
 
   const stop = useCallback(
-    () => wrapMutation(() => recordingsApi.stop(roomCode!), "errorStop"),
-    [roomCode, wrapMutation],
+    async () => {
+      if (isClientRecording) {
+        const recorder = mediaRecorderRef.current;
+        if (recorder && recorder.state !== "inactive") {
+          recorder.stop();
+        }
+        const stream = streamRef.current;
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+        setIsClientRecording(false);
+        activeTokenRef.current = null;
+        streamRef.current = null;
+        mediaRecorderRef.current = null;
+        toast.success(t("controls.stopped", "Recording stopped"), { icon: "🎥" });
+        return null;
+      } else {
+        return wrapMutation(() => recordingsApi.stop(roomCode!), "errorStop");
+      }
+    },
+    [roomCode, isClientRecording, wrapMutation, t],
   );
 
   const pause = useCallback(
-    () => wrapMutation(() => recordingsApi.pause(roomCode!), "errorPause"),
-    [roomCode, wrapMutation],
+    async () => {
+      if (isClientRecording) {
+        const recorder = mediaRecorderRef.current;
+        if (recorder && recorder.state === "recording") {
+          recorder.pause();
+          setStatus((prev) => prev.recording ? {
+            status: "paused",
+            recording: { ...prev.recording, status: "paused" },
+          } : prev);
+          toast.success(t("controls.paused", "Recording paused"), { icon: "🎥" });
+        }
+        return null;
+      } else {
+        return wrapMutation(() => recordingsApi.pause(roomCode!), "errorPause");
+      }
+    },
+    [roomCode, isClientRecording, wrapMutation, t],
   );
 
   const resume = useCallback(
-    () => wrapMutation(() => recordingsApi.resume(roomCode!), "errorResume"),
-    [roomCode, wrapMutation],
+    async () => {
+      if (isClientRecording) {
+        const recorder = mediaRecorderRef.current;
+        if (recorder && recorder.state === "paused") {
+          recorder.resume();
+          setStatus((prev) => prev.recording ? {
+            status: "recording",
+            recording: { ...prev.recording, status: "recording" },
+          } : prev);
+          toast.success(t("controls.resumed", "Recording resumed"), { icon: "🎥" });
+        }
+        return null;
+      } else {
+        return wrapMutation(() => recordingsApi.resume(roomCode!), "errorResume");
+      }
+    },
+    [roomCode, isClientRecording, wrapMutation, t],
   );
 
   return {

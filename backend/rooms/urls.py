@@ -15,6 +15,7 @@ urlpatterns = [
 
     # --- Recording control (host only, except status which is participant-level) ---
     path('<str:room_code>/recording/start/', recording_views.start_recording, name='recording_start'),
+    path('<str:room_code>/recording/start-client/', recording_views.start_client_recording, name='recording_start_client'),
     path('<str:room_code>/recording/stop/', recording_views.stop_recording, name='recording_stop'),
     path('<str:room_code>/recording/pause/', recording_views.pause_recording, name='recording_pause'),
     path('<str:room_code>/recording/resume/', recording_views.resume_recording, name='recording_resume'),

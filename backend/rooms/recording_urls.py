@@ -35,6 +35,16 @@ urlpatterns = [
         name='recording_finalize',
     ),
     path(
+        '<str:token>/upload-chunk/',
+        recording_views.upload_recording_chunk,
+        name='recording_upload_chunk',
+    ),
+    path(
+        '<str:token>/complete-client/',
+        recording_views.complete_client_recording,
+        name='recording_complete_client',
+    ),
+    path(
         '<str:token>/publish/',
         recording_views.publish_recording,
         name='recording_publish',

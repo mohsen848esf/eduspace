@@ -133,6 +133,8 @@
     "launchGameDesc": "افزودن میان‌برنامه به جلسه",
     "whiteboard": "وایت‌بورد",
     "whiteboardDesc": "نقاشی مشترک",
+    "endWhiteboardLabel": "پایان وایت‌بورد",
+    "endWhiteboardDesc": "بستن وایت‌بورد مشترک",
     "quickExam": "آزمون سریع",
     "quickExamDesc": "شروع آزمون در جلسه",
     "aiSummary": "خلاصه‌ی هوش مصنوعی",
