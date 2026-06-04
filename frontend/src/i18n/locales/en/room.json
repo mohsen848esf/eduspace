@@ -133,6 +133,8 @@
     "launchGameDesc": "Add a mini app to the session",
     "whiteboard": "Whiteboard",
     "whiteboardDesc": "Collaborative drawing",
+    "endWhiteboardLabel": "End Whiteboard",
+    "endWhiteboardDesc": "Close the collaborative whiteboard",
     "quickExam": "Quick Exam",
     "quickExamDesc": "Start exam in session",
     "aiSummary": "AI Summary",

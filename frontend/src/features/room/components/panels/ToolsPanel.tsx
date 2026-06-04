@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "../../../../lib/utils";
 import { useRoomGame } from "../../hooks/useRoomGameContext";
+import { useRoomWhiteboard } from "../../hooks/useRoomWhiteboardContext";
 import { useRoomStore } from "../../store/roomStore";
 import MiniAppSelectorModal from "../MiniAppSelectorModal";
 
@@ -20,10 +21,12 @@ import MiniAppSelectorModal from "../MiniAppSelectorModal";
 export default function ToolsPanel() {
   const { t } = useTranslation(["room", "common", "games"]);
   const { gameBoard, launchGame, endGame } = useRoomGame();
+  const { whiteboard: whiteboardState, launchWhiteboard, endWhiteboard } = useRoomWhiteboard();
   const { isHost } = useRoomStore();
   const [showSelector, setShowSelector] = useState(false);
 
   const isGameActive = gameBoard.isActive;
+  const isWhiteboardActive = whiteboardState.isActive;
 
   const gameTool = isGameActive
     ? {
@@ -45,8 +48,29 @@ export default function ToolsPanel() {
         disabled: !isHost,
       };
 
+  const whiteboardTool = isWhiteboardActive
+    ? {
+        icon: "🛑",
+        name: t("tools.endWhiteboardLabel"),
+        desc: t("tools.endWhiteboardDesc"),
+        status: "ready" as const,
+        onClick: () => endWhiteboard(),
+        bg: "bg-[rgba(248,113,113,0.12)]",
+        disabled: !isHost,
+      }
+    : {
+        icon: "✏️",
+        name: t("tools.whiteboard"),
+        desc: t("tools.whiteboardDesc"),
+        status: "ready" as const,
+        onClick: () => launchWhiteboard(),
+        bg: "bg-[rgba(34,197,94,0.12)]",
+        disabled: !isHost,
+      };
+
   const tools = [
     gameTool,
+    whiteboardTool,
     {
       icon: "🤖",
       name: t("tools.aiSummary"),
