@@ -190,31 +190,36 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
     [roomCode, isMutating, refresh, t],
   );
 
+  const cleanupClientRecording = useCallback(() => {
+    const stream = streamRef.current;
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
+    const micStream = micStreamRef.current;
+    if (micStream) {
+      micStream.getTracks().forEach((track) => track.stop());
+      micStreamRef.current = null;
+    }
+    const audioCtx = audioCtxRef.current;
+    if (audioCtx) {
+      audioCtx.close().catch(() => {});
+      audioCtxRef.current = null;
+    }
+    setIsClientRecording(false);
+    activeModeRef.current = null;
+    streamRef.current = null;
+    mediaRecorderRef.current = null;
+  }, []);
+
   const stop = useCallback(
     async () => {
       if (isClientRecording) {
         const recorder = mediaRecorderRef.current;
         if (recorder && recorder.state !== "inactive") {
           recorder.stop();
+        } else {
+          cleanupClientRecording();
         }
-        const stream = streamRef.current;
-        if (stream) {
-          stream.getTracks().forEach((track) => track.stop());
-        }
-        const micStream = micStreamRef.current;
-        if (micStream) {
-          micStream.getTracks().forEach((track) => track.stop());
-          micStreamRef.current = null;
-        }
-        const audioCtx = audioCtxRef.current;
-        if (audioCtx) {
-          audioCtx.close().catch(() => {});
-          audioCtxRef.current = null;
-        }
-        setIsClientRecording(false);
-        activeModeRef.current = null;
-        streamRef.current = null;
-        mediaRecorderRef.current = null;
         toast.success(t("controls.stopped", "Recording stopped"), { icon: "🎥" });
         return null;
       } else {
@@ -222,7 +227,7 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
         return wrapMutation(() => recordingsApi.stop(roomCode!), "errorStop");
       }
     },
-    [roomCode, isClientRecording, wrapMutation, t],
+    [roomCode, isClientRecording, wrapMutation, t, cleanupClientRecording],
   );
 
   const start = useCallback(
@@ -370,6 +375,9 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
               setInFlight(null);
             }
           }
+
+          // Trigger cleanup
+          cleanupClientRecording();
         };
 
         // Start chunked recording in 10-second intervals
