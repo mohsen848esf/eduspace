@@ -70,3 +70,124 @@ def search_users(request):
     ).exclude(id=request.user.id)[:10]
     
     return Response(UserSerializer(users, many=True).data)
+
+
+# ---------------------------------------------------------------------------
+# CRM & Financial ViewSets
+# ---------------------------------------------------------------------------
+from rest_framework import viewsets
+from .permissions import HasOrgPermission, has_org_permission
+from .models import Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem
+from .serializers import (
+    CourseSerializer, AcademyClassSerializer, EnrollmentSerializer,
+    TuitionInvoiceSerializer, ExpenseItemSerializer
+)
+
+class CourseViewSet(viewsets.ModelViewSet):
+    serializer_class = CourseSerializer
+    permission_classes = [HasOrgPermission]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            self.required_org_permission = 'can_view_dashboard'
+        else:
+            self.required_org_permission = 'can_manage_members'
+        return super().get_permissions()
+
+    def get_queryset(self):
+        org = getattr(self.request, 'organization', None)
+        if not org:
+            return Course.objects.none()
+        return Course.objects.filter(organization=org)
+
+
+class AcademyClassViewSet(viewsets.ModelViewSet):
+    serializer_class = AcademyClassSerializer
+    permission_classes = [HasOrgPermission]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            self.required_org_permission = 'can_view_dashboard'
+        else:
+            self.required_org_permission = 'can_manage_members'
+        return super().get_permissions()
+
+    def get_queryset(self):
+        org = getattr(self.request, 'organization', None)
+        if not org:
+            return AcademyClass.objects.none()
+        return AcademyClass.objects.filter(course__organization=org)
+
+
+class EnrollmentViewSet(viewsets.ModelViewSet):
+    serializer_class = EnrollmentSerializer
+    permission_classes = [HasOrgPermission]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            self.required_org_permission = 'can_view_dashboard'
+        else:
+            self.required_org_permission = 'can_manage_members'
+        return super().get_permissions()
+
+    def get_queryset(self):
+        org = getattr(self.request, 'organization', None)
+        if not org:
+            return Enrollment.objects.none()
+        
+        queryset = Enrollment.objects.filter(academy_class__course__organization=org)
+        
+        # Students should only see their own enrollments, teachers/admins can see all
+        if not has_org_permission(self.request.user, org, 'can_manage_members') and \
+           not has_org_permission(self.request.user, org, 'can_teach_class'):
+            queryset = queryset.filter(student=self.request.user)
+            
+        return queryset
+
+
+class TuitionInvoiceViewSet(viewsets.ModelViewSet):
+    serializer_class = TuitionInvoiceSerializer
+    permission_classes = [HasOrgPermission]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            self.required_org_permission = 'can_view_dashboard'
+        else:
+            self.required_org_permission = 'can_manage_financials'
+        return super().get_permissions()
+
+    def get_queryset(self):
+        org = getattr(self.request, 'organization', None)
+        if not org:
+            return TuitionInvoice.objects.none()
+            
+        queryset = TuitionInvoice.objects.filter(organization=org)
+        
+        # Isolation: Students only see their own invoices, financials viewers see all
+        if not has_org_permission(self.request.user, org, 'can_view_financials'):
+            queryset = queryset.filter(student=self.request.user)
+            
+        return queryset
+
+
+class ExpenseItemViewSet(viewsets.ModelViewSet):
+    serializer_class = ExpenseItemSerializer
+    permission_classes = [HasOrgPermission]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            self.required_org_permission = 'can_view_financials'
+        else:
+            self.required_org_permission = 'can_manage_financials'
+        return super().get_permissions()
+
+    def get_queryset(self):
+        org = getattr(self.request, 'organization', None)
+        if not org:
+            return ExpenseItem.objects.none()
+            
+        # Only users with can_view_financials can view expenses
+        if not has_org_permission(self.request.user, org, 'can_view_financials'):
+            return ExpenseItem.objects.none()
+            
+        return ExpenseItem.objects.filter(organization=org)
