@@ -2,26 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "../../lib/utils";
 import { Tooltip } from "../ui/Tooltip";
-
-interface NavItem {
-  icon: string;
-  labelKey: string;
-  badge?: number;
-  id: string;
-}
-
-const mainNav: NavItem[] = [
-  { icon: "⊞", labelKey: "nav.dashboard", id: "dashboard" },
-  { icon: "📹", labelKey: "nav.videoCalls", id: "calls" },
-  { icon: "🎮", labelKey: "nav.miniApps", id: "miniapps" },
-  { icon: "📝", labelKey: "nav.exams", id: "exams" },
-];
-
-const manageNav: NavItem[] = [
-  { icon: "👥", labelKey: "nav.students", id: "students", badge: 3 },
-  { icon: "📊", labelKey: "nav.reports", id: "reports" },
-  { icon: "🎬", labelKey: "nav.recordings", id: "recordings" },
-];
+import { mainNavItems, manageNavItems, type NavItem } from "./navItems";
+import { useAuthStore } from "../../features/auth/store/authStore";
 
 interface SidebarProps {
   activeId?: string;
@@ -34,6 +16,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const { t } = useTranslation(["dashboard", "common"]);
   const [collapsed, setCollapsed] = useState(false);
+  const { user } = useAuthStore();
 
   const NavButton = ({ item }: { item: NavItem }) => {
     const isActive = activeId === item.id;
@@ -83,6 +66,9 @@ export default function Sidebar({
     );
   };
 
+  const userInitial = user?.full_name?.[0] || user?.username?.[0] || "U";
+  const userRoleTranslation = user?.role ? t(`auth:register.${user.role}`, { ns: "auth" }) : "";
+
   return (
     <aside
       className={cn(
@@ -131,7 +117,7 @@ export default function Sidebar({
             {t("nav.main")}
           </span>
         )}
-        {mainNav.map((item) => (
+        {mainNavItems.map((item) => (
           <NavButton key={item.id} item={item} />
         ))}
 
@@ -140,7 +126,7 @@ export default function Sidebar({
             {t("nav.manage")}
           </span>
         )}
-        {manageNav.map((item) => (
+        {manageNavItems.map((item) => (
           <NavButton key={item.id} item={item} />
         ))}
       </nav>
@@ -158,17 +144,17 @@ export default function Sidebar({
           >
             <div className="relative flex-shrink-0">
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--brand)] to-[var(--cyan)] flex items-center justify-center text-white text-xs font-bold">
-                A
+                {userInitial}
               </div>
               <span className="absolute bottom-0 end-0 w-2 h-2 bg-[var(--green)] rounded-full border-2 border-[var(--s1)]" />
             </div>
             {!collapsed && (
               <div className="overflow-hidden text-start">
                 <div className="text-xs font-semibold text-[var(--t1)] whitespace-nowrap">
-                  Ali Rezaei
+                  {user?.full_name || user?.username || "Guest User"}
                 </div>
-                <div className="text-[10px] text-[var(--t3)] whitespace-nowrap">
-                  {t("auth:register.teacher", { ns: "auth" })}
+                <div className="text-[10px] text-[var(--t3)] whitespace-nowrap capitalize">
+                  {userRoleTranslation || user?.role || ""}
                 </div>
               </div>
             )}

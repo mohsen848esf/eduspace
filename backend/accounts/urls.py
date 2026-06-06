@@ -1,6 +1,14 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from . import views
 from . import notifications as notifications_views
+
+router = DefaultRouter()
+router.register('courses', views.CourseViewSet, basename='course')
+router.register('classes', views.AcademyClassViewSet, basename='class')
+router.register('enrollments', views.EnrollmentViewSet, basename='enrollment')
+router.register('invoices', views.TuitionInvoiceViewSet, basename='invoice')
+router.register('expenses', views.ExpenseItemViewSet, basename='expense')
 
 urlpatterns = [
     path('register/', views.register, name='register'),
@@ -30,4 +38,7 @@ urlpatterns = [
         notifications_views.delete_notification,
         name='notifications_delete',
     ),
+
+    # CRM and Financial API ViewSets
+    path('', include(router.urls)),
 ]

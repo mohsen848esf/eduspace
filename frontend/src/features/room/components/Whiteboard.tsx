@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useParticipants, useLocalParticipant } from "@livekit/components-react";
 import { useRoomStore } from "../store/roomStore";
-import { useActiveRecordingStore } from "../../recordings/store/activeRecordingStore";
 import { Tooltip } from "../../../components/ui/Tooltip";
 import { Icons } from "../../../lib/constants/icons";
 import { cn } from "../../../lib/utils";
