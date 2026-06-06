@@ -66,6 +66,8 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
   const chunkIndexRef = useRef<number>(0);
   const uploadPromisesRef = useRef<Promise<any>[]>([]);
   const activeTokenRef = useRef<string | null>(null);
+  const activeModeRef = useRef<"server" | "client-upload" | "client-download" | null>(null);
+  const localBlobsRef = useRef<Blob[]>([]);
 
   // The host implicitly can always control. For non-hosts, the server
   // is the source of truth via the polled permission endpoint.
@@ -210,12 +212,13 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
           audioCtxRef.current = null;
         }
         setIsClientRecording(false);
-        activeTokenRef.current = null;
+        activeModeRef.current = null;
         streamRef.current = null;
         mediaRecorderRef.current = null;
         toast.success(t("controls.stopped", "Recording stopped"), { icon: "🎥" });
         return null;
       } else {
+        activeModeRef.current = null;
         return wrapMutation(() => recordingsApi.stop(roomCode!), "errorStop");
       }
     },
@@ -223,10 +226,23 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
   );
 
   const start = useCallback(
-    async (quality: RecordingQuality) => {
+    async (
+      quality: RecordingQuality,
+      mode: "server" | "client-upload" | "client-download" = "client-upload",
+    ) => {
       if (!roomCode || isMutating) return null;
       setIsMutating(true);
       try {
+        activeModeRef.current = mode;
+
+        if (mode === "server") {
+          const rec = await wrapMutation(
+            () => recordingsApi.start(roomCode, quality),
+            "errorStart",
+          );
+          return rec;
+        }
+
         // 1. Try to acquire DisplayMedia for Client-Side Recording
         const displayStream = await navigator.mediaDevices.getDisplayMedia({
           video: { displaySurface: "browser" } as any,
@@ -270,6 +286,7 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
         streamRef.current = combinedStream;
         chunkIndexRef.current = 0;
         uploadPromisesRef.current = [];
+        localBlobsRef.current = [];
 
         // 2. Start the database recording session on Django backend
         const initRec = await recordingsApi.startClient(roomCode, quality);
@@ -290,33 +307,67 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
 
         recorder.ondataavailable = (event) => {
           if (event.data && event.data.size > 0) {
-            const chunk = event.data;
-            const index = chunkIndexRef.current;
-            chunkIndexRef.current++;
-            const token = activeTokenRef.current;
-            if (token) {
-              const uploadPromise = recordingsApi.uploadChunk(token, chunk, index).catch((err) => {
-                console.error(`Failed to upload chunk ${index}`, err);
-              });
-              uploadPromisesRef.current.push(uploadPromise);
+            const currentMode = activeModeRef.current;
+            if (currentMode === "client-upload") {
+              const chunk = event.data;
+              const index = chunkIndexRef.current;
+              chunkIndexRef.current++;
+              const token = activeTokenRef.current;
+              if (token) {
+                const uploadPromise = recordingsApi.uploadChunk(token, chunk, index).catch((err) => {
+                  console.error(`Failed to upload chunk ${index}`, err);
+                });
+                uploadPromisesRef.current.push(uploadPromise);
+              }
+            } else if (currentMode === "client-download") {
+              localBlobsRef.current.push(event.data);
             }
           }
         };
 
         recorder.onstop = async () => {
           const token = activeTokenRef.current;
-          await Promise.all(uploadPromisesRef.current);
-          if (token) {
-            try {
-              const next = await recordingsApi.completeClient(token);
-              if (!cancelled.current) {
-                setStatus({ status: next.status, recording: next });
-                setInFlight(null);
-                setPendingEdit(token);
+          const currentMode = activeModeRef.current;
+
+          if (currentMode === "client-upload") {
+            await Promise.all(uploadPromisesRef.current);
+            if (token) {
+              try {
+                const next = await recordingsApi.completeClient(token);
+                if (!cancelled.current) {
+                  setStatus({ status: next.status, recording: next });
+                  setInFlight(null);
+                  setPendingEdit(token);
+                }
+              } catch (e) {
+                console.error("Failed to complete client recording", e);
+                toast.error(t("controls.errorStop"));
               }
-            } catch (e) {
-              console.error("Failed to complete client recording", e);
-              toast.error(t("controls.errorStop"));
+            }
+          } else if (currentMode === "client-download") {
+            try {
+              const blob = new Blob(localBlobsRef.current, { type: "video/webm" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `recording_${roomCode || "room"}_${Date.now()}.webm`;
+              a.click();
+              URL.revokeObjectURL(url);
+            } catch (dlErr) {
+              console.error("Failed to download recording file", dlErr);
+            }
+            localBlobsRef.current = [];
+
+            if (token) {
+              try {
+                await recordingsApi.remove(token);
+              } catch (e) {
+                console.error("Failed to clean up temporary recording database entry", e);
+              }
+            }
+            if (!cancelled.current) {
+              setStatus({ status: "idle", recording: null });
+              setInFlight(null);
             }
           }
         };
@@ -332,14 +383,18 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
         toast.success(t("controls.started", "Recording started (Client-side)"), { icon: "🎥" });
         return initRec;
       } catch (err: any) {
-        console.warn("Client-side recording failed or cancelled, falling back to server-side", err);
-        
-        // Fallback to server-side recording
-        setIsMutating(false); // reset so wrapMutation is allowed to execute
-        return wrapMutation(
-          () => recordingsApi.start(roomCode!, quality),
-          "errorStart",
-        );
+        console.warn("Client-side recording failed or cancelled", err);
+        setIsMutating(false);
+        if (mode === "client-upload") {
+          // Fallback to server-side recording
+          return wrapMutation(
+            () => recordingsApi.start(roomCode!, quality),
+            "errorStart",
+          );
+        } else {
+          toast.error(t("controls.errorStart"));
+          return null;
+        }
       } finally {
         setIsMutating(false);
       }

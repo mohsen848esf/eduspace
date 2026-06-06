@@ -18,7 +18,10 @@ interface RecordControlsProps {
   canControl: boolean;
   status: RoomRecordingStatus;
   isMutating: boolean;
-  onStart: (quality: RecordingQuality) => Promise<unknown>;
+  onStart: (
+    quality: RecordingQuality,
+    mode: "server" | "client-upload" | "client-download"
+  ) => Promise<unknown>;
   onStop: () => Promise<unknown>;
   onPause: () => Promise<unknown>;
   onResume: () => Promise<unknown>;
@@ -100,6 +103,7 @@ export default function RecordControls({
 }: RecordControlsProps) {
   const { t } = useTranslation("recordings");
   const [showQuality, setShowQuality] = useState(false);
+  const [showModes, setShowModes] = useState(false);
   const [quality, setQuality] = useState<RecordingQuality>("720p");
 
   if (!canControl || !roomCode) return null;
@@ -118,10 +122,10 @@ export default function RecordControls({
   const isPaused = recording?.status === "paused";
   const isProcessing = recording?.status === "processing";
 
-  // Tick only while genuinely capturing frames, not during pause / processing.
+  // Tick only while genuinely capturing frames, not during starting / pause / processing.
   const isTicking =
     isActive &&
-    (recording.status === "starting" || recording.status === "recording");
+    recording.status === "recording";
 
   const elapsed = useElapsed(
     isActive && recording ? recording.public_token : null,
@@ -130,30 +134,69 @@ export default function RecordControls({
 
   if (isIdle) {
     return (
-      <div className="relative flex items-center">
-        <Tooltip content={t("controls.start")}>
-          <button
-            onClick={async () => {
-              await onStart(quality);
-            }}
-            disabled={isMutating}
-            className={cn(
-              "flex items-center gap-1.5 px-2.5 h-7 rounded-lg border-none cursor-pointer transition-all",
-              "text-[11px] font-semibold uppercase tracking-wider",
-              "bg-[var(--red)]/15 hover:bg-[var(--red)]/25 text-[var(--red)]",
-              "disabled:opacity-50 disabled:cursor-not-allowed",
-            )}
-          >
-            <span className="w-2 h-2 rounded-full bg-[var(--red)]" />
-            {t("controls.rec")}
-          </button>
-        </Tooltip>
+      <div className="relative flex items-center gap-1">
+        <div className="relative">
+          <Tooltip content={t("controls.start")}>
+            <button
+              onClick={() => setShowModes((p) => !p)}
+              disabled={isMutating}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 h-7 rounded-lg border-none cursor-pointer transition-all",
+                "text-[11px] font-semibold uppercase tracking-wider",
+                "bg-[var(--red)]/15 hover:bg-[var(--red)]/25 text-[var(--red)]",
+                "disabled:opacity-50 disabled:cursor-not-allowed",
+              )}
+            >
+              <span className="w-2 h-2 rounded-full bg-[var(--red)]" />
+              {t("controls.rec")}
+              <span className="text-[8px] ms-1 text-[var(--red)]">▼</span>
+            </button>
+          </Tooltip>
+
+          {showModes && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowModes(false)}
+              />
+              <div className="absolute top-9 end-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-2 w-56 fade-in flex flex-col gap-1">
+                <button
+                  onClick={async () => {
+                    setShowModes(false);
+                    await onStart(quality, "server");
+                  }}
+                  className="w-full text-start px-2 py-1.5 rounded-md text-xs cursor-pointer border-none bg-transparent text-[var(--t2)] hover:bg-[var(--s3)]"
+                >
+                  ☁️ {t("controls.modeServer")}
+                </button>
+                <button
+                  onClick={async () => {
+                    setShowModes(false);
+                    await onStart(quality, "client-upload");
+                  }}
+                  className="w-full text-start px-2 py-1.5 rounded-md text-xs cursor-pointer border-none bg-transparent text-[var(--t2)] hover:bg-[var(--s3)]"
+                >
+                  📥 {t("controls.modeClientUpload")}
+                </button>
+                <button
+                  onClick={async () => {
+                    setShowModes(false);
+                    await onStart(quality, "client-download");
+                  }}
+                  className="w-full text-start px-2 py-1.5 rounded-md text-xs cursor-pointer border-none bg-transparent text-[var(--t2)] hover:bg-[var(--s3)]"
+                >
+                  💾 {t("controls.modeClientDownload")}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
 
         <Tooltip content={t("controls.qualityLabel")}>
           <button
             onClick={() => setShowQuality((p) => !p)}
             className={cn(
-              "ms-1 px-1.5 h-7 rounded-md border-none cursor-pointer text-[10px] font-semibold",
+              "px-1.5 h-7 rounded-md border-none cursor-pointer text-[10px] font-semibold",
               "bg-[var(--s3)] text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s4)]",
             )}
           >
