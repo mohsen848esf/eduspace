@@ -1692,9 +1692,18 @@ Play yours →`;
     renderHome();
     // Check if we are running inside an iframe (in-call/classroom mode)
     const isEmbedded = window.parent && window.parent !== window;
+
+    // Check if GameBridge already received GAME_INIT before game.js finished loading
+    if (window.GameBridge && window.GameBridge.isConnected()) {
+      const payload = window.GameBridge.getInitPayload();
+      if (payload) {
+        window.onPlatformInit(payload);
+      }
+    }
+
     // Fade out loading screen after a beat
     setTimeout(() => {
-      if (!isEmbedded) {
+      if (!isEmbedded && !isClassroomMode()) {
         showScreen('home');
       }
     }, 1500);
