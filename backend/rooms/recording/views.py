@@ -449,6 +449,9 @@ def _finalize_client_recording_bg(recording_pk: int):
             recording.save(update_fields=['status'])
         except Exception:
             pass
+    finally:
+        from django.db import connection
+        connection.close()
 
 
 @api_view(['POST'])
@@ -559,9 +562,12 @@ def complete_client_recording(request, token: str):
     recording.save(update_fields=['status'])
 
     import threading
-    thread = threading.Thread(target=_finalize_client_recording_bg, args=(recording.pk,))
-    thread.daemon = True
-    thread.start()
+    from django.db import transaction
+    transaction.on_commit(lambda: threading.Thread(
+        target=_finalize_client_recording_bg,
+        args=(recording.pk,),
+        daemon=True,
+    ).start())
 
     logger.info('client_recording.complete token=%s triggered background processing', token)
     return Response(_serialize(recording))

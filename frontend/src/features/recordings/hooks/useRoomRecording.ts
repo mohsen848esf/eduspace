@@ -393,6 +393,10 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
       } catch (err: any) {
         console.warn("Client-side recording failed or cancelled", err);
         setIsMutating(false);
+        if (err.name === "NotAllowedError") {
+          // User cancelled screen selection - stop the flow and don't fallback
+          return null;
+        }
         if (mode === "client-upload") {
           // Fallback to server-side recording
           return wrapMutation(
