@@ -27,6 +27,7 @@ const GameBridge = (() => {
   let players = [];
   let settings = {};
   let currentPlayer = null;
+  let initPayload = null;
 
   // ── Listen for messages from platform ──
   window.addEventListener("message", (event) => {
@@ -37,6 +38,7 @@ const GameBridge = (() => {
 
     switch (type) {
       case "GAME_INIT":
+        initPayload = payload;
         gameMode = (payload && payload.mode) || "solo";
         players = (payload && payload.players) || [];
         settings = (payload && payload.settings) || {};
@@ -47,12 +49,7 @@ const GameBridge = (() => {
         // hide solo-only UI, etc.) without polling.
         if (typeof window.onPlatformInit === "function") {
           try {
-            window.onPlatformInit({
-              mode: gameMode,
-              players,
-              settings,
-              currentPlayer,
-            });
+            window.onPlatformInit(payload);
           } catch (e) {
             console.warn("onPlatformInit handler threw", e);
           }
@@ -122,6 +119,7 @@ const GameBridge = (() => {
     getPlayers: () => players,
     getSettings: () => settings,
     getCurrentPlayer: () => currentPlayer,
+    getInitPayload: () => initPayload,
     isInCall: () => gameMode === "in-call",
     isHost: () => Boolean(currentPlayer && currentPlayer.isHost),
 
