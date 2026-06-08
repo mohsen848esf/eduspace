@@ -15,22 +15,49 @@ def get_organization_from_request(request, view_kwargs=None):
     """
     Extract organization slug or ID from request headers, query parameters, or URL args.
     """
+    if not request:
+        # Resolve via view_kwargs only if request is None
+        if view_kwargs:
+            if 'org_slug' in view_kwargs:
+                val = view_kwargs['org_slug']
+                if val and str(val).isdigit():
+                    return val, 'id'
+                return val, 'slug'
+            if 'organization_slug' in view_kwargs:
+                val = view_kwargs['organization_slug']
+                if val and str(val).isdigit():
+                    return val, 'id'
+                return val, 'slug'
+            if 'org_id' in view_kwargs:
+                return view_kwargs['org_id'], 'id'
+        return None, None
+
     # 1. Check for custom header
     org_slug = request.headers.get('X-Organization-Slug')
     if org_slug:
+        if org_slug.isdigit():
+            return org_slug, 'id'
         return org_slug, 'slug'
     
     # 2. Check query params
     org_slug = request.query_params.get('org_slug') or request.GET.get('org_slug')
     if org_slug:
+        if org_slug.isdigit():
+            return org_slug, 'id'
         return org_slug, 'slug'
     
     # 3. Check view kwargs (URL parameters)
     if view_kwargs:
         if 'org_slug' in view_kwargs:
-            return view_kwargs['org_slug'], 'slug'
+            val = view_kwargs['org_slug']
+            if val and str(val).isdigit():
+                return val, 'id'
+            return val, 'slug'
         if 'organization_slug' in view_kwargs:
-            return view_kwargs['organization_slug'], 'slug'
+            val = view_kwargs['organization_slug']
+            if val and str(val).isdigit():
+                return val, 'id'
+            return val, 'slug'
         if 'org_id' in view_kwargs:
             return view_kwargs['org_id'], 'id'
             

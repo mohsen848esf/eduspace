@@ -84,8 +84,15 @@ class Notification(models.Model):
 # ---------------------------------------------------------------------------
 
 class Organization(models.Model):
+    class OrgType(models.TextChoices):
+        PERSONAL = 'personal', 'Personal'
+        ORGANIZATION = 'organization', 'Organization'
+
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=100, unique=True)
+    type = models.CharField(max_length=20, choices=OrgType.choices, default=OrgType.ORGANIZATION)
+    owner = models.ForeignKey('User', null=True, blank=True, on_delete=models.SET_NULL, related_name='owned_organizations')
+    is_active = models.BooleanField(default=True)
     logo = models.ImageField(upload_to='org_logos/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -106,21 +113,42 @@ class Permission(models.Model):
 class Role(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, default='')
+    organization = models.ForeignKey(Organization, null=True, blank=True, on_delete=models.CASCADE, related_name='custom_roles')
     permissions = models.ManyToManyField(Permission, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name', 'organization'],
+                condition=models.Q(organization__isnull=False),
+                name='unique_role_name_per_org'
+            )
+        ]
 
     def __str__(self):
         return self.name
 
 
 class OrgMember(models.Model):
+    class ContractType(models.TextChoices):
+        FULL_TIME = 'full_time', 'Full Time'
+        PART_TIME = 'part_time', 'Part Time'
+        CONTRACTOR = 'contractor', 'Contractor'
+        GUEST = 'guest', 'Guest'
+
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='members')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='org_memberships')
     role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True)
     joined_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+    contract_type = models.CharField(max_length=20, choices=ContractType.choices, default=ContractType.FULL_TIME)
+    invited_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='invited_members')
+    expires_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         unique_together = ('organization', 'user')
+        # Note: setting is_active=False is preferred over deleting OrgMember records for terminated members.
 
     def __str__(self):
         return f"{self.user.username} in {self.organization.name} ({self.role.name if self.role else 'No Role'})"
@@ -163,6 +191,9 @@ class Course(models.Model):
     code = models.CharField(max_length=50)  # e.g. CS101
     description = models.TextField(blank=True, default='')
     price = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
+    is_active = models.BooleanField(default=True)
+    thumbnail = models.ImageField(upload_to='course_thumbnails/', null=True, blank=True)
+    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='created_courses')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -179,6 +210,9 @@ class AcademyClass(models.Model):
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
     room = models.ForeignKey('rooms.Room', on_delete=models.SET_NULL, null=True, blank=True, related_name='academy_classes')
+    is_active = models.BooleanField(default=True)
+    max_students = models.PositiveIntegerField(null=True, blank=True)
+    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='created_classes')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -186,10 +220,18 @@ class AcademyClass(models.Model):
 
 
 class Enrollment(models.Model):
+    class CompletionStatus(models.TextChoices):
+        IN_PROGRESS = 'in_progress', 'In Progress'
+        COMPLETED = 'completed', 'Completed'
+        DROPPED = 'dropped', 'Dropped'
+
     academy_class = models.ForeignKey(AcademyClass, on_delete=models.CASCADE, related_name='enrollments')
     student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='enrollments')
     enrolled_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
+    enrolled_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='enrolled_students')
+    completion_status = models.CharField(max_length=20, choices=CompletionStatus.choices, default=CompletionStatus.IN_PROGRESS)
+    completion_date = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         unique_together = ('academy_class', 'student')
@@ -208,6 +250,11 @@ class TuitionInvoice(models.Model):
         PAID = 'paid', 'Paid'
         CANCELLED = 'cancelled', 'Cancelled'
 
+    class PaymentMethod(models.TextChoices):
+        CASH = 'cash', 'Cash'
+        BANK_TRANSFER = 'bank_transfer', 'Bank Transfer'
+        ONLINE = 'online', 'Online'
+
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='invoices')
     student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='invoices')
     academy_class = models.ForeignKey(AcademyClass, on_delete=models.SET_NULL, null=True, blank=True)
@@ -215,6 +262,10 @@ class TuitionInvoice(models.Model):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.UNPAID)
     due_date = models.DateField(null=True, blank=True)
     paid_at = models.DateTimeField(null=True, blank=True)
+    invoice_number = models.CharField(max_length=50, blank=True)
+    payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices, blank=True)
+    issued_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='issued_invoices')
+    notes = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -234,6 +285,8 @@ class ExpenseItem(models.Model):
     category = models.CharField(max_length=30, choices=Category.choices, default=Category.OTHER)
     description = models.TextField(blank=True, default='')
     recipient = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='received_payments')
+    approved_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='approved_expenses')
+    attachment = models.FileField(upload_to='expense_attachments/', null=True, blank=True)
     incurred_at = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
 

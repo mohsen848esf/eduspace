@@ -80,3 +80,86 @@ class OrgResolutionIntegrationTest(APITestCase):
         
         # User is not a member of org-two, so they should get 403 Forbidden
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_resolve_organization_by_id(self):
+        url = reverse('course-list')
+        
+        # Access with query param ?org_slug containing org id
+        response = self.client.get(f"{url}?org_slug={self.org1.id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test_resolve_organization_by_invalid_id(self):
+        url = reverse('course-list')
+        
+        # Access with invalid integer org id
+        response = self.client.get(f"{url}?org_slug=99999")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_require_org_permission_decorator(self):
+        from rest_framework.decorators import api_view, permission_classes
+        from rest_framework.permissions import IsAuthenticated
+        from rest_framework.response import Response
+        from accounts.permissions import require_org_permission
+        
+        @api_view(['GET'])
+        @permission_classes([IsAuthenticated])
+        @require_org_permission('can_view_dashboard')
+        def dummy_view(request):
+            return Response({'status': 'ok'})
+            
+        from rest_framework.test import APIRequestFactory, force_authenticate
+        factory = APIRequestFactory()
+        
+        # 1. Missing context -> HTTP 400
+        request = factory.get('/dummy/')
+        force_authenticate(request, user=self.user)
+        response = dummy_view(request)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+        # 2. Valid context and authorized -> HTTP 200
+        request = factory.get('/dummy/', HTTP_X_ORGANIZATION_SLUG='org-one')
+        force_authenticate(request, user=self.user)
+        response = dummy_view(request)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # 3. Valid context but unauthorized -> HTTP 403
+        request = factory.get('/dummy/', HTTP_X_ORGANIZATION_SLUG='org-two')
+        force_authenticate(request, user=self.user)
+        response = dummy_view(request)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_resolve_organization_by_room_code(self):
+        from rooms.models import Room
+        from accounts.models import AcademyClass
+        from accounts.permissions import resolve_organization
+        
+        room = Room.objects.create(room_code='ROOM99', host=self.user)
+        academy_class = AcademyClass.objects.create(
+            course=self.course1,
+            room=room,
+            name='Test Class'
+        )
+        
+        org = resolve_organization(None, view_kwargs={'room_code': 'ROOM99'})
+        self.assertEqual(org, self.org1)
+
+    def test_resolve_organization_by_recording_token(self):
+        from rooms.models import Room, Recording
+        from accounts.models import AcademyClass
+        from accounts.permissions import resolve_organization
+        
+        room = Room.objects.create(room_code='ROOM88', host=self.user)
+        academy_class = AcademyClass.objects.create(
+            course=self.course1,
+            room=room,
+            name='Test Class'
+        )
+        recording = Recording.objects.create(
+            room=room,
+            owner=self.user,
+            public_token='TOKEN_ABC'
+        )
+        
+        org = resolve_organization(None, view_kwargs={'token': 'TOKEN_ABC'})
+        self.assertEqual(org, self.org1)
