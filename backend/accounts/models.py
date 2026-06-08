@@ -127,6 +127,33 @@ class OrgMember(models.Model):
 
 
 # ---------------------------------------------------------------------------
+# Audit Logging
+# ---------------------------------------------------------------------------
+
+class AuditLog(models.Model):
+    actor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='audit_logs')
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True, related_name='audit_logs')
+    action = models.CharField(max_length=100)
+    entity_type = models.CharField(max_length=100)
+    entity_id = models.PositiveIntegerField()
+    before_state = models.JSONField(null=True, blank=True)
+    after_state = models.JSONField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['organization', 'entity_type', 'entity_id', 'created_at']),
+        ]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        actor_name = self.actor.username if self.actor else "System"
+        return f"{self.action} on {self.entity_type} {self.entity_id} by {actor_name}"
+
+
+# ---------------------------------------------------------------------------
 # Academy CRM Models
 # ---------------------------------------------------------------------------
 
