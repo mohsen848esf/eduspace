@@ -8,7 +8,7 @@ User = get_user_model()
 class AuditServiceTest(TransactionTestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='testuser', password='password')
-        self.org = Organization.objects.create(name='Test Org', slug='test-org')
+        self.org = Organization.objects.create(name='Test Org', slug='test-org', owner=self.user)
 
     def test_log_creates_audit_entry(self):
         class DummyEntity:

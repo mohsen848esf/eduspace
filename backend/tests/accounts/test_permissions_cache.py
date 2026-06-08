@@ -17,7 +17,7 @@ class PermissionsCacheTest(TransactionTestCase):
         
         # Create user, org, and permissions
         self.user = User.objects.create_user(username='test_member', password='password')
-        self.org = Organization.objects.create(name='Acme Academy', slug='acme-academy')
+        self.org = Organization.objects.create(name='Acme Academy', slug='acme-academy', owner=self.user)
         
         self.perm1 = Permission.objects.create(codename='can_edit_stuff', name='Can Edit Stuff')
         self.perm2 = Permission.objects.create(codename='can_delete_stuff', name='Can Delete Stuff')

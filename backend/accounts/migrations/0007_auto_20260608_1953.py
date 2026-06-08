@@ -12,6 +12,7 @@ def migrate_data(apps, schema_editor):
     OrgMember.objects.all().update(contract_type='full_time')
 
     # 2. Backfill Organization.owner
+    system_user = None
     for org in Organization.objects.all():
         # Find first admin member
         admin_member = OrgMember.objects.filter(organization=org, role__name='Admin').first()
@@ -25,8 +26,20 @@ def migrate_data(apps, schema_editor):
                 org.owner = any_member.user
                 org.save()
             else:
-                # Log or set to None
-                print(f"Organization '{org.name}' has no members, owner left as NULL.")
+                # No members exist. We must assign a default owner to satisfy NOT NULL constraints.
+                if not system_user:
+                    User = apps.get_model('accounts', 'User')
+                    system_user = User.objects.filter(is_superuser=True).first() or User.objects.first()
+                    if not system_user:
+                        system_user = User.objects.create(
+                            username='system_admin',
+                            is_staff=True,
+                            is_superuser=True,
+                            full_name='System Administrator'
+                        )
+                org.owner = system_user
+                org.save()
+                print(f"Organization '{org.name}' had no members. Assigned system_admin as owner.")
 
     # 3. Backfill TuitionInvoice.invoice_number sequential per organization
     for org in Organization.objects.all():

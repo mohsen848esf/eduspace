@@ -91,7 +91,7 @@ class Organization(models.Model):
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=100, unique=True)
     type = models.CharField(max_length=20, choices=OrgType.choices, default=OrgType.ORGANIZATION)
-    owner = models.ForeignKey('User', null=True, blank=True, on_delete=models.SET_NULL, related_name='owned_organizations')
+    owner = models.ForeignKey('User', on_delete=models.PROTECT, related_name='owned_organizations')
     is_active = models.BooleanField(default=True)
     logo = models.ImageField(upload_to='org_logos/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

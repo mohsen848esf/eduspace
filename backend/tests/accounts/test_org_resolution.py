@@ -10,8 +10,8 @@ User = get_user_model()
 class OrgResolutionIntegrationTest(APITestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='test_user', password='password')
-        self.org1 = Organization.objects.create(name='Org One', slug='org-one')
-        self.org2 = Organization.objects.create(name='Org Two', slug='org-two')
+        self.org1 = Organization.objects.create(name='Org One', slug='org-one', owner=self.user)
+        self.org2 = Organization.objects.create(name='Org Two', slug='org-two', owner=self.user)
         
         # Create or fetch a teacher role with can_view_dashboard permission
         self.perm, _ = Permission.objects.get_or_create(codename='can_view_dashboard', defaults={'name': 'View Dashboard'})
@@ -167,28 +167,25 @@ class OrgResolutionIntegrationTest(APITestCase):
     def test_migration_backfill_applied(self):
         from accounts.models import Organization, OrgMember, Role, User, TuitionInvoice
         
-        # Test case 1: Org with Admin member
-        org = Organization.objects.create(name='Test Backfill Org', slug='test-backfill-org')
-        admin_role = Role.objects.get(name='Admin')
         user_admin = User.objects.create_user(username='bf_admin', password='password')
+        user_teacher = User.objects.create_user(username='bf_teacher', password='password')
+        user_dummy = User.objects.create_user(username='bf_dummy', password='password')
+
+        # Test case 1: Org with Admin member (start with owner=user_dummy, should migrate to user_admin)
+        org = Organization.objects.create(name='Test Backfill Org', slug='test-backfill-org', owner=user_dummy)
+        admin_role = Role.objects.get(name='Admin')
         OrgMember.objects.create(organization=org, user=user_admin, role=admin_role)
         
-        # Test case 2: Org with only Teacher member (fallback)
-        org_fallback = Organization.objects.create(name='Test Fallback Org', slug='test-fallback-org')
+        # Test case 2: Org with only Teacher member (start with owner=user_dummy, should migrate to user_teacher)
+        org_fallback = Organization.objects.create(name='Test Fallback Org', slug='test-fallback-org', owner=user_dummy)
         teacher_role = Role.objects.get(name='Teacher')
-        user_teacher = User.objects.create_user(username='bf_teacher', password='password')
         OrgMember.objects.create(organization=org_fallback, user=user_teacher, role=teacher_role)
         
         # Test case 3: Tuition invoices backfill
         inv1 = TuitionInvoice.objects.create(organization=org, student=user_admin, amount=100)
         inv2 = TuitionInvoice.objects.create(organization=org, student=user_admin, amount=200)
         
-        # Clear fields to simulate pre-migration state
-        org.owner = None
-        org.save()
-        org_fallback.owner = None
-        org_fallback.save()
-        
+        # Simulating pre-migration invoice numbers (clear them)
         inv1.invoice_number = ""
         inv1.save()
         inv2.invoice_number = ""
