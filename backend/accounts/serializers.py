@@ -101,13 +101,18 @@ class TuitionInvoiceSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'invoice_number', 'issued_by', 'created_at')
 
     def create(self, validated_data):
+        from django.db import transaction
         request = self.context.get('request')
         if request and hasattr(request, 'organization'):
             org = request.organization
             validated_data['organization'] = org
             if not validated_data.get('invoice_number'):
-                count = TuitionInvoice.objects.filter(organization=org).count()
-                validated_data['invoice_number'] = f"INV-{org.id}-{count + 1:04d}"
+                with transaction.atomic():
+                    from accounts.models import Organization
+                    # Acquire lock on organization row to serialize sequential counting
+                    Organization.objects.select_for_update().get(id=org.id)
+                    count = TuitionInvoice.objects.filter(organization=org).count()
+                    validated_data['invoice_number'] = f"INV-{org.id}-{count + 1:04d}"
         if request and request.user and request.user.is_authenticated:
             validated_data['issued_by'] = request.user
         return super().create(validated_data)

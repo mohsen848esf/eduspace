@@ -248,3 +248,48 @@ class CRMViewsIntegrationTest(APITestCase):
         # Without financials view permission, views.py get_permissions returns 'can_view_financials' as required
         # which denies permission at the HasOrgPermission layer (HTTP 403)
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_crm_spoofing_and_cross_tenant_creation_rejected(self):
+        # Create a second organization belonging to another user
+        other_user = User.objects.create_user(username='other_user', password='password')
+        other_org = Organization.objects.create(name='Other Org', slug='other-org', owner=other_user)
+        other_course = Course.objects.create(title='Other Course', code='OC101', organization=other_org)
+        other_class = AcademyClass.objects.create(course=other_course, name='Other Class')
+
+        # Scenario A: Organization spoofing and created_by spoofing in Course creation
+        url = reverse('course-list')
+        post_data = {
+            'title': 'Spoof Course',
+            'code': 'SPC101',
+            'price': '100.00',
+            'organization': other_org.id,  # Attempting to spoof organization
+            'created_by': other_user.id    # Attempting to spoof created_by
+        }
+        res = self.client.post(url, post_data, format='json', HTTP_X_ORGANIZATION_SLUG='crm-org')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        
+        # Verify the spoofed organization was ignored and set to self.org
+        course = Course.objects.get(code='SPC101')
+        self.assertEqual(course.organization, self.org)
+        # Verify the spoofed created_by was ignored and set to self.user
+        self.assertEqual(course.created_by, self.user)
+
+        # Scenario B: Cross-tenant creation is rejected (e.g. creating class with course from other org)
+        class_url = reverse('class-list')
+        post_class_data = {
+            'course': other_course.id,  # Foreign course belonging to other_org
+            'name': 'Invalid Class'
+        }
+        res_class = self.client.post(class_url, post_class_data, format='json', HTTP_X_ORGANIZATION_SLUG='crm-org')
+        self.assertEqual(res_class.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('course', res_class.data)
+
+        # Scenario C: Cross-tenant enrollment is rejected (enrolling to class from other org)
+        enroll_url = reverse('enrollment-list')
+        post_enroll_data = {
+            'academy_class': other_class.id,  # Foreign class
+            'student': self.user.id
+        }
+        res_enroll = self.client.post(enroll_url, post_enroll_data, format='json', HTTP_X_ORGANIZATION_SLUG='crm-org')
+        self.assertEqual(res_enroll.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('academy_class', res_enroll.data)
