@@ -142,18 +142,16 @@ def has_org_permission(user, organization, permission_codename) -> bool:
             from accounts.models import OrgMember
             try:
                 member = OrgMember.objects.select_related('role').get(organization_id=org_id, user_id=user.id)
-                # Check for active and expires_at dynamically to support Task A.4 additions safely
-                is_active = getattr(member, 'is_active', True)
-                if not is_active:
+                if not member.is_active:
+                    perms = set()
+                elif member.expires_at and member.expires_at < timezone.now():
+                    perms = set()
+                elif not member.role:
+                    perms = set()
+                elif member.role.organization_id is not None and member.role.organization_id != org_id:
                     perms = set()
                 else:
-                    expires_at = getattr(member, 'expires_at', None)
-                    if expires_at and expires_at < timezone.now():
-                        perms = set()
-                    elif not member.role:
-                        perms = set()
-                    else:
-                        perms = set(member.role.permissions.values_list('codename', flat=True))
+                    perms = set(member.role.permissions.values_list('codename', flat=True))
             except OrgMember.DoesNotExist:
                 perms = set()
                 

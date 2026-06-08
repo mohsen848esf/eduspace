@@ -150,3 +150,49 @@ class PermissionsCacheTest(TransactionTestCase):
         # Resolve organization with empty request should return None (no fallback)
         org = resolve_organization(DummyRequest(), view_kwargs={})
         self.assertIsNone(org)
+
+    def test_inactive_member_denied(self):
+        self.member.is_active = False
+        self.member.save()
+        
+        # Inactive member should have zero permissions
+        has_perm = has_org_permission(self.user, self.org, 'can_edit_stuff')
+        self.assertFalse(has_perm)
+
+    def test_expired_member_denied(self):
+        from django.utils import timezone
+        import datetime
+        self.member.expires_at = timezone.now() - datetime.timedelta(days=1)
+        self.member.save()
+        
+        # Expired member should have zero permissions
+        has_perm = has_org_permission(self.user, self.org, 'can_edit_stuff')
+        self.assertFalse(has_perm)
+
+    def test_role_no_organization_allowed(self):
+        # Global role (organization is None)
+        self.assertIsNone(self.role.organization)
+        has_perm = has_org_permission(self.user, self.org, 'can_edit_stuff')
+        self.assertTrue(has_perm)
+
+    def test_role_different_organization_denied(self):
+        org2 = Organization.objects.create(name='Other Org', slug='other-org', owner=self.user)
+        role2 = Role.objects.create(name='Other Org Teacher', organization=org2)
+        role2.permissions.add(self.perm1)
+        
+        self.member.role = role2
+        self.member.save()
+        
+        # User has a role that belongs to org2, but we are querying permissions for self.org (org1)
+        # It should be denied
+        fresh_user = User.objects.get(id=self.user.id)
+        has_perm = has_org_permission(fresh_user, self.org, 'can_edit_stuff')
+        self.assertFalse(has_perm)
+
+    def test_member_no_role_denied(self):
+        self.member.role = None
+        self.member.save()
+        
+        fresh_user = User.objects.get(id=self.user.id)
+        has_perm = has_org_permission(fresh_user, self.org, 'can_edit_stuff')
+        self.assertFalse(has_perm)
