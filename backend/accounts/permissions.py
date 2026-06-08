@@ -6,6 +6,7 @@ from django.utils import timezone
 from rest_framework import status as http
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -77,11 +78,7 @@ def resolve_organization(request, view_kwargs=None):
         except Recording.DoesNotExist:
             pass
 
-    # Final fallback: Default Academy
-    try:
-        return Organization.objects.get(slug='default-academy')
-    except Organization.DoesNotExist:
-        return None
+    return None
 
 
 def has_org_permission(user, organization, permission_codename) -> bool:
@@ -94,14 +91,55 @@ def has_org_permission(user, organization, permission_codename) -> bool:
     if user.is_superuser:
         return True
         
-    from accounts.models import OrgMember
-    try:
-        member = OrgMember.objects.get(organization=organization, user=user)
-        if not member.role:
-            return False
-        return member.role.permissions.filter(codename=permission_codename).exists()
-    except OrgMember.DoesNotExist:
-        return False
+    # Tier 1: Request-scope cache (on user instance)
+    if not hasattr(user, '_org_permissions_cache'):
+        user._org_permissions_cache = {}
+        
+    org_id = organization.id
+    if org_id not in user._org_permissions_cache:
+        # Tier 2: Redis Cache (via Django's cache framework)
+        from django.core.cache import cache
+        from django.conf import settings
+        
+        cache_key = f"user_org_perms:{user.id}:{org_id}"
+        cached_perms = None
+        try:
+            cached_perms = cache.get(cache_key)
+        except Exception as cache_err:
+            logger.error(f"Redis cache.get failed: {cache_err}. Falling back to database.", exc_info=True)
+        
+        if cached_perms is not None:
+            user._org_permissions_cache[org_id] = set(cached_perms)
+        else:
+            # Cache miss: DB Query
+            from accounts.models import OrgMember
+            try:
+                member = OrgMember.objects.select_related('role').get(organization_id=org_id, user_id=user.id)
+                # Check for active and expires_at dynamically to support Task A.4 additions safely
+                is_active = getattr(member, 'is_active', True)
+                if not is_active:
+                    perms = set()
+                else:
+                    expires_at = getattr(member, 'expires_at', None)
+                    if expires_at and expires_at < timezone.now():
+                        perms = set()
+                    elif not member.role:
+                        perms = set()
+                    else:
+                        perms = set(member.role.permissions.values_list('codename', flat=True))
+            except OrgMember.DoesNotExist:
+                perms = set()
+                
+            # Store in cache
+            try:
+                ttl = getattr(settings, 'ORG_CONTEXT_CACHE_TTL', 86400)
+                cache.set(cache_key, list(perms), timeout=ttl)
+            except Exception as cache_err:
+                logger.error(f"Redis cache.set failed: {cache_err}.", exc_info=True)
+                
+            user._org_permissions_cache[org_id] = perms
+            
+    return permission_codename in user._org_permissions_cache[org_id]
 
 
 def require_org_permission(permission_codename):
@@ -143,7 +181,9 @@ class HasOrgPermission(BasePermission):
         view_kwargs = parser_context.get('kwargs')
         org = resolve_organization(request, view_kwargs)
         if not org:
-            return False
+            raise ValidationError(
+                detail={'error': 'Organization context required. Include X-Organization-Slug header.'}
+            )
             
         request.organization = org
         return has_org_permission(request.user, org, perm_codename)

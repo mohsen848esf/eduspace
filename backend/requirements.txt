@@ -20,6 +20,7 @@ psycopg2-binary==2.9.12
 
 # Cache / channel layer
 redis==7.4.0
+django-redis==5.4.0
 
 # Auth helpers
 PyJWT==2.12.1

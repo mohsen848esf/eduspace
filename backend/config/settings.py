@@ -83,6 +83,17 @@ CHANNEL_LAYERS = {
     },
 }
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': f"redis://{os.getenv('REDIS_HOST', 'localhost')}:6379/1",
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    }
+}
+ORG_CONTEXT_CACHE_TTL = 86400
+
 AUTH_USER_MODEL = 'accounts.User'
 
 REST_FRAMEWORK = {
