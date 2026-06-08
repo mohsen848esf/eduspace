@@ -180,6 +180,9 @@ class OrgResolutionIntegrationTest(APITestCase):
         org_fallback = Organization.objects.create(name='Test Fallback Org', slug='test-fallback-org', owner=user_dummy)
         teacher_role = Role.objects.get(name='Teacher')
         OrgMember.objects.create(organization=org_fallback, user=user_teacher, role=teacher_role)
+
+        # Test case 4: Org with zero members (start with owner=user_dummy, should migrate to fallback system user)
+        org_empty = Organization.objects.create(name='Test Empty Org', slug='test-empty-org', owner=user_dummy)
         
         # Test case 3: Tuition invoices backfill
         inv1 = TuitionInvoice.objects.create(organization=org, student=user_admin, amount=100)
@@ -205,11 +208,15 @@ class OrgResolutionIntegrationTest(APITestCase):
         # Assertions
         org.refresh_from_db()
         org_fallback.refresh_from_db()
+        org_empty.refresh_from_db()
         inv1.refresh_from_db()
         inv2.refresh_from_db()
         
         self.assertEqual(org.owner, user_admin)
         self.assertEqual(org_fallback.owner, user_teacher)
+        # Empty org owner should be reassigned to a valid fallback user (not user_dummy)
+        self.assertNotEqual(org_empty.owner, user_dummy)
+        self.assertIsNotNone(org_empty.owner)
         self.assertEqual(inv1.invoice_number, f"INV-{org.id}-0001")
         self.assertEqual(inv2.invoice_number, f"INV-{org.id}-0002")
 
