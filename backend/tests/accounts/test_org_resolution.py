@@ -220,3 +220,15 @@ class OrgResolutionIntegrationTest(APITestCase):
         self.assertEqual(inv1.invoice_number, f"INV-{org.id}-0001")
         self.assertEqual(inv2.invoice_number, f"INV-{org.id}-0002")
 
+    def test_resolve_organization_by_invalid_room_code_raises_404(self):
+        from django.http import Http404
+        from accounts.permissions import resolve_organization
+        with self.assertRaises(Http404):
+            resolve_organization(None, view_kwargs={'room_code': 'INVALID_ROOM'})
+
+    def test_resolve_organization_by_invalid_recording_token_raises_404(self):
+        from django.http import Http404
+        from accounts.permissions import resolve_organization
+        with self.assertRaises(Http404):
+            resolve_organization(None, view_kwargs={'token': 'INVALID_TOKEN'})
+

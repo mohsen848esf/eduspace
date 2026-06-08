@@ -178,3 +178,73 @@ class CRMViewsIntegrationTest(APITestCase):
         self.assertEqual(res.data['approved_by'], self.user.id)
         self.assertEqual(res.data['category'], 'teacher_payout')
         self.assertEqual(res.data['description'], 'Payout for May')
+
+    def test_student_enrollment_isolation(self):
+        # Create student user
+        student_user = User.objects.create_user(username='student_user', password='password')
+        # Assign student role (student user doesn't have custom roles or is_superuser)
+        student_member = OrgMember.objects.create(
+            organization=self.org,
+            user=student_user
+        )
+        
+        course = Course.objects.create(title='Isolated Course', code='IC101', organization=self.org)
+        ac = AcademyClass.objects.create(course=course, name='Class 1')
+        
+        # Enrollment for student_user
+        e_student = Enrollment.objects.create(academy_class=ac, student=student_user)
+        # Enrollment for another user
+        another_user = User.objects.create_user(username='another_user', password='password')
+        e_another = Enrollment.objects.create(academy_class=ac, student=another_user)
+        
+        # Authenticate as student_user
+        self.client.force_authenticate(user=student_user)
+        url = reverse('enrollment-list')
+        res = self.client.get(url, HTTP_X_ORGANIZATION_SLUG='crm-org')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        # Student should only see 1 enrollment (their own)
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]['id'], e_student.id)
+
+    def test_student_invoice_isolation(self):
+        student_user = User.objects.create_user(username='student_user_2', password='password')
+        student_member = OrgMember.objects.create(
+            organization=self.org,
+            user=student_user
+        )
+        
+        # Invoices
+        inv_student = TuitionInvoice.objects.create(organization=self.org, student=student_user, amount=100)
+        another_user = User.objects.create_user(username='another_user_2', password='password')
+        inv_another = TuitionInvoice.objects.create(organization=self.org, student=another_user, amount=200)
+        
+        # Authenticate as student
+        self.client.force_authenticate(user=student_user)
+        url = reverse('invoice-list')
+        res = self.client.get(url, HTTP_X_ORGANIZATION_SLUG='crm-org')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        # Student should only see their own invoice
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]['id'], inv_student.id)
+
+    def test_expense_denied_without_permission(self):
+        regular_user = User.objects.create_user(username='regular_user', password='password')
+        # Member with a teacher role (can_view_dashboard, can_teach_class but not financials)
+        teacher_role = Role.objects.create(name='CRM Teacher', organization=self.org)
+        teacher_role.permissions.add(self.perm_view)
+        
+        OrgMember.objects.create(
+            organization=self.org,
+            user=regular_user,
+            role=teacher_role
+        )
+        
+        ExpenseItem.objects.create(organization=self.org, amount=100)
+        
+        # Authenticate as regular_user
+        self.client.force_authenticate(user=regular_user)
+        url = reverse('expense-list')
+        res = self.client.get(url, HTTP_X_ORGANIZATION_SLUG='crm-org')
+        # Without financials view permission, views.py get_permissions returns 'can_view_financials' as required
+        # which denies permission at the HasOrgPermission layer (HTTP 403)
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)

@@ -40,7 +40,12 @@ def get_organization_from_request(request, view_kwargs=None):
         return org_slug, 'slug'
     
     # 2. Check query params
-    org_slug = request.query_params.get('org_slug') or request.GET.get('org_slug')
+    org_slug = None
+    if hasattr(request, 'query_params'):
+        org_slug = request.query_params.get('org_slug')
+    if not org_slug and hasattr(request, 'GET'):
+        org_slug = request.GET.get('org_slug')
+        
     if org_slug:
         if org_slug.isdigit():
             return org_slug, 'id'
@@ -86,24 +91,26 @@ def resolve_organization(request, view_kwargs=None):
     # Fallback: check if room_code is in view_kwargs
     if view_kwargs and 'room_code' in view_kwargs:
         from rooms.models import Room
+        from django.http import Http404
         try:
             room = Room.objects.get(room_code=view_kwargs['room_code'])
             academy_class = room.academy_classes.first()
             if academy_class:
                 return academy_class.course.organization
         except Room.DoesNotExist:
-            pass
+            raise Http404("Room not found")
             
     # Fallback: check if recording token is in view_kwargs
     if view_kwargs and 'token' in view_kwargs:
         from rooms.models import Recording
+        from django.http import Http404
         try:
             recording = Recording.objects.get(public_token=view_kwargs['token'])
             academy_class = recording.room.academy_classes.first()
             if academy_class:
                 return academy_class.course.organization
         except Recording.DoesNotExist:
-            pass
+            raise Http404("Recording not found")
 
     return None
 

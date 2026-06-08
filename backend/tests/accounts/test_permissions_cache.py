@@ -196,3 +196,60 @@ class PermissionsCacheTest(TransactionTestCase):
         fresh_user = User.objects.get(id=self.user.id)
         has_perm = has_org_permission(fresh_user, self.org, 'can_edit_stuff')
         self.assertFalse(has_perm)
+
+    def test_superuser_allowed(self):
+        self.user.is_superuser = True
+        self.user.save()
+        has_perm = has_org_permission(self.user, self.org, 'some_random_permission')
+        self.assertTrue(has_perm)
+
+    def test_resolve_org_by_slug_does_not_exist(self):
+        from accounts.permissions import resolve_organization
+        # Lookup by non-existent slug should return None
+        org = resolve_organization(None, view_kwargs={'org_slug': 'non-existent-slug'})
+        self.assertIsNone(org)
+        # Lookup by non-existent id should return None
+        org = resolve_organization(None, view_kwargs={'org_slug': '99999'})
+        self.assertIsNone(org)
+
+    def test_resolve_org_by_numeric_header(self):
+        from accounts.permissions import resolve_organization
+        class DummyRequest:
+            def __init__(self, headers):
+                self.headers = headers
+                self.query_params = {}
+                self.GET = {}
+        # Test numeric X-Organization-Slug header
+        req = DummyRequest({'X-Organization-Slug': str(self.org.id)})
+        resolved = resolve_organization(req)
+        self.assertEqual(resolved, self.org)
+
+    def test_resolve_org_with_no_request_view_kwargs(self):
+        from accounts.permissions import resolve_organization
+        # Test request=None with different view_kwargs keys
+        resolved_slug = resolve_organization(None, view_kwargs={'organization_slug': self.org.slug})
+        self.assertEqual(resolved_slug, self.org)
+        
+        resolved_org_id = resolve_organization(None, view_kwargs={'org_id': self.org.id})
+        self.assertEqual(resolved_org_id, self.org)
+        
+        resolved_org_slug_id = resolve_organization(None, view_kwargs={'organization_slug': str(self.org.id)})
+        self.assertEqual(resolved_org_slug_id, self.org)
+
+    def test_has_org_permission_class_parser_context(self):
+        from accounts.permissions import HasOrgPermission
+        from rest_framework.test import APIRequestFactory
+        from rest_framework.request import Request
+        
+        factory = APIRequestFactory()
+        wsgi_req = factory.get('/')
+        req = Request(wsgi_req)
+        req.user = self.user
+        req.parser_context = {'kwargs': {'org_slug': self.org.slug}}
+        
+        class DummyView:
+            required_org_permission = 'can_edit_stuff'
+            
+        permission_class = HasOrgPermission()
+        has_perm = permission_class.has_permission(req, DummyView())
+        self.assertTrue(has_perm)
