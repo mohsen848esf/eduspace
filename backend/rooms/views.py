@@ -11,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Room, RoomParticipant
+from accounts.permissions import resolve_organization
 
 
 def generate_room_code():
@@ -49,14 +50,43 @@ def create_room(request):
         room_code = generate_room_code()
 
     name = request.data.get('name', '').strip()
+    session_id = request.data.get('session_id')
+    session = None
+    org = resolve_organization(request)
+
+    if session_id:
+        from accounts.models import Session
+        try:
+            session = Session.objects.get(pk=session_id)
+        except Session.DoesNotExist:
+            return Response({'error': 'Session not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        session_org = session.get_organization()
+        if org and session_org != org:
+            return Response({'error': 'Session does not belong to your organization.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if session.status != Session.Status.SCHEDULED:
+            return Response({'error': 'Session is not scheduled or has already started.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        org = session_org
+        meeting_type = 'class_session'
+    else:
+        meeting_type = 'ad_hoc'
 
     room = Room.objects.create(
-        name=name,
+        name=name or (session.title if session else f"Room {room_code}"),
         room_code=room_code,
         host=request.user,
         max_participants=request.data.get('max_participants', 20),
         is_recorded=request.data.get('is_recorded', False),
+        session=session,
+        organization=org,
+        meeting_type=meeting_type,
     )
+
+    if session:
+        session.status = Session.Status.LIVE
+        session.save()
 
     RoomParticipant.objects.create(
         room=room,
@@ -133,6 +163,11 @@ def leave_room(request, room_code):
         room.ended_at = timezone.now()
         room.save()
         RoomParticipant.objects.filter(room=room).update(is_active=False)
+
+        # Complete and auto-populate attendance if room has an associated session
+        session = getattr(room, 'session', None)
+        if session:
+            session.complete()
 
     return Response({'message': 'Left room successfully'})
 

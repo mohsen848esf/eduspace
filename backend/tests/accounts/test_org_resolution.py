@@ -131,30 +131,18 @@ class OrgResolutionIntegrationTest(APITestCase):
 
     def test_resolve_organization_by_room_code(self):
         from rooms.models import Room
-        from accounts.models import AcademyClass
         from accounts.permissions import resolve_organization
         
-        room = Room.objects.create(room_code='ROOM99', host=self.user)
-        academy_class = AcademyClass.objects.create(
-            course=self.course1,
-            room=room,
-            name='Test Class'
-        )
+        room = Room.objects.create(room_code='ROOM99', host=self.user, organization=self.org1)
         
         org = resolve_organization(None, view_kwargs={'room_code': 'ROOM99'})
         self.assertEqual(org, self.org1)
 
     def test_resolve_organization_by_recording_token(self):
         from rooms.models import Room, Recording
-        from accounts.models import AcademyClass
         from accounts.permissions import resolve_organization
         
-        room = Room.objects.create(room_code='ROOM88', host=self.user)
-        academy_class = AcademyClass.objects.create(
-            course=self.course1,
-            room=room,
-            name='Test Class'
-        )
+        room = Room.objects.create(room_code='ROOM88', host=self.user, organization=self.org1)
         recording = Recording.objects.create(
             room=room,
             owner=self.user,

@@ -18,6 +18,9 @@ class Room(models.Model):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.WAITING)
     max_participants = models.PositiveIntegerField(default=20)
     is_recorded = models.BooleanField(default=False)
+    session = models.OneToOneField('accounts.Session', null=True, blank=True, on_delete=models.SET_NULL, related_name='room')
+    organization = models.ForeignKey('accounts.Organization', null=True, blank=True, on_delete=models.SET_NULL, related_name='rooms')
+    meeting_type = models.CharField(max_length=20, choices=[('class_session', 'Class Session'), ('ad_hoc', 'Ad-hoc')], default='ad_hoc')
 
     # Per-room set of non-host users the host has explicitly authorized
     # to start / stop / pause / resume recording during the call. The
@@ -111,6 +114,13 @@ class Recording(models.Model):
     room = models.ForeignKey(
         Room,
         on_delete=models.CASCADE,
+        related_name='recordings',
+    )
+    session = models.ForeignKey(
+        'accounts.Session',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
         related_name='recordings',
     )
     owner = models.ForeignKey(

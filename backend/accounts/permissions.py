@@ -94,9 +94,10 @@ def resolve_organization(request, view_kwargs=None):
         from django.http import Http404
         try:
             room = Room.objects.get(room_code=view_kwargs['room_code'])
-            academy_class = room.academy_classes.first()
-            if academy_class:
-                return academy_class.course.organization
+            if room.organization:
+                return room.organization
+            if room.session:
+                return room.session.get_organization()
         except Room.DoesNotExist:
             raise Http404("Room not found")
             
@@ -106,9 +107,10 @@ def resolve_organization(request, view_kwargs=None):
         from django.http import Http404
         try:
             recording = Recording.objects.get(public_token=view_kwargs['token'])
-            academy_class = recording.room.academy_classes.first()
-            if academy_class:
-                return academy_class.course.organization
+            if recording.session:
+                return recording.session.get_organization()
+            if recording.room and recording.room.organization:
+                return recording.room.organization
         except Recording.DoesNotExist:
             raise Http404("Recording not found")
 

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Notification, User, AuditLog
+from .models import Notification, User, AuditLog, Session, Attendance
 
 
 @admin.register(User)
@@ -37,3 +37,17 @@ class AuditLogAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(Session)
+class SessionAdmin(admin.ModelAdmin):
+    list_display = ('title', 'academy_class', 'organization', 'host', 'status', 'scheduled_start', 'created_at')
+    list_filter = ('status', 'organization')
+    search_fields = ('title', 'host__username', 'academy_class__name')
+
+
+@admin.register(Attendance)
+class AttendanceAdmin(admin.ModelAdmin):
+    list_display = ('session', 'student', 'status', 'joined_at', 'left_at')
+    list_filter = ('status',)
+    search_fields = ('student__username', 'session__title')

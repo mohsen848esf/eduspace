@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem
+from .models import User, Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -46,11 +46,26 @@ class AcademyClassSerializer(serializers.ModelSerializer):
     course_title = serializers.CharField(source='course.title', read_only=True)
     course_code = serializers.CharField(source='course.code', read_only=True)
     teacher_name = serializers.CharField(source='teacher.full_name', read_only=True)
+    session_count = serializers.SerializerMethodField(read_only=True)
+    latest_session = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = AcademyClass
-        fields = ('id', 'course', 'course_title', 'course_code', 'teacher', 'teacher_name', 'name', 'start_date', 'end_date', 'room', 'is_active', 'max_students', 'created_by', 'created_at')
+        fields = ('id', 'course', 'course_title', 'course_code', 'teacher', 'teacher_name', 'name', 'start_date', 'end_date', 'is_active', 'max_students', 'created_by', 'created_at', 'session_count', 'latest_session')
         read_only_fields = ('id', 'created_by', 'created_at')
+
+    def get_session_count(self, obj):
+        return obj.sessions.count()
+
+    def get_latest_session(self, obj):
+        latest = obj.sessions.order_by('-scheduled_start', '-created_at').first()
+        if latest:
+            return {
+                'id': latest.id,
+                'status': latest.status,
+                'scheduled_start': latest.scheduled_start
+            }
+        return None
 
     def create(self, validated_data):
         request = self.context.get('request')
@@ -142,3 +157,39 @@ class ExpenseItemSerializer(serializers.ModelSerializer):
         if request and request.user and request.user.is_authenticated:
             validated_data['approved_by'] = request.user
         return super().create(validated_data)
+
+
+class AttendanceSerializer(serializers.ModelSerializer):
+    student_username = serializers.CharField(source='student.username', read_only=True)
+    student_full_name = serializers.CharField(source='student.full_name', read_only=True)
+
+    class Meta:
+        model = Attendance
+        fields = ('id', 'session', 'student', 'student_username', 'student_full_name', 'status', 'joined_at', 'left_at', 'note')
+        read_only_fields = ('id', 'joined_at', 'left_at')
+
+
+class SessionSerializer(serializers.ModelSerializer):
+    host_name = serializers.CharField(source='host.full_name', read_only=True)
+    class_name = serializers.CharField(source='academy_class.name', read_only=True)
+
+    class Meta:
+        model = Session
+        fields = ('id', 'academy_class', 'class_name', 'organization', 'host', 'host_name', 'created_by', 'title', 'scheduled_start', 'scheduled_end', 'status', 'created_at')
+        read_only_fields = ('id', 'organization', 'created_by', 'created_at')
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            validated_data['created_by'] = request.user
+        
+        # If academy_class is provided, resolve organization from it
+        academy_class = validated_data.get('academy_class')
+        if academy_class:
+            validated_data['organization'] = academy_class.course.organization
+        else:
+            # For ad-hoc sessions, require organization from context
+            if request and hasattr(request, 'organization'):
+                validated_data['organization'] = request.organization
+
+        return super().create(validated_data)
