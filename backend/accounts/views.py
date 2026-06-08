@@ -98,7 +98,11 @@ class CourseViewSet(viewsets.ModelViewSet):
         org = getattr(self.request, 'organization', None)
         if not org:
             return Course.objects.none()
-        return Course.objects.filter(organization=org)
+        queryset = Course.objects.filter(organization=org)
+        include_archived = self.request.query_params.get('include_archived', '').lower() == 'true'
+        if not include_archived:
+            queryset = queryset.filter(is_active=True)
+        return queryset
 
 
 class AcademyClassViewSet(viewsets.ModelViewSet):
@@ -116,7 +120,11 @@ class AcademyClassViewSet(viewsets.ModelViewSet):
         org = getattr(self.request, 'organization', None)
         if not org:
             return AcademyClass.objects.none()
-        return AcademyClass.objects.filter(course__organization=org)
+        queryset = AcademyClass.objects.filter(course__organization=org)
+        include_archived = self.request.query_params.get('include_archived', '').lower() == 'true'
+        if not include_archived:
+            queryset = queryset.filter(is_active=True)
+        return queryset
 
 
 class EnrollmentViewSet(viewsets.ModelViewSet):
@@ -141,6 +149,10 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         if not has_org_permission(self.request.user, org, 'can_manage_members') and \
            not has_org_permission(self.request.user, org, 'can_teach_class'):
             queryset = queryset.filter(student=self.request.user)
+            
+        include_archived = self.request.query_params.get('include_archived', '').lower() == 'true'
+        if not include_archived:
+            queryset = queryset.filter(is_active=True)
             
         return queryset
 

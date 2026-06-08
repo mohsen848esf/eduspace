@@ -30,13 +30,15 @@ class UserSerializer(serializers.ModelSerializer):
 class CourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
-        fields = ('id', 'title', 'code', 'description', 'price', 'created_at')
-        read_only_fields = ('id', 'created_at')
+        fields = ('id', 'title', 'code', 'description', 'price', 'is_active', 'thumbnail', 'created_by', 'created_at')
+        read_only_fields = ('id', 'created_by', 'created_at')
 
     def create(self, validated_data):
         request = self.context.get('request')
         if request and hasattr(request, 'organization'):
             validated_data['organization'] = request.organization
+        if request and request.user and request.user.is_authenticated:
+            validated_data['created_by'] = request.user
         return super().create(validated_data)
 
 
@@ -47,8 +49,14 @@ class AcademyClassSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AcademyClass
-        fields = ('id', 'course', 'course_title', 'course_code', 'teacher', 'teacher_name', 'name', 'start_date', 'end_date', 'room', 'created_at')
-        read_only_fields = ('id', 'created_at')
+        fields = ('id', 'course', 'course_title', 'course_code', 'teacher', 'teacher_name', 'name', 'start_date', 'end_date', 'room', 'is_active', 'max_students', 'created_by', 'created_at')
+        read_only_fields = ('id', 'created_by', 'created_at')
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            validated_data['created_by'] = request.user
+        return super().create(validated_data)
 
     def validate_course(self, value):
         request = self.context.get('request')
@@ -65,8 +73,14 @@ class EnrollmentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Enrollment
-        fields = ('id', 'academy_class', 'class_name', 'student', 'student_username', 'student_full_name', 'enrolled_at', 'is_active')
-        read_only_fields = ('id', 'enrolled_at')
+        fields = ('id', 'academy_class', 'class_name', 'student', 'student_username', 'student_full_name', 'enrolled_at', 'is_active', 'enrolled_by', 'completion_status', 'completion_date')
+        read_only_fields = ('id', 'enrolled_at', 'enrolled_by')
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            validated_data['enrolled_by'] = request.user
+        return super().create(validated_data)
 
     def validate_academy_class(self, value):
         request = self.context.get('request')
@@ -83,13 +97,19 @@ class TuitionInvoiceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TuitionInvoice
-        fields = ('id', 'student', 'student_username', 'student_full_name', 'academy_class', 'class_name', 'amount', 'status', 'due_date', 'paid_at', 'created_at')
-        read_only_fields = ('id', 'created_at')
+        fields = ('id', 'student', 'student_username', 'student_full_name', 'academy_class', 'class_name', 'amount', 'status', 'due_date', 'paid_at', 'invoice_number', 'payment_method', 'issued_by', 'notes', 'created_at')
+        read_only_fields = ('id', 'invoice_number', 'issued_by', 'created_at')
 
     def create(self, validated_data):
         request = self.context.get('request')
         if request and hasattr(request, 'organization'):
-            validated_data['organization'] = request.organization
+            org = request.organization
+            validated_data['organization'] = org
+            if not validated_data.get('invoice_number'):
+                count = TuitionInvoice.objects.filter(organization=org).count()
+                validated_data['invoice_number'] = f"INV-{org.id}-{count + 1:04d}"
+        if request and request.user and request.user.is_authenticated:
+            validated_data['issued_by'] = request.user
         return super().create(validated_data)
 
     def validate_academy_class(self, value):
@@ -107,11 +127,13 @@ class ExpenseItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ExpenseItem
-        fields = ('id', 'amount', 'category', 'description', 'recipient', 'recipient_username', 'recipient_full_name', 'incurred_at', 'created_at')
-        read_only_fields = ('id', 'created_at')
+        fields = ('id', 'amount', 'category', 'description', 'recipient', 'recipient_username', 'recipient_full_name', 'approved_by', 'attachment', 'incurred_at', 'created_at')
+        read_only_fields = ('id', 'approved_by', 'created_at')
 
     def create(self, validated_data):
         request = self.context.get('request')
         if request and hasattr(request, 'organization'):
             validated_data['organization'] = request.organization
+        if request and request.user and request.user.is_authenticated:
+            validated_data['approved_by'] = request.user
         return super().create(validated_data)
