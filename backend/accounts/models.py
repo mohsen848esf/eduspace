@@ -198,6 +198,9 @@ class Course(models.Model):
 
     class Meta:
         unique_together = ('organization', 'code')
+        indexes = [
+            models.Index(fields=['organization', 'is_active']),
+        ]
 
     def __str__(self):
         return f"{self.title} ({self.code})"
@@ -214,6 +217,11 @@ class AcademyClass(models.Model):
     max_students = models.PositiveIntegerField(null=True, blank=True)
     created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='created_classes')
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['course', 'is_active']),
+        ]
 
     def __str__(self):
         return f"{self.course.code} - {self.name}"
@@ -235,6 +243,10 @@ class Enrollment(models.Model):
 
     class Meta:
         unique_together = ('academy_class', 'student')
+        indexes = [
+            models.Index(fields=['academy_class', 'is_active']),
+            models.Index(fields=['student', 'is_active']),
+        ]
 
     def __str__(self):
         return f"{self.student.username} enrolled in {self.academy_class.name}"
@@ -270,6 +282,15 @@ class TuitionInvoice(models.Model):
 
     def __str__(self):
         return f"Invoice {self.id} for {self.student.username} - {self.amount} ({self.status})"
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['organization', 'invoice_number'],
+                condition=~models.Q(invoice_number=""),
+                name='unique_invoice_number_per_org'
+            )
+        ]
 
 
 class ExpenseItem(models.Model):
