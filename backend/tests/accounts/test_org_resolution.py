@@ -163,3 +163,56 @@ class OrgResolutionIntegrationTest(APITestCase):
         
         org = resolve_organization(None, view_kwargs={'token': 'TOKEN_ABC'})
         self.assertEqual(org, self.org1)
+
+    def test_migration_backfill_applied(self):
+        from accounts.models import Organization, OrgMember, Role, User, TuitionInvoice
+        
+        # Test case 1: Org with Admin member
+        org = Organization.objects.create(name='Test Backfill Org', slug='test-backfill-org')
+        admin_role = Role.objects.get(name='Admin')
+        user_admin = User.objects.create_user(username='bf_admin', password='password')
+        OrgMember.objects.create(organization=org, user=user_admin, role=admin_role)
+        
+        # Test case 2: Org with only Teacher member (fallback)
+        org_fallback = Organization.objects.create(name='Test Fallback Org', slug='test-fallback-org')
+        teacher_role = Role.objects.get(name='Teacher')
+        user_teacher = User.objects.create_user(username='bf_teacher', password='password')
+        OrgMember.objects.create(organization=org_fallback, user=user_teacher, role=teacher_role)
+        
+        # Test case 3: Tuition invoices backfill
+        inv1 = TuitionInvoice.objects.create(organization=org, student=user_admin, amount=100)
+        inv2 = TuitionInvoice.objects.create(organization=org, student=user_admin, amount=200)
+        
+        # Clear fields to simulate pre-migration state
+        org.owner = None
+        org.save()
+        org_fallback.owner = None
+        org_fallback.save()
+        
+        inv1.invoice_number = ""
+        inv1.save()
+        inv2.invoice_number = ""
+        inv2.save()
+        
+        # Run migrate_data manually
+        import importlib
+        migration_module = importlib.import_module('accounts.migrations.0007_auto_20260608_1953')
+        migrate_data = migration_module.migrate_data
+        class DummyApps:
+            def get_model(self, app_label, model_name):
+                from django.apps import apps
+                return apps.get_model(app_label, model_name)
+                
+        migrate_data(DummyApps(), None)
+        
+        # Assertions
+        org.refresh_from_db()
+        org_fallback.refresh_from_db()
+        inv1.refresh_from_db()
+        inv2.refresh_from_db()
+        
+        self.assertEqual(org.owner, user_admin)
+        self.assertEqual(org_fallback.owner, user_teacher)
+        self.assertEqual(inv1.invoice_number, f"INV-{org.id}-0001")
+        self.assertEqual(inv2.invoice_number, f"INV-{org.id}-0002")
+
