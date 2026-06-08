@@ -98,7 +98,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         org = getattr(self.request, 'organization', None)
         if not org:
             return Course.objects.none()
-        queryset = Course.objects.filter(organization=org)
+        queryset = Course.objects.select_related('created_by').filter(organization=org)
         include_archived = self.request.query_params.get('include_archived', '').lower() == 'true'
         if not include_archived:
             queryset = queryset.filter(is_active=True)
@@ -120,7 +120,7 @@ class AcademyClassViewSet(viewsets.ModelViewSet):
         org = getattr(self.request, 'organization', None)
         if not org:
             return AcademyClass.objects.none()
-        queryset = AcademyClass.objects.filter(course__organization=org)
+        queryset = AcademyClass.objects.select_related('course', 'teacher', 'created_by').filter(course__organization=org)
         include_archived = self.request.query_params.get('include_archived', '').lower() == 'true'
         if not include_archived:
             queryset = queryset.filter(is_active=True)
@@ -143,7 +143,7 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         if not org:
             return Enrollment.objects.none()
         
-        queryset = Enrollment.objects.filter(academy_class__course__organization=org)
+        queryset = Enrollment.objects.select_related('student', 'academy_class__course', 'enrolled_by').filter(academy_class__course__organization=org)
         
         # Students should only see their own enrollments, teachers/admins can see all
         if not has_org_permission(self.request.user, org, 'can_manage_members') and \
@@ -173,7 +173,7 @@ class TuitionInvoiceViewSet(viewsets.ModelViewSet):
         if not org:
             return TuitionInvoice.objects.none()
             
-        queryset = TuitionInvoice.objects.filter(organization=org)
+        queryset = TuitionInvoice.objects.select_related('student', 'academy_class__course', 'issued_by').filter(organization=org)
         
         # Isolation: Students only see their own invoices, financials viewers see all
         if not has_org_permission(self.request.user, org, 'can_view_financials'):
@@ -202,4 +202,4 @@ class ExpenseItemViewSet(viewsets.ModelViewSet):
         if not has_org_permission(self.request.user, org, 'can_view_financials'):
             return ExpenseItem.objects.none()
             
-        return ExpenseItem.objects.filter(organization=org)
+        return ExpenseItem.objects.select_related('recipient', 'approved_by').filter(organization=org)
