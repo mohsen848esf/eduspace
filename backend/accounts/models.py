@@ -325,3 +325,117 @@ class ExpenseItem(models.Model):
         return f"Expense {self.id} - {self.category} - {self.amount}"
 
 
+class Session(models.Model):
+    class Status(models.TextChoices):
+        SCHEDULED = 'scheduled', 'Scheduled'
+        LIVE = 'live', 'Live'
+        COMPLETED = 'completed', 'Completed'
+        CANCELLED = 'cancelled', 'Cancelled'
+
+    academy_class = models.ForeignKey(AcademyClass, null=True, blank=True, on_delete=models.CASCADE, related_name='sessions')
+    organization = models.ForeignKey(Organization, null=True, blank=True, on_delete=models.CASCADE, related_name='sessions')
+    host = models.ForeignKey(User, on_delete=models.PROTECT, related_name='hosted_academic_sessions')
+    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='created_sessions')
+    active_room = models.ForeignKey('rooms.Room', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    title = models.CharField(max_length=255)
+    scheduled_start = models.DateTimeField(null=True, blank=True)
+    scheduled_end = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.SCHEDULED)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['organization', 'status']),
+            models.Index(fields=['academy_class', 'status']),
+            models.Index(fields=['organization', '-scheduled_start']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['academy_class', 'status'],
+                condition=models.Q(status='live'),
+                name='unique_live_session_per_class'
+            )
+        ]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        # If academy_class is set, organization must equal academy_class.course.organization
+        if self.academy_class:
+            inferred_org = self.academy_class.course.organization
+            if self.organization and self.organization != inferred_org:
+                raise ValidationError({'organization': 'Organization must match the class organization.'})
+            self.organization = inferred_org
+        else:
+            if not self.organization:
+                raise ValidationError({'organization': 'Organization is required for ad-hoc sessions.'})
+
+        # scheduled_end must be after scheduled_start when both are set
+        if self.scheduled_start and self.scheduled_end:
+            if self.scheduled_end <= self.scheduled_start:
+                raise ValidationError({'scheduled_end': 'Scheduled end must be after scheduled start.'})
+
+        # Only one Session per AcademyClass can have status live at a time
+        if self.status == self.Status.LIVE and self.academy_class:
+            live_sessions = Session.objects.filter(
+                academy_class=self.academy_class,
+                status=self.Status.LIVE
+            )
+            if self.pk:
+                live_sessions = live_sessions.exclude(pk=self.pk)
+            if live_sessions.exists():
+                raise ValidationError({'status': 'Only one live session is allowed per class at a time.'})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def get_organization(self):
+        return self.academy_class.course.organization if self.academy_class else self.organization
+
+    def get_enrolled_students(self):
+        if not self.academy_class:
+            return User.objects.none()
+        return User.objects.filter(
+            enrollments__academy_class=self.academy_class,
+            enrollments__is_active=True
+        )
+
+    def start_live(self):
+        self.status = self.Status.LIVE
+        self.save()
+
+    def complete(self):
+        self.status = self.Status.COMPLETED
+        self.save()
+        # Trigger attendance auto-population
+        from accounts.services.attendance_service import AttendanceService
+        AttendanceService.auto_populate(self)
+
+    def __str__(self):
+        return f"{self.title} ({self.status})"
+
+
+class Attendance(models.Model):
+    class Status(models.TextChoices):
+        PRESENT = 'present', 'Present'
+        ABSENT = 'absent', 'Absent'
+        LATE = 'late', 'Late'
+        EXCUSED = 'excused', 'Excused'
+
+    session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name='attendance_records')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='attendance_records')
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.ABSENT)
+    joined_at = models.DateTimeField(null=True, blank=True)
+    left_at = models.DateTimeField(null=True, blank=True)
+    note = models.TextField(blank=True, default='')
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['session', 'student'], name='unique_session_student_attendance')
+        ]
+
+    def __str__(self):
+        return f"{self.student.username} - {self.session.title}: {self.status}"
+
+
+
