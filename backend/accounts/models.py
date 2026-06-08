@@ -291,6 +291,10 @@ class TuitionInvoice(models.Model):
                 name='unique_invoice_number_per_org'
             )
         ]
+        indexes = [
+            models.Index(fields=['organization', 'student']),
+            models.Index(fields=['organization', 'status']),
+        ]
 
 
 class ExpenseItem(models.Model):
@@ -311,6 +315,13 @@ class ExpenseItem(models.Model):
     incurred_at = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['organization', 'category']),
+            models.Index(fields=['organization', '-incurred_at']),
+        ]
+
     def __str__(self):
         return f"Expense {self.id} - {self.category} - {self.amount}"
+
 
