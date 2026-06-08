@@ -43,3 +43,9 @@ ai-context.backend.md
 ai-context.project.md
 ai-context.tasks.md
 COMMIT_EDITMSG.txt
+
+# Coverage
+.coverage
+htmlcov/
+backend/.coverage
+backend/htmlcov/
