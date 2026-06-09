@@ -426,15 +426,14 @@ class Session(models.Model):
         )
 
     def start_live(self):
-        self.status = self.Status.LIVE
-        self.save()
+        from accounts.services.session_service import SessionService
+        SessionService.start_session(self.id)
+        self.refresh_from_db()
 
     def complete(self):
-        self.status = self.Status.COMPLETED
-        self.save()
-        # Trigger attendance auto-population
-        from accounts.services.attendance_service import AttendanceService
-        AttendanceService.auto_populate(self)
+        from accounts.services.session_service import SessionService
+        SessionService.complete_session(self.id)
+        self.refresh_from_db()
 
     def __str__(self):
         return f"{self.title} ({self.status})"
