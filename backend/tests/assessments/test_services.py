@@ -363,3 +363,132 @@ class AssessmentServicesTest(TestCase):
         self.assertEqual(log_tab.entity_id, submission.pk)
         self.assertEqual(log_tab.before_state, {"tab_focus_losses": 0})
         self.assertEqual(log_tab.after_state, {"tab_focus_losses": 1})
+
+    def test_manual_grading_validation(self):
+        """Verify boundary and validation rules for manual grading."""
+        submission = AssessmentService.start_submission(
+            assessment=self.assessment,
+            student=self.student
+        )
+        
+        # Test case: Valid score
+        # q_code points = 8.00 (points override in AssessmentQuestion)
+        ans_code = submission.answers.get(question=self.q_code)
+        
+        # 1. Valid score (7.00 out of 8.00)
+        GradingService.manual_grade_answer(
+            student_answer=ans_code,
+            score=Decimal("7.00"),
+            is_correct=True,
+            teacher_notes="Good effort",
+            graded_by=self.teacher
+        )
+        ans_code.refresh_from_db()
+        self.assertEqual(ans_code.score, Decimal("7.00"))
+        
+        # 2. Invalid Negative (score = -1.00)
+        with self.assertRaises(ValidationError) as ctx:
+            GradingService.manual_grade_answer(
+                student_answer=ans_code,
+                score=Decimal("-1.00"),
+                is_correct=False,
+                graded_by=self.teacher
+            )
+        self.assertIn("Score cannot be negative.", str(ctx.exception))
+        
+        # 3. Invalid Over Maximum (score = 15.00 out of 8.00)
+        with self.assertRaises(ValidationError) as ctx:
+            GradingService.manual_grade_answer(
+                student_answer=ans_code,
+                score=Decimal("15.00"),
+                is_correct=False,
+                graded_by=self.teacher
+            )
+        self.assertIn("Score cannot exceed question maximum points.", str(ctx.exception))
+
+        # 4. Boundary check: full points (8.00 out of 8.00)
+        GradingService.manual_grade_answer(
+            student_answer=ans_code,
+            score=Decimal("8.00"),
+            is_correct=True,
+            graded_by=self.teacher
+        )
+        ans_code.refresh_from_db()
+        self.assertEqual(ans_code.score, Decimal("8.00"))
+
+        # 5. Boundary check: zero points on a 0-point question
+        assessment_zero = Assessment.objects.create(
+            organization=self.org,
+            title="Zero point assessment",
+            created_by=self.teacher
+        )
+        q_zero = Question.objects.create(
+            question_bank=self.qbank,
+            text="Zero point question",
+            question_type=Question.QuestionType.TEXT,
+            correct_answer="any",
+            points=Decimal("0.00")
+        )
+        AssessmentQuestion.objects.create(
+            assessment=assessment_zero,
+            question=q_zero,
+            order=1,
+            points=Decimal("0.00")
+        )
+        submission_new = AssessmentService.start_submission(
+            assessment=assessment_zero,
+            student=self.student
+        )
+        ans_zero = submission_new.answers.get(question=q_zero)
+        
+        # 0 score on 0 points: PASS
+        GradingService.manual_grade_answer(
+            student_answer=ans_zero,
+            score=Decimal("0.00"),
+            is_correct=True,
+            graded_by=self.teacher
+        )
+        ans_zero.refresh_from_db()
+        self.assertEqual(ans_zero.score, Decimal("0.00"))
+
+        # 1 score on 0 points: FAIL
+        with self.assertRaises(ValidationError) as ctx:
+            GradingService.manual_grade_answer(
+                student_answer=ans_zero,
+                score=Decimal("1.00"),
+                is_correct=False,
+                graded_by=self.teacher
+            )
+        self.assertIn("Score cannot exceed question maximum points.", str(ctx.exception))
+
+        # 6. Test AssessmentService.grade_submission validations
+        submission_for_bulk = AssessmentService.start_submission(
+            assessment=self.assessment,
+            student=self.student
+        )
+        submission_for_bulk.status = Submission.Status.SUBMITTED
+        submission_for_bulk.save()
+
+        # Grade dictionary with negative score
+        grades_dict_neg = {
+            str(self.q_code.id): {"score": Decimal("-1.00"), "is_correct": False}
+        }
+        with self.assertRaises(ValidationError) as ctx:
+            AssessmentService.grade_submission(
+                submission=submission_for_bulk,
+                graded_by=self.teacher,
+                grades_dict=grades_dict_neg
+            )
+        self.assertIn("Score cannot be negative.", str(ctx.exception))
+
+        # Grade dictionary with score > max_points
+        grades_dict_over = {
+            str(self.q_code.id): {"score": Decimal("20.00"), "is_correct": True}
+        }
+        with self.assertRaises(ValidationError) as ctx:
+            AssessmentService.grade_submission(
+                submission=submission_for_bulk,
+                graded_by=self.teacher,
+                grades_dict=grades_dict_over
+            )
+        self.assertIn("Score cannot exceed question maximum points.", str(ctx.exception))

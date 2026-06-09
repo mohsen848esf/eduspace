@@ -1,5 +1,7 @@
 from django.db import models
+from django.db.models import ProtectedError
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from accounts.models import Organization, Session
 
 class QuestionBank(models.Model):
@@ -66,6 +68,19 @@ class Question(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     objects = QuestionManager()
+
+    def delete(self, *args, **kwargs):
+        if not self.is_active:
+            raise ProtectedError(
+                "Archived questions cannot be deleted.",
+                [self],
+            )
+        if self.assessmentquestion_set.exists() or self.studentanswer_set.exists():
+            raise ProtectedError(
+                "Questions with assessment history cannot be deleted.",
+                [self],
+            )
+        super().delete(*args, **kwargs)
 
     def archive(self):
         self.is_active = False

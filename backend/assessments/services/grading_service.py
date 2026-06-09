@@ -86,6 +86,28 @@ class GradingService:
         """
         Allows a teacher to grade a student's answer manually (usually for code/text questions, or overriding choice questions).
         """
+        # Determine points for this question (check AssessmentQuestion override first)
+        try:
+            aq = AssessmentQuestion.objects.get(
+                assessment=student_answer.submission.assessment,
+                question=student_answer.question
+            )
+            max_points = aq.points
+        except AssessmentQuestion.DoesNotExist:
+            max_points = student_answer.question.points
+
+        # Coerce score to Decimal if it isn't already one, for safe comparison
+        if not isinstance(score, Decimal):
+            try:
+                score = Decimal(str(score))
+            except Exception:
+                raise ValidationError("Score must be a valid number.")
+
+        if score < 0:
+            raise ValidationError("Score cannot be negative.")
+        if score > max_points:
+            raise ValidationError("Score cannot exceed question maximum points.")
+
         student_answer.score = score
         student_answer.is_correct = is_correct
         if teacher_notes:

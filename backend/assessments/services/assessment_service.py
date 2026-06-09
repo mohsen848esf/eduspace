@@ -136,6 +136,39 @@ class AssessmentService:
         with transaction.atomic():
             submission = Submission.objects.select_for_update().get(pk=submission.pk)
             
+            # Pre-validate all scores in grades_dict to prevent partial grading on failure
+            for key, grade_data in grades_dict.items():
+                try:
+                    lookup_id = int(key)
+                except ValueError:
+                    continue
+
+                ans = submission.answers.filter(question_id=lookup_id).first()
+                if not ans:
+                    continue
+
+                score = grade_data.get('score')
+                if score is not None:
+                    try:
+                        score_dec = Decimal(str(score))
+                    except Exception:
+                        raise ValidationError("Score must be a valid number.")
+
+                    # Determine max_points
+                    try:
+                        aq = AssessmentQuestion.objects.get(
+                            assessment=submission.assessment,
+                            question=ans.question
+                        )
+                        max_points = aq.points
+                    except AssessmentQuestion.DoesNotExist:
+                        max_points = ans.question.points
+
+                    if score_dec < 0:
+                        raise ValidationError("Score cannot be negative.")
+                    if score_dec > max_points:
+                        raise ValidationError("Score cannot exceed question maximum points.")
+
             before_state = {
                 'status': submission.status,
                 'score': str(submission.score)

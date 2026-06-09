@@ -1,5 +1,6 @@
 from django.test import TestCase
 from django.db import IntegrityError
+from django.db.models import ProtectedError
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from accounts.models import Organization, Session, AcademyClass, Course
@@ -274,4 +275,79 @@ class AssessmentModelsTest(TestCase):
         self.assertEqual(reloaded_sa.score, 5.00)
         self.assertTrue(reloaded_sa.is_correct)
         self.assertEqual(reloaded_sa.question.text, "Historical Question")
+
+    def test_question_hard_delete_protection(self):
+        """Verify that hard deleting a Question model is blocked if it is archived or linked to assessments/answers."""
+        # 1. Create a new draft question
+        q_unused = Question.objects.create(
+            question_bank=self.qbank,
+            text="Unused question",
+            correct_answer={"text": "unused"}
+        )
+        
+        # Verify it can be hard deleted when active and has no relations
+        q_unused_id = q_unused.id
+        q_unused.delete()
+        self.assertFalse(Question.objects.filter(id=q_unused_id).exists())
+
+        # 2. Verify that archiving a question blocks physical deletion even if it has no relations
+        q_archived = Question.objects.create(
+            question_bank=self.qbank,
+            text="Archived question with no relations",
+            correct_answer={"text": "archived"}
+        )
+        q_archived.archive()
+        
+        with self.assertRaises(ProtectedError) as ctx:
+            q_archived.delete()
+        self.assertIn("Archived questions cannot be deleted.", str(ctx.exception))
+        self.assertTrue(Question.objects.filter(id=q_archived.id).exists())
+
+        # 3. Create a question linked to an assessment
+        q_linked = Question.objects.create(
+            question_bank=self.qbank,
+            text="Linked to assessment question",
+            correct_answer={"text": "linked"}
+        )
+        assessment = Assessment.objects.create(
+            organization=self.org,
+            title="Archived Question Test Exam",
+            created_by=self.teacher
+        )
+        aq = AssessmentQuestion.objects.create(
+            assessment=assessment,
+            question=q_linked,
+            order=1,
+            points=5.00
+        )
+        
+        # Trying to hard delete it should raise ProtectedError
+        with self.assertRaises(ProtectedError) as ctx:
+            q_linked.delete()
+        self.assertIn("Questions with assessment history cannot be deleted.", str(ctx.exception))
+        # Ensure it was NOT deleted
+        self.assertTrue(Question.objects.filter(id=q_linked.id).exists())
+
+        # 4. Create a question linked to student answer (but not assessment through-model)
+        # First we delete the assessment link
+        aq.delete()
+        
+        # Verify we can link it to a student answer
+        submission = Submission.objects.create(
+            assessment=assessment,
+            student=self.student
+        )
+        sa = StudentAnswer.objects.create(
+            submission=submission,
+            question=q_linked,
+            text_answer="some answer",
+            score=5.00,
+            is_correct=True
+        )
+
+        # Trying to hard delete it now should still raise ProtectedError
+        with self.assertRaises(ProtectedError) as ctx:
+            q_linked.delete()
+        self.assertIn("Questions with assessment history cannot be deleted.", str(ctx.exception))
+        self.assertTrue(Question.objects.filter(id=q_linked.id).exists())
 
