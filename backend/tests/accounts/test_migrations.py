@@ -84,6 +84,11 @@ class TestClassToSessionMigration(TransactionTestCase):
         updated_recording = Recording.objects.get(id=recording.id)
         self.assertEqual(updated_recording.session_id, session.id)
         
+        # Test idempotency: Run the migration forward again, verify no duplicate Session is created
+        executor_idempotency = MigrationExecutor(connection)
+        executor_idempotency.migrate(self.migrate_to)
+        self.assertEqual(Session.objects.filter(academy_class_id=ac.id).count(), 1)
+
         # 3. Test rollback
         executor = MigrationExecutor(connection)
         executor.migrate(self.migrate_from)

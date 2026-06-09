@@ -14,6 +14,10 @@ def migrate_class_to_session(apps, schema_editor):
     classes = AcademyClass.objects.exclude(room_id__isnull=True)
     
     for ac in classes:
+        # Check if a migrated session already exists for this class to ensure idempotency
+        if Session.objects.filter(academy_class=ac, title__endswith=' (Migrated)').exists():
+            continue
+
         try:
             room = Room.objects.get(id=ac.room_id)
         except Room.DoesNotExist:
