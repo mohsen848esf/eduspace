@@ -226,6 +226,14 @@ class AcademyClass(models.Model):
     def __str__(self):
         return f"{self.course.code} - {self.name}"
 
+    @property
+    def session_count(self):
+        return self.sessions.count()
+
+    @property
+    def latest_session(self):
+        return self.sessions.order_by('-scheduled_start', '-created_at').first()
+
 
 class Enrollment(models.Model):
     class CompletionStatus(models.TextChoices):
@@ -388,6 +396,12 @@ class Session(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+        # Sync to AcademyClass.room for backward compatibility during transition
+        if self.academy_class:
+            ac = self.academy_class
+            if ac.room != self.active_room:
+                ac.room = self.active_room
+                ac.save(update_fields=['room'])
 
     def get_organization(self):
         return self.academy_class.course.organization if self.academy_class else self.organization

@@ -4,7 +4,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 from accounts.models import (
-    Organization, Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, OrgMember, Role, Permission
+    Organization, Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, OrgMember, Role, Permission, Session
 )
 
 User = get_user_model()
@@ -98,6 +98,54 @@ class CRMViewsIntegrationTest(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         self.assertEqual(res.data['created_by'], self.user.id)
         self.assertEqual(res.data['max_students'], 30)
+
+    def test_academy_class_session_fields_and_room_sync(self):
+        from rooms.models import Room
+        course = Course.objects.create(title='Base Course', code='BC101', organization=self.org)
+        ac = AcademyClass.objects.create(course=course, name='Class A')
+        
+        # 1. Create a session
+        session = Session.objects.create(
+            academy_class=ac,
+            host=self.user,
+            title='Session 1',
+            status=Session.Status.SCHEDULED,
+            scheduled_start=timezone.now()
+        )
+        
+        url = reverse('class-detail', args=[ac.id])
+        res = self.client.get(url, HTTP_X_ORGANIZATION_SLUG='crm-org')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        
+        # Verify compatibility fields
+        self.assertEqual(res.data['session_count'], 1)
+        self.assertIsNotNone(res.data['latest_session'])
+        self.assertEqual(res.data['latest_session']['id'], session.id)
+        self.assertEqual(res.data['latest_session']['status'], 'scheduled')
+        self.assertIsNone(res.data['room']) # No active room yet
+        
+        # 2. Create room and start live (sets active_room)
+        room = Room.objects.create(name='Live Room', room_code='LIV101', host=self.user)
+        session.active_room = room
+        session.save()
+        
+        # Class room FK should be synced in save hook
+        ac.refresh_from_db()
+        self.assertEqual(ac.room, room)
+        
+        # Verify via API response
+        res = self.client.get(url, HTTP_X_ORGANIZATION_SLUG='crm-org')
+        self.assertEqual(res.data['room'], room.id)
+        
+        # 3. Nullify active_room and save
+        session.active_room = None
+        session.save()
+        
+        ac.refresh_from_db()
+        self.assertIsNone(ac.room)
+        
+        res = self.client.get(url, HTTP_X_ORGANIZATION_SLUG='crm-org')
+        self.assertIsNone(res.data['room'])
 
     def test_enrollment_viewset_filtering_and_auto_populate(self):
         course = Course.objects.create(title='Base Course', code='BC101', organization=self.org)

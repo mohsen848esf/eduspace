@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem
+from .models import User, Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, Session
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -42,14 +42,26 @@ class CourseSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class CompactSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Session
+        fields = ('id', 'status', 'scheduled_start')
+
+
 class AcademyClassSerializer(serializers.ModelSerializer):
     course_title = serializers.CharField(source='course.title', read_only=True)
     course_code = serializers.CharField(source='course.code', read_only=True)
     teacher_name = serializers.CharField(source='teacher.full_name', read_only=True)
+    session_count = serializers.IntegerField(read_only=True)
+    latest_session = CompactSessionSerializer(read_only=True)
 
     class Meta:
         model = AcademyClass
-        fields = ('id', 'course', 'course_title', 'course_code', 'teacher', 'teacher_name', 'name', 'start_date', 'end_date', 'room', 'is_active', 'max_students', 'created_by', 'created_at')
+        fields = (
+            'id', 'course', 'course_title', 'course_code', 'teacher', 'teacher_name',
+            'name', 'start_date', 'end_date', 'room', 'is_active', 'max_students',
+            'session_count', 'latest_session', 'created_by', 'created_at'
+        )
         read_only_fields = ('id', 'created_by', 'created_at')
 
     def create(self, validated_data):
