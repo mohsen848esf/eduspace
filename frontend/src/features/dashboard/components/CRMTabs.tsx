@@ -1,4 +1,9 @@
-import { useState, useEffect } from "react";
+
+
+
+
+import { useState, useEffect, Fragment } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-hot-toast";
@@ -16,6 +21,8 @@ import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
 import { Modal, ModalHeader, ModalTitle, ModalBody } from "../../../components/ui/Modal";
 import Spinner from "../../../components/ui/Spinner";
+import { useSessions } from "../../sessions/hooks/useSessions";
+import ClassSessionsSubTable from "../../sessions/components/ClassSessionsSubTable";
 
 interface CRMTabsProps {
   language: string;
@@ -25,6 +32,10 @@ export default function CRMTabs({ language }: CRMTabsProps) {
   useTranslation(["dashboard", "common"]);
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  const { data: liveSessions = [] } = useSessions(undefined, "live");
+  const [expandedClassId, setExpandedClassId] = useState<number | null>(null);
 
   const isFarsi = language === "fa";
 
@@ -595,33 +606,62 @@ export default function CRMTabs({ language }: CRMTabsProps) {
                 </thead>
                 <tbody>
                   {classes.map((cls) => (
-                    <tr key={cls.id} className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors text-left">
-                      <td className="p-4 font-semibold text-[var(--t1)]">{cls.name}</td>
-                      <td className="p-4 text-[var(--t2)]">{cls.course_title} ({cls.course_code})</td>
-                      <td className="p-4 text-[var(--t1)]">{cls.teacher_name || "—"}</td>
-                      <td className="p-4 text-[var(--t2)]">{cls.room || "—"}</td>
-                      <td className="p-4 text-[var(--t3)]">{cls.start_date || "—"}</td>
-                      {canManageCRM && (
-                        <td className="p-4 text-right flex justify-end gap-2">
-                          <button
-                            onClick={() => openEditModal("class", cls)}
-                            className="text-xs bg-transparent text-[var(--cyan)] hover:underline border-none cursor-pointer"
-                          >
-                            {isFarsi ? "ویرایش" : "Edit"}
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (confirm(isFarsi ? "آیا مطمئن هستید؟" : "Are you sure you want to delete this class?")) {
-                                deleteClassMutation.mutate(cls.id);
-                              }
-                            }}
-                            className="text-xs bg-transparent text-[var(--red)] hover:underline border-none cursor-pointer"
-                          >
-                            {isFarsi ? "حذف" : "Delete"}
-                          </button>
+                    <Fragment key={cls.id}>
+                      <tr className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors text-left">
+                        <td className="p-4 font-semibold text-[var(--t1)]">
+                          <div className="flex items-center gap-1.5">
+                            {cls.name}
+                            {cls.latest_session?.status === "live" && (
+                              <span
+                                className="inline-block w-2.5 h-2.5 rounded-full bg-[var(--green)] animate-pulse"
+                                title={isFarsi ? "کلاس زنده در جریان است" : "Live Session in progress"}
+                              />
+                            )}
+                          </div>
                         </td>
+                        <td className="p-4 text-[var(--t2)]">{cls.course_title} ({cls.course_code})</td>
+                        <td className="p-4 text-[var(--t1)]">{cls.teacher_name || "—"}</td>
+                        <td className="p-4 text-[var(--t2)]">{cls.room || "—"}</td>
+                        <td className="p-4 text-[var(--t3)]">{cls.start_date || "—"}</td>
+                        {canManageCRM && (
+                          <td className="p-4 text-right flex justify-end gap-2">
+                            <button
+                              onClick={() => setExpandedClassId(expandedClassId === cls.id ? null : cls.id)}
+                              className="text-xs bg-transparent text-[var(--brand-text)] hover:underline border-none cursor-pointer font-bold"
+                            >
+                              {isFarsi ? `جلسات (${cls.session_count || 0})` : `Sessions (${cls.session_count || 0})`}
+                            </button>
+                            <button
+                              onClick={() => openEditModal("class", cls)}
+                              className="text-xs bg-transparent text-[var(--cyan)] hover:underline border-none cursor-pointer"
+                            >
+                              {isFarsi ? "ویرایش" : "Edit"}
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm(isFarsi ? "آیا مطمئن هستید؟" : "Are you sure you want to delete this class?")) {
+                                  deleteClassMutation.mutate(cls.id);
+                                }
+                              }}
+                              className="text-xs bg-transparent text-[var(--red)] hover:underline border-none cursor-pointer"
+                            >
+                              {isFarsi ? "حذف" : "Delete"}
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                      {expandedClassId === cls.id && (
+                        <tr>
+                          <td colSpan={canManageCRM ? 6 : 5} className="p-0">
+                            <ClassSessionsSubTable
+                              cls={cls}
+                              language={language}
+                              canManageCRM={canManageCRM}
+                            />
+                          </td>
+                        </tr>
                       )}
-                    </tr>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
@@ -669,9 +709,25 @@ export default function CRMTabs({ language }: CRMTabsProps) {
                       <td className="p-4 text-[var(--t2)]">{e.class_name}</td>
                       <td className="p-4 text-[var(--t3)]">{new Date(e.enrolled_at).toLocaleDateString()}</td>
                       <td className="p-4">
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${e.is_active ? "bg-[rgba(34,197,94,0.12)] text-[var(--green)]" : "bg-[var(--s3)] text-[var(--t3)]"}`}>
-                          {e.is_active ? (isFarsi ? "فعال" : "Active") : (isFarsi ? "غیرفعال" : "Inactive")}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${e.is_active ? "bg-[rgba(34,197,94,0.12)] text-[var(--green)]" : "bg-[var(--s3)] text-[var(--t3)]"}`}>
+                            {e.is_active ? (isFarsi ? "فعال" : "Active") : (isFarsi ? "غیرفعال" : "Inactive")}
+                          </span>
+                          {(() => {
+                            const liveSession = liveSessions.find((s) => s.academy_class === e.academy_class);
+                            if (e.is_active && liveSession?.active_room_code) {
+                              return (
+                                <button
+                                  onClick={() => navigate(`/room/${liveSession.active_room_code}`)}
+                                  className="text-[10px] bg-[var(--green)] hover:brightness-110 text-white font-bold px-2 py-0.5 rounded-full cursor-pointer border-none animate-pulse"
+                                >
+                                  {isFarsi ? "ورود به کلاس زنده" : "Join Live Class"}
+                                </button>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
                       </td>
                       {canManageCRM && (
                         <td className="p-4 text-right flex justify-end gap-2">

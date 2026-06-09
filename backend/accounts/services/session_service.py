@@ -43,7 +43,7 @@ class SessionService:
             # Validate organization membership/permission
             org = session.get_organization()
             if actor:
-                if not has_org_permission(actor, org, 'can_manage_sessions'):
+                if not has_org_permission(actor, org, 'can_manage_sessions') and session.host != actor:
                     raise PermissionDenied("You do not have permission to manage sessions in this organization.")
 
             current = session.status
@@ -132,9 +132,10 @@ class SessionService:
             except Session.DoesNotExist:
                 raise ValidationError("Session does not exist.")
 
+            # Validate organization membership/permission
             org = session.get_organization()
             if actor:
-                if not has_org_permission(actor, org, 'can_manage_sessions'):
+                if not has_org_permission(actor, org, 'can_manage_sessions') and session.host != actor:
                     raise PermissionDenied("You do not have permission to manage sessions in this organization.")
 
             current = session.status

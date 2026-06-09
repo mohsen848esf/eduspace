@@ -1,4 +1,5 @@
 import client from "../../../lib/api/client";
+import type { Session } from "../../sessions/types";
 
 export interface Course {
   id: number;
@@ -21,6 +22,8 @@ export interface AcademyClass {
   end_date: string | null;
   room?: string | null;
   created_at: string;
+  session_count?: number;
+  latest_session?: Session | null;
 }
 
 export interface Enrollment {
