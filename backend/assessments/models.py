@@ -24,6 +24,22 @@ class QuestionBank(models.Model):
         return f"{self.title} ({self.organization.name})"
 
 
+class QuestionQuerySet(models.QuerySet):
+    def active(self):
+        return self.filter(is_active=True)
+
+
+class QuestionManager(models.Manager):
+    def get_queryset(self):
+        return QuestionQuerySet(self.model, using=self._db)
+
+    def active(self):
+        return self.get_queryset().active()
+
+    def with_archived(self):
+        return self.get_queryset()
+
+
 class Question(models.Model):
     class QuestionType(models.TextChoices):
         SINGLE_CHOICE = 'single_choice', 'Single Choice'
@@ -45,8 +61,19 @@ class Question(models.Model):
     options = models.JSONField(default=list, blank=True)
     correct_answer = models.JSONField()
     points = models.DecimalField(max_digits=5, decimal_places=2, default=1.00)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    objects = QuestionManager()
+
+    def archive(self):
+        self.is_active = False
+        self.save(update_fields=['is_active', 'updated_at'])
+
+    def restore(self):
+        self.is_active = True
+        self.save(update_fields=['is_active', 'updated_at'])
 
     def __str__(self):
         return f"{self.text[:50]}... ({self.question_type})"

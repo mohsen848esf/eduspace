@@ -210,3 +210,68 @@ class AssessmentModelsTest(TestCase):
                 question=q,
                 text_answer="second attempt"
             )
+
+    def test_question_archive_and_restore(self):
+        """Verify that questions can be archived and restored, updating active querysets."""
+        q = Question.objects.create(
+            question_bank=self.qbank,
+            text="Temporary Question",
+            correct_answer={"text": "temp"}
+        )
+        self.assertTrue(q.is_active)
+        self.assertIn(q, Question.objects.active())
+
+        # Archive the question
+        q.archive()
+        self.assertFalse(q.is_active)
+        self.assertNotIn(q, Question.objects.active())
+        self.assertIn(q, Question.objects.with_archived())
+
+        # Restore the question
+        q.restore()
+        self.assertTrue(q.is_active)
+        self.assertIn(q, Question.objects.active())
+
+    def test_historical_preservation_when_archived(self):
+        """Verify that archiving a question keeps linked historical assessment and student answer records intact."""
+        q = Question.objects.create(
+            question_bank=self.qbank,
+            text="Historical Question",
+            correct_answer={"text": "hist"}
+        )
+        assessment = Assessment.objects.create(
+            organization=self.org,
+            title="Archived Question Test Exam",
+            created_by=self.teacher
+        )
+        aq = AssessmentQuestion.objects.create(
+            assessment=assessment,
+            question=q,
+            order=1,
+            points=5.00
+        )
+        submission = Submission.objects.create(
+            assessment=assessment,
+            student=self.student
+        )
+        sa = StudentAnswer.objects.create(
+            submission=submission,
+            question=q,
+            text_answer="hist",
+            score=5.00,
+            is_correct=True
+        )
+
+        # Archive the question
+        q.archive()
+
+        # Verify through-relations and answer logs remain valid and queryable
+        self.assertTrue(AssessmentQuestion.objects.filter(id=aq.id).exists())
+        self.assertTrue(StudentAnswer.objects.filter(id=sa.id).exists())
+
+        # Verify historical submissions grading queries still evaluate correctly
+        reloaded_sa = StudentAnswer.objects.get(id=sa.id)
+        self.assertEqual(reloaded_sa.score, 5.00)
+        self.assertTrue(reloaded_sa.is_correct)
+        self.assertEqual(reloaded_sa.question.text, "Historical Question")
+
