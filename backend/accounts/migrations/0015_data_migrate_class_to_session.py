@@ -14,8 +14,8 @@ def migrate_class_to_session(apps, schema_editor):
     classes = AcademyClass.objects.exclude(room_id__isnull=True)
     
     for ac in classes:
-        # Check if a migrated session already exists for this class to ensure idempotency
-        if Session.objects.filter(academy_class=ac, title__endswith=' (Migrated)').exists():
+        # Check if a session already exists for this class to ensure idempotency
+        if Session.objects.filter(academy_class=ac).exists():
             continue
 
         try:
@@ -59,7 +59,7 @@ def rollback_class_to_session(apps, schema_editor):
     Recording.objects.exclude(session__isnull=True).update(session=None)
     
     # Delete migrated sessions
-    Session.objects.filter(title__contains='(Migrated)').delete()
+    Session.objects.exclude(academy_class__isnull=True).delete()
 
 
 class Migration(migrations.Migration):
