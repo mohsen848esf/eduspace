@@ -228,10 +228,21 @@ class AcademyClass(models.Model):
 
     @property
     def session_count(self):
+        if hasattr(self, '_prefetched_objects_cache') and 'sessions' in self._prefetched_objects_cache:
+            return len(self.sessions.all())
         return self.sessions.count()
 
     @property
     def latest_session(self):
+        if hasattr(self, '_prefetched_objects_cache') and 'sessions' in self._prefetched_objects_cache:
+            sessions = list(self.sessions.all())
+            if not sessions:
+                return None
+            # Sort in memory using a robust key that handles datetime comparison safely
+            def sort_key(s):
+                start = s.scheduled_start or s.created_at
+                return (start, s.created_at)
+            return max(sessions, key=sort_key)
         return self.sessions.order_by('-scheduled_start', '-created_at').first()
 
 

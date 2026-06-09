@@ -120,7 +120,7 @@ class AcademyClassViewSet(viewsets.ModelViewSet):
         org = getattr(self.request, 'organization', None)
         if not org:
             return AcademyClass.objects.none()
-        queryset = AcademyClass.objects.select_related('course', 'teacher', 'created_by').filter(course__organization=org)
+        queryset = AcademyClass.objects.select_related('course', 'teacher', 'created_by', 'room').prefetch_related('sessions').filter(course__organization=org)
         include_archived = self.request.query_params.get('include_archived', '').lower() == 'true'
         if not include_archived:
             queryset = queryset.filter(is_active=True)
