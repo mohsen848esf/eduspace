@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, Session
+from .models import User, Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -154,3 +154,53 @@ class ExpenseItemSerializer(serializers.ModelSerializer):
         if request and request.user and request.user.is_authenticated:
             validated_data['approved_by'] = request.user
         return super().create(validated_data)
+
+
+class SessionSerializer(serializers.ModelSerializer):
+    academy_class_name = serializers.CharField(source='academy_class.name', read_only=True)
+    host_name = serializers.CharField(source='host.full_name', read_only=True)
+    active_room_code = serializers.CharField(source='active_room.room_code', read_only=True)
+
+    class Meta:
+        model = Session
+        fields = (
+            'id', 'academy_class', 'academy_class_name', 'organization', 'host', 'host_name',
+            'created_by', 'active_room', 'active_room_code', 'title', 'scheduled_start', 'scheduled_end',
+            'status', 'created_at'
+        )
+        read_only_fields = ('id', 'organization', 'created_by', 'active_room', 'status', 'created_at')
+
+    def validate_academy_class(self, value):
+        if value:
+            request = self.context.get('request')
+            if request and hasattr(request, 'organization'):
+                if value.course.organization != request.organization:
+                    raise serializers.ValidationError("Class does not belong to your organization.")
+        return value
+
+    def validate_host(self, value):
+        if value:
+            request = self.context.get('request')
+            if request and hasattr(request, 'organization'):
+                from accounts.models import OrgMember
+                if not OrgMember.objects.filter(organization=request.organization, user=value, is_active=True).exists():
+                    raise serializers.ValidationError("Host must be an active member of your organization.")
+        return value
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        if request and hasattr(request, 'organization'):
+            validated_data['organization'] = request.organization
+        if request and request.user and request.user.is_authenticated:
+            validated_data['created_by'] = request.user
+        return super().create(validated_data)
+
+
+class AttendanceSerializer(serializers.ModelSerializer):
+    student_username = serializers.CharField(source='student.username', read_only=True)
+    student_full_name = serializers.CharField(source='student.full_name', read_only=True)
+
+    class Meta:
+        model = Attendance
+        fields = ('id', 'session', 'student', 'student_username', 'student_full_name', 'status', 'joined_at', 'left_at', 'note')
+        read_only_fields = ('id', 'session', 'student', 'joined_at', 'left_at')

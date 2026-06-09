@@ -44,34 +44,72 @@ def generate_livekit_token(room_code: str, user, is_host: bool) -> str:
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_room(request):
-    room_code = generate_room_code()
-    while Room.objects.filter(room_code=room_code).exists():
+    from accounts.permissions import resolve_organization, has_org_permission
+    from accounts.models import Session
+    from accounts.services.session_service import SessionService
+    from django.core.exceptions import ValidationError
+
+    session_id = request.data.get('session_id')
+    if session_id:
+        try:
+            session = Session.objects.get(pk=session_id)
+        except Session.DoesNotExist:
+            return Response({'error': 'Session not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        org = resolve_organization(request)
+        if not org or org != session.get_organization():
+            return Response({'error': 'Organization context mismatch or required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not has_org_permission(request.user, org, 'can_manage_sessions'):
+            return Response({'error': 'Permission denied to manage sessions in this organization'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            session = SessionService.start_session(session_id, actor=request.user)
+        except ValidationError as e:
+            return Response({'error': e.message_dict if hasattr(e, 'message_dict') else e.messages}, status=status.HTTP_400_BAD_REQUEST)
+
+        room = session.active_room
+        token = generate_livekit_token(room.room_code, request.user, is_host=True)
+        return Response({
+            'room_code': room.room_code,
+            'name': room.name,
+            'token': token,
+            'livekit_url': settings.LIVEKIT_WS_URL,
+            'session_id': session.id
+        }, status=status.HTTP_201_CREATED)
+
+    else:
+        org = resolve_organization(request)
         room_code = generate_room_code()
+        while Room.objects.filter(room_code=room_code).exists():
+            room_code = generate_room_code()
 
-    name = request.data.get('name', '').strip()
+        name = request.data.get('name', '').strip()
 
-    room = Room.objects.create(
-        name=name,
-        room_code=room_code,
-        host=request.user,
-        max_participants=request.data.get('max_participants', 20),
-        is_recorded=request.data.get('is_recorded', False),
-    )
+        room = Room.objects.create(
+            name=name,
+            room_code=room_code,
+            host=request.user,
+            organization=org,
+            meeting_type='ad_hoc',
+            max_participants=request.data.get('max_participants', 20),
+            is_recorded=request.data.get('is_recorded', False),
+        )
 
-    RoomParticipant.objects.create(
-        room=room,
-        user=request.user,
-        role=RoomParticipant.Role.HOST,
-    )
+        RoomParticipant.objects.create(
+            room=room,
+            user=request.user,
+            role=RoomParticipant.Role.HOST,
+        )
 
-    token = generate_livekit_token(room_code, request.user, is_host=True)
+        token = generate_livekit_token(room_code, request.user, is_host=True)
 
-    return Response({
-        'room_code': room.room_code,
-        'name': room.name,
-        'token': token,
-        'livekit_url': settings.LIVEKIT_WS_URL,
-    }, status=status.HTTP_201_CREATED)
+        return Response({
+            'room_code': room.room_code,
+            'name': room.name,
+            'token': token,
+            'livekit_url': settings.LIVEKIT_WS_URL,
+        }, status=status.HTTP_201_CREATED)
 
 
 @api_view(['POST'])
@@ -132,7 +170,16 @@ def leave_room(request, room_code):
         room.status = Room.Status.ENDED
         room.ended_at = timezone.now()
         room.save()
-        RoomParticipant.objects.filter(room=room).update(is_active=False)
+        RoomParticipant.objects.filter(room=room).update(is_active=False, left_at=timezone.now())
+
+        if room.session_id:
+            from accounts.services.session_service import SessionService
+            try:
+                SessionService.complete_session(room.session_id, actor=request.user)
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to complete session {room.session_id} on room leave: {e}", exc_info=True)
 
     return Response({'message': 'Left room successfully'})
 

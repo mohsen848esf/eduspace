@@ -44,6 +44,13 @@ class SessionServiceTest(TransactionTestCase):
             role=Role.objects.create(name='Host Role', organization=self.org)
         )
 
+        # Make self.student a member of the org (without can_manage_sessions permission)
+        self.student_member = OrgMember.objects.create(
+            organization=self.org,
+            user=self.student,
+            role=Role.objects.create(name='Student Role', organization=self.org)
+        )
+
         # Create course, class, and session
         self.course = Course.objects.create(organization=self.org, title='Course One', code='C1')
         self.academy_class = AcademyClass.objects.create(course=self.course, teacher=self.host, name='Class A')
@@ -201,28 +208,28 @@ class SessionServiceTest(TransactionTestCase):
         with self.assertRaises(PermissionDenied):
             SessionService.start_session(self.session.id, actor=self.non_member)
 
-        # Member without can_manage_sessions permission
+        # Member without can_manage_sessions permission and not the host
         with self.assertRaises(PermissionDenied):
-            SessionService.start_session(self.session.id, actor=self.host)
+            SessionService.start_session(self.session.id, actor=self.student)
 
-    @patch('django.db.models.query.QuerySet.select_for_update')
+    @patch('django.db.models.query.QuerySet.select_for_update', autospec=True)
     def test_concurrent_start_session_protection(self, mock_select_for_update):
         """Session and AcademyClass locks are acquired using select_for_update on start."""
-        mock_select_for_update.return_value = Session.objects.filter(pk=self.session.id)
+        mock_select_for_update.side_effect = lambda qs, *args, **kwargs: qs
         
         SessionService.start_session(self.session.id, actor=self.user)
         self.assertTrue(mock_select_for_update.called)
 
-    @patch('django.db.models.query.QuerySet.select_for_update')
+    @patch('django.db.models.query.QuerySet.select_for_update', autospec=True)
     def test_concurrent_complete_session_protection(self, mock_select_for_update):
         """Locks are acquired using select_for_update on complete."""
-        mock_select_for_update.return_value = Session.objects.filter(pk=self.session.id)
+        mock_select_for_update.side_effect = lambda qs, *args, **kwargs: qs
         
         # Start first so status becomes LIVE
         session = SessionService.start_session(self.session.id, actor=self.user)
         
         mock_select_for_update.reset_mock()
-        mock_select_for_update.return_value = Session.objects.filter(pk=self.session.id)
+        mock_select_for_update.side_effect = lambda qs, *args, **kwargs: qs
         
         SessionService.complete_session(session.id, actor=self.user)
         self.assertTrue(mock_select_for_update.called)

@@ -9,6 +9,8 @@ router.register('classes', views.AcademyClassViewSet, basename='class')
 router.register('enrollments', views.EnrollmentViewSet, basename='enrollment')
 router.register('invoices', views.TuitionInvoiceViewSet, basename='invoice')
 router.register('expenses', views.ExpenseItemViewSet, basename='expense')
+router.register('sessions', views.SessionViewSet, basename='session')
+router.register('attendance', views.AttendanceViewSet, basename='attendance')
 
 urlpatterns = [
     path('register/', views.register, name='register'),
