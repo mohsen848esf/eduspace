@@ -7,4 +7,5 @@ urlpatterns = [
     path('api/games/', include('games.urls')),
     path('api/rooms/', include('rooms.urls')),
     path('api/recordings/', include('rooms.recording_urls')),
+    path('api/assessments/', include('assessments.urls')),
 ]

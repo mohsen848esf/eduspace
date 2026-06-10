@@ -20,6 +20,15 @@ const RecordingEditPage = lazy(
 const RecordingViewPage = lazy(
   () => import("../features/recordings/components/RecordingViewPage"),
 );
+const TakeAssessmentPage = lazy(
+  () => import("../features/assessments/pages/TakeAssessmentPage"),
+);
+const AssessmentResultsPage = lazy(
+  () => import("../features/assessments/pages/AssessmentResultsPage"),
+);
+const ReviewSubmissionPage = lazy(
+  () => import("../features/assessments/pages/ReviewSubmissionPage"),
+);
 
 export type UserRole = "student" | "teacher" | "admin";
 
@@ -76,5 +85,23 @@ export const routes: RouteConfig[] = [
     component: RecordingEditPage,
     isPrivate: true,
     roles: ["student", "teacher", "admin"],
+  },
+  {
+    path: "/assessments/take/:submissionId",
+    component: TakeAssessmentPage,
+    isPrivate: true,
+    roles: ["student", "teacher", "admin"],
+  },
+  {
+    path: "/assessments/results/:submissionId",
+    component: AssessmentResultsPage,
+    isPrivate: true,
+    roles: ["student", "teacher", "admin"],
+  },
+  {
+    path: "/assessments/review/:submissionId",
+    component: ReviewSubmissionPage,
+    isPrivate: true,
+    roles: ["teacher", "admin"],
   },
 ];
