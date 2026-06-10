@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   useSubmission,
-  useUpdateAnswer,
   useSubmitSubmission,
-  useRecordTabLoss,
-  useUpdateTelemetry,
+  useExamTimer,
+  useAntiCheat,
+  useAutosave,
 } from "../hooks";
 
 export default function TakeAssessmentPage() {
@@ -14,158 +14,71 @@ export default function TakeAssessmentPage() {
   const parsedId = Number(submissionId);
 
   const { data: submission, isLoading, error } = useSubmission(parsedId);
-  const updateAnswerMutation = useUpdateAnswer();
   const submitSubmissionMutation = useSubmitSubmission();
-  const recordTabLossMutation = useRecordTabLoss();
-  const updateTelemetryMutation = useUpdateTelemetry();
 
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
-  const [timeLeft, setTimeLeft] = useState<number | null>(null);
-  const [autosaveStatus, setAutosaveStatus] = useState<"saved" | "saving" | "error">("saved");
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [warningMessage, setWarningMessage] = useState("");
 
-  // Reactive state for answers
-  const [localAnswers, setLocalAnswers] = useState<Record<number, { selected_options: string[] | null; text_answer: string | null }>>({});
-  const isInitializedRef = useRef(false);
+  // Handler for focus loss updates from anti-cheat
+  const handleTabLoss = useCallback((lossesCount: number) => {
+    setWarningMessage(
+      `Warning: You moved away from the exam window! This focus loss has been logged. Total logs: ${lossesCount}`
+    );
+    setShowWarningModal(true);
+  }, []);
 
-  // Debouncing refs and pending save tracking
-  const debounceTimersRef = useRef<Record<number, any>>({});
-  const pendingSaveRef = useRef<{ answerId: number; selected: string[] | null; text: string | null } | null>(null);
-  const hasLoggedTelemetry = useRef(false);
+  // Anti-cheat & Telemetry orchestration
+  useAntiCheat({
+    submissionId: parsedId,
+    status: submission?.status,
+    onTabLoss: handleTabLoss,
+  });
 
-  // Initialize local answers state from submission on load
-  useEffect(() => {
-    if (submission && submission.answers && !isInitializedRef.current) {
-      const initialAnswers: Record<number, { selected_options: string[] | null; text_answer: string | null }> = {};
-      submission.answers.forEach((ans: any) => {
-        initialAnswers[ans.id] = {
-          selected_options: ans.selected_options,
-          text_answer: ans.text_answer,
-        };
-      });
-      setLocalAnswers(initialAnswers);
-      isInitializedRef.current = true;
-    }
-  }, [submission]);
+  // Autosave & Answers orchestration
+  const {
+    localAnswers,
+    autosaveStatus,
+    selectOption,
+    changeTextAnswer,
+    flushPendingSave,
+  } = useAutosave({
+    answers: submission?.answers,
+  });
 
-  // 1. Telemetry Log on mount
-  useEffect(() => {
-    if (submission && !hasLoggedTelemetry.current) {
-      hasLoggedTelemetry.current = true;
-      updateTelemetryMutation.mutate({
-        id: parsedId,
-        data: {
-          browser_info: navigator.userAgent,
-        },
-      });
-    }
-  }, [submission, parsedId]);
-
-  // 2. Anti-cheat: Tab focus loss tracking
-  const isStarted = submission?.status === "started";
-  const submissionStatusRef = useRef<string | undefined>(submission?.status);
-  submissionStatusRef.current = submission?.status;
-
-  useEffect(() => {
-    if (!isStarted) return;
-
-    const handleFocusLoss = () => {
-      // Guard check using ref
-      if (submissionStatusRef.current !== "started") return;
-
-      // Record tab loss
-      recordTabLossMutation.mutate(parsedId, {
-        onSuccess: (data) => {
-          setWarningMessage(
-            `Warning: You moved away from the exam window! This focus loss has been logged. Total logs: ${data.tab_focus_losses}`
-          );
-          setShowWarningModal(true);
-        },
-      });
-    };
-
-    window.addEventListener("blur", handleFocusLoss);
-    
-    // Also track visibilitychange
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        handleFocusLoss();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener("blur", handleFocusLoss);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [isStarted, parsedId]);
-
-  // 3. Beforeunload reload guard
-  useEffect(() => {
-    if (!isStarted) return;
-
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = ""; // Triggers browser confirmation popup
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [isStarted]);
-
-  // 4. Timer implementation
-  useEffect(() => {
-    if (!submission || submission.status !== "started") return;
-
-    const startedTime = new Date(submission.started_at).getTime();
-    const durationMs = submission.assessment.duration_minutes * 60 * 1000;
-    const endTime = startedTime + durationMs;
-
-    const updateTimer = () => {
-      const now = new Date().getTime();
-      const difference = Math.floor((endTime - now) / 1000);
-      
-      if (difference <= 0) {
-        setTimeLeft(0);
-        // Auto-submit when time is up
-        handleAutoSubmit();
-      } else {
-        setTimeLeft(difference);
-      }
-    };
-
-    updateTimer();
-    const interval = setInterval(updateTimer, 1000);
-
-    return () => clearInterval(interval);
-  }, [submission]);
-
-  // Handle auto submit on time out (flushes any pending unsaved answers synchronously)
-  const handleAutoSubmit = async () => {
-    if (pendingSaveRef.current) {
-      const { answerId, selected, text } = pendingSaveRef.current;
-      if (debounceTimersRef.current[answerId]) {
-        clearTimeout(debounceTimersRef.current[answerId]);
-      }
-      try {
-        await updateAnswerMutation.mutateAsync({
-          id: answerId,
-          data: {
-            selected_options: selected,
-            text_answer: text,
-          },
-        });
-        pendingSaveRef.current = null;
-      } catch (err) {
-        console.error("Failed to save final answers during auto-submit", err);
-      }
+  // Handler for automated time out submit
+  const handleTimeout = useCallback(async () => {
+    try {
+      await flushPendingSave();
+    } catch (err) {
+      console.error("Failed to flush pending save during timeout", err);
     }
     submitSubmissionMutation.mutate(parsedId, {
       onSuccess: () => {
         navigate(`/assessments/results/${parsedId}`);
       },
     });
-  };
+  }, [parsedId, flushPendingSave, submitSubmissionMutation, navigate]);
+
+  // Countdown Timer orchestration
+  const { timeLeft, formatTime } = useExamTimer({
+    startedAt: submission?.started_at,
+    durationMinutes: submission?.assessment.duration_minutes,
+    status: submission?.status,
+    onTimeout: handleTimeout,
+  });
+
+  // Window unload warnings during active exam attempts
+  useEffect(() => {
+    if (submission?.status !== "started") return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [submission?.status]);
 
   if (isLoading) {
     return (
@@ -193,7 +106,6 @@ export default function TakeAssessmentPage() {
   }
 
   if (submission.status !== "started") {
-    // Already submitted/graded
     return (
       <div className="flex h-screen items-center justify-center bg-slate-900 text-white">
         <div className="max-w-md text-center p-6 bg-slate-800 rounded-lg shadow-xl border border-slate-700">
@@ -215,119 +127,24 @@ export default function TakeAssessmentPage() {
       ? { selected_options: currentAnswer.selected_options, text_answer: currentAnswer.text_answer } 
       : { selected_options: null, text_answer: "" });
 
-  const triggerAutosave = (answerId: number, selected: string[] | null, text: string | null) => {
-    setAutosaveStatus("saving");
-    
-    if (debounceTimersRef.current[answerId]) {
-      clearTimeout(debounceTimersRef.current[answerId]);
-    }
-
-    debounceTimersRef.current[answerId] = setTimeout(() => {
-      updateAnswerMutation.mutate(
-        {
-          id: answerId,
-          data: {
-            selected_options: selected,
-            text_answer: text,
-          },
-        },
-        {
-          onSuccess: () => {
-            setAutosaveStatus("saved");
-            if (pendingSaveRef.current?.answerId === answerId) {
-              pendingSaveRef.current = null;
-            }
-          },
-          onError: () => setAutosaveStatus("error"),
-        }
-      );
-    }, 1200); // 1.2s debounce window
-  };
-
   const handleSelectOption = (optionId: string) => {
     if (!currentAnswer) return;
-
-    let newSelected: string[] = [];
-    if (currentAq.question.question_type === "single_choice") {
-      newSelected = [optionId];
-    } else {
-      // multiple choice
-      const existing = localState.selected_options || [];
-      if (existing.includes(optionId)) {
-        newSelected = existing.filter(x => x !== optionId);
-      } else {
-        newSelected = [...existing, optionId];
-      }
-    }
-
-    setLocalAnswers(prev => ({
-      ...prev,
-      [currentAnswer.id]: {
-        ...localState,
-        selected_options: newSelected,
-      }
-    }));
-
-    pendingSaveRef.current = {
-      answerId: currentAnswer.id,
-      selected: newSelected,
-      text: localState.text_answer,
-    };
-
-    triggerAutosave(currentAnswer.id, newSelected, localState.text_answer);
+    const isSingleChoice = currentAq.question.question_type === "single_choice";
+    selectOption(currentAnswer.id, optionId, isSingleChoice, localState);
   };
 
   const handleTextAnswerChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (!currentAnswer) return;
-
-    const val = e.target.value;
-    
-    setLocalAnswers(prev => ({
-      ...prev,
-      [currentAnswer.id]: {
-        ...localState,
-        text_answer: val,
-      }
-    }));
-
-    pendingSaveRef.current = {
-      answerId: currentAnswer.id,
-      selected: localState.selected_options,
-      text: val,
-    };
-
-    triggerAutosave(currentAnswer.id, localState.selected_options, val);
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    changeTextAnswer(currentAnswer.id, e.target.value, localState);
   };
 
   const handleSubmitClick = async () => {
     if (window.confirm("Are you sure you want to submit your assessment? Once submitted, answers are permanently locked.")) {
-      if (pendingSaveRef.current) {
-        const { answerId, selected, text } = pendingSaveRef.current;
-        if (debounceTimersRef.current[answerId]) {
-          clearTimeout(debounceTimersRef.current[answerId]);
-        }
-        setAutosaveStatus("saving");
-        try {
-          await updateAnswerMutation.mutateAsync({
-            id: answerId,
-            data: {
-              selected_options: selected,
-              text_answer: text,
-            },
-          });
-          setAutosaveStatus("saved");
-          pendingSaveRef.current = null;
-        } catch (err) {
-          setAutosaveStatus("error");
-          alert("An error occurred while saving your latest answers. Please try submitting again.");
-          return;
-        }
+      try {
+        await flushPendingSave();
+      } catch (err) {
+        alert("An error occurred while saving your latest answers. Please try submitting again.");
+        return;
       }
 
       submitSubmissionMutation.mutate(parsedId, {
