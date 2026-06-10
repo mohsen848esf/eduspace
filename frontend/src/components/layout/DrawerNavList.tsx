@@ -14,6 +14,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "./Drawer";
+import { useOrgPermission } from "../../hooks/useOrgPermission";
 
 interface DrawerNavListProps {
   /** Stable id of the currently active nav destination, if known. */
@@ -84,34 +85,39 @@ export default function DrawerNavList({
         <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider px-3 py-2">
           {t("dashboard:nav.manage")}
         </div>
-        {drawerNavItems.map((item) => {
-          const isActive = activeId === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => handleClick(item)}
-              aria-current={isActive ? "page" : undefined}
-              className={cn(
-                "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg",
-                "text-start border-none cursor-pointer min-h-11",
-                "transition-colors duration-150",
-                isActive
-                  ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
-                  : "bg-transparent text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
-              )}
-            >
-              <span className="flex-shrink-0">{item.icon}</span>
-              <span className="text-sm font-medium flex-1">
-                {t(`dashboard:${item.labelKey}`)}
-              </span>
-              {item.badge && (
-                <span className="bg-[var(--red)] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                  {item.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
+        {(() => {
+          const { hasPermission } = useOrgPermission();
+          return drawerNavItems
+            .filter((item) => !item.permission || hasPermission(item.permission))
+            .map((item) => {
+              const isActive = activeId === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleClick(item)}
+                  aria-current={isActive ? "page" : undefined}
+                  className={cn(
+                    "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg",
+                    "text-start border-none cursor-pointer min-h-11",
+                    "transition-colors duration-150",
+                    isActive
+                      ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
+                      : "bg-transparent text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
+                  )}
+                >
+                  <span className="flex-shrink-0">{item.icon}</span>
+                  <span className="text-sm font-medium flex-1">
+                    {t(`dashboard:${item.labelKey}`)}
+                  </span>
+                  {item.badge && (
+                    <span className="bg-[var(--red)] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            });
+        })()}
       </DrawerBody>
 
       <DrawerFooter>

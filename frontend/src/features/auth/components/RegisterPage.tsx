@@ -51,6 +51,7 @@ export default function RegisterPage() {
           )}
 
           <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
+            {/* TODO: Sprint D.5 Cleanup - Remove legacy role referencing once user.role is deprecated from backend. */}
             {/* Role selector */}
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">

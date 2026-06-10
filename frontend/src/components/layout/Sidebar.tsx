@@ -18,7 +18,7 @@ export default function Sidebar({
   const { t } = useTranslation(["dashboard", "common"]);
   const [collapsed, setCollapsed] = useState(false);
   const { user } = useAuthStore();
-  const { activeRole } = useOrgPermission();
+  const { activeRole, hasPermission } = useOrgPermission();
 
   const NavButton = ({ item }: { item: NavItem }) => {
     const isActive = activeId === item.id;
@@ -120,18 +120,22 @@ export default function Sidebar({
             {t("nav.main")}
           </span>
         )}
-        {mainNavItems.map((item) => (
-          <NavButton key={item.id} item={item} />
-        ))}
+        {mainNavItems
+          .filter((item) => !item.permission || hasPermission(item.permission))
+          .map((item) => (
+            <NavButton key={item.id} item={item} />
+          ))}
 
         {!collapsed && (
           <span className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-[0.8px] px-2.5 py-2 mt-2">
             {t("nav.manage")}
           </span>
         )}
-        {manageNavItems.map((item) => (
-          <NavButton key={item.id} item={item} />
-        ))}
+        {manageNavItems
+          .filter((item) => !item.permission || hasPermission(item.permission))
+          .map((item) => (
+            <NavButton key={item.id} item={item} />
+          ))}
       </nav>
 
       {/* User */}

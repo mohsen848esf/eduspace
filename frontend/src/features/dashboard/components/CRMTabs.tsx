@@ -43,29 +43,23 @@ export default function CRMTabs({ language }: CRMTabsProps) {
 
   const isFarsi = language === "fa";
 
-  // Determine role-based access
-  const activeRoleLower = (activeRole || "").toLowerCase();
-  const isAdmin = activeRoleLower === "admin";
-  const isTeacher = activeRoleLower === "teacher";
-  const isStudent = activeRoleLower === "student";
-
   const canManageCRM = hasPermission("can_manage_members") || hasPermission("can_teach_class");
   const canManageFinance = hasPermission("can_manage_financials");
 
   // Tabs setup based on permissions
   const tabsList = [
     { id: "overview", label: isFarsi ? "خلاصه وضعیت" : "Overview" },
-    ...(isAdmin || isTeacher ? [
+    ...(canManageCRM ? [
       { id: "courses", label: isFarsi ? "دوره‌ها" : "Courses" },
       { id: "classes", label: isFarsi ? "کلاس‌ها" : "Classes" },
       { id: "question_banks", label: isFarsi ? "بانک سوالات" : "Question Banks" }
     ] : []),
     { id: "enrollments", label: isFarsi ? "ثبت‌نام‌ها" : "Enrollments" },
     { id: "assessments", label: isFarsi ? "ارزیابی‌ها / آزمون‌ها" : "Assessments" },
-    ...(isAdmin || isStudent ? [
+    ...(canManageFinance || hasPermission("can_attend_class") ? [
       { id: "invoices", label: isFarsi ? "شهریه‌ها / فاکتورها" : "Invoices" }
     ] : []),
-    ...(isAdmin ? [
+    ...(canManageFinance ? [
       { id: "expenses", label: isFarsi ? "دفتر هزینه‌ها" : "Expenses" }
     ] : [])
   ];
@@ -445,7 +439,7 @@ export default function CRMTabs({ language }: CRMTabsProps) {
       {activeTab === "overview" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Quick Metrics */}
-          {(isAdmin || isTeacher) && (
+          {canManageCRM && (
             <div className="bg-[var(--s2)] rounded-xl p-4 border border-[var(--b)]">
               <h3 className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide mb-2">
                 {isFarsi ? "دوره‌ها و کلاس‌ها" : "Courses & Classes"}
@@ -476,7 +470,7 @@ export default function CRMTabs({ language }: CRMTabsProps) {
             </div>
           </div>
 
-          {isAdmin && (
+          {canManageFinance && (
             <div className="bg-[var(--s2)] rounded-xl p-4 border border-[var(--b)] col-span-1 md:col-span-2 lg:col-span-1">
               <h3 className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide mb-2">
                 {isFarsi ? "تراز مالی" : "Financial Balance"}

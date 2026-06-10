@@ -1,6 +1,8 @@
 import { useAuthStore } from "../features/auth/store/authStore";
 import { useOrgContextStore } from "../features/auth/store/orgContextStore";
 
+export const ENABLE_ROLE_FALLBACK = true;
+
 const LEGACY_ROLE_PERMISSIONS: Record<string, string[]> = {
   admin: [
     "can_view_dashboard",
@@ -35,8 +37,8 @@ export function useOrgPermission() {
       return orgContext.permissions.includes(permission);
     }
 
-    // Fallback: use legacy role-based permissions mapping
-    if (user?.role) {
+    // Fallback: use legacy role-based permissions mapping if enabled
+    if (ENABLE_ROLE_FALLBACK && user?.role) {
       const allowed = LEGACY_ROLE_PERMISSIONS[user.role];
       return allowed ? allowed.includes(permission) : false;
     }

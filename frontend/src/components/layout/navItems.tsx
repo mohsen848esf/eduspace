@@ -26,6 +26,8 @@ export interface NavItem {
   to?: string;
   /** Optional unread / counter badge (small red pill). */
   badge?: number;
+  /** Optional required permission to view this nav item. */
+  permission?: string;
 }
 
 /** Items rendered in the desktop sidebar's MAIN section + tablet rail. */
@@ -43,8 +45,8 @@ export const mainNavItems: NavItem[] = [
 
 /** Items rendered in the desktop sidebar's MANAGE section + drawer. */
 export const manageNavItems: NavItem[] = [
-  { id: "students", icon: Icons.people, labelKey: "nav.students", badge: 3 },
-  { id: "reports", icon: Icons.barChart, labelKey: "nav.reports" },
+  { id: "students", icon: Icons.people, labelKey: "nav.students", badge: 3, permission: "can_manage_members" },
+  { id: "reports", icon: Icons.barChart, labelKey: "nav.reports", permission: "can_view_financials" },
   { id: "recordings", icon: Icons.film, labelKey: "nav.recordings", to: "/recordings" },
 ];
 

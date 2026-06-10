@@ -73,13 +73,13 @@ export default function AppRouter() {
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-            {routes.map(({ path, component: Page, isPrivate, roles }) => (
+            {routes.map(({ path, component: Page, isPrivate, requiredPermissions }) => (
               <Route
                 key={path}
                 path={path}
                 element={
                   isPrivate ? (
-                    <PrivateRoute roles={roles}>
+                    <PrivateRoute requiredPermissions={requiredPermissions}>
                       <Page />
                     </PrivateRoute>
                   ) : (
