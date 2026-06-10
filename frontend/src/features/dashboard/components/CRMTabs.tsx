@@ -23,6 +23,10 @@ import { Modal, ModalHeader, ModalTitle, ModalBody } from "../../../components/u
 import Spinner from "../../../components/ui/Spinner";
 import { useSessions } from "../../sessions/hooks/useSessions";
 import ClassSessionsSubTable from "../../sessions/components/ClassSessionsSubTable";
+import QuestionBankList from "../../assessments/components/QuestionBankList";
+import QuestionList from "../../assessments/components/QuestionList";
+import AssessmentList from "../../assessments/components/AssessmentList";
+import type { QuestionBank } from "../../assessments/types";
 
 interface CRMTabsProps {
   language: string;
@@ -52,9 +56,11 @@ export default function CRMTabs({ language }: CRMTabsProps) {
     { id: "overview", label: isFarsi ? "خلاصه وضعیت" : "Overview" },
     ...(isAdmin || isTeacher ? [
       { id: "courses", label: isFarsi ? "دوره‌ها" : "Courses" },
-      { id: "classes", label: isFarsi ? "کلاس‌ها" : "Classes" }
+      { id: "classes", label: isFarsi ? "کلاس‌ها" : "Classes" },
+      { id: "question_banks", label: isFarsi ? "بانک سوالات" : "Question Banks" }
     ] : []),
     { id: "enrollments", label: isFarsi ? "ثبت‌نام‌ها" : "Enrollments" },
+    { id: "assessments", label: isFarsi ? "ارزیابی‌ها / آزمون‌ها" : "Assessments" },
     ...(isAdmin || isStudent ? [
       { id: "invoices", label: isFarsi ? "شهریه‌ها / فاکتورها" : "Invoices" }
     ] : []),
@@ -64,6 +70,11 @@ export default function CRMTabs({ language }: CRMTabsProps) {
   ];
 
   const [activeTab, setActiveTab] = useState("overview");
+  const [selectedBank, setSelectedBank] = useState<QuestionBank | null>(null);
+
+  useEffect(() => {
+    setSelectedBank(null);
+  }, [activeTab]);
 
   // --- Search state for dropdowns ---
   const [userSearchQuery, setUserSearchQuery] = useState("");
@@ -907,6 +918,20 @@ export default function CRMTabs({ language }: CRMTabsProps) {
             </div>
           )}
         </div>
+      )}
+
+      {/* --- Question Banks Tab --- */}
+      {activeTab === "question_banks" && (
+        selectedBank ? (
+          <QuestionList bank={selectedBank} onBack={() => setSelectedBank(null)} />
+        ) : (
+          <QuestionBankList onSelectBank={(bank) => setSelectedBank(bank)} />
+        )
+      )}
+
+      {/* --- Assessments Tab --- */}
+      {activeTab === "assessments" && (
+        <AssessmentList />
       )}
 
       {/* --- FORM MODAL --- */}

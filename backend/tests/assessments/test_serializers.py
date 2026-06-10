@@ -231,6 +231,42 @@ class AssessmentSerializersTest(TestCase):
             serializer.is_valid(raise_exception=True)
         self.assertIn("Session does not belong to your organization.", str(ctx.exception))
 
+    def test_assessment_teacher_serializer_writable_questions(self):
+        """Verify AssessmentTeacherSerializer can create and update assessment questions."""
+        # Test creation with nested questions
+        data = {
+            "title": "Nested Quiz",
+            "duration_minutes": 30,
+            "passing_score": "50.00",
+            "questions": [
+                {"question_id": self.question.id, "order": 1, "points": "4.00"}
+            ]
+        }
+        serializer = AssessmentTeacherSerializer(data=data, context={"request": self.request})
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        assessment = serializer.save()
+        
+        self.assertEqual(assessment.questions.count(), 1)
+        aq = assessment.assessmentquestion_set.first()
+        self.assertEqual(aq.question, self.question)
+        self.assertEqual(aq.order, 1)
+        self.assertEqual(aq.points, Decimal("4.00"))
+
+        # Test update with nested questions
+        update_data = {
+            "title": "Updated Nested Quiz",
+            "questions": []
+        }
+        serializer_update = AssessmentTeacherSerializer(
+            instance=assessment,
+            data=update_data,
+            partial=True,
+            context={"request": self.request}
+        )
+        self.assertTrue(serializer_update.is_valid(), serializer_update.errors)
+        updated_assessment = serializer_update.save()
+        self.assertEqual(updated_assessment.questions.count(), 0)
+
     def test_student_answer_serializer_read_only_fields(self):
         """Verify that students cannot modify grading/correctness/notes fields."""
         # Update from student perspective

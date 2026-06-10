@@ -67,12 +67,41 @@ class AssessmentTeacherSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'created_by', 'created_at', 'updated_at')
 
     def create(self, validated_data):
+        from django.db import transaction
         request = self.context.get('request')
         if request and hasattr(request, 'organization'):
             validated_data['organization'] = request.organization
         if request and request.user and request.user.is_authenticated:
             validated_data['created_by'] = request.user
-        return super().create(validated_data)
+
+        questions_data = self.initial_data.get('questions', [])
+        with transaction.atomic():
+            assessment = super().create(validated_data)
+            self._save_questions(assessment, questions_data)
+            return assessment
+
+    def update(self, instance, validated_data):
+        from django.db import transaction
+        questions_data = self.initial_data.get('questions')
+        with transaction.atomic():
+            assessment = super().update(instance, validated_data)
+            if questions_data is not None:
+                self._save_questions(assessment, questions_data)
+            return assessment
+
+    def _save_questions(self, assessment, questions_data):
+        # Remove old questions
+        assessment.assessmentquestion_set.all().delete()
+        # Create new ones
+        for q_data in questions_data:
+            q_id = q_data.get('question_id') or q_data.get('question', {}).get('id')
+            if q_id:
+                AssessmentQuestion.objects.create(
+                    assessment=assessment,
+                    question_id=q_id,
+                    order=q_data.get('order', 0),
+                    points=q_data.get('points', '1.00')
+                )
 
     def validate_session(self, value):
         request = self.context.get('request')
@@ -115,6 +144,7 @@ class StudentAnswerTeacherSerializer(serializers.ModelSerializer):
 
 
 class SubmissionStudentSerializer(serializers.ModelSerializer):
+    assessment = AssessmentStudentSerializer(read_only=True)
     answers = StudentAnswerSerializer(many=True, read_only=True)
     student_username = serializers.CharField(source='student.username', read_only=True)
 
@@ -125,6 +155,7 @@ class SubmissionStudentSerializer(serializers.ModelSerializer):
 
 
 class SubmissionTeacherSerializer(serializers.ModelSerializer):
+    assessment = AssessmentTeacherSerializer(read_only=True)
     answers = StudentAnswerTeacherSerializer(many=True, read_only=True)
     student_username = serializers.CharField(source='student.username', read_only=True)
 
