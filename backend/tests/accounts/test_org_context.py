@@ -94,3 +94,9 @@ class OrgContextIntegrationTest(APITestCase):
         
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(response.data['detail'], 'Your membership in this organization has expired.')
+
+    def test_org_context_anonymous_denied(self):
+        self.client.logout()
+        response = self.client.get(self.url, HTTP_X_ORGANIZATION_SLUG='org-one')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+

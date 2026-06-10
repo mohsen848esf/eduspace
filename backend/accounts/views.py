@@ -75,7 +75,7 @@ def search_users(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def org_context(request):
-    from accounts.permissions import resolve_organization, has_org_permission
+    from accounts.permissions import resolve_organization, has_org_permission, get_organization_from_request
     from accounts.models import OrgMember, Permission
     from django.utils import timezone
     from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -83,7 +83,11 @@ def org_context(request):
 
     org = resolve_organization(request)
     if not org:
+        slug_or_id, _ = get_organization_from_request(request)
+        if slug_or_id:
+            raise PermissionDenied("You are not an active member of this organization.")
         raise ValidationError({'error': 'Organization context required. Include X-Organization-Slug header or org_slug query parameter.'})
+
 
     role_name = None
     permissions = []
