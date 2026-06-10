@@ -25,9 +25,29 @@ export default function TakeAssessmentPage() {
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [warningMessage, setWarningMessage] = useState("");
 
-  const localAnswersRef = useRef<Record<number, { selected_options: string[] | null; text_answer: string | null }>>({});
+  // Reactive state for answers
+  const [localAnswers, setLocalAnswers] = useState<Record<number, { selected_options: string[] | null; text_answer: string | null }>>({});
+  const isInitializedRef = useRef(false);
+
+  // Debouncing refs and pending save tracking
   const debounceTimersRef = useRef<Record<number, any>>({});
+  const pendingSaveRef = useRef<{ answerId: number; selected: string[] | null; text: string | null } | null>(null);
   const hasLoggedTelemetry = useRef(false);
+
+  // Initialize local answers state from submission on load
+  useEffect(() => {
+    if (submission && submission.answers && !isInitializedRef.current) {
+      const initialAnswers: Record<number, { selected_options: string[] | null; text_answer: string | null }> = {};
+      submission.answers.forEach((ans: any) => {
+        initialAnswers[ans.id] = {
+          selected_options: ans.selected_options,
+          text_answer: ans.text_answer,
+        };
+      });
+      setLocalAnswers(initialAnswers);
+      isInitializedRef.current = true;
+    }
+  }, [submission]);
 
   // 1. Telemetry Log on mount
   useEffect(() => {
@@ -43,10 +63,17 @@ export default function TakeAssessmentPage() {
   }, [submission, parsedId]);
 
   // 2. Anti-cheat: Tab focus loss tracking
+  const isStarted = submission?.status === "started";
+  const submissionStatusRef = useRef<string | undefined>(submission?.status);
+  submissionStatusRef.current = submission?.status;
+
   useEffect(() => {
-    if (!submission || submission.status !== "started") return;
+    if (!isStarted) return;
 
     const handleFocusLoss = () => {
+      // Guard check using ref
+      if (submissionStatusRef.current !== "started") return;
+
       // Record tab loss
       recordTabLossMutation.mutate(parsedId, {
         onSuccess: (data) => {
@@ -72,9 +99,21 @@ export default function TakeAssessmentPage() {
       window.removeEventListener("blur", handleFocusLoss);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [submission, parsedId]);
+  }, [isStarted, parsedId]);
 
-  // 3. Timer implementation
+  // 3. Beforeunload reload guard
+  useEffect(() => {
+    if (!isStarted) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = ""; // Triggers browser confirmation popup
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isStarted]);
+
+  // 4. Timer implementation
   useEffect(() => {
     if (!submission || submission.status !== "started") return;
 
@@ -101,8 +140,26 @@ export default function TakeAssessmentPage() {
     return () => clearInterval(interval);
   }, [submission]);
 
-  // Handle auto submit on time out
-  const handleAutoSubmit = () => {
+  // Handle auto submit on time out (flushes any pending unsaved answers synchronously)
+  const handleAutoSubmit = async () => {
+    if (pendingSaveRef.current) {
+      const { answerId, selected, text } = pendingSaveRef.current;
+      if (debounceTimersRef.current[answerId]) {
+        clearTimeout(debounceTimersRef.current[answerId]);
+      }
+      try {
+        await updateAnswerMutation.mutateAsync({
+          id: answerId,
+          data: {
+            selected_options: selected,
+            text_answer: text,
+          },
+        });
+        pendingSaveRef.current = null;
+      } catch (err) {
+        console.error("Failed to save final answers during auto-submit", err);
+      }
+    }
     submitSubmissionMutation.mutate(parsedId, {
       onSuccess: () => {
         navigate(`/assessments/results/${parsedId}`);
@@ -153,15 +210,10 @@ export default function TakeAssessmentPage() {
   const currentAq = submission.assessment.questions[activeQuestionIndex];
   const currentAnswer = submission.answers.find((ans: any) => ans.question === currentAq.question.id);
 
-  // Initialize local answer state for this question if empty
-  if (currentAnswer && !localAnswersRef.current[currentAnswer.id]) {
-    localAnswersRef.current[currentAnswer.id] = {
-      selected_options: currentAnswer.selected_options,
-      text_answer: currentAnswer.text_answer,
-    };
-  }
-
-  const localState = currentAnswer ? localAnswersRef.current[currentAnswer.id] : { selected_options: null, text_answer: "" };
+  const localState = (currentAnswer && localAnswers[currentAnswer.id]) || 
+    (currentAnswer 
+      ? { selected_options: currentAnswer.selected_options, text_answer: currentAnswer.text_answer } 
+      : { selected_options: null, text_answer: "" });
 
   const triggerAutosave = (answerId: number, selected: string[] | null, text: string | null) => {
     setAutosaveStatus("saving");
@@ -180,7 +232,12 @@ export default function TakeAssessmentPage() {
           },
         },
         {
-          onSuccess: () => setAutosaveStatus("saved"),
+          onSuccess: () => {
+            setAutosaveStatus("saved");
+            if (pendingSaveRef.current?.answerId === answerId) {
+              pendingSaveRef.current = null;
+            }
+          },
           onError: () => setAutosaveStatus("error"),
         }
       );
@@ -203,13 +260,20 @@ export default function TakeAssessmentPage() {
       }
     }
 
-    localAnswersRef.current[currentAnswer.id] = {
-      ...localState,
-      selected_options: newSelected,
+    setLocalAnswers(prev => ({
+      ...prev,
+      [currentAnswer.id]: {
+        ...localState,
+        selected_options: newSelected,
+      }
+    }));
+
+    pendingSaveRef.current = {
+      answerId: currentAnswer.id,
+      selected: newSelected,
+      text: localState.text_answer,
     };
 
-    // Trigger state force refresh and queue save
-    setActiveQuestionIndex(activeQuestionIndex);
     triggerAutosave(currentAnswer.id, newSelected, localState.text_answer);
   };
 
@@ -217,12 +281,21 @@ export default function TakeAssessmentPage() {
     if (!currentAnswer) return;
 
     const val = e.target.value;
-    localAnswersRef.current[currentAnswer.id] = {
-      ...localState,
-      text_answer: val,
+    
+    setLocalAnswers(prev => ({
+      ...prev,
+      [currentAnswer.id]: {
+        ...localState,
+        text_answer: val,
+      }
+    }));
+
+    pendingSaveRef.current = {
+      answerId: currentAnswer.id,
+      selected: localState.selected_options,
+      text: val,
     };
 
-    setActiveQuestionIndex(activeQuestionIndex);
     triggerAutosave(currentAnswer.id, localState.selected_options, val);
   };
 
@@ -232,8 +305,31 @@ export default function TakeAssessmentPage() {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const handleSubmitClick = () => {
+  const handleSubmitClick = async () => {
     if (window.confirm("Are you sure you want to submit your assessment? Once submitted, answers are permanently locked.")) {
+      if (pendingSaveRef.current) {
+        const { answerId, selected, text } = pendingSaveRef.current;
+        if (debounceTimersRef.current[answerId]) {
+          clearTimeout(debounceTimersRef.current[answerId]);
+        }
+        setAutosaveStatus("saving");
+        try {
+          await updateAnswerMutation.mutateAsync({
+            id: answerId,
+            data: {
+              selected_options: selected,
+              text_answer: text,
+            },
+          });
+          setAutosaveStatus("saved");
+          pendingSaveRef.current = null;
+        } catch (err) {
+          setAutosaveStatus("error");
+          alert("An error occurred while saving your latest answers. Please try submitting again.");
+          return;
+        }
+      }
+
       submitSubmissionMutation.mutate(parsedId, {
         onSuccess: () => {
           navigate(`/assessments/results/${parsedId}`);
@@ -281,7 +377,9 @@ export default function TakeAssessmentPage() {
             <div className="grid grid-cols-4 gap-3">
               {submission.assessment.questions.map((aq: any, idx: number) => {
                 const ans = submission.answers.find((a: any) => a.question === aq.question.id);
-                const isAnswered = ans && (ans.selected_options?.length || ans.text_answer?.trim());
+                const localAns = ans ? localAnswers[ans.id] : null;
+                const isAnswered = (localAns && (localAns.selected_options?.length || localAns.text_answer?.trim())) ||
+                                   (ans && (ans.selected_options?.length || ans.text_answer?.trim()));
                 const isActive = idx === activeQuestionIndex;
 
                 return (
