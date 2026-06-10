@@ -72,6 +72,59 @@ def search_users(request):
     return Response(UserSerializer(users, many=True).data)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def org_context(request):
+    from accounts.permissions import resolve_organization, has_org_permission, get_organization_from_request
+    from accounts.models import OrgMember, Permission
+    from django.utils import timezone
+    from rest_framework.exceptions import PermissionDenied, ValidationError
+    from .serializers import OrgContextSerializer
+
+    org = resolve_organization(request)
+    if not org:
+        slug_or_id, _ = get_organization_from_request(request)
+        if slug_or_id:
+            raise PermissionDenied("You are not an active member of this organization.")
+        raise ValidationError({'error': 'Organization context required. Include X-Organization-Slug header or org_slug query parameter.'})
+
+
+    role_name = None
+    permissions = []
+
+    if request.user.is_superuser:
+        permissions = list(Permission.objects.values_list('codename', flat=True))
+        try:
+            member = OrgMember.objects.select_related('role').get(organization=org, user=request.user)
+            role_name = member.role.name if member.role else 'Superuser'
+        except OrgMember.DoesNotExist:
+            role_name = 'Superuser'
+    else:
+        try:
+            member = OrgMember.objects.select_related('role').get(
+                organization=org,
+                user=request.user,
+                is_active=True
+            )
+            if member.expires_at and member.expires_at < timezone.now():
+                raise PermissionDenied("Your membership in this organization has expired.")
+            
+            role_name = member.role.name if member.role else None
+            
+            # Force cache population and extract
+            has_org_permission(request.user, org, 'dummy')
+            permissions = list(request.user._org_permissions_cache[org.id])
+        except OrgMember.DoesNotExist:
+            raise PermissionDenied("You are not an active member of this organization.")
+
+    serializer = OrgContextSerializer({
+        'organization': org,
+        'role': role_name,
+        'permissions': permissions
+    })
+    return Response(serializer.data)
+
+
 # ---------------------------------------------------------------------------
 # CRM & Financial ViewSets
 # ---------------------------------------------------------------------------

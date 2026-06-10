@@ -204,3 +204,19 @@ class AttendanceSerializer(serializers.ModelSerializer):
         model = Attendance
         fields = ('id', 'session', 'student', 'student_username', 'student_full_name', 'status', 'joined_at', 'left_at', 'note')
         read_only_fields = ('id', 'session', 'student', 'joined_at', 'left_at')
+
+
+class OrgContextSerializer(serializers.Serializer):
+    organization = serializers.SerializerMethodField()
+    role = serializers.CharField(allow_null=True)
+    permissions = serializers.ListField(child=serializers.CharField())
+
+    def get_organization(self, obj):
+        org = obj.get('organization')
+        if org:
+            return {
+                'id': org.id,
+                'name': org.name,
+                'slug': org.slug,
+            }
+        return None

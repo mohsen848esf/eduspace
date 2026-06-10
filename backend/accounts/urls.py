@@ -41,6 +41,8 @@ urlpatterns = [
         name='notifications_delete',
     ),
 
+    path('org-context/', views.org_context, name='org_context'),
+
     # CRM and Financial API ViewSets
     path('', include(router.urls)),
 ]
