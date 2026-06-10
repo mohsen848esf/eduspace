@@ -1,6 +1,7 @@
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.core.cache import cache
 from rest_framework import status
 from rest_framework.test import APITestCase
 from accounts.models import Organization, OrgMember, Role, Permission
@@ -10,6 +11,9 @@ User = get_user_model()
 
 class OrgContextIntegrationTest(APITestCase):
     def setUp(self):
+        # Clear cache to prevent stale permission context leaks from other test suites
+        cache.clear()
+
         # Create standard user and superuser
         self.user = User.objects.create_user(username='test_user', password='password')
         self.superuser = User.objects.create_superuser(username='super_user', password='password')
