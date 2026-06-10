@@ -1,8 +1,9 @@
 from django.db import models
-from django.db.models import ProtectedError
+from django.db.models import ProtectedError, Q
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from accounts.models import Organization, Session
+
 
 class QuestionBank(models.Model):
     organization = models.ForeignKey(
@@ -182,6 +183,15 @@ class Submission(models.Model):
     tab_focus_losses = models.IntegerField(default=0)
     browser_info = models.TextField(blank=True, default="")
     ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["assessment", "student"],
+                condition=Q(status="started"),
+                name="unique_active_submission_per_student"
+            )
+        ]
 
     def __str__(self):
         return f"{self.student.username} - {self.assessment.title} ({self.status})"

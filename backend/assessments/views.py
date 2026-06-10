@@ -21,6 +21,8 @@ from assessments.permissions import (
     SubmissionPermission,
 )
 from assessments.services.assessment_service import AssessmentService
+from assessments.services.anti_cheat_service import AntiCheatService
+from accounts.services.audit_service import AuditService
 from accounts.permissions import has_org_permission
 
 
@@ -34,6 +36,44 @@ class QuestionBankViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return QuestionBank.objects.filter(organization=self.request.organization)
 
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        AuditService.log(
+            actor=self.request.user,
+            action="question_bank.created",
+            entity=instance,
+            after=serializer.data,
+            request=self.request
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        old_db_instance = self.get_queryset().get(pk=instance.pk)
+        before_state = self.get_serializer(old_db_instance).data
+
+        instance = serializer.save()
+        after_state = self.get_serializer(instance).data
+
+        AuditService.log(
+            actor=self.request.user,
+            action="question_bank.updated",
+            entity=instance,
+            before=before_state,
+            after=after_state,
+            request=self.request
+        )
+
+    def perform_destroy(self, instance):
+        before_state = self.get_serializer(instance).data
+        AuditService.log(
+            actor=self.request.user,
+            action="question_bank.deleted",
+            entity=instance,
+            before=before_state,
+            request=self.request
+        )
+        instance.delete()
+
 
 class QuestionViewSet(viewsets.ModelViewSet):
     """
@@ -44,6 +84,51 @@ class QuestionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Question.objects.filter(question_bank__organization=self.request.organization)
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        AuditService.log(
+            actor=self.request.user,
+            action="question.created",
+            entity=instance,
+            after=serializer.data,
+            request=self.request
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        old_db_instance = self.get_queryset().get(pk=instance.pk)
+        before_state = self.get_serializer(old_db_instance).data
+
+        instance = serializer.save()
+        after_state = self.get_serializer(instance).data
+
+        # Determine if it was archived, restored, or just updated
+        action = "question.updated"
+        if not old_db_instance.is_active and instance.is_active:
+            action = "question.restored"
+        elif old_db_instance.is_active and not instance.is_active:
+            action = "question.archived"
+
+        AuditService.log(
+            actor=self.request.user,
+            action=action,
+            entity=instance,
+            before=before_state,
+            after=after_state,
+            request=self.request
+        )
+
+    def perform_destroy(self, instance):
+        before_state = self.get_serializer(instance).data
+        AuditService.log(
+            actor=self.request.user,
+            action="question.deleted",
+            entity=instance,
+            before=before_state,
+            request=self.request
+        )
+        instance.delete()
 
 
 class AssessmentViewSet(viewsets.ModelViewSet):
@@ -81,11 +166,60 @@ class AssessmentViewSet(viewsets.ModelViewSet):
             return AssessmentTeacherSerializer
         return AssessmentStudentSerializer
 
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        AuditService.log(
+            actor=self.request.user,
+            action="assessment.created",
+            entity=instance,
+            after=serializer.data,
+            request=self.request
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        old_db_instance = self.get_queryset().get(pk=instance.pk)
+        before_state = self.get_serializer(old_db_instance).data
+
+        instance = serializer.save()
+        after_state = self.get_serializer(instance).data
+
+        AuditService.log(
+            actor=self.request.user,
+            action="assessment.updated",
+            entity=instance,
+            before=before_state,
+            after=after_state,
+            request=self.request
+        )
+
+    def perform_destroy(self, instance):
+        before_state = self.get_serializer(instance).data
+        AuditService.log(
+            actor=self.request.user,
+            action="assessment.deleted",
+            entity=instance,
+            before=before_state,
+            request=self.request
+        )
+        instance.delete()
+
     @action(detail=True, methods=['post'], url_path='publish')
     def publish(self, request, pk=None):
         assessment = self.get_object()
+        was_published = assessment.is_published
         assessment.is_published = True
         assessment.save(update_fields=['is_published', 'updated_at'])
+        
+        if not was_published:
+            AuditService.log(
+                actor=request.user,
+                action="assessment.published",
+                entity=assessment,
+                before={"is_published": False},
+                after={"is_published": True},
+                request=request
+            )
         return Response({'status': 'published'})
 
     @action(detail=True, methods=['post'], url_path='start')
@@ -163,6 +297,48 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = self.get_serializer(graded)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['post'], url_path='record-tab-loss')
+    def record_tab_loss(self, request, pk=None):
+        from django.db import transaction
+        with transaction.atomic():
+            submission = Submission.objects.select_for_update().get(pk=self.get_object().pk)
+            if submission.status != Submission.Status.STARTED:
+                return Response(
+                    {"error": "Submission is already submitted or graded."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            current_losses = AntiCheatService.record_tab_loss(
+                submission=submission,
+                actor=request.user,
+                request=request
+            )
+            anomaly = AntiCheatService.check_anomalies(submission)
+            return Response({
+                "tab_focus_losses": current_losses,
+                "anomaly_detected": anomaly["is_flagged"]
+            })
+
+    @action(detail=True, methods=['post'], url_path='update-telemetry')
+    def update_telemetry(self, request, pk=None):
+        from django.db import transaction
+        with transaction.atomic():
+            submission = Submission.objects.select_for_update().get(pk=self.get_object().pk)
+            if submission.status != Submission.Status.STARTED:
+                return Response(
+                    {"error": "Submission is already submitted or graded."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            ip_address = request.data.get('ip_address') or request.META.get('REMOTE_ADDR')
+            browser_info = request.data.get('browser_info') or request.META.get('HTTP_USER_AGENT', '')
+            AntiCheatService.update_telemetry(
+                submission=submission,
+                ip_address=ip_address,
+                browser_info=browser_info
+            )
+            submission.refresh_from_db()
+            serializer = self.get_serializer(submission)
+            return Response(serializer.data)
+
 
 class StudentAnswerViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
     """
@@ -193,7 +369,13 @@ class StudentAnswerViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, v
 
     def perform_update(self, serializer):
         instance = self.get_object()
-        # Prevent updates if the submission is submitted or graded
-        if instance.submission.status != Submission.Status.STARTED:
-            raise ValidationError("Cannot modify answers of a submitted or graded assessment.")
-        serializer.save()
+        from django.db import transaction
+        with transaction.atomic():
+            locked_submission = (
+                Submission.objects
+                .select_for_update()
+                .get(pk=instance.submission_id)
+            )
+            if locked_submission.status != Submission.Status.STARTED:
+                raise ValidationError("Cannot modify answers of a submitted or graded assessment.")
+            serializer.save()

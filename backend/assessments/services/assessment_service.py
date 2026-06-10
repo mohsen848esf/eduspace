@@ -16,6 +16,9 @@ class AssessmentService:
         Pre-populates empty StudentAnswer slots for all questions in the assessment.
         """
         with transaction.atomic():
+            # Lock assessment to prevent duplicate active submissions
+            Assessment.objects.select_for_update().get(pk=assessment.pk)
+
             # Check for existing submissions
             existing_submissions = Submission.objects.filter(assessment=assessment, student=student)
             

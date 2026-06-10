@@ -1,10 +1,10 @@
 from decimal import Decimal
 from django.urls import reverse
 from django.contrib.auth import get_user_model
-from rest_framework import status
 from rest_framework.test import APITestCase
+from rest_framework import status
 
-from accounts.models import Organization, Session, AcademyClass, Course, OrgMember, Role, Permission
+from accounts.models import Organization, Session, AcademyClass, Course, OrgMember, Role, Permission, AuditLog
 from assessments.models import (
     QuestionBank,
     Question,
@@ -259,3 +259,160 @@ class AssessmentViewsIntegrationTest(APITestCase):
             response = self.client.get(url, HTTP_X_ORGANIZATION_SLUG=self.org.slug)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(len(response.data), 6)
+
+    def test_autosave_blocked_after_submit(self):
+        """Verify that autosave PATCH requests are blocked once the attempt is submitted."""
+        self.assessment.is_published = True
+        self.assessment.save()
+        
+        self.client.force_authenticate(user=self.student)
+        
+        # 1. Start submission
+        start_url = reverse('assessments:assessment-start', kwargs={'pk': self.assessment.id})
+        response = self.client.post(start_url, HTTP_X_ORGANIZATION_SLUG=self.org.slug)
+        submission_id = response.data["id"]
+        answer_id = response.data["answers"][0]["id"]
+        
+        # 2. Submit assessment
+        submit_url = reverse('assessments:submission-submit', kwargs={'pk': submission_id})
+        self.client.post(submit_url, HTTP_X_ORGANIZATION_SLUG=self.org.slug)
+        
+        # 3. Attempt autosave -> Should return HTTP 400 Bad Request
+        ans_url = reverse('assessments:studentanswer-detail', kwargs={'pk': answer_id})
+        response = self.client.patch(
+            ans_url,
+            {"selected_options": ["b"]},
+            format='json',
+            HTTP_X_ORGANIZATION_SLUG=self.org.slug
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Cannot modify answers of a submitted or graded assessment.", response.data[0])
+
+    def test_unique_active_submission_constraint(self):
+        """Verify database constraint unique_active_submission_per_student works."""
+        from django.db import IntegrityError
+        
+        # Create first active submission
+        Submission.objects.create(
+            assessment=self.assessment,
+            student=self.student,
+            status=Submission.Status.STARTED
+        )
+        
+        # Creating second active submission should fail with IntegrityError
+        with self.assertRaises(IntegrityError):
+            Submission.objects.create(
+                assessment=self.assessment,
+                student=self.student,
+                status=Submission.Status.STARTED
+            )
+
+    def test_record_tab_loss_endpoint(self):
+        """Verify submission tab loss action increments counter and logs audit log."""
+        self.assessment.is_published = True
+        self.assessment.save()
+        
+        self.client.force_authenticate(user=self.student)
+        start_url = reverse('assessments:assessment-start', kwargs={'pk': self.assessment.id})
+        response = self.client.post(start_url, HTTP_X_ORGANIZATION_SLUG=self.org.slug)
+        submission_id = response.data["id"]
+        
+        # Call record-tab-loss action
+        url = reverse('assessments:submission-record-tab-loss', kwargs={'pk': submission_id})
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(url, HTTP_X_ORGANIZATION_SLUG=self.org.slug)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["tab_focus_losses"], 1)
+        self.assertEqual(response.data["anomaly_detected"], False)
+        
+        # Check audit log is created
+        audit_log = AuditLog.objects.filter(
+            action="submission.tab_focus_loss_recorded",
+            entity_id=submission_id
+        ).first()
+        self.assertIsNotNone(audit_log)
+        self.assertEqual(audit_log.actor, self.student)
+
+    def test_update_telemetry_endpoint(self):
+        """Verify update-telemetry endpoint updates submission telemetry fields."""
+        self.assessment.is_published = True
+        self.assessment.save()
+        
+        self.client.force_authenticate(user=self.student)
+        start_url = reverse('assessments:assessment-start', kwargs={'pk': self.assessment.id})
+        response = self.client.post(start_url, HTTP_X_ORGANIZATION_SLUG=self.org.slug)
+        submission_id = response.data["id"]
+        
+        # Call update-telemetry action
+        url = reverse('assessments:submission-update-telemetry', kwargs={'pk': submission_id})
+        payload = {
+            "ip_address": "192.168.1.100",
+            "browser_info": "Mozilla/5.0 (Test Client)"
+        }
+        response = self.client.post(url, payload, format='json', HTTP_X_ORGANIZATION_SLUG=self.org.slug)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["ip_address"], "192.168.1.100")
+        self.assertEqual(response.data["browser_info"], "Mozilla/5.0 (Test Client)")
+
+    def test_assessment_publish_audit_log(self):
+        """Verify publishing an assessment writes an audit log."""
+        self.client.force_authenticate(user=self.teacher)
+        
+        publish_url = reverse('assessments:assessment-publish', kwargs={'pk': self.assessment.id})
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(publish_url, HTTP_X_ORGANIZATION_SLUG=self.org.slug)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        audit_log = AuditLog.objects.filter(
+            action="assessment.published",
+            entity_id=self.assessment.id
+        ).first()
+        self.assertIsNotNone(audit_log)
+        self.assertEqual(audit_log.actor, self.teacher)
+
+    def test_question_bank_create_audit_log(self):
+        """Verify create, update, delete on QuestionBank write audit logs."""
+        self.client.force_authenticate(user=self.teacher)
+        
+        # 1. Create
+        url = reverse('assessments:questionbank-list')
+        payload = {
+            "title": "New Geometry Bank",
+            "description": "Geometry questions"
+        }
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(url, payload, format='json', HTTP_X_ORGANIZATION_SLUG=self.org.slug)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        qbank_id = response.data["id"]
+        
+        audit_create = AuditLog.objects.filter(
+            action="question_bank.created",
+            entity_id=qbank_id
+        ).first()
+        self.assertIsNotNone(audit_create)
+        self.assertEqual(audit_create.actor, self.teacher)
+        
+        # 2. Update
+        detail_url = reverse('assessments:questionbank-detail', kwargs={'pk': qbank_id})
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.patch(detail_url, {"title": "Updated Title"}, format='json', HTTP_X_ORGANIZATION_SLUG=self.org.slug)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        audit_update = AuditLog.objects.filter(
+            action="question_bank.updated",
+            entity_id=qbank_id
+        ).first()
+        self.assertIsNotNone(audit_update)
+        self.assertEqual(audit_update.actor, self.teacher)
+        
+        # 3. Delete
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.delete(detail_url, HTTP_X_ORGANIZATION_SLUG=self.org.slug)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        
+        audit_delete = AuditLog.objects.filter(
+            action="question_bank.deleted",
+            entity_id=qbank_id
+        ).first()
+        self.assertIsNotNone(audit_delete)
+        self.assertEqual(audit_delete.actor, self.teacher)
