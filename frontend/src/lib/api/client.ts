@@ -5,10 +5,16 @@ const client = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// Add token to every request
+// Add token and organization slug to every request
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem("access_token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  const orgSlug = localStorage.getItem("active_org_slug") || "default-academy";
+  if (orgSlug) {
+    config.headers["X-Organization-Slug"] = orgSlug;
+  }
+
   return config;
 });
 

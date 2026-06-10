@@ -16,7 +16,7 @@ import {
   type ExpenseItem,
   type SimpleUser
 } from "../api/crm.api";
-import { useAuthStore } from "../../auth/store/authStore";
+import { useOrgPermission } from "../../../hooks/useOrgPermission";
 import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
 import { Modal, ModalHeader, ModalTitle, ModalBody } from "../../../components/ui/Modal";
@@ -34,7 +34,7 @@ interface CRMTabsProps {
 
 export default function CRMTabs({ language }: CRMTabsProps) {
   useTranslation(["dashboard", "common"]);
-  const { user } = useAuthStore();
+  const { hasPermission, activeRole, activeOrg } = useOrgPermission();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -44,12 +44,13 @@ export default function CRMTabs({ language }: CRMTabsProps) {
   const isFarsi = language === "fa";
 
   // Determine role-based access
-  const isAdmin = user?.role === "admin";
-  const isTeacher = user?.role === "teacher";
-  const isStudent = user?.role === "student";
+  const activeRoleLower = (activeRole || "").toLowerCase();
+  const isAdmin = activeRoleLower === "admin";
+  const isTeacher = activeRoleLower === "teacher";
+  const isStudent = activeRoleLower === "student";
 
-  const canManageCRM = isAdmin || isTeacher;
-  const canManageFinance = isAdmin;
+  const canManageCRM = hasPermission("can_manage_members") || hasPermission("can_teach_class");
+  const canManageFinance = hasPermission("can_manage_financials");
 
   // Tabs setup based on permissions
   const tabsList = [
@@ -510,8 +511,8 @@ export default function CRMTabs({ language }: CRMTabsProps) {
               </p>
               <div className="mt-2 p-3 bg-[var(--s3)] rounded-lg text-xs text-[var(--t3)]">
                 {isFarsi
-                  ? `نقش شما: ${user?.role} | سازمان فعال: پیش‌فرض`
-                  : `Your active role: ${user?.role} | Active organization context: default-academy`}
+                  ? `نقش شما: ${activeRole} | سازمان فعال: ${activeOrg?.name || "پیش‌فرض"}`
+                  : `Your active role: ${activeRole} | Active organization context: ${activeOrg?.name || "default-academy"}`}
               </div>
             </div>
           </div>
