@@ -75,14 +75,6 @@ export default function CRMTabs({ language }: CRMTabsProps) {
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SimpleUser[]>([]);
 
-  useEffect(() => {
-    if (userSearchQuery.length >= 2) {
-      crmApi.searchUsers(userSearchQuery).then(setSearchResults);
-    } else {
-      setSearchResults([]);
-    }
-  }, [userSearchQuery]);
-
   // --- Queries ---
   const { data: courses = [], isLoading: loadingCourses } = useQuery({
     queryKey: ["courses"],
@@ -290,6 +282,20 @@ export default function CRMTabs({ language }: CRMTabsProps) {
   const [enrollmentForm, setEnrollmentForm] = useState({ academy_class: "", student: "", is_active: true });
   const [invoiceForm, setInvoiceForm] = useState({ student: "", academy_class: "", amount: "", status: "unpaid" as const, due_date: "" });
   const [expenseForm, setExpenseForm] = useState({ amount: "", category: "rent" as const, description: "", recipient: "", incurred_at: "" });
+
+  useEffect(() => {
+    if (userSearchQuery.length >= 2) {
+      const roleFilter =
+        modalType === "class"
+          ? "teacher"
+          : modalType === "enrollment" || modalType === "invoice"
+          ? "student"
+          : undefined;
+      crmApi.searchUsers(userSearchQuery, roleFilter).then(setSearchResults);
+    } else {
+      setSearchResults([]);
+    }
+  }, [userSearchQuery, modalType]);
 
   const openCreateModal = (type: typeof modalType) => {
     setModalType(type);
@@ -1021,7 +1027,7 @@ export default function CRMTabs({ language }: CRMTabsProps) {
                 />
                 {searchResults.length > 0 && (
                   <div className="bg-[var(--s3)] border border-[var(--b)] rounded-lg p-1 max-h-[120px] overflow-y-auto mt-1 flex flex-col gap-1">
-                    {searchResults.filter(u => u.role === "teacher" || u.role === "admin").map((u) => (
+                    {searchResults.map((u) => (
                       <button
                         key={u.id}
                         type="button"
@@ -1098,7 +1104,7 @@ export default function CRMTabs({ language }: CRMTabsProps) {
                 />
                 {searchResults.length > 0 && (
                   <div className="bg-[var(--s3)] border border-[var(--b)] rounded-lg p-1 max-h-[120px] overflow-y-auto mt-1 flex flex-col gap-1">
-                    {searchResults.filter(u => u.role === "student").map((u) => (
+                    {searchResults.map((u) => (
                       <button
                         key={u.id}
                         type="button"
@@ -1150,7 +1156,7 @@ export default function CRMTabs({ language }: CRMTabsProps) {
                 />
                 {searchResults.length > 0 && (
                   <div className="bg-[var(--s3)] border border-[var(--b)] rounded-lg p-1 max-h-[120px] overflow-y-auto mt-1 flex flex-col gap-1">
-                    {searchResults.filter(u => u.role === "student").map((u) => (
+                    {searchResults.map((u) => (
                       <button
                         key={u.id}
                         type="button"
@@ -1279,7 +1285,7 @@ export default function CRMTabs({ language }: CRMTabsProps) {
                         }}
                         className="w-full text-start p-1.5 hover:bg-[var(--brand-soft)] rounded text-xs text-[var(--t1)] border-none bg-transparent cursor-pointer"
                       >
-                        {u.full_name} ({u.username}) [{u.role}]
+                        {u.full_name} ({u.username})
                       </button>
                     ))}
                   </div>

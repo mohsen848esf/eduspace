@@ -15,6 +15,19 @@ def register(request):
     serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.save()
+        
+        # Onboarding: Automatically assign new users to the default organization
+        from .models import Organization, Role, OrgMember
+        default_org = Organization.objects.filter(slug='default-academy').first()
+        if default_org:
+            student_role = Role.objects.filter(name='Student', organization__isnull=True).first()
+            if student_role:
+                OrgMember.objects.get_or_create(
+                    organization=default_org,
+                    user=user,
+                    defaults={'role': student_role}
+                )
+                
         refresh = RefreshToken.for_user(user)
         return Response({
             'user': UserSerializer(user).data,
@@ -61,15 +74,52 @@ def logout(request):
 @permission_classes([IsAuthenticated])
 def search_users(request):
     q = request.query_params.get('q', '').strip()
+    role_filter = request.query_params.get('role', '').strip().lower()
     if len(q) < 2:
         return Response([])
     
+    from accounts.permissions import resolve_organization
+    from accounts.models import OrgMember
+    
+    org = resolve_organization(request)
+    if org:
+        members = OrgMember.objects.filter(
+            organization=org,
+            user__is_active=True
+        ).select_related('user', 'role')
+        
+        if q:
+            members = members.filter(
+                models.Q(user__username__icontains=q) | 
+                models.Q(user__full_name__icontains=q)
+            )
+            
+        if role_filter:
+            if role_filter == 'teacher':
+                members = members.filter(role__name__in=['Teacher', 'Admin'])
+            elif role_filter == 'student':
+                members = members.filter(role__name='Student')
+            elif role_filter == 'admin':
+                members = members.filter(role__name='Admin')
+                
+        results = []
+        for m in members[:10]:
+            user_data = UserSerializer(m.user, context={'request': request}).data
+            user_data['role'] = m.role.name.lower() if m.role else 'student'
+            results.append(user_data)
+            
+        return Response(results)
     users = User.objects.filter(
         models.Q(username__icontains=q) | 
         models.Q(full_name__icontains=q)
-    ).exclude(id=request.user.id)[:10]
+    ).exclude(id=request.user.id)
     
-    return Response(UserSerializer(users, many=True).data)
+    results = []
+    for u in users[:10]:
+        user_data = UserSerializer(u, context={'request': request}).data
+        results.append(user_data)
+        
+    return Response(results)
 
 
 @api_view(['GET'])

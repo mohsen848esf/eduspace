@@ -23,8 +23,6 @@ export function useRegister() {
 
   const form = useForm<RegisterInput>({
     resolver: zodResolver(schema),
-    // TODO: Sprint D.5 Cleanup - Remove legacy role referencing once user.role is deprecated from backend.
-    defaultValues: { role: "student" },
   });
 
   const onSubmit = async (data: RegisterInput) => {

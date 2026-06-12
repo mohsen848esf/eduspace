@@ -1,31 +1,7 @@
 import { useAuthStore } from "../features/auth/store/authStore";
 import { useOrgContextStore } from "../features/auth/store/orgContextStore";
 
-export const ENABLE_ROLE_FALLBACK = true;
 
-const LEGACY_ROLE_PERMISSIONS: Record<string, string[]> = {
-  admin: [
-    "can_view_dashboard",
-    "can_manage_members",
-    "can_view_financials",
-    "can_manage_financials",
-    "can_control_recordings",
-    "can_view_sessions",
-    "can_manage_sessions",
-  ],
-  teacher: [
-    "can_view_dashboard",
-    "can_teach_class",
-    "can_control_recordings",
-    "can_view_sessions",
-    "can_manage_sessions",
-  ],
-  student: [
-    "can_view_dashboard",
-    "can_attend_class",
-    "can_view_sessions",
-  ],
-};
 
 export function useOrgPermission() {
   const { orgContext, isInitialized } = useOrgContextStore();
@@ -35,12 +11,6 @@ export function useOrgPermission() {
     // If the orgContext is loaded, use its permissions list
     if (isInitialized && orgContext) {
       return orgContext.permissions.includes(permission);
-    }
-
-    // Fallback: use legacy role-based permissions mapping if enabled
-    if (ENABLE_ROLE_FALLBACK && user?.role) {
-      const allowed = LEGACY_ROLE_PERMISSIONS[user.role];
-      return allowed ? allowed.includes(permission) : false;
     }
 
     return false;
@@ -55,7 +25,7 @@ export function useOrgPermission() {
   };
 
   // Get active organization context (role, org info)
-  const activeRole = orgContext?.role || user?.role || null;
+  const activeRole = orgContext?.role || null;
   const activeOrg = orgContext?.organization || null;
 
   return {

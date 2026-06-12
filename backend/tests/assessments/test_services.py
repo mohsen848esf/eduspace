@@ -24,14 +24,12 @@ class AssessmentServicesTest(TestCase):
         self.teacher = User.objects.create_user(
             username="teacher1",
             email="teacher1@example.com",
-            password="password123",
-            role="teacher"
+            password="password123"
         )
         self.student = User.objects.create_user(
             username="student1",
             email="student1@example.com",
-            password="password123",
-            role="student"
+            password="password123"
         )
         # Create organization
         self.org = Organization.objects.create(

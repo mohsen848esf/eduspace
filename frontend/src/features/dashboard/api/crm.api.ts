@@ -158,8 +158,9 @@ export const crmApi = {
   },
 
   // User search for selector
-  searchUsers: async (q: string): Promise<SimpleUser[]> => {
-    const res = await client.get(`/auth/search-users/?q=${encodeURIComponent(q)}`);
+  searchUsers: async (q: string, role?: string): Promise<SimpleUser[]> => {
+    const url = `/auth/search-users/?q=${encodeURIComponent(q)}${role ? `&role=${encodeURIComponent(role)}` : ""}`;
+    const res = await client.get(url);
     return res.data;
   },
 };

@@ -6,8 +6,6 @@ export interface User {
   username: string;
   email: string;
   full_name: string;
-  // TODO: Sprint D.5 Cleanup - Remove legacy role referencing once user.role is deprecated from backend.
-  role: "student" | "teacher" | "admin";
   avatar: string | null;
   is_online: boolean;
 }

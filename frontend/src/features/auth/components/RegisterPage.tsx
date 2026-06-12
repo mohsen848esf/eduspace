@@ -16,7 +16,6 @@ export default function RegisterPage() {
     formState: { errors },
   } = form;
 
-  const selectedRole = watch("role");
 
   useEffect(() => {
     clearError();
@@ -51,36 +50,7 @@ export default function RegisterPage() {
           )}
 
           <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-            {/* TODO: Sprint D.5 Cleanup - Remove legacy role referencing once user.role is deprecated from backend. */}
-            {/* Role selector */}
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
-                {t("register.iAmA")}
-              </span>
-              <div className="grid grid-cols-2 gap-2">
-                {(["student", "teacher"] as const).map((role) => (
-                  <label
-                    key={role}
-                    className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border cursor-pointer transition-all duration-150 ${
-                      selectedRole === role
-                        ? "bg-[var(--brand-soft)] border-[var(--brand)] text-[var(--brand-text)]"
-                        : "bg-[var(--s2)] border-[var(--b)] text-[var(--t2)] hover:border-[var(--bh)]"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      value={role}
-                      className="hidden"
-                      {...register("role")}
-                    />
-                    <span>{role === "student" ? "🎓" : "👨‍🏫"}</span>
-                    <span className="text-sm font-medium">
-                      {t(`register.${role}`)}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
+
 
             <Input
               label={t("fields.fullName")}

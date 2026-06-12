@@ -28,8 +28,6 @@ export const buildRegisterSchema = (t: TFunction) =>
       email: z.email(t("validation.emailInvalid")),
       password: z.string().min(8, t("validation.passwordMin8")),
       confirmPassword: z.string(),
-      // TODO: Sprint D.5 Cleanup - Remove legacy role referencing once user.role is deprecated from backend.
-      role: z.enum(["student", "teacher"]),
     })
     .refine((data) => data.password === data.confirmPassword, {
       message: t("validation.passwordsMismatch"),
