@@ -1,11 +1,9 @@
-import { useAuthStore } from "../features/auth/store/authStore";
 import { useOrgContextStore } from "../features/auth/store/orgContextStore";
 
 
 
 export function useOrgPermission() {
   const { orgContext, isInitialized } = useOrgContextStore();
-  const { user } = useAuthStore();
 
   const hasPermission = (permission: string): boolean => {
     // If the orgContext is loaded, use its permissions list

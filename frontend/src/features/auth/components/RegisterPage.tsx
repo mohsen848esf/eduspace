@@ -12,7 +12,6 @@ export default function RegisterPage() {
   const { inputType, icon, toggle } = usePasswordToggle();
   const {
     register,
-    watch,
     formState: { errors },
   } = form;
 
