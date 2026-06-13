@@ -3,7 +3,7 @@
 
 
 import { useState, useEffect, Fragment } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-hot-toast";
@@ -16,7 +16,7 @@ import {
   type ExpenseItem,
   type SimpleUser
 } from "../api/crm.api";
-import { useAuthStore } from "../../auth/store/authStore";
+import { useOrgPermission } from "../../../hooks/useOrgPermission";
 import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
 import { Modal, ModalHeader, ModalTitle, ModalBody } from "../../../components/ui/Modal";
@@ -34,7 +34,7 @@ interface CRMTabsProps {
 
 export default function CRMTabs({ language }: CRMTabsProps) {
   useTranslation(["dashboard", "common"]);
-  const { user } = useAuthStore();
+  const { hasPermission, activeRole, activeOrg } = useOrgPermission();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -43,28 +43,23 @@ export default function CRMTabs({ language }: CRMTabsProps) {
 
   const isFarsi = language === "fa";
 
-  // Determine role-based access
-  const isAdmin = user?.role === "admin";
-  const isTeacher = user?.role === "teacher";
-  const isStudent = user?.role === "student";
-
-  const canManageCRM = isAdmin || isTeacher;
-  const canManageFinance = isAdmin;
+  const canManageCRM = hasPermission("can_manage_members") || hasPermission("can_teach_class");
+  const canManageFinance = hasPermission("can_manage_financials");
 
   // Tabs setup based on permissions
   const tabsList = [
     { id: "overview", label: isFarsi ? "خلاصه وضعیت" : "Overview" },
-    ...(isAdmin || isTeacher ? [
+    ...(canManageCRM ? [
       { id: "courses", label: isFarsi ? "دوره‌ها" : "Courses" },
       { id: "classes", label: isFarsi ? "کلاس‌ها" : "Classes" },
       { id: "question_banks", label: isFarsi ? "بانک سوالات" : "Question Banks" }
     ] : []),
     { id: "enrollments", label: isFarsi ? "ثبت‌نام‌ها" : "Enrollments" },
     { id: "assessments", label: isFarsi ? "ارزیابی‌ها / آزمون‌ها" : "Assessments" },
-    ...(isAdmin || isStudent ? [
+    ...(canManageFinance || hasPermission("can_attend_class") ? [
       { id: "invoices", label: isFarsi ? "شهریه‌ها / فاکتورها" : "Invoices" }
     ] : []),
-    ...(isAdmin ? [
+    ...(canManageFinance ? [
       { id: "expenses", label: isFarsi ? "دفتر هزینه‌ها" : "Expenses" }
     ] : [])
   ];
@@ -79,14 +74,6 @@ export default function CRMTabs({ language }: CRMTabsProps) {
   // --- Search state for dropdowns ---
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SimpleUser[]>([]);
-
-  useEffect(() => {
-    if (userSearchQuery.length >= 2) {
-      crmApi.searchUsers(userSearchQuery).then(setSearchResults);
-    } else {
-      setSearchResults([]);
-    }
-  }, [userSearchQuery]);
 
   // --- Queries ---
   const { data: courses = [], isLoading: loadingCourses } = useQuery({
@@ -116,7 +103,7 @@ export default function CRMTabs({ language }: CRMTabsProps) {
   const { data: expenses = [], isLoading: loadingExpenses } = useQuery({
     queryKey: ["expenses"],
     queryFn: crmApi.getExpenses,
-    enabled: activeTab === "expenses" || activeTab === "overview"
+    enabled: hasPermission("can_view_financials") && (activeTab === "expenses" || activeTab === "overview")
   });
 
   // --- Mutations ---
@@ -296,6 +283,20 @@ export default function CRMTabs({ language }: CRMTabsProps) {
   const [invoiceForm, setInvoiceForm] = useState({ student: "", academy_class: "", amount: "", status: "unpaid" as const, due_date: "" });
   const [expenseForm, setExpenseForm] = useState({ amount: "", category: "rent" as const, description: "", recipient: "", incurred_at: "" });
 
+  useEffect(() => {
+    if (userSearchQuery.length >= 2) {
+      const roleFilter =
+        modalType === "class"
+          ? "teacher"
+          : modalType === "enrollment" || modalType === "invoice"
+          ? "student"
+          : undefined;
+      crmApi.searchUsers(userSearchQuery, roleFilter).then(setSearchResults);
+    } else {
+      setSearchResults([]);
+    }
+  }, [userSearchQuery, modalType]);
+
   const openCreateModal = (type: typeof modalType) => {
     setModalType(type);
     setEditId(null);
@@ -444,7 +445,7 @@ export default function CRMTabs({ language }: CRMTabsProps) {
       {activeTab === "overview" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Quick Metrics */}
-          {(isAdmin || isTeacher) && (
+          {canManageCRM && (
             <div className="bg-[var(--s2)] rounded-xl p-4 border border-[var(--b)]">
               <h3 className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide mb-2">
                 {isFarsi ? "دوره‌ها و کلاس‌ها" : "Courses & Classes"}
@@ -475,7 +476,7 @@ export default function CRMTabs({ language }: CRMTabsProps) {
             </div>
           </div>
 
-          {isAdmin && (
+          {canManageFinance && (
             <div className="bg-[var(--s2)] rounded-xl p-4 border border-[var(--b)] col-span-1 md:col-span-2 lg:col-span-1">
               <h3 className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide mb-2">
                 {isFarsi ? "تراز مالی" : "Financial Balance"}
@@ -510,8 +511,8 @@ export default function CRMTabs({ language }: CRMTabsProps) {
               </p>
               <div className="mt-2 p-3 bg-[var(--s3)] rounded-lg text-xs text-[var(--t3)]">
                 {isFarsi
-                  ? `نقش شما: ${user?.role} | سازمان فعال: پیش‌فرض`
-                  : `Your active role: ${user?.role} | Active organization context: default-academy`}
+                  ? `نقش شما: ${activeRole} | سازمان فعال: ${activeOrg?.name || "پیش‌فرض"}`
+                  : `Your active role: ${activeRole} | Active organization context: ${activeOrg?.name || "default-academy"}`}
               </div>
             </div>
           </div>
@@ -728,12 +729,12 @@ export default function CRMTabs({ language }: CRMTabsProps) {
                             const liveSession = liveSessions.find((s) => s.academy_class === e.academy_class);
                             if (e.is_active && liveSession?.active_room_code) {
                               return (
-                                <button
-                                  onClick={() => navigate(`/room/${liveSession.active_room_code}`)}
-                                  className="text-[10px] bg-[var(--green)] hover:brightness-110 text-white font-bold px-2 py-0.5 rounded-full cursor-pointer border-none animate-pulse"
+                                <Link
+                                  to={`/room/${liveSession.active_room_code}`}
+                                  className="inline-block text-[10px] bg-[var(--green)] hover:brightness-110 text-white font-bold px-2 py-0.5 rounded-full cursor-pointer no-underline border-none animate-pulse"
                                 >
                                   {isFarsi ? "ورود به کلاس زنده" : "Join Live Class"}
-                                </button>
+                                </Link>
                               );
                             }
                             return null;
@@ -1026,7 +1027,7 @@ export default function CRMTabs({ language }: CRMTabsProps) {
                 />
                 {searchResults.length > 0 && (
                   <div className="bg-[var(--s3)] border border-[var(--b)] rounded-lg p-1 max-h-[120px] overflow-y-auto mt-1 flex flex-col gap-1">
-                    {searchResults.filter(u => u.role === "teacher" || u.role === "admin").map((u) => (
+                    {searchResults.map((u) => (
                       <button
                         key={u.id}
                         type="button"
@@ -1103,7 +1104,7 @@ export default function CRMTabs({ language }: CRMTabsProps) {
                 />
                 {searchResults.length > 0 && (
                   <div className="bg-[var(--s3)] border border-[var(--b)] rounded-lg p-1 max-h-[120px] overflow-y-auto mt-1 flex flex-col gap-1">
-                    {searchResults.filter(u => u.role === "student").map((u) => (
+                    {searchResults.map((u) => (
                       <button
                         key={u.id}
                         type="button"
@@ -1155,7 +1156,7 @@ export default function CRMTabs({ language }: CRMTabsProps) {
                 />
                 {searchResults.length > 0 && (
                   <div className="bg-[var(--s3)] border border-[var(--b)] rounded-lg p-1 max-h-[120px] overflow-y-auto mt-1 flex flex-col gap-1">
-                    {searchResults.filter(u => u.role === "student").map((u) => (
+                    {searchResults.map((u) => (
                       <button
                         key={u.id}
                         type="button"
@@ -1209,7 +1210,6 @@ export default function CRMTabs({ language }: CRMTabsProps) {
                 >
                   <option value="unpaid">Unpaid</option>
                   <option value="paid">Paid</option>
-                  <option value="void">Void</option>
                 </select>
               </div>
 
@@ -1244,7 +1244,6 @@ export default function CRMTabs({ language }: CRMTabsProps) {
                   required
                 >
                   <option value="rent">Rent</option>
-                  <option value="utilities">Utilities</option>
                   <option value="teacher_payout">Teacher Payout</option>
                   <option value="marketing">Marketing</option>
                   <option value="other">Other</option>
@@ -1284,7 +1283,7 @@ export default function CRMTabs({ language }: CRMTabsProps) {
                         }}
                         className="w-full text-start p-1.5 hover:bg-[var(--brand-soft)] rounded text-xs text-[var(--t1)] border-none bg-transparent cursor-pointer"
                       >
-                        {u.full_name} ({u.username}) [{u.role}]
+                        {u.full_name} ({u.username})
                       </button>
                     ))}
                   </div>

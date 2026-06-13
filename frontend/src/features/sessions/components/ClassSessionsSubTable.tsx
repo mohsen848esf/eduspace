@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import { sessionsApi } from "../api/sessions.api";
@@ -243,13 +243,12 @@ export default function ClassSessionsSubTable({
                         <>
                           {canManageCRM ? (
                             <>
-                              <Button
-                                size="sm"
-                                variant="primary"
-                                onClick={() => navigate(`/room/${s.active_room_code}`)}
+                              <Link
+                                to={`/room/${s.active_room_code}`}
+                                className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--brand)] text-[var(--brand-text)] hover:brightness-110 transition-all cursor-pointer no-underline"
                               >
                                 {isFarsi ? "ورود" : "Join"}
-                              </Button>
+                              </Link>
                               <Button
                                 size="sm"
                                 variant="success"
@@ -268,13 +267,12 @@ export default function ClassSessionsSubTable({
                               </Button>
                             </>
                           ) : (
-                            <Button
-                              size="sm"
-                              variant="primary"
-                              onClick={() => navigate(`/room/${s.active_room_code}`)}
+                            <Link
+                                to={`/room/${s.active_room_code}`}
+                                className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--brand)] text-[var(--brand-text)] hover:brightness-110 transition-all cursor-pointer no-underline"
                             >
                               {isFarsi ? "ورود به کلاس" : "Join Room"}
-                            </Button>
+                            </Link>
                           )}
                         </>
                       )}

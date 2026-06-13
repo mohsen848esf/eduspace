@@ -8,6 +8,8 @@ import Spinner from "../components/ui/Spinner";
 import { useNotifications } from "../features/auth/hooks/useNotifications";
 import { useAuthStore } from "../features/auth/store/authStore";
 
+import { useOrgContextStore } from "../features/auth/store/orgContextStore";
+
 function NotificationProvider() {
   useNotifications();
   return null;
@@ -37,13 +39,20 @@ function UnauthorizedScreen() {
 }
 
 function AppInitializer({ children }: { children: React.ReactNode }) {
-  const { fetchMe, isInitialized } = useAuthStore();
+  const { fetchMe, isInitialized, isAuthenticated } = useAuthStore();
+  const { fetchOrgContext, isInitialized: isOrgContextInitialized } = useOrgContextStore();
 
   useEffect(() => {
     fetchMe();
   }, []);
 
-  if (!isInitialized) {
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchOrgContext();
+    }
+  }, [isAuthenticated]);
+
+  if (!isInitialized || (isAuthenticated && !isOrgContextInitialized)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--s0)]">
         <Spinner size="lg" />
@@ -64,13 +73,13 @@ export default function AppRouter() {
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-            {routes.map(({ path, component: Page, isPrivate, roles }) => (
+            {routes.map(({ path, component: Page, isPrivate, requiredPermissions }) => (
               <Route
                 key={path}
                 path={path}
                 element={
                   isPrivate ? (
-                    <PrivateRoute roles={roles}>
+                    <PrivateRoute requiredPermissions={requiredPermissions}>
                       <Page />
                     </PrivateRoute>
                   ) : (

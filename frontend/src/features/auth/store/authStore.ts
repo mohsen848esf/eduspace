@@ -3,6 +3,8 @@ import i18n from "../../../i18n/config";
 import { authApi, type User } from "../api/auth.api";
 import type { LoginInput, RegisterPayload } from "../schemas/auth.schema";
 
+import { useOrgContextStore } from "./orgContextStore";
+
 interface AuthState {
   user: User | null;
   isLoading: boolean;
@@ -64,6 +66,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
+    useOrgContextStore.getState().clearOrgContext();
     set({
       user: null,
       isAuthenticated: false,

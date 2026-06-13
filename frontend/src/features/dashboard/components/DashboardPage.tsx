@@ -6,10 +6,13 @@ import { useRoom } from "../../room/hooks/useRoom";
 import { useLocale } from "../../../i18n/useLocale";
 import CRMTabs from "./CRMTabs";
 
+import { useOrgPermission } from "../../../hooks/useOrgPermission";
+
 export default function DashboardPage() {
   const { t } = useTranslation(["dashboard"]);
   const { language } = useLocale();
   const { user } = useAuthStore();
+  const { activeRole } = useOrgPermission();
   const [activeNav, setActiveNav] = useState("dashboard");
   const { createRoom, isLoading: roomLoading } = useRoom();
 
@@ -44,7 +47,7 @@ export default function DashboardPage() {
           <p className="text-sm text-[var(--t2)] mt-1">
             {t("role")}:{" "}
             <span className="text-[var(--brand-text)] font-semibold capitalize">
-              {user?.role}
+              {activeRole}
             </span>
           </p>
         </div>

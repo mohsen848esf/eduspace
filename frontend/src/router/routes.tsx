@@ -30,13 +30,11 @@ const ReviewSubmissionPage = lazy(
   () => import("../features/assessments/pages/ReviewSubmissionPage"),
 );
 
-export type UserRole = "student" | "teacher" | "admin";
-
 export interface RouteConfig {
   path: string;
   component: React.LazyExoticComponent<any>;
   isPrivate: boolean;
-  roles?: UserRole[];
+  requiredPermissions?: string[];
 }
 
 export const routes: RouteConfig[] = [
@@ -54,54 +52,54 @@ export const routes: RouteConfig[] = [
     path: "/dashboard",
     component: DashboardPage,
     isPrivate: true,
-    roles: ["student", "teacher", "admin"],
+    requiredPermissions: ["can_view_dashboard"],
   },
   {
     path: "/room/:roomCode",
     component: RoomPage,
     isPrivate: true,
-    roles: ["student", "teacher", "admin"],
+    requiredPermissions: ["can_view_dashboard"],
   },
   {
     path: "/miniapps",
     component: MiniAppsPage,
     isPrivate: true,
-    roles: ["student", "teacher", "admin"],
+    requiredPermissions: ["can_view_dashboard"],
   },
   {
     path: "/recordings",
     component: RecordingsPage,
     isPrivate: true,
-    roles: ["student", "teacher", "admin"],
+    requiredPermissions: ["can_view_dashboard"],
   },
   {
     path: "/recordings/:token",
     component: RecordingViewPage,
     isPrivate: true,
-    roles: ["student", "teacher", "admin"],
+    requiredPermissions: ["can_view_dashboard"],
   },
   {
     path: "/recordings/:token/edit",
     component: RecordingEditPage,
     isPrivate: true,
-    roles: ["student", "teacher", "admin"],
+    requiredPermissions: ["can_view_dashboard"],
   },
   {
     path: "/assessments/take/:submissionId",
     component: TakeAssessmentPage,
     isPrivate: true,
-    roles: ["student", "teacher", "admin"],
+    requiredPermissions: ["can_view_dashboard"],
   },
   {
     path: "/assessments/results/:submissionId",
     component: AssessmentResultsPage,
     isPrivate: true,
-    roles: ["student", "teacher", "admin"],
+    requiredPermissions: ["can_view_dashboard"],
   },
   {
     path: "/assessments/review/:submissionId",
     component: ReviewSubmissionPage,
     isPrivate: true,
-    roles: ["teacher", "admin"],
+    requiredPermissions: ["can_teach_class", "can_manage_members"],
   },
 ];

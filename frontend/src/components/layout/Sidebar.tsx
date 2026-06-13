@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "../../lib/utils";
 import { Tooltip } from "../ui/Tooltip";
+import { useOrgPermission } from "../../hooks/useOrgPermission";
 import { mainNavItems, manageNavItems, type NavItem } from "./navItems";
 import { useAuthStore } from "../../features/auth/store/authStore";
 
@@ -17,6 +18,7 @@ export default function Sidebar({
   const { t } = useTranslation(["dashboard", "common"]);
   const [collapsed, setCollapsed] = useState(false);
   const { user } = useAuthStore();
+  const { activeRole, hasPermission } = useOrgPermission();
 
   const NavButton = ({ item }: { item: NavItem }) => {
     const isActive = activeId === item.id;
@@ -67,7 +69,8 @@ export default function Sidebar({
   };
 
   const userInitial = user?.full_name?.[0] || user?.username?.[0] || "U";
-  const userRoleTranslation = user?.role ? t(`auth:register.${user.role}`, { ns: "auth" }) : "";
+  const normalizedRole = (activeRole || "").toLowerCase();
+  const userRoleTranslation = normalizedRole ? t(`auth:register.${normalizedRole}`, { ns: "auth" }) : "";
 
   return (
     <aside
@@ -117,18 +120,22 @@ export default function Sidebar({
             {t("nav.main")}
           </span>
         )}
-        {mainNavItems.map((item) => (
-          <NavButton key={item.id} item={item} />
-        ))}
+        {mainNavItems
+          .filter((item) => !item.permission || hasPermission(item.permission))
+          .map((item) => (
+            <NavButton key={item.id} item={item} />
+          ))}
 
         {!collapsed && (
           <span className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-[0.8px] px-2.5 py-2 mt-2">
             {t("nav.manage")}
           </span>
         )}
-        {manageNavItems.map((item) => (
-          <NavButton key={item.id} item={item} />
-        ))}
+        {manageNavItems
+          .filter((item) => !item.permission || hasPermission(item.permission))
+          .map((item) => (
+            <NavButton key={item.id} item={item} />
+          ))}
       </nav>
 
       {/* User */}
@@ -154,7 +161,7 @@ export default function Sidebar({
                   {user?.full_name || user?.username || "Guest User"}
                 </div>
                 <div className="text-[10px] text-[var(--t3)] whitespace-nowrap capitalize">
-                  {userRoleTranslation || user?.role || ""}
+                  {userRoleTranslation || activeRole || ""}
                 </div>
               </div>
             )}

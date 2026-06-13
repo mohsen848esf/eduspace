@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "../../auth/store/authStore";
 import {
   useAssessments,
   useCreateAssessment,
@@ -18,15 +17,17 @@ import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
 import { Modal, ModalHeader, ModalTitle, ModalBody } from "../../../components/ui/Modal";
 
+import { useOrgPermission } from "../../../hooks/useOrgPermission";
+
 export default function AssessmentList() {
-  const { user } = useAuthStore();
+  const { hasPermission } = useOrgPermission();
   const navigate = useNavigate();
 
-  const isTeacher = user?.role === "teacher" || user?.role === "admin";
+  const isTeacher = hasPermission("can_teach_class") || hasPermission("can_manage_members");
 
   const { data: assessments, isLoading, error } = useAssessments();
-  const { data: questionBanks } = useQuestionBanks();
-  const { data: questions } = useQuestions();
+  const { data: questionBanks } = useQuestionBanks(isTeacher);
+  const { data: questions } = useQuestions(isTeacher);
   const { data: sessions } = useSessions();
   const { data: allSubmissions } = useSubmissions(); // loaded for student reference
 

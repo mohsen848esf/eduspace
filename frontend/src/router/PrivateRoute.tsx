@@ -1,22 +1,29 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "../features/auth/store/authStore";
-import type { UserRole } from "./routes";
+import { useOrgPermission } from "../hooks/useOrgPermission";
 
 interface Props {
   children: React.ReactNode;
-  roles?: UserRole[];
+  requiredPermissions?: string[];
 }
 
-export default function PrivateRoute({ children, roles }: Props) {
-  const { isAuthenticated, user } = useAuthStore();
+export default function PrivateRoute({ children, requiredPermissions }: Props) {
+  const { isAuthenticated } = useAuthStore();
+  const { hasAnyPermission, isLoading } = useOrgPermission();
   const location = useLocation();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (roles && user && !roles.includes(user.role as UserRole)) {
-    return <Navigate to="/unauthorized" replace />;
+  if (isLoading) {
+    return null;
+  }
+
+  if (requiredPermissions && requiredPermissions.length > 0) {
+    if (!hasAnyPermission(requiredPermissions)) {
+      return <Navigate to="/unauthorized" replace />;
+    }
   }
 
   return <>{children}</>;

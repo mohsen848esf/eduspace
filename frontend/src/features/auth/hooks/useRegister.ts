@@ -23,7 +23,6 @@ export function useRegister() {
 
   const form = useForm<RegisterInput>({
     resolver: zodResolver(schema),
-    defaultValues: { role: "student" },
   });
 
   const onSubmit = async (data: RegisterInput) => {

@@ -6,7 +6,6 @@ export interface User {
   username: string;
   email: string;
   full_name: string;
-  role: "student" | "teacher" | "admin";
   avatar: string | null;
   is_online: boolean;
 }
@@ -15,6 +14,16 @@ export interface AuthResponse {
   user: User;
   access: string;
   refresh: string;
+}
+
+export interface OrgContext {
+  organization: {
+    id: number;
+    name: string;
+    slug: string;
+  } | null;
+  role: string | null;
+  permissions: string[];
 }
 
 export const authApi = {
@@ -39,4 +48,10 @@ export const authApi = {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
   },
+
+  getOrgContext: async (): Promise<OrgContext> => {
+    const res = await client.get("/auth/org-context/");
+    return res.data;
+  },
 };
+

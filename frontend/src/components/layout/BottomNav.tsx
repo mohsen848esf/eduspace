@@ -4,6 +4,8 @@ import { Icons } from "../../lib/constants/icons";
 import { cn } from "../../lib/utils";
 import { bottomNavPrimary, type NavItem } from "./navItems";
 
+import { useOrgPermission } from "../../hooks/useOrgPermission";
+
 interface BottomNavProps {
   /** Stable id of the currently selected item, or "more" when the drawer is open. */
   activeId?: string;
@@ -29,12 +31,17 @@ export default function BottomNav({
   items = bottomNavPrimary,
 }: BottomNavProps) {
   const { t } = useTranslation("dashboard");
+  const { hasPermission } = useOrgPermission();
   const navigate = useNavigate();
   const location = useLocation();
 
+  const visibleItems = items.filter(
+    (item) => !item.permission || hasPermission(item.permission)
+  );
+
   const resolvedActive =
     activeId ??
-    items.find((item) => item.to && location.pathname.startsWith(item.to))?.id ??
+    visibleItems.find((item) => item.to && location.pathname.startsWith(item.to))?.id ??
     "";
 
   return (
@@ -50,7 +57,7 @@ export default function BottomNav({
       role="navigation"
       aria-label={t("nav.main")}
     >
-      {items.map((item) => {
+      {visibleItems.map((item) => {
         const isActive = item.id === resolvedActive;
         return (
           <button

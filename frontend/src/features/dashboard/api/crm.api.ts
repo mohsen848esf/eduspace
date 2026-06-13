@@ -74,7 +74,7 @@ export interface SimpleUser {
 export const crmApi = {
   // Courses CRUD
   getCourses: async (): Promise<Course[]> => {
-    const res = await client.get("/auth/courses/");
+    const res = await client.get("/auth/courses/?include_archived=true");
     return res.data;
   },
   createCourse: async (data: Partial<Course>): Promise<Course> => {
@@ -82,7 +82,7 @@ export const crmApi = {
     return res.data;
   },
   updateCourse: async (id: number, data: Partial<Course>): Promise<Course> => {
-    const res = await client.put(`/auth/courses/${id}/`, data);
+    const res = await client.patch(`/auth/courses/${id}/`, data);
     return res.data;
   },
   deleteCourse: async (id: number): Promise<void> => {
@@ -91,7 +91,7 @@ export const crmApi = {
 
   // Classes CRUD
   getClasses: async (): Promise<AcademyClass[]> => {
-    const res = await client.get("/auth/classes/");
+    const res = await client.get("/auth/classes/?include_archived=true");
     return res.data;
   },
   createClass: async (data: Partial<AcademyClass>): Promise<AcademyClass> => {
@@ -99,7 +99,7 @@ export const crmApi = {
     return res.data;
   },
   updateClass: async (id: number, data: Partial<AcademyClass>): Promise<AcademyClass> => {
-    const res = await client.put(`/auth/classes/${id}/`, data);
+    const res = await client.patch(`/auth/classes/${id}/`, data);
     return res.data;
   },
   deleteClass: async (id: number): Promise<void> => {
@@ -108,7 +108,7 @@ export const crmApi = {
 
   // Enrollments CRUD
   getEnrollments: async (): Promise<Enrollment[]> => {
-    const res = await client.get("/auth/enrollments/");
+    const res = await client.get("/auth/enrollments/?include_archived=true");
     return res.data;
   },
   createEnrollment: async (data: Partial<Enrollment>): Promise<Enrollment> => {
@@ -116,7 +116,7 @@ export const crmApi = {
     return res.data;
   },
   updateEnrollment: async (id: number, data: Partial<Enrollment>): Promise<Enrollment> => {
-    const res = await client.put(`/auth/enrollments/${id}/`, data);
+    const res = await client.patch(`/auth/enrollments/${id}/`, data);
     return res.data;
   },
   deleteEnrollment: async (id: number): Promise<void> => {
@@ -133,7 +133,7 @@ export const crmApi = {
     return res.data;
   },
   updateInvoice: async (id: number, data: Partial<TuitionInvoice>): Promise<TuitionInvoice> => {
-    const res = await client.put(`/auth/invoices/${id}/`, data);
+    const res = await client.patch(`/auth/invoices/${id}/`, data);
     return res.data;
   },
   deleteInvoice: async (id: number): Promise<void> => {
@@ -150,7 +150,7 @@ export const crmApi = {
     return res.data;
   },
   updateExpense: async (id: number, data: Partial<ExpenseItem>): Promise<ExpenseItem> => {
-    const res = await client.put(`/auth/expenses/${id}/`, data);
+    const res = await client.patch(`/auth/expenses/${id}/`, data);
     return res.data;
   },
   deleteExpense: async (id: number): Promise<void> => {
@@ -158,8 +158,9 @@ export const crmApi = {
   },
 
   // User search for selector
-  searchUsers: async (q: string): Promise<SimpleUser[]> => {
-    const res = await client.get(`/auth/search-users/?q=${encodeURIComponent(q)}`);
+  searchUsers: async (q: string, role?: string): Promise<SimpleUser[]> => {
+    const url = `/auth/search/?q=${encodeURIComponent(q)}${role ? `&role=${encodeURIComponent(role)}` : ""}`;
+    const res = await client.get(url);
     return res.data;
   },
 };

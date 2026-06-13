@@ -15,6 +15,19 @@ def register(request):
     serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.save()
+        
+        # Onboarding: Automatically assign new users to the default organization
+        from .models import Organization, Role, OrgMember
+        default_org = Organization.objects.filter(slug='default-academy').first()
+        if default_org:
+            student_role = Role.objects.filter(name='Student', organization__isnull=True).first()
+            if student_role:
+                OrgMember.objects.get_or_create(
+                    organization=default_org,
+                    user=user,
+                    defaults={'role': student_role}
+                )
+                
         refresh = RefreshToken.for_user(user)
         return Response({
             'user': UserSerializer(user).data,
@@ -61,15 +74,105 @@ def logout(request):
 @permission_classes([IsAuthenticated])
 def search_users(request):
     q = request.query_params.get('q', '').strip()
+    role_filter = request.query_params.get('role', '').strip().lower()
     if len(q) < 2:
         return Response([])
     
+    from accounts.permissions import resolve_organization
+    from accounts.models import OrgMember
+    
+    org = resolve_organization(request)
+    if org:
+        members = OrgMember.objects.filter(
+            organization=org,
+            user__is_active=True
+        ).select_related('user', 'role')
+        
+        if q:
+            members = members.filter(
+                models.Q(user__username__icontains=q) | 
+                models.Q(user__full_name__icontains=q)
+            )
+            
+        if role_filter:
+            if role_filter == 'teacher':
+                members = members.filter(role__name__in=['Teacher', 'Admin'])
+            elif role_filter == 'student':
+                members = members.filter(role__name='Student')
+            elif role_filter == 'admin':
+                members = members.filter(role__name='Admin')
+                
+        results = []
+        for m in members[:10]:
+            user_data = UserSerializer(m.user, context={'request': request}).data
+            user_data['role'] = m.role.name.lower() if m.role else 'student'
+            results.append(user_data)
+            
+        return Response(results)
     users = User.objects.filter(
         models.Q(username__icontains=q) | 
         models.Q(full_name__icontains=q)
-    ).exclude(id=request.user.id)[:10]
+    ).exclude(id=request.user.id)
     
-    return Response(UserSerializer(users, many=True).data)
+    results = []
+    for u in users[:10]:
+        user_data = UserSerializer(u, context={'request': request}).data
+        results.append(user_data)
+        
+    return Response(results)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def org_context(request):
+    from accounts.permissions import resolve_organization, has_org_permission, get_organization_from_request
+    from accounts.models import OrgMember, Permission
+    from django.utils import timezone
+    from rest_framework.exceptions import PermissionDenied, ValidationError
+    from .serializers import OrgContextSerializer
+
+    org = resolve_organization(request)
+    if not org:
+        slug_or_id, _ = get_organization_from_request(request)
+        if slug_or_id:
+            raise PermissionDenied("You are not an active member of this organization.")
+        raise ValidationError({'error': 'Organization context required. Include X-Organization-Slug header or org_slug query parameter.'})
+
+
+    role_name = None
+    permissions = []
+
+    if request.user.is_superuser:
+        permissions = list(Permission.objects.values_list('codename', flat=True))
+        try:
+            member = OrgMember.objects.select_related('role').get(organization=org, user=request.user)
+            role_name = member.role.name if member.role else 'Superuser'
+        except OrgMember.DoesNotExist:
+            role_name = 'Superuser'
+    else:
+        try:
+            member = OrgMember.objects.select_related('role').get(
+                organization=org,
+                user=request.user,
+                is_active=True
+            )
+            if member.expires_at and member.expires_at < timezone.now():
+                raise PermissionDenied("Your membership in this organization has expired.")
+            
+            role_name = member.role.name if member.role else None
+            
+            # Force cache population and extract
+            has_org_permission(request.user, org, 'dummy')
+            permissions = list(request.user._org_permissions_cache[org.id])
+        except OrgMember.DoesNotExist:
+            raise PermissionDenied("You are not an active member of this organization.")
+
+    serializer = OrgContextSerializer({
+        'organization': org,
+        'role': role_name,
+        'permissions': permissions
+    })
+    return Response(serializer.data)
 
 
 # ---------------------------------------------------------------------------
@@ -126,10 +229,19 @@ class AcademyClassViewSet(viewsets.ModelViewSet):
         if not org:
             return AcademyClass.objects.none()
         queryset = AcademyClass.objects.select_related('course', 'teacher', 'created_by', 'room').prefetch_related('sessions').filter(course__organization=org)
+        
+        # Security isolation: if user is not an admin, they should only see classes they teach or are enrolled in
+        if not self.request.user.is_superuser and not has_org_permission(self.request.user, org, 'can_manage_members'):
+            if has_org_permission(self.request.user, org, 'can_teach_class'):
+                queryset = queryset.filter(teacher=self.request.user)
+            else:
+                # Student view: they only see classes they are enrolled in
+                queryset = queryset.filter(enrollments__student=self.request.user)
+                
         include_archived = self.request.query_params.get('include_archived', '').lower() == 'true'
         if not include_archived:
             queryset = queryset.filter(is_active=True)
-        return queryset
+        return queryset.distinct()
 
 
 class EnrollmentViewSet(viewsets.ModelViewSet):

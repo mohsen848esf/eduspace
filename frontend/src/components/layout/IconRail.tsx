@@ -7,6 +7,8 @@ import {
   type NavItem,
 } from "./navItems";
 
+import { useOrgPermission } from "../../hooks/useOrgPermission";
+
 interface IconRailProps {
   activeId: string;
   onNavigate: (id: string) => void;
@@ -67,11 +69,20 @@ export default function IconRail({ activeId, onNavigate }: IconRailProps) {
       </div>
       <div className="h-px w-8 bg-[var(--b)] my-1" />
 
-      <nav className="flex flex-col gap-1 p-1 flex-1 overflow-y-auto">
-        {mainNavItems.map(renderItem)}
-        <div className="h-px w-8 bg-[var(--b)] my-2 self-center" />
-        {manageNavItems.map(renderItem)}
-      </nav>
+      {(() => {
+        const { hasPermission } = useOrgPermission();
+        return (
+          <nav className="flex flex-col gap-1 p-1 flex-1 overflow-y-auto">
+            {mainNavItems
+              .filter((item) => !item.permission || hasPermission(item.permission))
+              .map(renderItem)}
+            <div className="h-px w-8 bg-[var(--b)] my-2 self-center" />
+            {manageNavItems
+              .filter((item) => !item.permission || hasPermission(item.permission))
+              .map(renderItem)}
+          </nav>
+        );
+      })()}
     </aside>
   );
 }
