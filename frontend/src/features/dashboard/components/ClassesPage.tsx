@@ -18,7 +18,6 @@ export default function ClassesPage() {
   const isFarsi = language === "fa";
 
   const isOrisAdmin = hasPermission("can_manage_members");
-  const canManageCRM = hasPermission("can_manage_members") || hasPermission("can_teach_class");
 
   const [expandedClassId, setExpandedClassId] = useState<number | null>(null);
 
@@ -224,7 +223,6 @@ export default function ClassesPage() {
                           <ClassSessionsSubTable
                             cls={cls}
                             language={language}
-                            canManageCRM={canManageCRM}
                           />
                         </td>
                       </tr>

@@ -15,21 +15,23 @@ import Button from "../../../components/ui/Button";
 import Spinner from "../../../components/ui/Spinner";
 import Input from "../../../components/ui/Input";
 import AttendanceModal from "../../dashboard/components/AttendanceModal";
+import { useOrgPermission } from "../../../hooks/useOrgPermission";
 
 interface ClassSessionsSubTableProps {
   cls: AcademyClass;
   language: string;
-  canManageCRM: boolean;
 }
 
 export default function ClassSessionsSubTable({
   cls,
   language,
-  canManageCRM,
 }: ClassSessionsSubTableProps) {
   const isFarsi = language === "fa";
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { hasPermission } = useOrgPermission();
+  const canSchedule = hasPermission("can_manage_sessions");
+  const canStartCompleteCancel = hasPermission("can_teach_class") || hasPermission("can_manage_sessions");
 
   const [isScheduling, setIsScheduling] = useState(false);
   const [scheduleForm, setScheduleForm] = useState({
@@ -117,7 +119,7 @@ export default function ClassSessionsSubTable({
         <h4 className="text-xs font-bold text-[var(--t2)] uppercase tracking-wider">
           {isFarsi ? "لیست جلسات این کلاس" : "Class Sessions"} ({sessions.length})
         </h4>
-        {canManageCRM && (
+        {canSchedule && (
           <Button
             size="sm"
             variant="ghost"
@@ -216,7 +218,7 @@ export default function ClassSessionsSubTable({
                       </span>
                     </td>
                     <td className="p-3 text-right flex justify-end gap-1.5 items-center">
-                      {isScheduled && canManageCRM && (
+                      {isScheduled && canStartCompleteCancel && (
                         <>
                           <Button
                             size="sm"
@@ -239,7 +241,7 @@ export default function ClassSessionsSubTable({
 
                       {isLive && (
                         <>
-                          {canManageCRM ? (
+                          {canStartCompleteCancel ? (
                             <>
                               <Link
                                 to={`/room/${s.active_room_code}`}
@@ -299,7 +301,6 @@ export default function ClassSessionsSubTable({
           sessionId={activeAttendanceSessionId}
           language={language}
           onClose={() => setActiveAttendanceSessionId(null)}
-          canManageCRM={canManageCRM}
         />
       )}
     </div>

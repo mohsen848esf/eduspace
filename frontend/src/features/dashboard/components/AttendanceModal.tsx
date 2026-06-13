@@ -7,21 +7,22 @@ import {
 import { Modal, ModalHeader, ModalTitle, ModalBody, ModalClose } from "../../../components/ui/Modal";
 import Button from "../../../components/ui/Button";
 import Spinner from "../../../components/ui/Spinner";
+import { useOrgPermission } from "../../../hooks/useOrgPermission";
 
 interface AttendanceModalProps {
   sessionId: number;
   language: string;
   onClose: () => void;
-  canManageCRM: boolean;
 }
 
 export default function AttendanceModal({
   sessionId,
   language,
   onClose,
-  canManageCRM,
 }: AttendanceModalProps) {
   const isFarsi = language === "fa";
+  const { hasPermission } = useOrgPermission();
+  const canManage = hasPermission("can_manage_attendance") || hasPermission("can_teach_class");
   const { data: attendance = [], isLoading: loadingAttendance } = useSessionAttendance(sessionId);
   const { updateSingle, updateBulk } = useUpdateAttendance(sessionId);
   const [bulkStatus, setBulkStatus] = useState("present");
@@ -50,7 +51,7 @@ export default function AttendanceModal({
         </ModalTitle>
       </ModalHeader>
       <ModalBody>
-        {canManageCRM && attendance.length > 0 && (
+        {canManage && attendance.length > 0 && (
           <div className="flex gap-2 items-center bg-[var(--s3)] p-3 rounded-xl border border-[var(--b)] mb-4">
             <span className="text-xs font-semibold text-[var(--t2)]">
               {isFarsi ? "ویرایش گروهی تمام دانش‌آموزان به:" : "Set all students to:"}
@@ -100,7 +101,7 @@ export default function AttendanceModal({
                       {att.student_full_name} ({att.student_username})
                     </td>
                     <td className="p-3">
-                      {canManageCRM ? (
+                      {canManage ? (
                         <select
                           value={att.status}
                           onChange={(e) =>
@@ -132,7 +133,7 @@ export default function AttendanceModal({
                       )}
                     </td>
                     <td className="p-3">
-                      {canManageCRM ? (
+                      {canManage ? (
                         <input
                           type="text"
                           defaultValue={att.note || ""}

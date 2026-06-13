@@ -26,8 +26,8 @@ export default function SessionsPage() {
   const navigate = useNavigate();
   const isFarsi = language === "fa";
 
-  const isOrisAdmin = hasPermission("can_manage_sessions");
-  const canManageCRM = hasPermission("can_manage_sessions") || hasPermission("can_teach_class");
+  const canSchedule = hasPermission("can_manage_sessions");
+  const canStartCompleteCancel = hasPermission("can_teach_class") || hasPermission("can_manage_sessions");
 
   const [isScheduling, setIsScheduling] = useState(false);
   const [scheduleForm, setScheduleForm] = useState({
@@ -132,7 +132,7 @@ export default function SessionsPage() {
           <span className="text-xs font-semibold text-[var(--t3)] uppercase tracking-wider">
             {isFarsi ? "برنامه جلسات آکادمی" : "Academy Class Sessions"}
           </span>
-          {isOrisAdmin && (
+          {canSchedule && (
             <Button size="sm" onClick={handleOpenSchedule}>
               {isFarsi ? "+ برنامه‌ریزی جلسه" : "+ Schedule Session"}
             </Button>
@@ -192,7 +192,7 @@ export default function SessionsPage() {
                         </span>
                       </td>
                       <td className="p-4 text-right flex justify-end gap-1.5 items-center">
-                        {isScheduled && canManageCRM && (
+                        {isScheduled && canStartCompleteCancel && (
                           <>
                             <Button
                               size="sm"
@@ -215,7 +215,7 @@ export default function SessionsPage() {
 
                         {isLive && (
                           <>
-                            {canManageCRM ? (
+                            {canStartCompleteCancel ? (
                               <>
                                 <Link
                                   to={`/room/${s.active_room_code}`}
@@ -338,7 +338,6 @@ export default function SessionsPage() {
           sessionId={activeAttendanceSessionId}
           language={language}
           onClose={() => setActiveAttendanceSessionId(null)}
-          canManageCRM={canManageCRM}
         />
       )}
     </AppShell>
