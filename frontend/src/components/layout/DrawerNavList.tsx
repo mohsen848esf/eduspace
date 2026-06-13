@@ -86,9 +86,9 @@ export default function DrawerNavList({
           {t("dashboard:nav.manage")}
         </div>
         {(() => {
-          const { hasPermission } = useOrgPermission();
+          const { hasAnyPermission } = useOrgPermission();
           return drawerNavItems
-            .filter((item) => !item.permission || hasPermission(item.permission))
+            .filter((item) => !item.permissions || hasAnyPermission(item.permissions))
             .map((item) => {
               const isActive = activeId === item.id;
               return (

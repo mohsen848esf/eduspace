@@ -30,6 +30,29 @@ const ReviewSubmissionPage = lazy(
   () => import("../features/assessments/pages/ReviewSubmissionPage"),
 );
 
+// Newly disaggregated pages
+const CoursesPage = lazy(
+  () => import("../features/dashboard/components/CoursesPage"),
+);
+const ClassesPage = lazy(
+  () => import("../features/dashboard/components/ClassesPage"),
+);
+const SessionsPage = lazy(
+  () => import("../features/dashboard/components/SessionsPage"),
+);
+const AssessmentsPage = lazy(
+  () => import("../features/dashboard/components/AssessmentsPage"),
+);
+const MembersPage = lazy(
+  () => import("../features/dashboard/components/MembersPage"),
+);
+const LedgerPage = lazy(
+  () => import("../features/dashboard/components/LedgerPage"),
+);
+const OrgSettingsPage = lazy(
+  () => import("../features/dashboard/components/OrgSettingsPage"),
+);
+
 export interface RouteConfig {
   path: string;
   component: React.LazyExoticComponent<any>;
@@ -53,6 +76,48 @@ export const routes: RouteConfig[] = [
     component: DashboardPage,
     isPrivate: true,
     requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/academic/courses",
+    component: CoursesPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/academic/classes",
+    component: ClassesPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/academic/sessions",
+    component: SessionsPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_sessions"],
+  },
+  {
+    path: "/academic/assessments",
+    component: AssessmentsPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/crm/members",
+    component: MembersPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/finance/ledger",
+    component: LedgerPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_financials"],
+  },
+  {
+    path: "/settings/organization",
+    component: OrgSettingsPage,
+    isPrivate: true,
+    requiredPermissions: ["can_manage_members"],
   },
   {
     path: "/room/:roomCode",
@@ -103,3 +168,4 @@ export const routes: RouteConfig[] = [
     requiredPermissions: ["can_teach_class", "can_manage_members"],
   },
 ];
+

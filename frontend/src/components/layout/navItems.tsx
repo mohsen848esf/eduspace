@@ -2,18 +2,6 @@ import { Icons } from "../../lib/constants/icons";
 
 /**
  * Single source of truth for the authenticated app's navigation items.
- *
- * Used by:
- *   - Sidebar    (desktop, full labels)
- *   - IconRail   (tablet, icons + tooltips)
- *   - BottomNav  (mobile, 5 primary items + "More")
- *   - Drawer     (mobile, secondary items + sign out)
- *
- * Each item references an i18n key under `dashboard:nav.*` so labels stay
- * in sync across surfaces. Routes that don't exist yet (games, exams,
- * etc.) carry a `to` value so the routing decision lives here, even if
- * those pages haven't been built — clicking them today is a no-op handled
- * by AppShell's onNavigate fallback.
  */
 export interface NavItem {
   /** Stable id used for active highlighting and as React key. */
@@ -26,45 +14,46 @@ export interface NavItem {
   to?: string;
   /** Optional unread / counter badge (small red pill). */
   badge?: number;
-  /** Optional required permission to view this nav item. */
-  permission?: string;
+  /** Optional required permissions list to view this nav item (uses hasAnyPermission). */
+  permissions?: string[];
 }
 
 /** Items rendered in the desktop sidebar's MAIN section + tablet rail. */
 export const mainNavItems: NavItem[] = [
   { id: "dashboard", icon: Icons.home, labelKey: "nav.dashboard", to: "/dashboard" },
-  { id: "calls", icon: Icons.camera, labelKey: "nav.videoCalls" },
-  // Renamed: Games → Mini Apps. The id stays `games` so existing
-  // active-id state and analytics keep working; only the label and
-  // route change. The destination page is now a gallery of all
-  // embeddable apps (games, whiteboards, polls, exams) — see
-  // `/miniapps` route in routes.tsx.
-  { id: "miniapps", icon: Icons.game, labelKey: "nav.miniApps", to: "/miniapps" },
-  { id: "exams", icon: Icons.exam, labelKey: "nav.exams" },
+  { id: "courses", icon: Icons.exam, labelKey: "nav.courses", to: "/academic/courses", permissions: ["can_manage_members", "can_teach_class"] },
+  { id: "classes", icon: Icons.people, labelKey: "nav.classes", to: "/academic/classes", permissions: ["can_manage_members", "can_teach_class"] },
+  { id: "sessions", icon: Icons.camera, labelKey: "nav.sessions", to: "/academic/sessions", permissions: ["can_view_sessions"] },
+  { id: "assessments", icon: Icons.tools, labelKey: "nav.assessments", to: "/academic/assessments", permissions: ["can_view_dashboard"] },
 ];
 
 /** Items rendered in the desktop sidebar's MANAGE section + drawer. */
 export const manageNavItems: NavItem[] = [
-  { id: "students", icon: Icons.people, labelKey: "nav.students", badge: 3, permission: "can_manage_members" },
-  { id: "reports", icon: Icons.barChart, labelKey: "nav.reports", permission: "can_view_financials" },
-  { id: "recordings", icon: Icons.film, labelKey: "nav.recordings", to: "/recordings" },
+  { id: "members", icon: Icons.people, labelKey: "nav.members", to: "/crm/members", permissions: ["can_manage_members", "can_teach_class"] },
+  { id: "ledger", icon: Icons.barChart, labelKey: "nav.ledger", to: "/finance/ledger", permissions: ["can_view_financials"] },
+  { id: "recordings", icon: Icons.film, labelKey: "nav.recordings", to: "/recordings", permissions: ["can_view_dashboard"] },
+  { id: "organization", icon: Icons.settings, labelKey: "nav.orgSettings", to: "/settings/organization", permissions: ["can_manage_members"] },
 ];
 
 /**
  * The 4 primary items shown on mobile's bottom nav. The 5th slot is the
- * "More" button which opens the drawer; it's not a NavItem because its
- * action is bespoke.
+ * "More" button which opens the drawer.
  */
 export const bottomNavPrimary: NavItem[] = [
   { id: "dashboard", icon: Icons.home, labelKey: "nav.dashboard", to: "/dashboard" },
-  { id: "calls", icon: Icons.camera, labelKey: "nav.videoCalls" },
-  { id: "miniapps", icon: Icons.game, labelKey: "nav.miniApps", to: "/miniapps" },
-  { id: "exams", icon: Icons.exam, labelKey: "nav.exams" },
+  { id: "courses", icon: Icons.exam, labelKey: "nav.courses", to: "/academic/courses", permissions: ["can_manage_members", "can_teach_class"] },
+  { id: "sessions", icon: Icons.camera, labelKey: "nav.sessions", to: "/academic/sessions", permissions: ["can_view_sessions"] },
+  { id: "recordings", icon: Icons.film, labelKey: "nav.recordings", to: "/recordings", permissions: ["can_view_dashboard"] },
 ];
 
 /**
- * Items shown inside the drawer that opens from the mobile topbar's
- * hamburger or the bottom-nav "More" button. Combines the desktop's
- * MANAGE list plus a dedicated Sign-out row that the layout handles.
+ * Items shown inside the drawer.
  */
-export const drawerNavItems: NavItem[] = [...manageNavItems];
+export const drawerNavItems: NavItem[] = [
+  { id: "classes", icon: Icons.people, labelKey: "nav.classes", to: "/academic/classes", permissions: ["can_manage_members", "can_teach_class"] },
+  { id: "assessments", icon: Icons.tools, labelKey: "nav.assessments", to: "/academic/assessments", permissions: ["can_view_dashboard"] },
+  { id: "members", icon: Icons.people, labelKey: "nav.members", to: "/crm/members", permissions: ["can_manage_members", "can_teach_class"] },
+  { id: "ledger", icon: Icons.barChart, labelKey: "nav.ledger", to: "/finance/ledger", permissions: ["can_view_financials"] },
+  { id: "organization", icon: Icons.settings, labelKey: "nav.orgSettings", to: "/settings/organization", permissions: ["can_manage_members"] },
+];
+

@@ -70,15 +70,15 @@ export default function IconRail({ activeId, onNavigate }: IconRailProps) {
       <div className="h-px w-8 bg-[var(--b)] my-1" />
 
       {(() => {
-        const { hasPermission } = useOrgPermission();
+        const { hasAnyPermission } = useOrgPermission();
         return (
           <nav className="flex flex-col gap-1 p-1 flex-1 overflow-y-auto">
             {mainNavItems
-              .filter((item) => !item.permission || hasPermission(item.permission))
+              .filter((item) => !item.permissions || hasAnyPermission(item.permissions))
               .map(renderItem)}
             <div className="h-px w-8 bg-[var(--b)] my-2 self-center" />
             {manageNavItems
-              .filter((item) => !item.permission || hasPermission(item.permission))
+              .filter((item) => !item.permissions || hasAnyPermission(item.permissions))
               .map(renderItem)}
           </nav>
         );

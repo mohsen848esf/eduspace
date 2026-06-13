@@ -31,12 +31,12 @@ export default function BottomNav({
   items = bottomNavPrimary,
 }: BottomNavProps) {
   const { t } = useTranslation("dashboard");
-  const { hasPermission } = useOrgPermission();
+  const { hasAnyPermission } = useOrgPermission();
   const navigate = useNavigate();
   const location = useLocation();
 
   const visibleItems = items.filter(
-    (item) => !item.permission || hasPermission(item.permission)
+    (item) => !item.permissions || hasAnyPermission(item.permissions)
   );
 
   const resolvedActive =
