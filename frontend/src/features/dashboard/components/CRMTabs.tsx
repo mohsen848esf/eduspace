@@ -3,7 +3,7 @@
 
 
 import { useState, useEffect, Fragment } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-hot-toast";
@@ -103,7 +103,7 @@ export default function CRMTabs({ language }: CRMTabsProps) {
   const { data: expenses = [], isLoading: loadingExpenses } = useQuery({
     queryKey: ["expenses"],
     queryFn: crmApi.getExpenses,
-    enabled: activeTab === "expenses" || activeTab === "overview"
+    enabled: hasPermission("can_view_financials") && (activeTab === "expenses" || activeTab === "overview")
   });
 
   // --- Mutations ---
@@ -729,12 +729,12 @@ export default function CRMTabs({ language }: CRMTabsProps) {
                             const liveSession = liveSessions.find((s) => s.academy_class === e.academy_class);
                             if (e.is_active && liveSession?.active_room_code) {
                               return (
-                                <button
-                                  onClick={() => navigate(`/room/${liveSession.active_room_code}`)}
-                                  className="text-[10px] bg-[var(--green)] hover:brightness-110 text-white font-bold px-2 py-0.5 rounded-full cursor-pointer border-none animate-pulse"
+                                <Link
+                                  to={`/room/${liveSession.active_room_code}`}
+                                  className="inline-block text-[10px] bg-[var(--green)] hover:brightness-110 text-white font-bold px-2 py-0.5 rounded-full cursor-pointer no-underline border-none animate-pulse"
                                 >
                                   {isFarsi ? "ورود به کلاس زنده" : "Join Live Class"}
-                                </button>
+                                </Link>
                               );
                             }
                             return null;
@@ -1210,7 +1210,6 @@ export default function CRMTabs({ language }: CRMTabsProps) {
                 >
                   <option value="unpaid">Unpaid</option>
                   <option value="paid">Paid</option>
-                  <option value="void">Void</option>
                 </select>
               </div>
 
@@ -1245,7 +1244,6 @@ export default function CRMTabs({ language }: CRMTabsProps) {
                   required
                 >
                   <option value="rent">Rent</option>
-                  <option value="utilities">Utilities</option>
                   <option value="teacher_payout">Teacher Payout</option>
                   <option value="marketing">Marketing</option>
                   <option value="other">Other</option>

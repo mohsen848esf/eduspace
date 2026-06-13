@@ -2,10 +2,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { assessmentsApi } from "../api/assessments.api";
 import type { Question } from "../types";
 
-export function useQuestions() {
+export function useQuestions(enabled: boolean = true) {
   return useQuery<Question[]>({
     queryKey: ["questions"],
     queryFn: () => assessmentsApi.getQuestions(),
+    enabled,
   });
 }
 

@@ -229,10 +229,19 @@ class AcademyClassViewSet(viewsets.ModelViewSet):
         if not org:
             return AcademyClass.objects.none()
         queryset = AcademyClass.objects.select_related('course', 'teacher', 'created_by', 'room').prefetch_related('sessions').filter(course__organization=org)
+        
+        # Security isolation: if user is not an admin, they should only see classes they teach or are enrolled in
+        if not self.request.user.is_superuser and not has_org_permission(self.request.user, org, 'can_manage_members'):
+            if has_org_permission(self.request.user, org, 'can_teach_class'):
+                queryset = queryset.filter(teacher=self.request.user)
+            else:
+                # Student view: they only see classes they are enrolled in
+                queryset = queryset.filter(enrollments__student=self.request.user)
+                
         include_archived = self.request.query_params.get('include_archived', '').lower() == 'true'
         if not include_archived:
             queryset = queryset.filter(is_active=True)
-        return queryset
+        return queryset.distinct()
 
 
 class EnrollmentViewSet(viewsets.ModelViewSet):

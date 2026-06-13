@@ -5,10 +5,10 @@ from .models import Notification, User, AuditLog
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
-    list_display = ('username', 'email', 'full_name', 'role', 'is_online')
-    list_filter = ('role',)
+    list_display = ('username', 'email', 'full_name', 'is_online')
+    list_filter = ()
     fieldsets = UserAdmin.fieldsets + (
-        ('Extra', {'fields': ('full_name', 'role', 'avatar', 'is_online')}),
+        ('Extra', {'fields': ('full_name', 'avatar', 'is_online')}),
     )
 
 
