@@ -113,6 +113,30 @@ class SessionService:
                 organization=org
             )
 
+            # Notify enrolled students that session has started
+            try:
+                if session.academy_class:
+                    from accounts.models import Enrollment
+                    from accounts.notifications import record_and_dispatch_many
+                    student_ids = Enrollment.objects.filter(
+                        academy_class=session.academy_class,
+                        is_active=True
+                    ).values_list('student_id', flat=True)
+                    if student_ids:
+                        record_and_dispatch_many(
+                            user_ids=student_ids,
+                            kind="SESSION_STARTED",
+                            data={
+                                "session_id": session.id,
+                                "session_title": session.title,
+                                "room_code": room.room_code,
+                                "class_name": session.academy_class.name,
+                                "host_name": session.host.full_name or session.host.username,
+                            }
+                        )
+            except Exception:
+                pass
+
             return session
 
     @staticmethod

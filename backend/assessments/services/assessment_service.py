@@ -114,6 +114,23 @@ class AssessmentService:
                 submission.save()
                 action = "submission.graded"
                 after_status = Submission.Status.GRADED
+
+                try:
+                    from django.db.models import Sum
+                    from accounts.notifications import record_and_dispatch
+                    total_points = AssessmentQuestion.objects.filter(assessment=submission.assessment).aggregate(total=Sum('points'))['total'] or Decimal('0.00')
+                    record_and_dispatch(
+                        user_id=submission.student.id,
+                        kind="ASSESSMENT_GRADED",
+                        data={
+                            "submission_id": submission.id,
+                            "assessment_title": submission.assessment.title,
+                            "score": str(submission.score),
+                            "total_points": str(total_points),
+                        }
+                    )
+                except Exception:
+                    pass
             else:
                 action = "submission.submitted"
                 after_status = Submission.Status.SUBMITTED
@@ -206,6 +223,23 @@ class AssessmentService:
             submission.graded_by = graded_by
             submission.graded_at = timezone.now()
             submission.save()
+
+            try:
+                from django.db.models import Sum
+                from accounts.notifications import record_and_dispatch
+                total_points = AssessmentQuestion.objects.filter(assessment=submission.assessment).aggregate(total=Sum('points'))['total'] or Decimal('0.00')
+                record_and_dispatch(
+                    user_id=submission.student.id,
+                    kind="ASSESSMENT_GRADED",
+                    data={
+                        "submission_id": submission.id,
+                        "assessment_title": submission.assessment.title,
+                        "score": str(submission.score),
+                        "total_points": str(total_points),
+                    }
+                )
+            except Exception:
+                pass
 
             after_state = {
                 'status': submission.status,

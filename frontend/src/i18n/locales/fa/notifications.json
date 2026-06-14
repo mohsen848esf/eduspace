@@ -20,7 +20,7 @@
   "inbox": {
     "title": "اعلان‌ها",
     "empty": "هنوز اعلانی ندارید",
-    "emptyHint": "دعوت‌ها و ضبط‌های اشتراک‌گذاری‌شده اینجا نمایش داده می‌شوند.",
+    "emptyHint": "دعوت‌ها، نمرات ارزیابی و تغییرات وضعیت اینجا نمایش داده می‌شوند.",
     "unreadCount_one": "{{count}} خوانده‌نشده",
     "unreadCount_other": "{{count}} خوانده‌نشده",
     "markAllRead": "همه را خوانده‌شده علامت بزن",
@@ -28,5 +28,25 @@
     "remove": "حذف",
     "clearAll": "پاک کردن همه",
     "unreadDot": "خوانده‌نشده"
+  },
+  "assessmentGraded": {
+    "title": "📝 آزمون تصحیح شد",
+    "subtitle": "نمره شما در آزمون «{{title}}» {{score}} از {{totalPoints}} شد",
+    "view": "مشاهده نمرات"
+  },
+  "invoiceCreated": {
+    "title": "💳 فاکتور شهریه جدید صادر شد",
+    "subtitle": "فاکتور {{invoiceNumber}} به مبلغ {{amount}} آماده پرداخت است",
+    "pay": "مشاهده فاکتورها"
+  },
+  "invoiceUpdated": {
+    "title": "💵 فاکتور بروزرسانی شد",
+    "subtitle": "وضعیت فاکتور {{invoiceNumber}} به «{{status}}» تغییر یافت",
+    "view": "مشاهده فاکتورها"
+  },
+  "sessionStarted": {
+    "title": "🟢 کلاس آنلاین شروع شد!",
+    "subtitle": "کلاس «{{className}}» توسط {{hostName}} آغاز شده است",
+    "join": "ورود به کلاس"
   }
 }

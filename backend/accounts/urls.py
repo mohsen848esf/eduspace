@@ -21,6 +21,7 @@ urlpatterns = [
     path('me/', views.me, name='me'),
     path('logout/', views.logout, name='logout'),
     path('search/', views.search_users, name='search_users'),
+    path('search/global/', views.global_search, name='global_search'),
 
     # Persistent notifications inbox.
     path(
