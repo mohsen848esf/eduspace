@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
-import { crmApi, type TuitionInvoice, type ExpenseItem, type SimpleUser } from "../api/crm.api";
+import { crmApi, type TuitionInvoice, type ExpenseItem, type SimpleUser, type TuitionInvoiceItem } from "../api/crm.api";
 import { useOrgPermission } from "../../../hooks/useOrgPermission";
 import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
@@ -57,6 +57,7 @@ export default function LedgerPage() {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       toast.success(isFarsi ? "فاکتور با موفقیت بروزرسانی شد" : "Invoice updated successfully");
       setIsModalOpen(false);
+      setIsPaymentModalOpen(false);
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.detail || (isFarsi ? "خطا در بروزرسانی فاکتور" : "Failed to update invoice"));
@@ -76,7 +77,7 @@ export default function LedgerPage() {
   });
 
   const updateExpenseMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<ExpenseItem> }) => crmApi.updateExpense(id, data),
+    mutationFn: ({ id, data }: { id: number; data: FormData | Partial<ExpenseItem> }) => crmApi.updateExpense(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       toast.success(isFarsi ? "هزینه با موفقیت ویرایش شد" : "Expense updated successfully");
@@ -98,6 +99,17 @@ export default function LedgerPage() {
     }
   });
 
+  const approveExpenseMutation = useMutation({
+    mutationFn: crmApi.approveExpense,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      toast.success(isFarsi ? "هزینه با موفقیت تأیید شد" : "Expense approved successfully");
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در تأیید هزینه" : "Failed to approve expense"));
+    }
+  });
+
   // Autocomplete Search State
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SimpleUser[]>([]);
@@ -110,6 +122,15 @@ export default function LedgerPage() {
   // Forms State
   const [invoiceForm, setInvoiceForm] = useState({ student: "", academy_class: "", amount: "", status: "unpaid" as const, due_date: "" });
   const [expenseForm, setExpenseForm] = useState({ amount: "", category: "rent" as const, description: "", recipient: "", incurred_at: "" });
+  
+  // E3 Line items and payment / receipts state
+  const [lineItems, setLineItems] = useState<TuitionInvoiceItem[]>([]);
+  const [selectedReceipt, setSelectedReceipt] = useState<File | null>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentInvoiceId, setPaymentInvoiceId] = useState<number | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "bank_transfer" | "online">("cash");
+  const [paymentDate, setPaymentDate] = useState("");
+  const receiptInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (userSearchQuery.length >= 2) {
@@ -120,13 +141,27 @@ export default function LedgerPage() {
     }
   }, [userSearchQuery, modalType]);
 
+  // Recalculate invoice total sum whenever line items change
+  useEffect(() => {
+    if (modalType === "invoice" && lineItems.length > 0) {
+      const sum = lineItems.reduce((acc, item) => {
+        const price = parseFloat(item.unit_price) || 0;
+        const qty = item.quantity || 1;
+        return acc + price * qty;
+      }, 0);
+      setInvoiceForm(prev => ({ ...prev, amount: sum.toString() }));
+    }
+  }, [lineItems, modalType]);
+
   const openCreateModal = (type: "invoice" | "expense") => {
     setModalType(type);
     setEditId(null);
     setUserSearchQuery("");
     setSearchResults([]);
+    setSelectedReceipt(null);
     if (type === "invoice") {
-      setInvoiceForm({ student: "", academy_class: classes[0]?.id.toString() || "", amount: "", status: "unpaid", due_date: "" });
+      setInvoiceForm({ student: "", academy_class: classes[0]?.id.toString() || "", amount: "0", status: "unpaid", due_date: "" });
+      setLineItems([{ description: "", quantity: 1, unit_price: "" }]);
     } else {
       setExpenseForm({ amount: "", category: "rent", description: "", recipient: "", incurred_at: new Date().toISOString().split("T")[0] });
     }
@@ -138,6 +173,7 @@ export default function LedgerPage() {
     setEditId(item.id);
     setUserSearchQuery("");
     setSearchResults([]);
+    setSelectedReceipt(null);
     if (type === "invoice") {
       setInvoiceForm({
         student: item.student.toString(),
@@ -146,6 +182,7 @@ export default function LedgerPage() {
         status: item.status,
         due_date: item.due_date || ""
       });
+      setLineItems(item.items || []);
       if (item.student_full_name || item.student_username) {
         setUserSearchQuery(item.student_full_name || item.student_username);
       }
@@ -172,7 +209,8 @@ export default function LedgerPage() {
         academy_class: invoiceForm.academy_class ? parseInt(invoiceForm.academy_class) : null,
         amount: invoiceForm.amount,
         status: invoiceForm.status,
-        due_date: invoiceForm.due_date || null
+        due_date: invoiceForm.due_date || null,
+        items: lineItems
       };
       if (editId) {
         updateInvoiceMutation.mutate({ id: editId, data: payload });
@@ -180,17 +218,22 @@ export default function LedgerPage() {
         createInvoiceMutation.mutate(payload);
       }
     } else {
-      const payload = {
-        amount: expenseForm.amount,
-        category: expenseForm.category,
-        description: expenseForm.description,
-        recipient: expenseForm.recipient ? parseInt(expenseForm.recipient) : null,
-        incurred_at: expenseForm.incurred_at || new Date().toISOString().split("T")[0]
-      };
+      const formData = new FormData();
+      formData.append("amount", expenseForm.amount);
+      formData.append("category", expenseForm.category);
+      formData.append("description", expenseForm.description);
+      if (expenseForm.recipient) {
+        formData.append("recipient", expenseForm.recipient);
+      }
+      formData.append("incurred_at", expenseForm.incurred_at || new Date().toISOString().split("T")[0]);
+      if (selectedReceipt) {
+        formData.append("attachment", selectedReceipt);
+      }
+
       if (editId) {
-        updateExpenseMutation.mutate({ id: editId, data: payload });
+        updateExpenseMutation.mutate({ id: editId, data: formData });
       } else {
-        createExpenseMutation.mutate(payload);
+        createExpenseMutation.mutate(formData);
       }
     }
   };
@@ -283,10 +326,10 @@ export default function LedgerPage() {
                               {inv.status !== "paid" && (
                                 <button
                                   onClick={() => {
-                                    updateInvoiceMutation.mutate({
-                                      id: inv.id,
-                                      data: { status: "paid", paid_at: new Date().toISOString() }
-                                    });
+                                    setPaymentInvoiceId(inv.id);
+                                    setPaymentMethod("cash");
+                                    setPaymentDate(new Date().toISOString().split("T")[0]);
+                                    setIsPaymentModalOpen(true);
                                   }}
                                   className="text-xs bg-transparent text-[var(--green)] hover:underline border-none cursor-pointer"
                                 >
@@ -340,6 +383,7 @@ export default function LedgerPage() {
                         <th className="p-4">{isFarsi ? "گیرنده پرداخت" : "Recipient"}</th>
                         <th className="p-4">{isFarsi ? "تاریخ ثبت" : "Date"}</th>
                         <th className="p-4">{isFarsi ? "مبلغ" : "Amount"}</th>
+                        <th className="p-4">{isFarsi ? "وضعیت تأیید" : "Approval"}</th>
                         {canManageFinance && <th className="p-4 text-right">{isFarsi ? "عملیات" : "Actions"}</th>}
                       </tr>
                     </thead>
@@ -347,10 +391,45 @@ export default function LedgerPage() {
                       {expenses.map((exp) => (
                         <tr key={exp.id} className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors text-left">
                           <td className="p-4 font-semibold text-[var(--brand-text)] capitalize">{exp.category.replace("_", " ")}</td>
-                          <td className="p-4 text-[var(--t2)] max-w-xs truncate">{exp.description}</td>
+                          <td className="p-4 text-[var(--t2)] max-w-xs truncate flex items-center gap-1.5">
+                            <span>{exp.description}</span>
+                            {exp.attachment && (
+                              <a
+                                href={typeof exp.attachment === "string" ? exp.attachment : undefined}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[var(--cyan)] hover:underline inline-flex items-center ml-1 text-xs"
+                                title={isFarsi ? "مشاهده رسید" : "View Receipt"}
+                              >
+                                📎
+                              </a>
+                            )}
+                          </td>
                           <td className="p-4 text-[var(--t1)]">{exp.recipient_full_name || exp.recipient_username || "—"}</td>
-                          <td className="p-4 text-[var(--t3)]">{exp.incurred_at}</td>
+                          <td className="p-4 text-[var(--t3)]">{exp.incurred_at ? exp.incurred_at.split("T")[0] : "—"}</td>
                           <td className="p-4 font-semibold text-[var(--red)]">${parseFloat(exp.amount).toFixed(2)}</td>
+                          <td className="p-4">
+                            {exp.approved_by ? (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[rgba(34,197,94,0.12)] text-[var(--green)]">
+                                {isFarsi ? `تأیید شده توسط ${exp.approved_by_name}` : `Approved by ${exp.approved_by_name}`}
+                              </span>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[rgba(245,158,11,0.1)] text-[var(--amber)] animate-pulse">
+                                  {isFarsi ? "در انتظار تأیید" : "Pending"}
+                                </span>
+                                {canManageFinance && (
+                                  <button
+                                    onClick={() => approveExpenseMutation.mutate(exp.id)}
+                                    className="text-xs bg-transparent text-[var(--green)] hover:underline border-none cursor-pointer font-semibold"
+                                    disabled={approveExpenseMutation.isPending}
+                                  >
+                                    {isFarsi ? "تأیید" : "Approve"}
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </td>
                           {canManageFinance && (
                             <td className="p-4 text-right flex justify-end gap-2">
                               <button
@@ -446,12 +525,84 @@ export default function LedgerPage() {
                 </div>
 
                 <Input
-                  label={isFarsi ? "مبلغ (دلار)" : "Amount ($)"}
+                  label={isFarsi ? "مبلغ کل (دلار) - محاسبه خودکار از آیتم‌ها" : "Total Amount ($) - Calculated from items"}
                   type="number"
                   value={invoiceForm.amount}
-                  onChange={(e) => setInvoiceForm({ ...invoiceForm, amount: e.target.value })}
+                  readOnly
+                  disabled
                   required
                 />
+
+                <div className="flex flex-col gap-2 p-3 bg-[var(--s3)] border border-[var(--b)] rounded-xl mt-2">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                      {isFarsi ? "آیتم‌های فاکتور" : "Invoice Items"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setLineItems([...lineItems, { description: "", quantity: 1, unit_price: "" }])}
+                      className="text-xs bg-transparent text-[var(--brand-text)] hover:underline border-none cursor-pointer font-semibold"
+                    >
+                      {isFarsi ? "+ افزودن آیتم" : "+ Add Item"}
+                    </button>
+                  </div>
+                  {lineItems.map((item, idx) => (
+                    <div key={idx} className="flex items-end gap-2 border-b border-[var(--b)] pb-3 last:border-b-0 last:pb-0">
+                      <div className="flex-1">
+                        <Input
+                          label={idx === 0 ? (isFarsi ? "توضیح" : "Description") : undefined}
+                          placeholder={isFarsi ? "مثال: شهریه ترم بهار" : "e.g. Tuition fee"}
+                          value={item.description}
+                          onChange={(e) => {
+                            const newItems = [...lineItems];
+                            newItems[idx].description = e.target.value;
+                            setLineItems(newItems);
+                          }}
+                          required
+                        />
+                      </div>
+                      <div className="w-20">
+                        <Input
+                          label={idx === 0 ? (isFarsi ? "تعداد" : "Qty") : undefined}
+                          type="number"
+                          value={item.quantity}
+                          min={1}
+                          onChange={(e) => {
+                            const newItems = [...lineItems];
+                            newItems[idx].quantity = parseInt(e.target.value) || 1;
+                            setLineItems(newItems);
+                          }}
+                          required
+                        />
+                      </div>
+                      <div className="w-28">
+                        <Input
+                          label={idx === 0 ? (isFarsi ? "قیمت واحد ($)" : "Price ($)") : undefined}
+                          type="number"
+                          value={item.unit_price}
+                          onChange={(e) => {
+                            const newItems = [...lineItems];
+                            newItems[idx].unit_price = e.target.value;
+                            setLineItems(newItems);
+                          }}
+                          required
+                        />
+                      </div>
+                      {lineItems.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newItems = lineItems.filter((_, i) => i !== idx);
+                            setLineItems(newItems);
+                          }}
+                          className="bg-transparent text-[var(--red)] border-none hover:text-red-700 cursor-pointer p-2 mb-1"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
 
                 <div className="flex flex-col gap-1.5 w-full">
                   <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
@@ -551,6 +702,23 @@ export default function LedgerPage() {
                   onChange={(e) => setExpenseForm({ ...expenseForm, incurred_at: e.target.value })}
                   required
                 />
+
+                <div className="flex flex-col gap-1.5 w-full">
+                  <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                    {isFarsi ? "رسید هزینه / پیوست مدرک (تصویر یا PDF)" : "Expense Receipt / Attachment (Image or PDF)"}
+                  </label>
+                  <input
+                    type="file"
+                    ref={receiptInputRef}
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setSelectedReceipt(e.target.files[0]);
+                      }
+                    }}
+                    className="text-xs text-[var(--t2)] file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[var(--s3)] file:text-[var(--t1)] hover:file:bg-[var(--b)] cursor-pointer w-full bg-[var(--s2)] border border-[var(--b)] rounded-xl px-4 py-2"
+                    accept="image/*,application/pdf"
+                  />
+                </div>
               </>
             )}
 
@@ -568,6 +736,65 @@ export default function LedgerPage() {
                 }
               >
                 {isFarsi ? "ثبت اطلاعات" : "Save Changes"}
+              </Button>
+            </div>
+          </form>
+        </ModalBody>
+      </Modal>
+
+      <Modal open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
+        <ModalHeader>
+          <ModalTitle>
+            {isFarsi ? "ثبت پرداخت فاکتور" : "Confirm Payment"}
+          </ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (paymentInvoiceId) {
+                updateInvoiceMutation.mutate({
+                  id: paymentInvoiceId,
+                  data: {
+                    status: "paid",
+                    payment_method: paymentMethod,
+                    paid_at: paymentDate ? new Date(paymentDate).toISOString() : new Date().toISOString()
+                  }
+                });
+              }
+            }}
+            className="flex flex-col gap-4"
+          >
+            <div className="flex flex-col gap-1.5 w-full">
+              <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                {isFarsi ? "روش پرداخت" : "Payment Method"}
+              </label>
+              <select
+                className="w-full bg-[var(--s2)] text-[var(--t1)] text-sm border border-[var(--b)] rounded-xl px-4 py-2.5 outline-none focus:border-[var(--brand)] transition-colors"
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value as any)}
+                required
+              >
+                <option value="cash">{isFarsi ? "نقدی" : "Cash"}</option>
+                <option value="bank_transfer">{isFarsi ? "حواله بانکی" : "Bank Transfer"}</option>
+                <option value="online">{isFarsi ? "پرداخت آنلاین" : "Online Payment"}</option>
+              </select>
+            </div>
+
+            <Input
+              label={isFarsi ? "تاریخ پرداخت" : "Payment Date"}
+              type="date"
+              value={paymentDate}
+              onChange={(e) => setPaymentDate(e.target.value)}
+              required
+            />
+
+            <div className="flex justify-end gap-2 mt-4">
+              <Button type="button" variant="secondary" onClick={() => setIsPaymentModalOpen(false)}>
+                {isFarsi ? "انصراف" : "Cancel"}
+              </Button>
+              <Button type="submit" disabled={updateInvoiceMutation.isPending}>
+                {isFarsi ? "تأیید پرداخت" : "Confirm Paid"}
               </Button>
             </div>
           </form>
