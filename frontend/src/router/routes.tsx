@@ -55,6 +55,9 @@ const OrgSettingsPage = lazy(
 const ProfileCompletionPage = lazy(
   () => import("../features/dashboard/components/ProfileCompletionPage"),
 );
+const LeaderboardPage = lazy(
+  () => import("../features/dashboard/components/LeaderboardPage"),
+);
 
 export interface RouteConfig {
   path: string;
@@ -125,6 +128,12 @@ export const routes: RouteConfig[] = [
   {
     path: "/settings/profile",
     component: ProfileCompletionPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/leaderboard",
+    component: LeaderboardPage,
     isPrivate: true,
     requiredPermissions: ["can_view_dashboard"],
   },

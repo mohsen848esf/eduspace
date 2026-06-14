@@ -15,6 +15,13 @@ class PermissionsCacheTest(TransactionTestCase):
         # Clear cache before each test
         cache.clear()
         
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='accounts_user'")
+            row = cursor.fetchone()
+            print("\nTRANSACTION TEST DB SCHEMA OF accounts_user:")
+            print(row[0] if row else "Table not found!")
+        
         # Create user, org, and permissions
         self.user = User.objects.create_user(username='test_member', password='password')
         self.org = Organization.objects.create(name='Acme Academy', slug='acme-academy', owner=self.user)

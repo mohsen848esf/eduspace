@@ -11,6 +11,8 @@ User = get_user_model()
 
 class CRMViewsIntegrationTest(APITestCase):
     def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
         # Create user
         self.user = User.objects.create_user(username='crm_user', password='password')
         # Create organization with user as owner
@@ -231,9 +233,12 @@ class CRMViewsIntegrationTest(APITestCase):
         # Create student user
         student_user = User.objects.create_user(username='student_user', password='password')
         # Assign student role (student user doesn't have custom roles or is_superuser)
+        student_role = Role.objects.create(name='Student Role 1', organization=self.org)
+        student_role.permissions.add(self.perm_view)
         student_member = OrgMember.objects.create(
             organization=self.org,
-            user=student_user
+            user=student_user,
+            role=student_role
         )
         
         course = Course.objects.create(title='Isolated Course', code='IC101', organization=self.org)
@@ -256,9 +261,12 @@ class CRMViewsIntegrationTest(APITestCase):
 
     def test_student_invoice_isolation(self):
         student_user = User.objects.create_user(username='student_user_2', password='password')
+        student_role = Role.objects.create(name='Student Role 2', organization=self.org)
+        student_role.permissions.add(self.perm_view)
         student_member = OrgMember.objects.create(
             organization=self.org,
-            user=student_user
+            user=student_user,
+            role=student_role
         )
         
         # Invoices

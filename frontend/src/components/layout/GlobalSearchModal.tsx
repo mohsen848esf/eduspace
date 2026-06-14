@@ -68,6 +68,8 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
   // Flatten results for keyboard navigation mapping
   const flattenedItems = useMemo(() => {
     if (!results) return [];
+    const searchResults = 'results' in results && results.results ? (results.results as any) : results;
+
     const items: Array<{
       type: string;
       id: number;
@@ -78,7 +80,7 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     }> = [];
 
     // Students
-    (results.students || []).forEach((s) => {
+    (searchResults.students || []).forEach((s: any) => {
       items.push({
         type: "student",
         id: s.id,
@@ -90,7 +92,7 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     });
 
     // Teachers
-    (results.teachers || []).forEach((th) => {
+    (searchResults.teachers || []).forEach((th: any) => {
       items.push({
         type: "teacher",
         id: th.id,
@@ -102,7 +104,7 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     });
 
     // Courses
-    (results.courses || []).forEach((c) => {
+    (searchResults.courses || []).forEach((c: any) => {
       items.push({
         type: "course",
         id: c.id,
@@ -114,7 +116,7 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     });
 
     // Classes
-    (results.classes || []).forEach((cl) => {
+    (searchResults.classes || []).forEach((cl: any) => {
       items.push({
         type: "class",
         id: cl.id,
@@ -126,7 +128,7 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     });
 
     // Sessions
-    (results.sessions || []).forEach((se) => {
+    (searchResults.sessions || []).forEach((se: any) => {
       items.push({
         type: "session",
         id: se.id,
@@ -138,7 +140,7 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     });
 
     // Assessments
-    (results.assessments || []).forEach((a) => {
+    (searchResults.assessments || []).forEach((a: any) => {
       items.push({
         type: "assessment",
         id: a.id,
@@ -150,7 +152,7 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     });
 
     // Invoices
-    (results.invoices || []).forEach((inv) => {
+    (searchResults.invoices || []).forEach((inv: any) => {
       items.push({
         type: "invoice",
         id: inv.id,

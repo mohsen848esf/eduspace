@@ -98,7 +98,17 @@ export default function MembersPage() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const [enrollmentForm, setEnrollmentForm] = useState({ academy_class: "", student: "", is_active: true });
+  const [enrollmentForm, setEnrollmentForm] = useState<{
+    academy_class: string;
+    student: string;
+    is_active: boolean;
+    completion_status: "in_progress" | "completed" | "dropped";
+  }>({
+    academy_class: "",
+    student: "",
+    is_active: true,
+    completion_status: "in_progress"
+  });
 
   useEffect(() => {
     if (userSearchQuery.length >= 2) {
@@ -115,7 +125,8 @@ export default function MembersPage() {
     setEnrollmentForm({
       academy_class: classes[0]?.id.toString() || "",
       student: "",
-      is_active: true
+      is_active: true,
+      completion_status: "in_progress"
     });
     setIsModalOpen(true);
   };
@@ -127,7 +138,8 @@ export default function MembersPage() {
     setEnrollmentForm({
       academy_class: item.academy_class.toString(),
       student: item.student.toString(),
-      is_active: item.is_active
+      is_active: item.is_active,
+      completion_status: item.completion_status || "in_progress"
     });
     if (item.student_full_name || item.student_username) {
       setUserSearchQuery(item.student_full_name || item.student_username || "");
@@ -137,10 +149,11 @@ export default function MembersPage() {
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
+    const payload: Partial<Enrollment> = {
       academy_class: parseInt(enrollmentForm.academy_class),
       student: parseInt(enrollmentForm.student),
-      is_active: enrollmentForm.is_active
+      is_active: enrollmentForm.is_active,
+      completion_status: enrollmentForm.completion_status
     };
 
     if (editId) {
@@ -206,7 +219,8 @@ export default function MembersPage() {
                         <th className="p-4">{isFarsi ? "دانش‌آموز" : "Student"}</th>
                         <th className="p-4">{isFarsi ? "کلاس" : "Class"}</th>
                         <th className="p-4">{isFarsi ? "تاریخ ثبت‌نام" : "Enrolled At"}</th>
-                        <th className="p-4">{isFarsi ? "وضعیت" : "Status"}</th>
+                        <th className="p-4">{isFarsi ? "وضعیت ثبت‌نام" : "Enrollment Status"}</th>
+                        <th className="p-4">{isFarsi ? "وضعیت دوره" : "Completion"}</th>
                         {isOrisAdmin && <th className="p-4 text-right">{isFarsi ? "عملیات" : "Actions"}</th>}
                       </tr>
                     </thead>
@@ -238,6 +252,21 @@ export default function MembersPage() {
                                 return null;
                               })()}
                             </div>
+                          </td>
+                          <td className="p-4">
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                              e.completion_status === "completed"
+                                ? "bg-emerald-500/10 text-emerald-500"
+                                : e.completion_status === "dropped"
+                                ? "bg-red-500/10 text-red-500"
+                                : "bg-blue-500/10 text-blue-500"
+                            }`}>
+                              {e.completion_status === "completed"
+                                ? (isFarsi ? "تکمیل شده" : "Completed")
+                                : e.completion_status === "dropped"
+                                ? (isFarsi ? "انصراف داده" : "Dropped")
+                                : (isFarsi ? "در حال یادگیری" : "In Progress")}
+                            </span>
                           </td>
                           {isOrisAdmin && (
                             <td className="p-4 text-right flex justify-end gap-2">
@@ -398,6 +427,24 @@ export default function MembersPage() {
                 {isFarsi ? "ثبت‌نام فعال باشد" : "Is Active"}
               </label>
             </div>
+
+            {editId && (
+              <div className="flex flex-col gap-1.5 w-full">
+                <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                  {isFarsi ? "وضعیت پایان دوره" : "Completion Status"}
+                </label>
+                <select
+                  className="w-full bg-[var(--s2)] text-[var(--t1)] text-sm border border-[var(--b)] rounded-xl px-4 py-2.5 outline-none focus:border-[var(--brand)] transition-colors"
+                  value={enrollmentForm.completion_status}
+                  onChange={(e) => setEnrollmentForm({ ...enrollmentForm, completion_status: e.target.value as any })}
+                  required
+                >
+                  <option value="in_progress">{isFarsi ? "در حال یادگیری" : "In Progress"}</option>
+                  <option value="completed">{isFarsi ? "تکمیل شده" : "Completed"}</option>
+                  <option value="dropped">{isFarsi ? "انصراف داده" : "Dropped"}</option>
+                </select>
+              </div>
+            )}
 
             <div className="flex justify-end gap-2 mt-4">
               <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>

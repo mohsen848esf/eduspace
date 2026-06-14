@@ -1,7 +1,19 @@
 import axios from "axios";
 
+const getApiUrl = (): string => {
+  const envUrl = (import.meta as any).env?.VITE_API_URL;
+  if (envUrl) {
+    return envUrl.endsWith("/") ? `${envUrl}api` : `${envUrl}/api`;
+  }
+  const origin = window.location.origin;
+  if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
+    return "http://localhost:8000/api";
+  }
+  return `${origin}/api`;
+};
+
 const client = axios.create({
-  baseURL: "http://localhost:8000/api",
+  baseURL: getApiUrl(),
   headers: { "Content-Type": "application/json" },
 });
 
@@ -29,7 +41,7 @@ client.interceptors.response.use(
       if (refresh) {
         try {
           const { data } = await axios.post(
-            "http://localhost:8000/api/auth/token/refresh/",
+            `${getApiUrl()}/auth/token/refresh/`,
             { refresh },
           );
           localStorage.setItem("access_token", data.access);
