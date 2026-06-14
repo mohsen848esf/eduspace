@@ -844,6 +844,15 @@ def list_recordings(request):
     if published is not None:
         qs = qs.filter(is_published=str(published).lower() == 'true')
 
+    q = request.query_params.get('q')
+    if q:
+        qs = qs.filter(
+            Q(room__room_code__icontains=q) |
+            Q(room__name__icontains=q) |
+            Q(owner__username__icontains=q) |
+            Q(owner__full_name__icontains=q)
+        )
+
     items = []
     for rec in qs[:200]:  # cap to avoid runaway responses
         payload = _serialize(rec, detail=True, viewer=request.user)

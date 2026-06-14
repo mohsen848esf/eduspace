@@ -21,7 +21,7 @@ const FILTERS: RecordingsFilter[] = [
 export default function RecordingsPage() {
   const { t } = useTranslation("recordings");
   const [activeNav, setActiveNav] = useState("recordings");
-  const { items, isLoading, filter, setFilter, refresh } = useRecordings("all");
+  const { items, isLoading, filter, setFilter, searchQuery, setSearchQuery, refresh } = useRecordings("all");
 
   const [shareTarget, setShareTarget] = useState<Recording | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Recording | null>(null);
@@ -68,10 +68,9 @@ export default function RecordingsPage() {
       onNavigate={setActiveNav}
     >
       <div className="flex flex-col gap-4 fade-in">
-        {/* Filters — sticky on mobile so the user can scroll cards while
-            keeping access to the filter row. */}
-        <div className="md:static sticky top-0 z-10 bg-[var(--s0)] -mx-4 px-4 pt-1 pb-2 md:m-0 md:p-0 md:bg-transparent">
-          <div className="flex flex-wrap gap-1.5 overflow-x-auto md:flex-wrap">
+        {/* Filters and Search row */}
+        <div className="md:static sticky top-0 z-10 bg-[var(--s0)] -mx-4 px-4 pt-1 pb-2 md:m-0 md:p-0 md:bg-transparent flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+          <div className="flex flex-wrap gap-1.5 overflow-x-auto">
             {FILTERS.map((f) => (
               <button
                 key={f}
@@ -86,6 +85,19 @@ export default function RecordingsPage() {
                 {t(`filters.${f}`)}
               </button>
             ))}
+          </div>
+
+          <div className="relative flex-1 max-w-md">
+            <span className="absolute start-3 top-1/2 -translate-y-1/2 text-[var(--t3)] text-xs">
+              🔍
+            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t("publishModal.searchPlaceholder") || "Search recordings..."}
+              className="w-full bg-[var(--s2)] border border-[var(--b)] rounded-lg ps-8 pe-3 py-2 text-xs text-[var(--t1)] placeholder-[var(--t3)] outline-none focus:border-[var(--brand)] transition-colors h-9"
+            />
           </div>
         </div>
 

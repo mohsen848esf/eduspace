@@ -18,6 +18,14 @@ function formatDuration(seconds: number, t: (k: string, v?: any) => string) {
   return t("card.duration", { minutes: m, seconds: s });
 }
 
+function formatBytes(bytes: number): string {
+  if (!bytes || bytes <= 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
 export default function RecordingCard({
   recording,
   onDelete,
@@ -105,7 +113,7 @@ export default function RecordingCard({
           </span>
         </div>
         <div className="flex items-center justify-between text-[11px] text-[var(--t3)]">
-          <span>{startedAt}</span>
+          <span>{startedAt} · {formatBytes(recording.size_bytes)}</span>
           <span className="font-mono force-ltr">
             {formatDuration(recording.duration_seconds, t)}
           </span>

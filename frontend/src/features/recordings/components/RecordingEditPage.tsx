@@ -20,6 +20,14 @@ function formatTimecode(seconds: number): string {
   return `${m}:${ss}`;
 }
 
+function formatBytes(bytes: number): string {
+  if (!bytes || bytes <= 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
 export default function RecordingEditPage() {
   const { t } = useTranslation(["recordings", "common"]);
   const navigate = useNavigate();
@@ -188,7 +196,7 @@ export default function RecordingEditPage() {
                 recording.public_token}
             </div>
             <div className="text-[11px] text-[var(--t3)]">
-              {t("editor.title")}
+              {t("editor.title")} · {formatBytes(recording.size_bytes)}
             </div>
           </div>
         </div>
@@ -255,6 +263,9 @@ export default function RecordingEditPage() {
                 <span className="text-[var(--t1)]">
                   {formatTimecode(trimmedDuration)}
                 </span>
+              </span>
+              <span>
+                Size: {formatBytes(recording.size_bytes)}
               </span>
             </div>
           </div>
