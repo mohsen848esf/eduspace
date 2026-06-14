@@ -92,7 +92,10 @@ def search_users(request):
         members = OrgMember.objects.filter(
             organization=org,
             user__is_active=True
-        ).select_related('user', 'role')
+        ).select_related('user', 'role').prefetch_related(
+            'user__org_memberships__organization',
+            'user__org_memberships__role'
+        )
         
         if q:
             members = members.filter(
@@ -118,7 +121,10 @@ def search_users(request):
     users = User.objects.filter(
         models.Q(username__icontains=q) | 
         models.Q(full_name__icontains=q)
-    ).exclude(id=request.user.id)
+    ).exclude(id=request.user.id).prefetch_related(
+        'org_memberships__organization',
+        'org_memberships__role'
+    )
     
     results = []
     for u in users[:10]:
@@ -811,7 +817,10 @@ class OrgMemberViewSet(viewsets.ModelViewSet):
         org = getattr(self.request, 'organization', None)
         if not org:
             return OrgMember.objects.none()
-        return OrgMember.objects.filter(organization=org).select_related('user', 'role')
+        return OrgMember.objects.filter(organization=org).select_related('user', 'role').prefetch_related(
+            'user__org_memberships__organization',
+            'user__org_memberships__role'
+        )
 
     def perform_update(self, serializer):
         instance = serializer.save()
@@ -866,4 +875,57 @@ class CertificateViewSet(viewsets.ModelViewSet):
            not self.request.user.is_superuser:
             queryset = queryset.filter(student=self.request.user)
         return queryset
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def audit_logs(request):
+    from accounts.permissions import has_org_permission, resolve_organization
+    from accounts.models import AuditLog
+    from accounts.serializers import AuditLogSerializer
+    from rest_framework.pagination import PageNumberPagination
+
+    org = resolve_organization(request)
+    if not org:
+        return Response({'error': 'Organization context is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Authorization: Only users with can_manage_members or superusers can view audit logs
+    if not request.user.is_superuser and not has_org_permission(request.user, org, 'can_manage_members'):
+        return Response({'error': 'Permission denied: can_manage_members required.'}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.query_params.get('get_filters') == 'true':
+        actions = list(AuditLog.objects.filter(organization=org).values_list('action', flat=True).distinct())
+        entities = list(AuditLog.objects.filter(organization=org).values_list('entity_type', flat=True).distinct())
+        actors_data = list(AuditLog.objects.filter(organization=org, actor__isnull=False)
+                           .values('actor_id', 'actor__username', 'actor__full_name').distinct())
+        return Response({
+            'actions': actions,
+            'entities': entities,
+            'actors': actors_data
+        })
+
+    queryset = AuditLog.objects.filter(organization=org).select_related('actor').order_by('-created_at')
+
+    # Optional Filters
+    actor_id = request.query_params.get('actor_id')
+    action = request.query_params.get('action')
+    entity_type = request.query_params.get('entity_type')
+
+    if actor_id:
+        queryset = queryset.filter(actor_id=actor_id)
+    if action:
+        queryset = queryset.filter(action=action)
+    if entity_type:
+        queryset = queryset.filter(entity_type=entity_type)
+
+    # Pagination
+    paginator = PageNumberPagination()
+    paginator.page_size = 15
+    paginator.page_size_query_param = 'page_size'
+    paginator.max_page_size = 100
+    
+    result_page = paginator.paginate_queryset(queryset, request)
+    serializer = AuditLogSerializer(result_page, many=True)
+    return paginator.get_paginated_response(serializer.data)
+
 

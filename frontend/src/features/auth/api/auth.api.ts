@@ -135,7 +135,46 @@ export const authApi = {
     const res = await client.get("/auth/search/global/", { params: { q } });
     return res.data;
   },
+
+  getAuditLogs: async (params?: { page?: number; actor_id?: string; action?: string; entity_type?: string }): Promise<PaginatedAuditLogs> => {
+    const res = await client.get("/auth/audit-logs/", { params });
+    return res.data;
+  },
+
+  getAuditLogFilters: async (): Promise<AuditLogFiltersMeta> => {
+    const res = await client.get("/auth/audit-logs/", { params: { get_filters: "true" } });
+    return res.data;
+  },
 };
+
+export interface AuditLog {
+  id: number;
+  actor: number | null;
+  actor_name: string;
+  actor_username: string;
+  action: string;
+  entity_type: string;
+  entity_id: number;
+  before_state: Record<string, any> | null;
+  after_state: Record<string, any> | null;
+  ip_address: string | null;
+  user_agent: string;
+  created_at: string;
+}
+
+export interface PaginatedAuditLogs {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: AuditLog[];
+}
+
+export interface AuditLogFiltersMeta {
+  actions: string[];
+  entities: string[];
+  actors: Array<{ actor_id: number; actor__username: string; actor__full_name: string }>;
+}
+
 
 export interface GlobalSearchResult {
   students: Array<{ id: number; username: string; full_name: string; role: string }>;
