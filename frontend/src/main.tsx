@@ -20,6 +20,24 @@ if (sentryDsn) {
     tracesSampleRate: 1.0,
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
+    sendDefaultPii: false,
+    beforeSend(event) {
+      if (event.request && event.request.headers) {
+        const headers = event.request.headers;
+        const keysToScrub = ["authorization", "cookie", "set-cookie", "x-api-key"];
+        Object.keys(headers).forEach((key) => {
+          if (keysToScrub.includes(key.toLowerCase())) {
+            headers[key] = "[SCRUBBED]";
+          }
+        });
+      }
+      if (event.user) {
+        delete event.user.ip_address;
+        delete event.user.email;
+        delete event.user.username;
+      }
+      return event;
+    },
   });
 }
 

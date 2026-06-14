@@ -177,4 +177,45 @@ class AuditServiceTest(TransactionTestCase):
         self.assertEqual(meta_response.status_code, status.HTTP_200_OK)
         self.assertIn('member.invite', meta_response.data['actions'])
 
+    def test_audit_log_secret_scrubbing(self):
+        class DummyEntity:
+            id = 1
+        entity = DummyEntity()
+        before = {
+            "username": "user",
+            "password": "mysecretpassword123",
+            "metadata": {
+                "access_token": "secret_token_abc",
+                "non_sensitive": "public_data"
+            },
+            "list_data": [
+                {"api_key": "api_key_value"},
+                "plain_string"
+            ]
+        }
+        after = {
+            "password_hash": "pbkdf2_sha256$260000$...",
+            "metadata": {
+                "access_token": "[UPDATED]",
+                "non_sensitive": "public_data"
+            }
+        }
+        AuditService.log(
+            actor=self.user,
+            action='user.update',
+            entity=entity,
+            before=before,
+            after=after,
+            organization=self.org
+        )
+        
+        log = AuditLog.objects.filter(action='user.update').first()
+        self.assertIsNotNone(log)
+        self.assertEqual(log.before_state["password"], "[REDACTED]")
+        self.assertEqual(log.before_state["metadata"]["access_token"], "[REDACTED]")
+        self.assertEqual(log.before_state["metadata"]["non_sensitive"], "public_data")
+        self.assertEqual(log.before_state["list_data"][0]["api_key"], "[REDACTED]")
+        self.assertEqual(log.before_state["list_data"][1], "plain_string")
+        self.assertEqual(log.after_state["password_hash"], "[REDACTED]")
+
 

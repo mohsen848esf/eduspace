@@ -92,3 +92,28 @@ class GlobalSearchTestCase(APITestCase):
         self.assertEqual(response_p2.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response_p2.data['results']['students']), 3)
         self.assertIsNotNone(response_p2.data['previous'])
+
+    def test_search_pagination_multi_category(self):
+        """Test search pagination with multiple categories (Students and Courses)."""
+        from accounts.models import Course
+        # Create 10 students (already created 10 in previous tests, but database clears or runs in sandbox?setUp clears cache, but TransactionTestCase starts fresh per test)
+        for i in range(10):
+            u = User.objects.create_user(username=f"student_x_{i}", password='password')
+            OrgMember.objects.create(organization=self.org_a, user=u, role=self.role_a)
+        
+        # Create 5 courses matching name 'student_x'
+        for i in range(5):
+            Course.objects.create(organization=self.org_a, title=f"student_x course {i}", code=f"SC-{i}")
+            
+        self.client.force_authenticate(user=self.user_a)
+        
+        response = self.client.get(f"{self.url}?q=student_x&page_size=4&page=1", HTTP_X_ORGANIZATION_SLUG='org-a')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 10)
+        self.assertEqual(len(response.data['results']['students']), 4)
+        self.assertEqual(len(response.data['results']['courses']), 4)
+        
+        response_p2 = self.client.get(f"{self.url}?q=student_x&page_size=4&page=2", HTTP_X_ORGANIZATION_SLUG='org-a')
+        self.assertEqual(response_p2.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response_p2.data['results']['students']), 4)
+        self.assertEqual(len(response_p2.data['results']['courses']), 1)

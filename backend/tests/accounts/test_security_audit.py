@@ -66,3 +66,29 @@ class SecurityAuditTest(TransactionTestCase):
         response = client.get('/api/auth/search/global/?q=test', HTTP_X_ORGANIZATION_SLUG=self.org_b.slug)
         # User A has no membership in Org B, so resolving org B slug will fail permission check
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_cross_tenant_audit_logs_rejected(self):
+        client = APIClient()
+        client.force_authenticate(user=self.user_a)
+        response = client.get('/api/auth/audit-logs/', HTTP_X_ORGANIZATION_SLUG=self.org_b.slug)
+        # User A is not a member of Org B and lacks can_manage_members there
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_sentry_disabled_during_tests(self):
+        import sentry_sdk
+        # Hub current client should be None because we bypassed initialization during testing
+        self.assertIsNone(sentry_sdk.Hub.current.client)
+
+    from django.test import override_settings
+    @override_settings(DEBUG=False, SECURE_SSL_REDIRECT=True, SECURE_PROXY_SSL_HEADER=('HTTP_X_FORWARDED_PROTO', 'https'))
+    def test_proxy_ssl_redirect_handling(self):
+        client = APIClient()
+        client.force_authenticate(user=self.user_a)
+        # 1. Request with HTTPS forwarded protocol header should bypass redirect
+        response = client.get('/api/auth/me/', HTTP_X_FORWARDED_PROTO='https', HTTP_X_ORGANIZATION_SLUG=self.org_a.slug)
+        self.assertNotEqual(response.status_code, status.HTTP_301_MOVED_PERMANENTLY)
+        
+        # 2. Request without the HTTPS header should be redirected to HTTPS
+        response_redirect = client.get('/api/auth/me/', HTTP_X_ORGANIZATION_SLUG=self.org_a.slug)
+        self.assertEqual(response_redirect.status_code, status.HTTP_301_MOVED_PERMANENTLY)
+        self.assertTrue(response_redirect['Location'].startswith('https://'))

@@ -175,120 +175,60 @@ def global_search(request):
     if not request.user.is_superuser and not has_org_permission(request.user, org, 'can_view_dashboard'):
         return Response({'error': 'Required permission missing: can_view_dashboard'}, status=status.HTTP_403_FORBIDDEN)
 
-    results = {
-        "students": [],
-        "teachers": [],
-        "courses": [],
-        "classes": [],
-        "sessions": [],
-        "assessments": [],
-        "invoices": []
-    }
-
-    # 1. Students & Teachers
+    # 1. Base Querysets
     members = OrgMember.objects.filter(
         organization=org,
         user__is_active=True
     ).select_related('user', 'role').filter(
         models.Q(user__username__icontains=q) | models.Q(user__full_name__icontains=q)
     )
+    students_query = members.filter(models.Q(role__isnull=True) | models.Q(role__name='Student'))
+    teachers_query = members.filter(role__name__in=['Teacher', 'Admin'])
 
-    for m in members:
-        role_name = m.role.name.lower() if m.role else 'student'
-        item = {
-            "id": m.user.id,
-            "username": m.user.username,
-            "full_name": m.user.full_name or m.user.username,
-            "role": role_name
-        }
-        if role_name == 'student':
-            results["students"].append(item)
-        elif role_name in ('teacher', 'admin'):
-            results["teachers"].append(item)
-
-    # 2. Courses
-    courses = Course.objects.filter(organization=org, is_active=True).filter(
+    courses_query = Course.objects.filter(organization=org, is_active=True).filter(
         models.Q(title__icontains=q) | models.Q(code__icontains=q)
     )
-    for c in courses:
-        results["courses"].append({
-            "id": c.id,
-            "name": c.title,
-            "code": c.code
-        })
 
-    # 3. Academy Classes
-    classes = AcademyClass.objects.filter(course__organization=org, is_active=True).select_related('course')
+    classes_query = AcademyClass.objects.filter(course__organization=org, is_active=True).select_related('course')
     if not request.user.is_superuser and not has_org_permission(request.user, org, 'can_manage_members'):
         if has_org_permission(request.user, org, 'can_teach_class'):
-            classes = classes.filter(teacher=request.user)
+            classes_query = classes_query.filter(teacher=request.user)
         else:
-            classes = classes.filter(enrollments__student=request.user)
-            
-    classes = classes.filter(name__icontains=q)
-    for cl in classes:
-        results["classes"].append({
-            "id": cl.id,
-            "name": cl.name,
-            "course_name": cl.course.name
-        })
+            classes_query = classes_query.filter(enrollments__student=request.user)
+    classes_query = classes_query.filter(name__icontains=q)
 
-    # 4. Sessions
-    sessions = Session.objects.filter(organization=org).select_related('academy_class__course', 'active_room')
+    sessions_query = Session.objects.filter(organization=org).select_related('academy_class__course', 'active_room')
     if not request.user.is_superuser and not has_org_permission(request.user, org, 'can_manage_sessions'):
         if has_org_permission(request.user, org, 'can_teach_class'):
-            sessions = sessions.filter(
+            sessions_query = sessions_query.filter(
                 models.Q(host=request.user) | models.Q(academy_class__teacher=request.user)
             )
         else:
-            sessions = sessions.filter(
+            sessions_query = sessions_query.filter(
                 academy_class__enrollments__student=request.user,
                 academy_class__enrollments__is_active=True
             )
-    sessions = sessions.filter(title__icontains=q)
-    for s in sessions:
-        results["sessions"].append({
-            "id": s.id,
-            "title": s.title,
-            "status": s.status,
-            "room_code": s.active_room.room_code if s.active_room else None
-        })
+    sessions_query = sessions_query.filter(title__icontains=q)
 
-    # 5. Assessments
     is_manager = (
         has_org_permission(request.user, org, 'can_teach_class') or
         has_org_permission(request.user, org, 'can_manage_members')
     )
-    assessments = Assessment.objects.filter(organization=org)
+    assessments_query = Assessment.objects.filter(organization=org)
     if not is_manager:
-        assessments = assessments.filter(is_published=True)
-    assessments = assessments.filter(models.Q(title__icontains=q) | models.Q(description__icontains=q))
-    for a in assessments:
-        results["assessments"].append({
-            "id": a.id,
-            "title": a.title,
-            "is_published": a.is_published
-        })
+        assessments_query = assessments_query.filter(is_published=True)
+    assessments_query = assessments_query.filter(models.Q(title__icontains=q) | models.Q(description__icontains=q))
 
-    # 6. Invoices
-    invoices = TuitionInvoice.objects.filter(organization=org).select_related('student')
+    invoices_query = TuitionInvoice.objects.filter(organization=org).select_related('student')
     if not has_org_permission(request.user, org, 'can_view_financials'):
-        invoices = invoices.filter(student=request.user)
-    invoices = invoices.filter(
+        invoices_query = invoices_query.filter(student=request.user)
+    invoices_query = invoices_query.filter(
         models.Q(invoice_number__icontains=q) |
         models.Q(student__username__icontains=q) |
         models.Q(student__full_name__icontains=q)
     )
-    for inv in invoices:
-        results["invoices"].append({
-            "id": inv.id,
-            "invoice_number": inv.invoice_number,
-            "amount": str(inv.amount),
-            "student_name": inv.student.full_name or inv.student.username,
-            "status": inv.status
-        })
 
-    # Apply category-specific pagination using query parameters
+    # 2. Page Parameters Parsing
     paginator = GlobalSearchPagination()
     try:
         page = int(request.query_params.get(paginator.page_query_param, 1))
@@ -309,12 +249,99 @@ def global_search(request):
     start = (page - 1) * page_size
     end = start + page_size
 
-    total_count = max(len(results[k]) for k in results)
+    # 3. DB-Level Counts (no model instantiations)
+    students_count = students_query.distinct().count()
+    teachers_count = teachers_query.distinct().count()
+    courses_count = courses_query.distinct().count()
+    classes_count = classes_query.distinct().count()
+    sessions_count = sessions_query.distinct().count()
+    assessments_count = assessments_query.distinct().count()
+    invoices_count = invoices_query.distinct().count()
 
+    total_count = max(
+        students_count,
+        teachers_count,
+        courses_count,
+        classes_count,
+        sessions_count,
+        assessments_count,
+        invoices_count
+    )
+
+    # 4. DB-Level Sliced Queries and Formatting
     paginated_results = {
-        k: v[start:end] for k, v in results.items()
+        "students": [],
+        "teachers": [],
+        "courses": [],
+        "classes": [],
+        "sessions": [],
+        "assessments": [],
+        "invoices": []
     }
 
+    # Slice students
+    for m in students_query.distinct()[start:end]:
+        paginated_results["students"].append({
+            "id": m.user.id,
+            "username": m.user.username,
+            "full_name": m.user.full_name or m.user.username,
+            "role": "student"
+        })
+
+    # Slice teachers
+    for m in teachers_query.distinct()[start:end]:
+        role_name = m.role.name.lower() if m.role else 'student'
+        paginated_results["teachers"].append({
+            "id": m.user.id,
+            "username": m.user.username,
+            "full_name": m.user.full_name or m.user.username,
+            "role": role_name
+        })
+
+    # Slice courses
+    for c in courses_query.distinct()[start:end]:
+        paginated_results["courses"].append({
+            "id": c.id,
+            "name": c.title,
+            "code": c.code
+        })
+
+    # Slice classes
+    for cl in classes_query.distinct()[start:end]:
+        paginated_results["classes"].append({
+            "id": cl.id,
+            "name": cl.name,
+            "course_name": cl.course.title
+        })
+
+    # Slice sessions
+    for s in sessions_query.distinct()[start:end]:
+        paginated_results["sessions"].append({
+            "id": s.id,
+            "title": s.title,
+            "status": s.status,
+            "room_code": s.active_room.room_code if s.active_room else None
+        })
+
+    # Slice assessments
+    for a in assessments_query.distinct()[start:end]:
+        paginated_results["assessments"].append({
+            "id": a.id,
+            "title": a.title,
+            "is_published": a.is_published
+        })
+
+    # Slice invoices
+    for inv in invoices_query.distinct()[start:end]:
+        paginated_results["invoices"].append({
+            "id": inv.id,
+            "invoice_number": inv.invoice_number,
+            "amount": str(inv.amount),
+            "student_name": inv.student.full_name or inv.student.username,
+            "status": inv.status
+        })
+
+    # 5. Build Links and Pagination Metadata
     next_link = None
     if end < total_count:
         next_link = request.build_absolute_uri()
