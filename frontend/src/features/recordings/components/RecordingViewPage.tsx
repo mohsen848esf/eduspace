@@ -16,6 +16,14 @@ function formatTimecode(seconds: number): string {
   return `${m}:${ss}`;
 }
 
+function formatBytes(bytes: number): string {
+  if (!bytes || bytes <= 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
 /**
  * Plain watch page for a recording someone else shared with the user.
  * Owners are bounced to the editor route since that's where they spend
@@ -107,7 +115,7 @@ export default function RecordingViewPage() {
         </div>
 
         <span className="text-[11px] font-mono text-[var(--t2)] force-ltr">
-          {formatTimecode(recording.duration_seconds)}
+          {formatBytes(recording.size_bytes)} · {formatTimecode(recording.duration_seconds)}
         </span>
       </header>
 

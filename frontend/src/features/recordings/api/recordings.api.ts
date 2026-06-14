@@ -187,6 +187,7 @@ const recordingsApi = {
     room_code?: string;
     status?: RecordingStatus;
     published?: boolean;
+    q?: string;
   }): Promise<{ count: number; results: Recording[] }> => {
     const res = await client.get("/recordings/", {
       params: {
@@ -195,6 +196,7 @@ const recordingsApi = {
         ...(params?.published !== undefined
           ? { published: params.published }
           : {}),
+        ...(params?.q ? { q: params.q } : {}),
       },
     });
     return res.data;
