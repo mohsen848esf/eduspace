@@ -530,6 +530,10 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             return Organization.objects.none()
         return Organization.objects.filter(id=org.id)
 
+    def destroy(self, request, *args, **kwargs):
+        from rest_framework.exceptions import MethodNotAllowed
+        raise MethodNotAllowed("DELETE")
+
 
 class OrgMemberViewSet(viewsets.ModelViewSet):
     serializer_class = OrgMemberSerializer

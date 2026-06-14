@@ -293,6 +293,14 @@ class OrgMemberSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('id', 'user', 'joined_at')
 
+    def validate_role(self, value):
+        if value:
+            request = self.context.get('request')
+            org = getattr(request, 'organization', None)
+            if org and value.organization and value.organization != org:
+                raise serializers.ValidationError("Role does not belong to your organization.")
+        return value
+
     def create(self, validated_data):
         request = self.context.get('request')
         org = getattr(request, 'organization', None)
