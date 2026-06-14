@@ -53,10 +53,16 @@ def login(request):
     return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
 
-@api_view(['GET'])
+@api_view(['GET', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def me(request):
-    return Response(UserSerializer(request.user).data)
+    if request.method == 'PATCH':
+        serializer = UserSerializer(request.user, data=request.data, partial=True, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return Response(UserSerializer(request.user, context={'request': request}).data)
 
 
 @api_view(['POST'])
@@ -181,10 +187,11 @@ def org_context(request):
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from .permissions import HasOrgPermission, has_org_permission
-from .models import Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance
+from .models import Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance, Organization, OrgMember, Role
 from .serializers import (
     CourseSerializer, AcademyClassSerializer, EnrollmentSerializer,
-    TuitionInvoiceSerializer, ExpenseItemSerializer, SessionSerializer, AttendanceSerializer
+    TuitionInvoiceSerializer, ExpenseItemSerializer, SessionSerializer, AttendanceSerializer,
+    OrganizationDetailSerializer, OrgMemberSerializer, RoleSerializer
 )
 from accounts.services.session_service import SessionService
 from accounts.services.attendance_service import AttendanceService
@@ -504,4 +511,68 @@ class AttendanceViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(session_id=session_id)
 
         return queryset
+
+
+class OrganizationViewSet(viewsets.ModelViewSet):
+    serializer_class = OrganizationDetailSerializer
+    permission_classes = [HasOrgPermission]
+
+    def get_permissions(self):
+        if self.action in ['partial_update', 'update']:
+            self.required_org_permission = 'can_manage_members'
+        else:
+            self.required_org_permission = 'can_view_dashboard'
+        return super().get_permissions()
+
+    def get_queryset(self):
+        org = getattr(self.request, 'organization', None)
+        if not org:
+            return Organization.objects.none()
+        return Organization.objects.filter(id=org.id)
+
+
+class OrgMemberViewSet(viewsets.ModelViewSet):
+    serializer_class = OrgMemberSerializer
+    permission_classes = [HasOrgPermission]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            self.required_org_permission = 'can_view_dashboard'
+        else:
+            self.required_org_permission = 'can_manage_members'
+        return super().get_permissions()
+
+    def get_queryset(self):
+        org = getattr(self.request, 'organization', None)
+        if not org:
+            return OrgMember.objects.none()
+        return OrgMember.objects.filter(organization=org).select_related('user', 'role')
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        from django.core.cache import cache
+        cache_key = f"user_org_perms:{instance.user_id}:{instance.organization_id}"
+        cache.delete(cache_key)
+
+    def perform_destroy(self, instance):
+        user_id = instance.user_id
+        org_id = instance.organization_id
+        instance.delete()
+        from django.core.cache import cache
+        cache_key = f"user_org_perms:{user_id}:{org_id}"
+        cache.delete(cache_key)
+
+
+class RoleViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = RoleSerializer
+    permission_classes = [HasOrgPermission]
+    required_org_permission = 'can_view_dashboard'
+
+    def get_queryset(self):
+        org = getattr(self.request, 'organization', None)
+        if not org:
+            return Role.objects.none()
+        return Role.objects.filter(
+            models.Q(organization=org) | models.Q(organization__isnull=True)
+        )
 
