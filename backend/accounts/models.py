@@ -456,4 +456,22 @@ class Attendance(models.Model):
         return f"{self.student.username} - {self.session.title}: {self.status}"
 
 
+class Certificate(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='certificates')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='certificates')
+    academy_class = models.ForeignKey(AcademyClass, on_delete=models.CASCADE, related_name='certificates')
+    certificate_number = models.CharField(max_length=50, unique=True)
+    issued_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('student', 'academy_class')
+        indexes = [
+            models.Index(fields=['organization', 'student']),
+        ]
+
+    def __str__(self):
+        return f"Certificate {self.certificate_number} for {self.student.username} - {self.academy_class.course.title}"
+
+
+
 

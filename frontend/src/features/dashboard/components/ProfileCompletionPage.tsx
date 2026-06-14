@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import client from "../../../lib/api/client";
 import { toast } from "react-hot-toast";
 import { useLocale } from "../../../i18n/useLocale";
 import { useAuthStore } from "../../auth/store/authStore";
@@ -17,6 +18,14 @@ export default function ProfileCompletionPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { data: certificates = [], isLoading: loadingCerts } = useQuery({
+    queryKey: ["certificates"],
+    queryFn: async () => {
+      const res = await client.get("/auth/certificates/");
+      return res.data;
+    },
+  });
 
   // Sync state with user data
   useEffect(() => {
@@ -172,6 +181,173 @@ export default function ProfileCompletionPage() {
             </Button>
           </div>
         </form>
+
+        {/* Certifications Card */}
+        <div className="border-t border-[var(--b)]/60 pt-8 mt-4">
+          <div className="mb-6">
+            <h2 className="text-base font-bold text-[var(--t1)]">
+              {isFarsi ? "گواهی‌نامه‌های من" : "My Certificates"}
+            </h2>
+            <p className="text-xs text-[var(--t3)] mt-1">
+              {isFarsi 
+                ? "گواهی‌نامه‌هایی که با موفقیت در این آکادمی کسب کرده‌اید." 
+                : "Certificates you have earned by completing courses in this academy."}
+            </p>
+          </div>
+
+          {loadingCerts ? (
+            <div className="flex justify-center py-4">
+              <Spinner />
+            </div>
+          ) : certificates.length === 0 ? (
+            <div className="text-center py-6 text-[var(--t3)] text-xs border border-dashed border-[var(--b)] rounded-xl">
+              {isFarsi ? "هنوز گواهی‌نامه‌ای کسب نکرده‌اید." : "You have not earned any certificates yet."}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {certificates.map((cert: any) => (
+                <div
+                  key={cert.id}
+                  className="p-5 border border-[var(--b)] rounded-xl bg-[var(--s3)] flex flex-col justify-between gap-4 relative overflow-hidden"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-bold text-sm text-[var(--t1)]">{cert.course_title}</h4>
+                      <p className="text-xs text-[var(--t3)] mt-1">{cert.class_name}</p>
+                    </div>
+                    <span className="text-xl">🏆</span>
+                  </div>
+                  <div className="flex justify-between items-end border-t border-[var(--b)]/60 pt-3 text-[10px] text-[var(--t3)]">
+                    <div>
+                      <span className="block">{isFarsi ? "شماره سریال:" : "Serial Number:"}</span>
+                      <span className="font-mono text-[var(--t2)] font-semibold">{cert.certificate_number}</span>
+                    </div>
+                    <div>
+                      <span className="block">{isFarsi ? "تاریخ صدور:" : "Issued Date:"}</span>
+                      <span className="text-[var(--t2)]">
+                        {new Date(cert.issued_at).toLocaleDateString(isFarsi ? "fa-IR" : "en-US")}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const printWindow = window.open("", "_blank");
+                        if (printWindow) {
+                          printWindow.document.write(`
+                            <html>
+                              <head>
+                                <title>Certificate - ${cert.certificate_number}</title>
+                                <style>
+                                  body {
+                                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                                    display: flex;
+                                    justify-content: center;
+                                    align-items: center;
+                                    height: 100vh;
+                                    margin: 0;
+                                    background: #f0f0f0;
+                                  }
+                                  .cert-container {
+                                    background: white;
+                                    border: 15px double #c5a059;
+                                    padding: 50px;
+                                    width: 800px;
+                                    text-align: center;
+                                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                                    position: relative;
+                                  }
+                                  .logo {
+                                    font-size: 24px;
+                                    font-weight: bold;
+                                    color: #4a154b;
+                                    margin-bottom: 20px;
+                                  }
+                                  h1 {
+                                    color: #c5a059;
+                                    font-size: 38px;
+                                    margin: 10px 0;
+                                    font-family: Georgia, serif;
+                                  }
+                                  .subtitle {
+                                    font-size: 18px;
+                                    font-style: italic;
+                                    margin-bottom: 30px;
+                                  }
+                                  .recipient {
+                                    font-size: 28px;
+                                    font-weight: bold;
+                                    text-decoration: underline;
+                                    margin: 20px 0;
+                                  }
+                                  .details {
+                                    font-size: 16px;
+                                    line-height: 1.6;
+                                    margin: 30px auto;
+                                    max-w: 600px;
+                                  }
+                                  .footer-info {
+                                    display: flex;
+                                    justify-content: space-between;
+                                    margin-top: 50px;
+                                    font-size: 14px;
+                                    color: #555;
+                                  }
+                                  @media print {
+                                    body {
+                                      background: white;
+                                    }
+                                    .cert-container {
+                                      box-shadow: none;
+                                      border: 15px double #c5a059;
+                                    }
+                                  }
+                                </style>
+                              </head>
+                              <body>
+                                <div class="cert-container" dir="${isFarsi ? "rtl" : "ltr"}">
+                                  <div class="logo">EDUSPACE ACADEMY</div>
+                                  <h1>${isFarsi ? "گواهی‌نامه پایان دوره" : "Certificate of Completion"}</h1>
+                                  <p class="subtitle">${isFarsi ? "بدین‌وسیله گواهی می‌شود که:" : "This is to certify that"}</p>
+                                  <div class="recipient">${cert.student_full_name || cert.student_username}</div>
+                                  <p class="details">
+                                    ${isFarsi 
+                                      ? `با موفقیت دوره <strong>${cert.course_title}</strong> (کلاس: ${cert.class_name}) را در این موسسه به پایان رسانده و معیارهای ارزیابی مورد نیاز را با موفقیت احراز نموده است.`
+                                      : `has successfully completed the course <strong>${cert.course_title}</strong> (Class: ${cert.class_name}) and met all evaluation criteria.`}
+                                  </p>
+                                  <div class="footer-info">
+                                    <div>
+                                      <strong>${isFarsi ? "شماره سریال:" : "Certificate ID:"}</strong><br>
+                                      ${cert.certificate_number}
+                                    </div>
+                                    <div>
+                                      <strong>${isFarsi ? "تاریخ صدور:" : "Date of Issue:"}</strong><br>
+                                      ${new Date(cert.issued_at).toLocaleDateString(isFarsi ? "fa-IR" : "en-US")}
+                                    </div>
+                                  </div>
+                                </div>
+                                <script>
+                                  window.onload = function() {
+                                    window.print();
+                                  }
+                                </script>
+                              </body>
+                            </html>
+                          `);
+                          printWindow.document.close();
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-semibold transition-colors"
+                    >
+                      {isFarsi ? "چاپ گواهی‌نامه" : "Print Certificate"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
       </div>
     </AppShell>

@@ -13,6 +13,20 @@ function formatNotificationDuration(seconds: number | undefined): string {
   return `${m}:${s}`;
 }
 
+export function getWebSocketUrl(path: string): string {
+  const envUrl = (import.meta as any).env?.VITE_WS_URL;
+  let base: string;
+  if (envUrl) {
+    base = envUrl.endsWith("/") ? envUrl.slice(0, -1) : envUrl;
+  } else {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const host = window.location.host || "localhost:8000";
+    base = `${protocol}//${host}`;
+  }
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${cleanPath}`;
+}
+
 export function useNotifications() {
   const { t } = useTranslation(["notifications", "recordings"]);
   const { isAuthenticated } = useAuthStore();
@@ -281,7 +295,7 @@ export function useNotifications() {
 
     console.log("Connecting to notification WS...");
     const ws = new WebSocket(
-      `ws://localhost:8000/ws/notifications/?token=${token}`,
+      getWebSocketUrl(`/ws/notifications/?token=${token}`),
     );
     wsRef.current = ws;
 

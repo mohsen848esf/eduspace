@@ -113,4 +113,6 @@ class TestClassToSessionMigration(TransactionTestCase):
     def tearDown(self):
         # Ensure the database is fully migrated back to the latest state so subsequent tests don't break
         executor = MigrationExecutor(connection)
-        executor.migrate([('accounts', '0015_data_migrate_class_to_session')])
+        executor.loader.build_graph()
+        targets = executor.loader.graph.leaf_nodes()
+        executor.migrate(targets)

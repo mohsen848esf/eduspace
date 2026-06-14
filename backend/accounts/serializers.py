@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance, Organization, OrgMember, Role
+from .models import User, Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance, Organization, OrgMember, Role, Certificate
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -272,7 +272,9 @@ class SessionSerializer(serializers.ModelSerializer):
                     
                 # Security: check if user is allowed to manage sessions for this class
                 from accounts.permissions import has_org_permission
-                if not request.user.is_superuser and not has_org_permission(request.user, request.organization, 'can_manage_members'):
+                if not request.user.is_superuser and \
+                   not has_org_permission(request.user, request.organization, 'can_manage_sessions') and \
+                   not has_org_permission(request.user, request.organization, 'can_manage_members'):
                     if has_org_permission(request.user, request.organization, 'can_teach_class'):
                         if value.teacher != request.user:
                             raise serializers.ValidationError("You can only create sessions for classes you teach.")
@@ -392,4 +394,20 @@ class OrgMemberSerializer(serializers.ModelSerializer):
 class RoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Role
-        fields = ('id', 'name', 'description')
+        fields = ('id', 'name', 'description')
+
+
+class CertificateSerializer(serializers.ModelSerializer):
+    student_username = serializers.CharField(source='student.username', read_only=True)
+    student_full_name = serializers.CharField(source='student.full_name', read_only=True)
+    class_name = serializers.CharField(source='academy_class.name', read_only=True)
+    course_title = serializers.CharField(source='academy_class.course.title', read_only=True)
+
+    class Meta:
+        model = Certificate
+        fields = (
+            'id', 'organization', 'student', 'student_username', 'student_full_name',
+            'academy_class', 'class_name', 'course_title', 'certificate_number', 'issued_at'
+        )
+        read_only_fields = ('id', 'organization', 'student', 'certificate_number', 'issued_at')
+

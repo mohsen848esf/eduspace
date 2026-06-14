@@ -48,3 +48,52 @@ def role_permissions_changed_handler(sender, instance, action, **kwargs):
     if action in ["post_add", "post_remove", "post_clear"]:
         # instance is the Role instance
         invalidate_members_with_role(instance)
+
+
+# ---------------------------------------------------------------------------
+# Enrollment & Certificate Signals
+# ---------------------------------------------------------------------------
+
+import uuid
+from django.utils import timezone
+from django.db import transaction, IntegrityError
+from accounts.models import Enrollment, Certificate
+
+def generate_cert_number():
+    return f"CERT-{uuid.uuid4().hex[:16].upper()}"
+
+
+@receiver(post_save, sender=Enrollment)
+def enrollment_post_save_handler(sender, instance, **kwargs):
+    # Set caching permissions invalidation
+    invalidate_user_org_perms(instance.student_id, instance.academy_class.course.organization_id)
+    
+    # Generate certificate if completed
+    if instance.completion_status == Enrollment.CompletionStatus.COMPLETED:
+        # Check and set completion date if not present (using update to avoid post_save loops)
+        if not instance.completion_date:
+            now = timezone.now()
+            Enrollment.objects.filter(pk=instance.pk).update(completion_date=now)
+            instance.completion_date = now
+
+        # Idempotently create Certificate with collision retries
+        for attempt in range(5):
+            try:
+                with transaction.atomic():
+                    Certificate.objects.get_or_create(
+                        organization=instance.academy_class.course.organization,
+                        student=instance.student,
+                        academy_class=instance.academy_class,
+                        defaults={
+                            'certificate_number': generate_cert_number()
+                        }
+                    )
+                break
+            except IntegrityError as e:
+                # If the Certificate already exists, we can safely break
+                if Certificate.objects.filter(student=instance.student, academy_class=instance.academy_class).exists():
+                    break
+                if attempt == 4:
+                    raise e
+
+

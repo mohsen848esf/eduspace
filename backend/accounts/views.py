@@ -126,6 +126,14 @@ def search_users(request):
         results.append(user_data)
         
     return Response(results)
+from rest_framework.pagination import PageNumberPagination
+from collections import OrderedDict
+
+class GlobalSearchPagination(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = 'page_size'
+    max_page_size = 50
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def global_search(request):
@@ -157,6 +165,10 @@ def global_search(request):
             "invoices": []
         })
 
+    # Enforce organization membership/permission checks
+    if not request.user.is_superuser and not has_org_permission(request.user, org, 'can_view_dashboard'):
+        return Response({'error': 'Required permission missing: can_view_dashboard'}, status=status.HTTP_403_FORBIDDEN)
+
     results = {
         "students": [],
         "teachers": [],
@@ -175,7 +187,7 @@ def global_search(request):
         models.Q(user__username__icontains=q) | models.Q(user__full_name__icontains=q)
     )
 
-    for m in members[:10]:
+    for m in members:
         role_name = m.role.name.lower() if m.role else 'student'
         item = {
             "id": m.user.id,
@@ -190,12 +202,12 @@ def global_search(request):
 
     # 2. Courses
     courses = Course.objects.filter(organization=org, is_active=True).filter(
-        models.Q(name__icontains=q) | models.Q(code__icontains=q)
+        models.Q(title__icontains=q) | models.Q(code__icontains=q)
     )
-    for c in courses[:5]:
+    for c in courses:
         results["courses"].append({
             "id": c.id,
-            "name": c.name,
+            "name": c.title,
             "code": c.code
         })
 
@@ -208,7 +220,7 @@ def global_search(request):
             classes = classes.filter(enrollments__student=request.user)
             
     classes = classes.filter(name__icontains=q)
-    for cl in classes[:5]:
+    for cl in classes:
         results["classes"].append({
             "id": cl.id,
             "name": cl.name,
@@ -227,8 +239,8 @@ def global_search(request):
                 academy_class__enrollments__student=request.user,
                 academy_class__enrollments__is_active=True
             )
-    sessions = sessions.filter(models.Q(title__icontains=q) | models.Q(description__icontains=q))
-    for s in sessions[:5]:
+    sessions = sessions.filter(title__icontains=q)
+    for s in sessions:
         results["sessions"].append({
             "id": s.id,
             "title": s.title,
@@ -245,7 +257,7 @@ def global_search(request):
     if not is_manager:
         assessments = assessments.filter(is_published=True)
     assessments = assessments.filter(models.Q(title__icontains=q) | models.Q(description__icontains=q))
-    for a in assessments[:5]:
+    for a in assessments:
         results["assessments"].append({
             "id": a.id,
             "title": a.title,
@@ -261,7 +273,7 @@ def global_search(request):
         models.Q(student__username__icontains=q) |
         models.Q(student__full_name__icontains=q)
     )
-    for inv in invoices[:5]:
+    for inv in invoices:
         results["invoices"].append({
             "id": inv.id,
             "invoice_number": inv.invoice_number,
@@ -270,7 +282,66 @@ def global_search(request):
             "status": inv.status
         })
 
-    return Response(results)
+    # Apply category-specific pagination using query parameters
+    paginator = GlobalSearchPagination()
+    try:
+        page = int(request.query_params.get(paginator.page_query_param, 1))
+        if page < 1:
+            page = 1
+    except ValueError:
+        page = 1
+
+    try:
+        page_size = int(request.query_params.get(paginator.page_size_query_param, paginator.page_size))
+        if page_size < 1:
+            page_size = paginator.page_size
+        elif page_size > paginator.max_page_size:
+            page_size = paginator.max_page_size
+    except ValueError:
+        page_size = paginator.page_size
+
+    start = (page - 1) * page_size
+    end = start + page_size
+
+    total_count = max(len(results[k]) for k in results)
+
+    paginated_results = {
+        k: v[start:end] for k, v in results.items()
+    }
+
+    next_link = None
+    if end < total_count:
+        next_link = request.build_absolute_uri()
+        from urllib.parse import urlencode, urlparse, urlunparse, parse_qs
+        u = list(urlparse(next_link))
+        q_params = parse_qs(u[4])
+        q_params[paginator.page_query_param] = [str(page + 1)]
+        q_params[paginator.page_size_query_param] = [str(page_size)]
+        u[4] = urlencode(q_params, doseq=True)
+        next_link = urlunparse(u)
+
+    prev_link = None
+    if page > 1:
+        prev_link = request.build_absolute_uri()
+        from urllib.parse import urlencode, urlparse, urlunparse, parse_qs
+        u = list(urlparse(prev_link))
+        q_params = parse_qs(u[4])
+        if page - 1 == 1:
+            q_params.pop(paginator.page_query_param, None)
+        else:
+            q_params[paginator.page_query_param] = [str(page - 1)]
+        q_params[paginator.page_size_query_param] = [str(page_size)]
+        u[4] = urlencode(q_params, doseq=True)
+        prev_link = urlunparse(u)
+
+    response_data = OrderedDict([
+        ('count', total_count),
+        ('next', next_link),
+        ('previous', prev_link),
+        ('results', paginated_results)
+    ])
+    return Response(response_data)
+
 
 
 @api_view(['GET'])
@@ -332,11 +403,11 @@ def org_context(request):
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from .permissions import HasOrgPermission, has_org_permission
-from .models import Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance, Organization, OrgMember, Role
+from .models import Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance, Organization, OrgMember, Role, Certificate
 from .serializers import (
     CourseSerializer, AcademyClassSerializer, EnrollmentSerializer,
     TuitionInvoiceSerializer, ExpenseItemSerializer, SessionSerializer, AttendanceSerializer,
-    OrganizationDetailSerializer, OrgMemberSerializer, RoleSerializer
+    OrganizationDetailSerializer, OrgMemberSerializer, RoleSerializer, CertificateSerializer
 )
 from accounts.services.session_service import SessionService
 from accounts.services.attendance_service import AttendanceService
@@ -769,4 +840,30 @@ class RoleViewSet(viewsets.ReadOnlyModelViewSet):
         return Role.objects.filter(
             models.Q(organization=org) | models.Q(organization__isnull=True)
         )
+
+
+class CertificateViewSet(viewsets.ModelViewSet):
+    serializer_class = CertificateSerializer
+    permission_classes = [HasOrgPermission]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            self.required_org_permission = 'can_view_dashboard'
+        else:
+            self.required_org_permission = 'can_manage_members'
+        return super().get_permissions()
+
+    def get_queryset(self):
+        org = getattr(self.request, 'organization', None)
+        if not org:
+            return Certificate.objects.none()
+        queryset = Certificate.objects.filter(organization=org).select_related(
+            'student', 'academy_class__course'
+        )
+        # Students can view only their own certificates; teachers/admins can view all for that org
+        if not has_org_permission(self.request.user, org, 'can_manage_members') and \
+           not has_org_permission(self.request.user, org, 'can_teach_class') and \
+           not self.request.user.is_superuser:
+            queryset = queryset.filter(student=self.request.user)
+        return queryset
 
