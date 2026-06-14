@@ -57,6 +57,10 @@
     "switchToLight": "Switch to light mode",
     "switchToDark": "Switch to dark mode",
     "search": "Search",
+    "searchPlaceholder": "Search students, teachers, courses, classes, sessions, exams...",
+    "searchEmpty": "No results found for \"{{query}}\"",
+    "searchMinLength": "Type at least 2 characters to search...",
+    "searchInstruction": "Use ↑↓ to navigate, Enter to select, Esc to close",
     "notifications": "Notifications · {{count}} new",
     "settings": "Settings"
   },

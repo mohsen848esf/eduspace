@@ -130,4 +130,19 @@ export const authApi = {
     const res = await client.get("/auth/roles/");
     return res.data;
   },
+
+  globalSearch: async (q: string): Promise<GlobalSearchResult> => {
+    const res = await client.get("/auth/search/global/", { params: { q } });
+    return res.data;
+  },
 };
+
+export interface GlobalSearchResult {
+  students: Array<{ id: number; username: string; full_name: string; role: string }>;
+  teachers: Array<{ id: number; username: string; full_name: string; role: string }>;
+  courses: Array<{ id: number; name: string; code: string }>;
+  classes: Array<{ id: number; name: string; course_name: string }>;
+  sessions: Array<{ id: number; title: string; status: string; room_code: string | null }>;
+  assessments: Array<{ id: number; title: string; is_published: boolean }>;
+  invoices: Array<{ id: number; invoice_number: string; amount: string; student_name: string; status: string }>;
+}

@@ -57,6 +57,10 @@
     "switchToLight": "تغییر به حالت روشن",
     "switchToDark": "تغییر به حالت تیره",
     "search": "جست‌وجو",
+    "searchPlaceholder": "جست‌وجوی دانش‌آموز، معلم، دوره، کلاس، جلسه، آزمون...",
+    "searchEmpty": "هیچ نتیجه‌ای برای «{{query}}» یافت نشد",
+    "searchMinLength": "حداقل ۲ کاراکتر تایپ کنید...",
+    "searchInstruction": "از ↑↓ برای حرکت، Enter برای انتخاب و Esc برای بستن استفاده کنید",
     "notifications": "اعلان‌ها · {{count}} جدید",
     "settings": "تنظیمات"
   },

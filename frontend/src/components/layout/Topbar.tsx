@@ -9,6 +9,7 @@ import { useLocale } from "../../i18n/useLocale";
 import NotificationsPopover from "./NotificationsPopover";
 import { useQueryClient } from "@tanstack/react-query";
 import { useOrgContextStore } from "../../features/auth/store/orgContextStore";
+import GlobalSearchModal from "./GlobalSearchModal";
 
 interface TopbarProps {
   title: string;
@@ -44,6 +45,20 @@ export default function Topbar({
   );
   const bellRef = useRef<HTMLButtonElement>(null);
   const [showInbox, setShowInbox] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setShowSearchModal(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -185,8 +200,11 @@ export default function Topbar({
           </button>
         </Tooltip>
 
-        <Tooltip content={t("topbar.search")}>
-          <button className="w-8 h-8 rounded-lg bg-transparent border-none text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)] cursor-pointer flex items-center justify-center text-base transition-all duration-150">
+        <Tooltip content={t("topbar.search") + " (Ctrl+K)"}>
+          <button
+            onClick={() => setShowSearchModal(true)}
+            className="w-8 h-8 rounded-lg bg-transparent border-none text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)] cursor-pointer flex items-center justify-center text-base transition-all duration-150"
+          >
             🔍
           </button>
         </Tooltip>
@@ -244,6 +262,11 @@ export default function Topbar({
           </button>
         </Tooltip>
       </div>
+
+      <GlobalSearchModal
+        open={showSearchModal}
+        onClose={() => setShowSearchModal(false)}
+      />
     </header>
   );
 }

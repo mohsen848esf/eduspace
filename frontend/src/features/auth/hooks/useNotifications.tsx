@@ -33,7 +33,11 @@ export function useNotifications() {
         kind === "ROOM_INVITE" ||
         kind === "RECORDING_PUBLISHED" ||
         kind === "RECORDING_PERMISSION_GRANTED" ||
-        kind === "RECORDING_PERMISSION_REVOKED"
+        kind === "RECORDING_PERMISSION_REVOKED" ||
+        kind === "ASSESSMENT_GRADED" ||
+        kind === "INVOICE_CREATED" ||
+        kind === "INVOICE_UPDATED" ||
+        kind === "SESSION_STARTED"
       ) {
         addToInbox(kind, notification, {
           serverId:
@@ -179,6 +183,86 @@ export function useNotifications() {
               notification.room_name || notification.room_code || "",
           }),
           { duration: 6000, icon: "🚫" },
+        );
+        return;
+      }
+
+      if (type === "ASSESSMENT_GRADED") {
+        toast.success(
+          t("notifications:assessmentGraded.subtitle", {
+            title: notification.assessment_title ?? "",
+            score: notification.score ?? "",
+            totalPoints: notification.total_points ?? ""
+          }),
+          { duration: 6000 }
+        );
+        return;
+      }
+
+      if (type === "INVOICE_CREATED") {
+        toast(
+          t("notifications:invoiceCreated.subtitle", {
+            invoiceNumber: notification.invoice_number ?? "",
+            amount: notification.amount ?? ""
+          }),
+          { duration: 6000, icon: "💳" }
+        );
+        return;
+      }
+
+      if (type === "INVOICE_UPDATED") {
+        toast(
+          t("notifications:invoiceUpdated.subtitle", {
+            invoiceNumber: notification.invoice_number ?? "",
+            status: t(`common:status.${notification.status}`, { defaultValue: notification.status })
+          }),
+          { duration: 6000, icon: "💵" }
+        );
+        return;
+      }
+
+      if (type === "SESSION_STARTED") {
+        toast(
+          (toastInstance) => (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-semibold">
+                {t("notifications:sessionStarted.title")}
+              </p>
+              <p className="text-xs opacity-70">
+                {t("notifications:sessionStarted.subtitle", {
+                  className: notification.class_name ?? "",
+                  hostName: notification.host_name ?? ""
+                })}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    toast.dismiss(toastInstance.id);
+                    window.location.href = `/room/${notification.room_code}`;
+                  }}
+                  className="flex-1 bg-indigo-600 text-white text-xs font-semibold py-1.5 rounded-lg"
+                >
+                  {t("notifications:sessionStarted.join")}
+                </button>
+                <button
+                  onClick={() => toast.dismiss(toastInstance.id)}
+                  className="px-3 text-xs opacity-60 hover:opacity-100"
+                >
+                  {t("notifications:roomInvite.dismiss")}
+                </button>
+              </div>
+            </div>
+          ),
+          {
+            duration: 15000,
+            style: {
+              background: "#1e1e2a",
+              color: "#f0f0f8",
+              border: "1px solid rgba(99,102,241,0.3)",
+              borderRadius: "12px",
+              padding: "12px",
+            },
+          },
         );
         return;
       }
