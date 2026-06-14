@@ -20,7 +20,7 @@
   "inbox": {
     "title": "Notifications",
     "empty": "No notifications yet",
-    "emptyHint": "Invites and shared recordings will show up here.",
+    "emptyHint": "Invites, grading, and updates will show up here.",
     "unreadCount_one": "{{count}} unread",
     "unreadCount_other": "{{count}} unread",
     "markAllRead": "Mark all read",
@@ -28,5 +28,25 @@
     "remove": "Remove",
     "clearAll": "Clear all",
     "unreadDot": "Unread"
+  },
+  "assessmentGraded": {
+    "title": "📝 Assessment Graded",
+    "subtitle": "You scored {{score}} / {{totalPoints}} on \"{{title}}\"",
+    "view": "View Grades"
+  },
+  "invoiceCreated": {
+    "title": "💳 New Invoice Issued",
+    "subtitle": "Invoice {{invoiceNumber}} for {{amount}} is ready",
+    "pay": "View Ledger"
+  },
+  "invoiceUpdated": {
+    "title": "💵 Invoice Updated",
+    "subtitle": "Invoice {{invoiceNumber}} status is now {{status}}",
+    "view": "View Ledger"
+  },
+  "sessionStarted": {
+    "title": "🟢 Live Class Started!",
+    "subtitle": "{{className}} by {{hostName}} is live",
+    "join": "Join Class"
   }
 }

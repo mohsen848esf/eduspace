@@ -126,6 +126,151 @@ def search_users(request):
         results.append(user_data)
         
     return Response(results)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def global_search(request):
+    q = request.query_params.get('q', '').strip()
+    if len(q) < 2:
+        return Response({
+            "students": [],
+            "teachers": [],
+            "courses": [],
+            "classes": [],
+            "sessions": [],
+            "assessments": [],
+            "invoices": []
+        })
+
+    from accounts.permissions import resolve_organization, has_org_permission
+    from accounts.models import OrgMember, Course, AcademyClass, Session, TuitionInvoice
+    from assessments.models import Assessment
+    
+    org = resolve_organization(request)
+    if not org:
+        return Response({
+            "students": [],
+            "teachers": [],
+            "courses": [],
+            "classes": [],
+            "sessions": [],
+            "assessments": [],
+            "invoices": []
+        })
+
+    results = {
+        "students": [],
+        "teachers": [],
+        "courses": [],
+        "classes": [],
+        "sessions": [],
+        "assessments": [],
+        "invoices": []
+    }
+
+    # 1. Students & Teachers
+    members = OrgMember.objects.filter(
+        organization=org,
+        user__is_active=True
+    ).select_related('user', 'role').filter(
+        models.Q(user__username__icontains=q) | models.Q(user__full_name__icontains=q)
+    )
+
+    for m in members[:10]:
+        role_name = m.role.name.lower() if m.role else 'student'
+        item = {
+            "id": m.user.id,
+            "username": m.user.username,
+            "full_name": m.user.full_name or m.user.username,
+            "role": role_name
+        }
+        if role_name == 'student':
+            results["students"].append(item)
+        elif role_name in ('teacher', 'admin'):
+            results["teachers"].append(item)
+
+    # 2. Courses
+    courses = Course.objects.filter(organization=org, is_active=True).filter(
+        models.Q(name__icontains=q) | models.Q(code__icontains=q)
+    )
+    for c in courses[:5]:
+        results["courses"].append({
+            "id": c.id,
+            "name": c.name,
+            "code": c.code
+        })
+
+    # 3. Academy Classes
+    classes = AcademyClass.objects.filter(course__organization=org, is_active=True).select_related('course')
+    if not request.user.is_superuser and not has_org_permission(request.user, org, 'can_manage_members'):
+        if has_org_permission(request.user, org, 'can_teach_class'):
+            classes = classes.filter(teacher=request.user)
+        else:
+            classes = classes.filter(enrollments__student=request.user)
+            
+    classes = classes.filter(name__icontains=q)
+    for cl in classes[:5]:
+        results["classes"].append({
+            "id": cl.id,
+            "name": cl.name,
+            "course_name": cl.course.name
+        })
+
+    # 4. Sessions
+    sessions = Session.objects.filter(organization=org).select_related('academy_class__course', 'active_room')
+    if not request.user.is_superuser and not has_org_permission(request.user, org, 'can_manage_sessions'):
+        if has_org_permission(request.user, org, 'can_teach_class'):
+            sessions = sessions.filter(
+                models.Q(host=request.user) | models.Q(academy_class__teacher=request.user)
+            )
+        else:
+            sessions = sessions.filter(
+                academy_class__enrollments__student=request.user,
+                academy_class__enrollments__is_active=True
+            )
+    sessions = sessions.filter(models.Q(title__icontains=q) | models.Q(description__icontains=q))
+    for s in sessions[:5]:
+        results["sessions"].append({
+            "id": s.id,
+            "title": s.title,
+            "status": s.status,
+            "room_code": s.active_room.room_code if s.active_room else None
+        })
+
+    # 5. Assessments
+    is_manager = (
+        has_org_permission(request.user, org, 'can_teach_class') or
+        has_org_permission(request.user, org, 'can_manage_members')
+    )
+    assessments = Assessment.objects.filter(organization=org)
+    if not is_manager:
+        assessments = assessments.filter(is_published=True)
+    assessments = assessments.filter(models.Q(title__icontains=q) | models.Q(description__icontains=q))
+    for a in assessments[:5]:
+        results["assessments"].append({
+            "id": a.id,
+            "title": a.title,
+            "is_published": a.is_published
+        })
+
+    # 6. Invoices
+    invoices = TuitionInvoice.objects.filter(organization=org).select_related('student')
+    if not has_org_permission(request.user, org, 'can_view_financials'):
+        invoices = invoices.filter(student=request.user)
+    invoices = invoices.filter(
+        models.Q(invoice_number__icontains=q) |
+        models.Q(student__username__icontains=q) |
+        models.Q(student__full_name__icontains=q)
+    )
+    for inv in invoices[:5]:
+        results["invoices"].append({
+            "id": inv.id,
+            "invoice_number": inv.invoice_number,
+            "amount": str(inv.amount),
+            "student_name": inv.student.full_name or inv.student.username,
+            "status": inv.status
+        })
+
+    return Response(results)
 
 
 @api_view(['GET'])
@@ -304,6 +449,44 @@ class TuitionInvoiceViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(student=self.request.user)
             
         return queryset
+
+    def perform_create(self, serializer):
+        invoice = serializer.save()
+        try:
+            from accounts.notifications import record_and_dispatch
+            record_and_dispatch(
+                user_id=invoice.student.id,
+                kind="INVOICE_CREATED",
+                data={
+                    "invoice_id": invoice.id,
+                    "invoice_number": invoice.invoice_number,
+                    "amount": str(invoice.amount),
+                    "status": invoice.status,
+                    "due_date": invoice.due_date.isoformat() if invoice.due_date else None,
+                }
+            )
+        except Exception:
+            pass
+
+    def perform_update(self, serializer):
+        old_status = self.get_object().status
+        invoice = serializer.save()
+        try:
+            if old_status != invoice.status:
+                from accounts.notifications import record_and_dispatch
+                record_and_dispatch(
+                    user_id=invoice.student.id,
+                    kind="INVOICE_UPDATED",
+                    data={
+                        "invoice_id": invoice.id,
+                        "invoice_number": invoice.invoice_number,
+                        "amount": str(invoice.amount),
+                        "status": invoice.status,
+                        "old_status": old_status,
+                    }
+                )
+        except Exception:
+            pass
 
 
 class ExpenseItemViewSet(viewsets.ModelViewSet):
