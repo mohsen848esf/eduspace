@@ -135,11 +135,71 @@ class TuitionInvoiceSerializer(serializers.ModelSerializer):
     student_username = serializers.CharField(source='student.username', read_only=True)
     student_full_name = serializers.CharField(source='student.full_name', read_only=True)
     class_name = serializers.CharField(source='academy_class.name', read_only=True)
+    items = serializers.JSONField(required=False, default=list)
 
     class Meta:
         model = TuitionInvoice
-        fields = ('id', 'student', 'student_username', 'student_full_name', 'academy_class', 'class_name', 'amount', 'status', 'due_date', 'paid_at', 'invoice_number', 'payment_method', 'issued_by', 'notes', 'created_at')
+        fields = (
+            'id', 'student', 'student_username', 'student_full_name', 'academy_class', 'class_name',
+            'amount', 'status', 'due_date', 'paid_at', 'invoice_number', 'payment_method', 'issued_by',
+            'notes', 'items', 'created_at'
+        )
         read_only_fields = ('id', 'invoice_number', 'issued_by', 'created_at')
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        notes_val = instance.notes or ""
+        import json
+        if notes_val.strip().startswith("{") and notes_val.strip().endswith("}"):
+            try:
+                data = json.loads(notes_val)
+                ret["notes"] = data.get("notes", "")
+                ret["items"] = data.get("items", [])
+            except Exception:
+                ret["notes"] = notes_val
+                ret["items"] = []
+        else:
+            ret["notes"] = notes_val
+            ret["items"] = []
+        return ret
+
+    def validate(self, attrs):
+        import json
+        items_data = attrs.pop("items", None)
+        
+        if items_data is not None:
+            if not isinstance(items_data, list):
+                raise serializers.ValidationError({"items": "Items must be a list."})
+            
+            try:
+                total_amount = sum(
+                    float(item.get("unit_price", 0)) * int(item.get("quantity", 1))
+                    for item in items_data
+                )
+                if total_amount > 0:
+                    attrs["amount"] = total_amount
+            except (ValueError, TypeError):
+                raise serializers.ValidationError({"items": "Invalid line item price or quantity."})
+
+            notes_text = attrs.get("notes", "")
+            if "notes" not in attrs and self.instance:
+                existing_notes = self.instance.notes or ""
+                if existing_notes.strip().startswith("{") and existing_notes.strip().endswith("}"):
+                    try:
+                        existing_data = json.loads(existing_notes)
+                        notes_text = existing_data.get("notes", "")
+                    except Exception:
+                        notes_text = existing_notes
+                else:
+                    notes_text = existing_notes
+            
+            structured_notes = {
+                "notes": notes_text,
+                "items": items_data
+            }
+            attrs["notes"] = json.dumps(structured_notes)
+
+        return attrs
 
     def create(self, validated_data):
         from django.db import transaction
@@ -170,10 +230,11 @@ class TuitionInvoiceSerializer(serializers.ModelSerializer):
 class ExpenseItemSerializer(serializers.ModelSerializer):
     recipient_username = serializers.CharField(source='recipient.username', read_only=True)
     recipient_full_name = serializers.CharField(source='recipient.full_name', read_only=True)
+    approved_by_name = serializers.CharField(source='approved_by.full_name', read_only=True)
 
     class Meta:
         model = ExpenseItem
-        fields = ('id', 'amount', 'category', 'description', 'recipient', 'recipient_username', 'recipient_full_name', 'approved_by', 'attachment', 'incurred_at', 'created_at')
+        fields = ('id', 'amount', 'category', 'description', 'recipient', 'recipient_username', 'recipient_full_name', 'approved_by', 'approved_by_name', 'attachment', 'incurred_at', 'created_at')
         read_only_fields = ('id', 'approved_by', 'created_at')
 
     def create(self, validated_data):

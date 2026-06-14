@@ -37,6 +37,12 @@ export interface Enrollment {
   is_active: boolean;
 }
 
+export interface TuitionInvoiceItem {
+  description: string;
+  quantity: number;
+  unit_price: string;
+}
+
 export interface TuitionInvoice {
   id: number;
   student: number;
@@ -45,9 +51,12 @@ export interface TuitionInvoice {
   academy_class: number | null;
   class_name?: string;
   amount: string;
-  status: "paid" | "unpaid" | "void";
+  status: "paid" | "unpaid" | "void" | "cancelled";
   due_date: string | null;
   paid_at: string | null;
+  payment_method?: "cash" | "bank_transfer" | "online" | "";
+  notes?: string;
+  items?: TuitionInvoiceItem[];
   created_at: string;
 }
 
@@ -59,6 +68,9 @@ export interface ExpenseItem {
   recipient?: number | null;
   recipient_username?: string;
   recipient_full_name?: string;
+  approved_by?: number | null;
+  approved_by_name?: string;
+  attachment?: string | File | null;
   incurred_at: string;
   created_at: string;
 }
@@ -145,16 +157,22 @@ export const crmApi = {
     const res = await client.get("/auth/expenses/");
     return res.data;
   },
-  createExpense: async (data: Partial<ExpenseItem>): Promise<ExpenseItem> => {
-    const res = await client.post("/auth/expenses/", data);
+  createExpense: async (data: FormData | Partial<ExpenseItem>): Promise<ExpenseItem> => {
+    const headers = data instanceof FormData ? { "Content-Type": "multipart/form-data" } : {};
+    const res = await client.post("/auth/expenses/", data, { headers });
     return res.data;
   },
-  updateExpense: async (id: number, data: Partial<ExpenseItem>): Promise<ExpenseItem> => {
-    const res = await client.patch(`/auth/expenses/${id}/`, data);
+  updateExpense: async (id: number, data: FormData | Partial<ExpenseItem>): Promise<ExpenseItem> => {
+    const headers = data instanceof FormData ? { "Content-Type": "multipart/form-data" } : {};
+    const res = await client.patch(`/auth/expenses/${id}/`, data, { headers });
     return res.data;
   },
   deleteExpense: async (id: number): Promise<void> => {
     await client.delete(`/auth/expenses/${id}/`);
+  },
+  approveExpense: async (id: number): Promise<ExpenseItem> => {
+    const res = await client.post(`/auth/expenses/${id}/approve/`);
+    return res.data;
   },
 
   // User search for selector
