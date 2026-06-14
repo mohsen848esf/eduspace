@@ -328,6 +328,13 @@ class ExpenseItemViewSet(viewsets.ModelViewSet):
             
         return ExpenseItem.objects.select_related('recipient', 'approved_by').filter(organization=org)
 
+    @action(detail=True, methods=['POST'])
+    def approve(self, request, pk=None):
+        expense = self.get_object()
+        expense.approved_by = request.user
+        expense.save()
+        return Response(ExpenseItemSerializer(expense).data)
+
 
 class SessionViewSet(viewsets.ModelViewSet):
     serializer_class = SessionSerializer

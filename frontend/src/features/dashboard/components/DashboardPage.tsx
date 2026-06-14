@@ -84,6 +84,67 @@ export default function DashboardPage() {
 
   const isDataLoading = loadingCourses || loadingClasses || loadingEnrollments || loadingInvoices || loadingExpenses || loadingSessions;
 
+  // Aggregated data for past 6 months
+  const chartData = (() => {
+    const months: Array<{
+      year: number;
+      month: number;
+      label: string;
+      revenue: number;
+      expense: number;
+    }> = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({
+        year: d.getFullYear(),
+        month: d.getMonth(),
+        label: d.toLocaleDateString(language === "fa" ? "fa-IR" : "en-US", { month: "short" }),
+        revenue: 0,
+        expense: 0
+      });
+    }
+
+    // Aggregate Invoices (Revenue)
+    invoices.forEach(inv => {
+      if (inv.status === "paid" && inv.paid_at) {
+        const d = new Date(inv.paid_at);
+        const match = months.find(m => m.year === d.getFullYear() && m.month === d.getMonth());
+        if (match) {
+          match.revenue += parseFloat(inv.amount) || 0;
+        }
+      }
+    });
+
+    // Aggregate Expenses
+    expenses.forEach(exp => {
+      if (exp.incurred_at) {
+        const d = new Date(exp.incurred_at);
+        const match = months.find(m => m.year === d.getFullYear() && m.month === d.getMonth());
+        if (match) {
+          match.expense += parseFloat(exp.amount) || 0;
+        }
+      }
+    });
+
+    return months;
+  })();
+
+  const maxVal = Math.max(
+    ...chartData.map(d => Math.max(d.revenue, d.expense)),
+    100
+  );
+  const roundMaxVal = Math.ceil(maxVal / 100) * 100;
+
+  const getX = (index: number) => 50 + (index * 530) / 5;
+  const getY = (value: number) => 210 - (value * 190) / roundMaxVal;
+
+  const revenuePath = `M ${chartData.map((d, idx) => `${getX(idx)} ${getY(d.revenue)}`).join(" L ")}`;
+  const expensePath = `M ${chartData.map((d, idx) => `${getX(idx)} ${getY(d.expense)}`).join(" L ")}`;
+
+  const revenueArea = `${revenuePath} L ${getX(5)} 210 L ${getX(0)} 210 Z`;
+  const expenseArea = `${expensePath} L ${getX(5)} 210 L ${getX(0)} 210 Z`;
+
   return (
     <AppShell
       title={t("title")}
@@ -143,6 +204,171 @@ export default function DashboardPage() {
           <div className="p-12 flex justify-center"><Spinner size="lg" /></div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Financial Chart Card (Only visible to Admins/Financial role) */}
+            {canManageFinance && (
+              <div className="bg-[var(--s2)] rounded-xl p-5 border border-[var(--b)] col-span-full">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+                  <div>
+                    <h3 className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                      {isFarsi ? "روند مالی (۶ ماه گذشته)" : "Financial Trends (Past 6 Months)"}
+                    </h3>
+                    <p className="text-[10px] text-[var(--t3)] mt-0.5">
+                      {isFarsi ? "درآمد در مقابل هزینه‌ها" : "Revenue vs. Expenses"}
+                    </p>
+                  </div>
+                  <div className="flex gap-4 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[var(--green)] inline-block" />
+                      <span className="text-[var(--t2)] font-medium">
+                        {isFarsi ? "درآمد" : "Revenue"}: ${totalRevenue.toFixed(1)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[var(--red)] inline-block" />
+                      <span className="text-[var(--t2)] font-medium">
+                        {isFarsi ? "هزینه‌ها" : "Expenses"}: ${totalExpense.toFixed(1)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="relative w-full overflow-x-auto scrollbar-none">
+                  <div className="min-w-[580px] h-[240px]">
+                    <svg className="w-full h-full" viewBox="0 0 600 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <defs>
+                        <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="var(--green)" stopOpacity="0.25" />
+                          <stop offset="100%" stopColor="var(--green)" stopOpacity="0" />
+                        </linearGradient>
+                        <linearGradient id="expenseGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="var(--red)" stopOpacity="0.25" />
+                          <stop offset="100%" stopColor="var(--red)" stopOpacity="0" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* Horizontal Gridlines */}
+                      {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+                        const y = 210 - ratio * 190;
+                        return (
+                          <g key={idx}>
+                            <line
+                              x1="50"
+                              y1={y}
+                              x2="580"
+                              y2={y}
+                              stroke="var(--b)"
+                              strokeWidth="1"
+                              strokeDasharray="4 4"
+                            />
+                            <text
+                              x="42"
+                              y={y + 3.5}
+                              fill="var(--t3)"
+                              fontSize="9"
+                              textAnchor="end"
+                              fontFamily="monospace"
+                            >
+                              ${Math.round(ratio * roundMaxVal)}
+                            </text>
+                          </g>
+                        );
+                      })}
+
+                      {/* X Axis labels */}
+                      {chartData.map((d, idx) => {
+                        const x = getX(idx);
+                        return (
+                          <text
+                            key={idx}
+                            x={x}
+                            y="230"
+                            fill="var(--t2)"
+                            fontSize="10"
+                            textAnchor="middle"
+                          >
+                            {d.label}
+                          </text>
+                        );
+                      })}
+
+                      {/* Area paths */}
+                      <path d={revenueArea} fill="url(#revenueGrad)" />
+                      <path d={expenseArea} fill="url(#expenseGrad)" />
+
+                      {/* Line paths */}
+                      <path
+                        d={revenuePath}
+                        fill="none"
+                        stroke="var(--green)"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d={expensePath}
+                        fill="none"
+                        stroke="var(--red)"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+
+                      {/* Data Points */}
+                      {chartData.map((d, idx) => {
+                        const rx = getX(idx);
+                        const ry = getY(d.revenue);
+                        const ex = getX(idx);
+                        const ey = getY(d.expense);
+                        return (
+                          <g key={idx}>
+                            {/* Revenue point */}
+                            <circle
+                              cx={rx}
+                              cy={ry}
+                              r="4"
+                              fill="var(--s2)"
+                              stroke="var(--green)"
+                              strokeWidth="2"
+                            />
+                            <text
+                              x={rx}
+                              y={ry - 8}
+                              fill="var(--green)"
+                              fontSize="8"
+                              fontWeight="semibold"
+                              textAnchor="middle"
+                            >
+                              {d.revenue > 0 ? `$${Math.round(d.revenue)}` : ""}
+                            </text>
+
+                            {/* Expense point */}
+                            <circle
+                              cx={ex}
+                              cy={ey}
+                              r="4"
+                              fill="var(--s2)"
+                              stroke="var(--red)"
+                              strokeWidth="2"
+                            />
+                            <text
+                              x={ex}
+                              y={ey - 8}
+                              fill="var(--red)"
+                              fontSize="8"
+                              fontWeight="semibold"
+                              textAnchor="middle"
+                            >
+                              {d.expense > 0 ? `$${Math.round(d.expense)}` : ""}
+                            </text>
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Courses & Classes (Admins/Teachers) */}
             {canManageCRM && (
               <div className="bg-[var(--s2)] rounded-xl p-4 border border-[var(--b)]">
