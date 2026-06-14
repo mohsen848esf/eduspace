@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance
+from .models import User, Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance, Organization, OrgMember, Role
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -23,10 +23,24 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    organizations = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'full_name', 'avatar', 'is_online')
+        fields = ('id', 'username', 'email', 'full_name', 'avatar', 'is_online', 'organizations')
         read_only_fields = ('id',)
+
+    def get_organizations(self, obj):
+        memberships = obj.org_memberships.filter(is_active=True).select_related('organization', 'role')
+        return [
+            {
+                'id': m.organization.id,
+                'name': m.organization.name,
+                'slug': m.organization.slug,
+                'role': m.role.name if m.role else None
+            }
+            for m in memberships
+        ]
 
 
 class CourseSerializer(serializers.ModelSerializer):
@@ -255,4 +269,58 @@ class OrgContextSerializer(serializers.Serializer):
                 'name': org.name,
                 'slug': org.slug,
             }
-        return None
+        return None
+
+
+class OrganizationDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Organization
+        fields = ('id', 'name', 'slug', 'type', 'is_active', 'logo', 'created_at')
+        read_only_fields = ('id', 'slug', 'type', 'is_active', 'created_at')
+
+
+class OrgMemberSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(write_only=True, required=False)
+    email = serializers.CharField(write_only=True, required=False)
+    user_details = UserSerializer(source='user', read_only=True)
+    role_name = serializers.CharField(source='role.name', read_only=True)
+
+    class Meta:
+        model = OrgMember
+        fields = (
+            'id', 'user', 'user_details', 'role', 'role_name', 'username', 'email',
+            'is_active', 'contract_type', 'joined_at', 'expires_at'
+        )
+        read_only_fields = ('id', 'user', 'joined_at')
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        org = getattr(request, 'organization', None)
+        if not org:
+            raise serializers.ValidationError("Organization context required.")
+
+        username = validated_data.pop('username', None)
+        email = validated_data.pop('email', None)
+        user = None
+
+        if username:
+            user = User.objects.filter(username=username).first()
+        elif email:
+            user = User.objects.filter(email=email).first()
+
+        if not user:
+            raise serializers.ValidationError("User not found on the system. Please verify the username or email.")
+
+        if OrgMember.objects.filter(organization=org, user=user).exists():
+            raise serializers.ValidationError("This user is already a member of this organization.")
+
+        validated_data['organization'] = org
+        validated_data['user'] = user
+        validated_data['invited_by'] = request.user if request and request.user.is_authenticated else None
+        return super().create(validated_data)
+
+
+class RoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Role
+        fields = ('id', 'name', 'description')

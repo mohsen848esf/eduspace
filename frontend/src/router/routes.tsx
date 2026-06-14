@@ -52,6 +52,9 @@ const LedgerPage = lazy(
 const OrgSettingsPage = lazy(
   () => import("../features/dashboard/components/OrgSettingsPage"),
 );
+const ProfileCompletionPage = lazy(
+  () => import("../features/dashboard/components/ProfileCompletionPage"),
+);
 
 export interface RouteConfig {
   path: string;
@@ -118,6 +121,12 @@ export const routes: RouteConfig[] = [
     component: OrgSettingsPage,
     isPrivate: true,
     requiredPermissions: ["can_manage_members"],
+  },
+  {
+    path: "/settings/profile",
+    component: ProfileCompletionPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
   },
   {
     path: "/room/:roomCode",

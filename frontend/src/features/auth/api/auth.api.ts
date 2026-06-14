@@ -1,6 +1,13 @@
 import client from "../../../lib/api/client";
 import type { LoginInput, RegisterPayload } from "../schemas/auth.schema";
 
+export interface UserOrg {
+  id: number;
+  name: string;
+  slug: string;
+  role: string | null;
+}
+
 export interface User {
   id: number;
   username: string;
@@ -8,6 +15,7 @@ export interface User {
   full_name: string;
   avatar: string | null;
   is_online: boolean;
+  organizations?: UserOrg[];
 }
 
 export interface AuthResponse {
@@ -26,6 +34,34 @@ export interface OrgContext {
   permissions: string[];
 }
 
+export interface OrganizationDetail {
+  id: number;
+  name: string;
+  slug: string;
+  type: string;
+  is_active: boolean;
+  logo: string | null;
+  created_at: string;
+}
+
+export interface OrgMember {
+  id: number;
+  user: number;
+  user_details: User;
+  role: number | null;
+  role_name: string | null;
+  is_active: boolean;
+  contract_type: string;
+  joined_at: string;
+  expires_at: string | null;
+}
+
+export interface Role {
+  id: number;
+  name: string;
+  description: string;
+}
+
 export const authApi = {
   login: async (data: LoginInput): Promise<AuthResponse> => {
     const res = await client.post("/auth/login/", data);
@@ -42,6 +78,12 @@ export const authApi = {
     return res.data;
   },
 
+  updateProfile: async (data: FormData | Partial<User>): Promise<User> => {
+    const headers = data instanceof FormData ? { "Content-Type": "multipart/form-data" } : {};
+    const res = await client.patch("/auth/me/", data, { headers });
+    return res.data;
+  },
+
   logout: async (): Promise<void> => {
     const refresh = localStorage.getItem("refresh_token");
     await client.post("/auth/logout/", { refresh });
@@ -53,5 +95,39 @@ export const authApi = {
     const res = await client.get("/auth/org-context/");
     return res.data;
   },
-};
 
+  getOrganizations: async (): Promise<OrganizationDetail[]> => {
+    const res = await client.get("/auth/organizations/");
+    return res.data;
+  },
+
+  updateOrganization: async (id: number, data: FormData | Partial<OrganizationDetail>): Promise<OrganizationDetail> => {
+    const headers = data instanceof FormData ? { "Content-Type": "multipart/form-data" } : {};
+    const res = await client.patch(`/auth/organizations/${id}/`, data, { headers });
+    return res.data;
+  },
+
+  getMembers: async (): Promise<OrgMember[]> => {
+    const res = await client.get("/auth/org-members/");
+    return res.data;
+  },
+
+  inviteMember: async (data: { username?: string; email?: string; role: number | null; contract_type: string; expires_at?: string | null }): Promise<OrgMember> => {
+    const res = await client.post("/auth/org-members/", data);
+    return res.data;
+  },
+
+  updateMember: async (id: number, data: Partial<OrgMember>): Promise<OrgMember> => {
+    const res = await client.patch(`/auth/org-members/${id}/`, data);
+    return res.data;
+  },
+
+  removeMember: async (id: number): Promise<void> => {
+    await client.delete(`/auth/org-members/${id}/`);
+  },
+
+  getRoles: async (): Promise<Role[]> => {
+    const res = await client.get("/auth/roles/");
+    return res.data;
+  },
+};
