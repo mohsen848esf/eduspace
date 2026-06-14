@@ -35,6 +35,7 @@ export interface Enrollment {
   student_full_name?: string;
   enrolled_at: string;
   is_active: boolean;
+  completion_status?: "in_progress" | "completed" | "dropped";
 }
 
 export interface TuitionInvoiceItem {

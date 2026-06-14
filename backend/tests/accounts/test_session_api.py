@@ -79,6 +79,7 @@ class SessionAPITest(APITransactionTestCase):
             'scheduled_end': (timezone.now() + datetime.timedelta(days=1, hours=2)).isoformat()
         }
         res = self.client.post(url, data, HTTP_X_ORGANIZATION_SLUG='org-one')
+        print("CREATE SESSION RESPONSE ERROR DATA:", res.data)
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         self.assertEqual(res.data['status'], Session.Status.SCHEDULED)
         self.assertEqual(res.data['organization'], self.org1.id)

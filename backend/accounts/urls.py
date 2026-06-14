@@ -14,6 +14,7 @@ router.register('attendance', views.AttendanceViewSet, basename='attendance')
 router.register('organizations', views.OrganizationViewSet, basename='organization')
 router.register('org-members', views.OrgMemberViewSet, basename='org-member')
 router.register('roles', views.RoleViewSet, basename='role')
+router.register('certificates', views.CertificateViewSet, basename='certificate')
 
 urlpatterns = [
     path('register/', views.register, name='register'),

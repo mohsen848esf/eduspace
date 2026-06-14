@@ -12,8 +12,10 @@ from accounts.routing import websocket_urlpatterns as notification_patterns
 
 application = ProtocolTypeRouter({
     'http': get_asgi_application(),
-    'websocket': URLRouter(
-        game_patterns +
-        notification_patterns
-    ),
+    'websocket': AuthMiddlewareStack(
+        URLRouter(
+            game_patterns +
+            notification_patterns
+        )
+      ),
 })

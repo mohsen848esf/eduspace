@@ -51,6 +51,7 @@ class GameSession(models.Model):
         FINISHED = 'finished', 'Finished'
 
     game = models.ForeignKey(Game, on_delete=models.CASCADE)
+    organization = models.ForeignKey('accounts.Organization', on_delete=models.CASCADE, related_name='game_sessions', null=True, blank=True)
     host = models.ForeignKey(User, on_delete=models.CASCADE, related_name='hosted_sessions')
     room_code = models.CharField(max_length=10, unique=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.WAITING)
