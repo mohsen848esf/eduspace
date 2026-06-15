@@ -317,6 +317,75 @@ export default function SessionsPage() {
               onChange={(e) => setScheduleForm({ ...scheduleForm, scheduled_end: e.target.value })}
               required
             />
+
+            {(() => {
+              if (!scheduleForm.scheduled_start || !scheduleForm.scheduled_end || !scheduleForm.academy_class) return null;
+              const formStart = new Date(scheduleForm.scheduled_start);
+              const formEnd = new Date(scheduleForm.scheduled_end);
+              const formClassId = parseInt(scheduleForm.academy_class);
+
+              const selectedClass = classes.find((c) => c.id === formClassId);
+              const formTeacher = selectedClass?.teacher;
+              const formRoom = selectedClass?.room ? selectedClass.room.trim().toLowerCase() : "";
+
+              for (const s of sessions) {
+                if (!s.scheduled_start || !s.scheduled_end) continue;
+                const sStart = new Date(s.scheduled_start);
+                const sEnd = new Date(s.scheduled_end);
+
+                if (formStart < sEnd && formEnd > sStart) {
+                  if (s.academy_class === formClassId) {
+                    return (
+                      <div className="bg-[rgba(245,158,11,0.1)] border border-[var(--amber)] text-[var(--amber)] text-xs p-3 rounded-xl flex flex-col gap-1">
+                        <div className="font-semibold flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--amber)] animate-pulse" />
+                          {isFarsi ? "هشدار تداخل زمان‌بندی:" : "Class Overlap Warning:"}
+                        </div>
+                        <div>
+                          {isFarsi
+                            ? `کلاس در این زمان جلسه دیگری دارد ("${s.title}").`
+                            : `This class already has another session scheduled ("${s.title}") at this time.`}
+                        </div>
+                      </div>
+                    );
+                  }
+                  if (formTeacher && s.host === formTeacher) {
+                    return (
+                      <div className="bg-[rgba(245,158,11,0.1)] border border-[var(--amber)] text-[var(--amber)] text-xs p-3 rounded-xl flex flex-col gap-1">
+                        <div className="font-semibold flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--amber)] animate-pulse" />
+                          {isFarsi ? "هشدار تداخل مدرس:" : "Host Conflict Warning:"}
+                        </div>
+                        <div>
+                          {isFarsi
+                            ? `مدرس ${s.host_name || "مورد نظر"} در این بازه در جلسه "${s.title}" مشغول است.`
+                            : `Host ${s.host_name || "selected"} is busy with session "${s.title}" at this time.`}
+                        </div>
+                      </div>
+                    );
+                  }
+                  const otherClass = classes.find((c) => c.id === s.academy_class);
+                  const otherRoom = otherClass?.room ? otherClass.room.trim().toLowerCase() : "";
+                  if (formRoom && otherRoom === formRoom) {
+                    return (
+                      <div className="bg-[rgba(245,158,11,0.1)] border border-[var(--amber)] text-[var(--amber)] text-xs p-3 rounded-xl flex flex-col gap-1">
+                        <div className="font-semibold flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--amber)] animate-pulse" />
+                          {isFarsi ? "هشدار تداخل اتاق:" : "Room Conflict Warning:"}
+                        </div>
+                        <div>
+                          {isFarsi
+                            ? `اتاق ${selectedClass?.room} در این بازه برای جلسه "${s.title}" کلاس "${s.academy_class_name}" رزرو شده است.`
+                            : `Room ${selectedClass?.room || "Room"} is booked for session "${s.title}" of class "${s.academy_class_name}" at this time.`}
+                        </div>
+                      </div>
+                    );
+                  }
+                }
+              }
+              return null;
+            })()}
+
             <div className="flex justify-end gap-2 mt-4">
               <Button type="button" variant="secondary" onClick={() => setIsScheduling(false)}>
                 {isFarsi ? "انصراف" : "Cancel"}

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "react-hot-toast";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   useSessionAttendance,
   useUpdateAttendance,
@@ -8,6 +9,8 @@ import { Modal, ModalHeader, ModalTitle, ModalBody, ModalClose } from "../../../
 import Button from "../../../components/ui/Button";
 import Spinner from "../../../components/ui/Spinner";
 import { useOrgPermission } from "../../../hooks/useOrgPermission";
+import { sessionsApi } from "../../sessions/api/sessions.api";
+import recordingsApi from "../../recordings/api/recordings.api";
 
 interface AttendanceModalProps {
   sessionId: number;
@@ -23,9 +26,51 @@ export default function AttendanceModal({
   const isFarsi = language === "fa";
   const { hasPermission } = useOrgPermission();
   const canManage = hasPermission("can_manage_attendance") || hasPermission("can_teach_class");
+
+  // Fetch session details
+  const { data: session } = useQuery({
+    queryKey: ["session", sessionId],
+    queryFn: () => sessionsApi.getSession(sessionId),
+  });
+
   const { data: attendance = [], isLoading: loadingAttendance } = useSessionAttendance(sessionId);
   const { updateSingle, updateBulk } = useUpdateAttendance(sessionId);
   const [bulkStatus, setBulkStatus] = useState("present");
+
+  const activeRoomCode = session?.active_room_code;
+
+  // Query LiveKit room recording status if live
+  const { data: recStatus, refetch: refetchRecStatus } = useQuery({
+    queryKey: ["roomRecordingStatus", activeRoomCode],
+    queryFn: () => recordingsApi.roomStatus(activeRoomCode!),
+    enabled: !!activeRoomCode && session?.status === "live",
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === "starting" || status === "processing" ? 3000 : 10000;
+    }
+  });
+
+  const startRecordingMutation = useMutation({
+    mutationFn: () => recordingsApi.start(activeRoomCode!, "720p"),
+    onSuccess: () => {
+      toast.success(isFarsi ? "ضبط کلاس شروع شد" : "Recording started");
+      refetchRecStatus();
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.error || (isFarsi ? "خطا در شروع ضبط" : "Failed to start recording"));
+    }
+  });
+
+  const stopRecordingMutation = useMutation({
+    mutationFn: () => recordingsApi.stop(activeRoomCode!),
+    onSuccess: () => {
+      toast.success(isFarsi ? "ضبط کلاس متوقف شد" : "Recording stopped");
+      refetchRecStatus();
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.error || (isFarsi ? "خطا در توقف ضبط" : "Failed to stop recording"));
+    }
+  });
 
   const handleBulkApply = () => {
     if (attendance.length === 0) return;
@@ -43,14 +88,118 @@ export default function AttendanceModal({
     });
   };
 
+  // Calculate attendance rates
+  const totalCount = attendance.length;
+  const presentCount = attendance.filter((a) => a.status === "present").length;
+  const lateCount = attendance.filter((a) => a.status === "late").length;
+  const presentOrLate = presentCount + lateCount;
+  const attendanceRate = totalCount > 0 ? Math.round((presentOrLate / totalCount) * 100) : 0;
+
   return (
     <Modal open={true} onOpenChange={(open) => { if (!open) onClose(); }} panelClassName="max-w-2xl">
       <ModalHeader>
         <ModalTitle>
-          {isFarsi ? "لیست حضور و غیاب جلسه" : "Session Attendance Panel"}
+          {isFarsi ? "جزئیات و حضور و غیاب جلسه" : "Session Details & Attendance"}
         </ModalTitle>
       </ModalHeader>
       <ModalBody>
+        {/* Session Info & Visual Progress Rate */}
+        <div className="flex flex-col sm:flex-row items-center gap-6 bg-[var(--s3)] p-4 rounded-2xl border border-[var(--b)] mb-4">
+          <div className="relative w-20 h-20 flex-shrink-0 flex items-center justify-center">
+            <svg className="w-full h-full transform -rotate-90">
+              <circle cx="40" cy="40" r="34" className="stroke-[var(--b)] fill-none" strokeWidth="6" />
+              <circle
+                cx="40"
+                cy="40"
+                r="34"
+                className="stroke-[var(--green)] fill-none transition-all duration-500 ease-out"
+                strokeWidth="6"
+                strokeDasharray={`${2 * Math.PI * 34}`}
+                strokeDashoffset={`${2 * Math.PI * 34 * (1 - attendanceRate / 100)}`}
+                strokeLinecap="round"
+              />
+            </svg>
+            <span className="absolute text-sm font-bold text-[var(--t1)]">{attendanceRate}%</span>
+          </div>
+          <div className="flex-1 text-center sm:text-start flex flex-col gap-1">
+            <h3 className="text-sm font-bold text-[var(--t1)]">{session?.title || "—"}</h3>
+            <span className="text-xs text-[var(--t3)]">
+              {isFarsi ? "کلاس:" : "Class:"} <strong className="text-[var(--t2)]">{session?.academy_class_name || "—"}</strong>
+            </span>
+            <span className="text-xs text-[var(--t3)]">
+              {isFarsi ? "مدرس:" : "Host:"} <strong className="text-[var(--t2)]">{session?.host_name || "—"}</strong>
+            </span>
+            <div className="flex gap-3 mt-1.5 justify-center sm:justify-start text-[10px] font-semibold text-[var(--t3)]">
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-[var(--green)]" />
+                {isFarsi ? `حاضر/تاخیر: ${presentOrLate}` : `Present/Late: ${presentOrLate}`}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-[var(--red)]" />
+                {isFarsi ? `غایب: ${totalCount - presentOrLate}` : `Absent: ${totalCount - presentOrLate}`}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-[var(--b)]" />
+                {isFarsi ? `کل: ${totalCount}` : `Total: ${totalCount}`}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* LiveKit Recording Egress Controls */}
+        {session?.status === "live" && activeRoomCode && canManage && (
+          <div className="flex flex-col gap-2 bg-[var(--s3)] p-4 rounded-2xl border border-[var(--b)] mb-4">
+            <span className="text-xs font-semibold text-[var(--t3)] uppercase tracking-wider">
+              {isFarsi ? "مدیریت ضبط زنده (LiveKit Egress)" : "Live Recording Controls"}
+            </span>
+            <div className="flex items-center justify-between gap-4 mt-1">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${
+                  recStatus?.status === "recording"
+                    ? "bg-[var(--red)] animate-pulse"
+                    : recStatus?.status === "starting" || recStatus?.status === "processing"
+                    ? "bg-[var(--amber)] animate-pulse"
+                    : "bg-[var(--t3)]"
+                }`} />
+                <span className="text-xs font-semibold text-[var(--t1)]">
+                  {recStatus?.status === "recording" && (isFarsi ? "در حال ضبط زنده..." : "Recording Live...")}
+                  {recStatus?.status === "starting" && (isFarsi ? "در حال آماده‌سازی..." : "Initializing...")}
+                  {recStatus?.status === "processing" && (isFarsi ? "در حال پردازش ویدیو..." : "Processing video...")}
+                  {(!recStatus || recStatus.status === "idle") && (isFarsi ? "غیرفعال" : "Idle")}
+                  {recStatus?.status === "failed" && (isFarsi ? "ضبط با خطا مواجه شد" : "Failed")}
+                </span>
+              </div>
+              
+              <div className="flex gap-2">
+                {(!recStatus || recStatus.status === "idle" || recStatus.status === "failed") ? (
+                  <Button
+                    size="sm"
+                    onClick={() => startRecordingMutation.mutate()}
+                    loading={startRecordingMutation.isPending}
+                    variant="success"
+                  >
+                    {isFarsi ? "شروع ضبط" : "Start Recording"}
+                  </Button>
+                ) : recStatus.status === "recording" ? (
+                  <Button
+                    size="sm"
+                    onClick={() => stopRecordingMutation.mutate()}
+                    loading={stopRecordingMutation.isPending}
+                    variant="danger"
+                  >
+                    {isFarsi ? "توقف ضبط" : "Stop Recording"}
+                  </Button>
+                ) : (
+                  <Button size="sm" disabled variant="secondary">
+                    {isFarsi ? "کمی صبر کنید..." : "Please wait..."}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bulk attendance tools */}
         {canManage && attendance.length > 0 && (
           <div className="flex gap-2 items-center bg-[var(--s3)] p-3 rounded-xl border border-[var(--b)] mb-4">
             <span className="text-xs font-semibold text-[var(--t2)]">
@@ -76,6 +225,7 @@ export default function AttendanceModal({
           </div>
         )}
 
+        {/* Attendance table */}
         {loadingAttendance ? (
           <div className="flex justify-center p-8">
             <Spinner />
