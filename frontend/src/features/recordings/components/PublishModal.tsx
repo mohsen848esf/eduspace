@@ -29,7 +29,7 @@ interface CallParticipant extends User {
 
 interface PublishModalProps {
   open: boolean;
-  recordingToken: string;
+  recordingToken?: string;
   /** Optional room code to surface the call's participant history. */
   roomCode?: string;
   initialSelected?: User[];
@@ -147,6 +147,7 @@ export default function PublishModal({
   const clearAll = () => setSelected([]);
 
   const handleCopyLink = async () => {
+    if (!recordingToken) return;
     try {
       await navigator.clipboard.writeText(recordingsApi.watchUrl(recordingToken));
       setLinkCopied(true);
@@ -320,7 +321,7 @@ export default function PublishModal({
               </span>
             </span>
           </label>
-          {linkShared && (
+          {linkShared && recordingToken && (
             <div className="flex gap-2">
               <code className="flex-1 bg-[var(--s3)] rounded-lg px-3 py-2 text-[11px] text-[var(--t2)] truncate force-ltr">
                 {recordingsApi.watchUrl(recordingToken)}

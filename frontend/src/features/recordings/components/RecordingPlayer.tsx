@@ -106,6 +106,81 @@ export default function RecordingPlayer({
     else v.addEventListener("loadedmetadata", apply, { once: true });
   }, [blobUrl, startSeconds]);
 
+  // Keydown event listener for video player hotkeys (Space for play/pause, Arrows for seek/volume, M for mute)
+  useEffect(() => {
+    if (!blobUrl || !videoRef.current) return;
+    const v = videoRef.current;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore shortcut keypresses if the focus is on a text field or interactive form element
+      const active = document.activeElement;
+      if (active) {
+        const tagName = active.tagName.toLowerCase();
+        const contentEditable = active.getAttribute("contenteditable");
+        if (
+          tagName === "input" ||
+          tagName === "textarea" ||
+          tagName === "select" ||
+          contentEditable === "true" ||
+          contentEditable === ""
+        ) {
+          return;
+        }
+      }
+
+      switch (e.code) {
+        case "Space":
+          e.preventDefault();
+          if (v.paused) {
+            v.play().catch(() => {});
+          } else {
+            v.pause();
+          }
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          if (e.shiftKey) {
+            // Frame scrub: 0.1s back
+            v.currentTime = Math.max(0, v.currentTime - 0.1);
+          } else {
+            // Seek 5s back
+            v.currentTime = Math.max(0, v.currentTime - 5);
+          }
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          if (e.shiftKey) {
+            // Frame scrub: 0.1s forward
+            v.currentTime = Math.min(v.duration || Infinity, v.currentTime + 0.1);
+          } else {
+            // Seek 5s forward
+            v.currentTime = Math.min(v.duration || Infinity, v.currentTime + 5);
+          }
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          v.volume = Math.min(1, v.volume + 0.05);
+          v.muted = false;
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          v.volume = Math.max(0, v.volume - 0.05);
+          break;
+        case "KeyM":
+          e.preventDefault();
+          v.muted = !v.muted;
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [blobUrl]);
+
   // Heartbeat reporter for watch tracking (non-owner only). We send a
   // ping every HEARTBEAT_INTERVAL_MS while playing, and on pause/seeked
   // so a quick watch still registers. Errors are swallowed so a flaky

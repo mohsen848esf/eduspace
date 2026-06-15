@@ -13,6 +13,15 @@ export function useRecordings(initialFilter: RecordingsFilter = "all") {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<RecordingsFilter>(initialFilter);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+
+  // Debounce search input to avoid spamming search requests
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
@@ -25,8 +34,8 @@ export function useRecordings(initialFilter: RecordingsFilter = "all") {
       } else if (filter === "processing") params.status = "processing";
       else if (filter === "failed") params.status = "failed";
 
-      if (searchQuery.trim()) {
-        params.q = searchQuery.trim();
+      if (debouncedSearchQuery.trim()) {
+        params.q = debouncedSearchQuery.trim();
       }
 
       const data = await recordingsApi.list(params);
@@ -36,7 +45,7 @@ export function useRecordings(initialFilter: RecordingsFilter = "all") {
     } finally {
       setIsLoading(false);
     }
-  }, [filter, searchQuery]);
+  }, [filter, debouncedSearchQuery]);
 
   useEffect(() => {
     refresh();

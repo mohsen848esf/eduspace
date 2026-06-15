@@ -360,24 +360,80 @@ function TrimSlider({
   max: number;
   onChange: (v: number) => void;
 }) {
+  const step = (amount: number) => {
+    const next = Math.max(min, Math.min(max, parseFloat((value + amount).toFixed(1))));
+    onChange(next);
+  };
+
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-[11px] font-semibold text-[var(--t3)] uppercase tracking-wider w-12 flex-shrink-0">
-        {label}
-      </span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={0.1}
-        value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-        className={cn(
-          "flex-1 accent-[var(--brand)]",
-          "h-1 rounded-full bg-[var(--s3)]",
-        )}
-      />
-      <span className="text-[11px] font-mono text-[var(--t1)] w-12 text-end force-ltr">
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 bg-[var(--s3)] sm:bg-transparent rounded-lg border border-[var(--b)] sm:border-none">
+      <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-16 flex-shrink-0">
+        <span className="text-[11px] font-bold text-[var(--t2)] uppercase tracking-wider">
+          {label}
+        </span>
+        <span className="text-xs font-mono font-bold text-[var(--brand)] sm:hidden force-ltr">
+          {value.toFixed(1)}s
+        </span>
+      </div>
+
+      <div className="flex items-center gap-2 flex-1 w-full">
+        {/* Step buttons before the slider */}
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => step(-1)}
+            disabled={value <= min}
+            className="w-7 h-7 rounded bg-[var(--s4)] border-none text-[10px] font-semibold text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s5)] cursor-pointer disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-colors"
+          >
+            -1s
+          </button>
+          <button
+            type="button"
+            onClick={() => step(-0.1)}
+            disabled={value <= min}
+            className="w-7 h-7 rounded bg-[var(--s4)] border-none text-[10px] font-semibold text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s5)] cursor-pointer disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-colors"
+          >
+            -0.1
+          </button>
+        </div>
+
+        {/* The range input with touch-friendly size */}
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={0.1}
+          value={value}
+          onChange={(e) => onChange(parseFloat(e.target.value))}
+          className={cn(
+            "flex-1 accent-[var(--brand)] h-2 rounded-full cursor-pointer bg-[var(--s4)]",
+            "outline-none transition-all focus:ring-1 focus:ring-[var(--brand)]"
+          )}
+          style={{ minWidth: "80px" }}
+        />
+
+        {/* Step buttons after the slider */}
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => step(0.1)}
+            disabled={value >= max}
+            className="w-7 h-7 rounded bg-[var(--s4)] border-none text-[10px] font-semibold text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s5)] cursor-pointer disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-colors"
+          >
+            +0.1
+          </button>
+          <button
+            type="button"
+            onClick={() => step(1)}
+            disabled={value >= max}
+            className="w-7 h-7 rounded bg-[var(--s4)] border-none text-[10px] font-semibold text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s5)] cursor-pointer disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-colors"
+          >
+            +1s
+          </button>
+        </div>
+      </div>
+
+      <span className="hidden sm:inline-block text-xs font-mono font-bold text-[var(--t1)] w-14 text-end force-ltr">
         {value.toFixed(1)}s
       </span>
     </div>

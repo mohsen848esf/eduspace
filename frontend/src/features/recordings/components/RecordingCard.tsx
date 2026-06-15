@@ -9,6 +9,9 @@ interface RecordingCardProps {
   recording: Recording;
   onDelete?: (recording: Recording) => void;
   onShare?: (recording: Recording) => void;
+  selected?: boolean;
+  onSelect?: (token: string, selected: boolean) => void;
+  selectionMode?: boolean;
 }
 
 function formatDuration(seconds: number, t: (k: string, v?: any) => string) {
@@ -30,6 +33,9 @@ export default function RecordingCard({
   recording,
   onDelete,
   onShare,
+  selected = false,
+  onSelect,
+  selectionMode = false,
 }: RecordingCardProps) {
   const { t } = useTranslation("recordings");
   const navigate = useNavigate();
@@ -49,8 +55,12 @@ export default function RecordingCard({
     recording.status === "completed" || recording.status === "failed";
 
   const open = () => {
-    if (isOwner) navigate(`/recordings/${recording.public_token}/edit`);
-    else navigate(`/recordings/${recording.public_token}`);
+    if (selectionMode) {
+      onSelect?.(recording.public_token, !selected);
+    } else {
+      if (isOwner) navigate(`/recordings/${recording.public_token}/edit`);
+      else navigate(`/recordings/${recording.public_token}`);
+    }
   };
 
   const handleShare = (e: React.MouseEvent) => {
@@ -69,11 +79,27 @@ export default function RecordingCard({
     <div
       onClick={open}
       className={cn(
-        "group flex flex-col bg-[var(--s2)] rounded-xl border border-[var(--b)] overflow-hidden",
-        "hover:border-[var(--bh)] cursor-pointer transition-colors",
+        "group flex flex-col bg-[var(--s2)] rounded-xl border overflow-hidden transition-all duration-200",
+        selected
+          ? "border-[var(--brand)] ring-1 ring-[var(--brand)] bg-[var(--s3)] shadow-md"
+          : "border-[var(--b)] hover:border-[var(--bh)] hover:shadow-sm",
+        "cursor-pointer"
       )}
     >
       <div className="relative">
+        {isOwner && (selectionMode || selected) && (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="absolute top-2.5 end-2.5 z-10"
+          >
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={(e) => onSelect?.(recording.public_token, e.target.checked)}
+              className="w-4 h-4 accent-[var(--brand)] rounded border-[var(--b)] cursor-pointer shadow-md"
+            />
+          </div>
+        )}
         <RecordingThumbnail
           token={recording.public_token}
           durationSeconds={recording.duration_seconds}
