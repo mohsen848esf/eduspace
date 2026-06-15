@@ -174,3 +174,57 @@ class SessionModelTest(TestCase):
         with self.assertRaises(ProtectedError):
             self.host.delete()
 
+    def test_session_conflict_host_overlap(self):
+        now = timezone.now()
+        Session.objects.create(
+            academy_class=self.academy_class,
+            host=self.host,
+            title='Calculus Class 1',
+            scheduled_start=now + timezone.timedelta(hours=2),
+            scheduled_end=now + timezone.timedelta(hours=4)
+        )
+        
+        overlapping_session = Session(
+            academy_class=self.academy_class,
+            host=self.host,
+            title='Physics Class',
+            scheduled_start=now + timezone.timedelta(hours=3),
+            scheduled_end=now + timezone.timedelta(hours=5)
+        )
+        with self.assertRaises(ValidationError) as context:
+            overlapping_session.clean()
+        self.assertIn('scheduled_start', context.exception.message_dict)
+
+    def test_session_conflict_room_overlap(self):
+        from rooms.models import Room
+        now = timezone.now()
+        
+        room = Room.objects.create(name='Room 101', room_code='R101', host=self.host, organization=self.org1)
+        self.academy_class.room = room
+        self.academy_class.save()
+        
+        Session.objects.create(
+            academy_class=self.academy_class,
+            host=self.host,
+            title='Session in Room 101',
+            active_room=room,
+            scheduled_start=now + timezone.timedelta(hours=2),
+            scheduled_end=now + timezone.timedelta(hours=4)
+        )
+        
+        other_host = User.objects.create_user(username='other_host', password='password')
+        other_class = AcademyClass.objects.create(course=self.course, teacher=other_host, name='Class B', room=room)
+        
+        overlapping_session = Session(
+            academy_class=other_class,
+            host=other_host,
+            title='Overlap Session Room 101',
+            active_room=room,
+            scheduled_start=now + timezone.timedelta(hours=3),
+            scheduled_end=now + timezone.timedelta(hours=5)
+        )
+        with self.assertRaises(ValidationError) as context:
+            overlapping_session.clean()
+        self.assertIn('scheduled_start', context.exception.message_dict)
+
+

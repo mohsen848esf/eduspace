@@ -315,6 +315,16 @@ class TuitionInvoice(models.Model):
         ]
 
 
+class InvoiceLineItem(models.Model):
+    invoice = models.ForeignKey('TuitionInvoice', on_delete=models.CASCADE, related_name='line_items')
+    description = models.CharField(max_length=255)
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.description} ({self.quantity} x {self.unit_price})"
+
+
 class ExpenseItem(models.Model):
     class Category(models.TextChoices):
         TEACHER_PAYOUT = 'teacher_payout', 'Teacher Payout'
@@ -402,6 +412,35 @@ class Session(models.Model):
                 live_sessions = live_sessions.exclude(pk=self.pk)
             if live_sessions.exists():
                 raise ValidationError({'status': 'Only one live session is allowed per class at a time.'})
+
+        # Check scheduling conflicts if scheduled_start and scheduled_end are set
+        if self.scheduled_start and self.scheduled_end:
+            # 1. Host conflict: Host cannot have overlapping active scheduled/live sessions
+            overlapping_host = Session.objects.filter(
+                host=self.host,
+                scheduled_start__lt=self.scheduled_end,
+                scheduled_end__gt=self.scheduled_start
+            ).exclude(status=self.Status.CANCELLED)
+            if self.pk:
+                overlapping_host = overlapping_host.exclude(pk=self.pk)
+            if overlapping_host.exists():
+                raise ValidationError({'scheduled_start': 'Host has another session scheduled during this time.'})
+
+            # 2. Room conflict: The active room or class room must not be occupied by another session during this time
+            room_to_check = self.active_room
+            if not room_to_check and self.academy_class:
+                room_to_check = self.academy_class.room
+
+            if room_to_check:
+                overlapping_room = Session.objects.filter(
+                    models.Q(active_room=room_to_check) | models.Q(academy_class__room=room_to_check),
+                    scheduled_start__lt=self.scheduled_end,
+                    scheduled_end__gt=self.scheduled_start
+                ).exclude(status=self.Status.CANCELLED)
+                if self.pk:
+                    overlapping_room = overlapping_room.exclude(pk=self.pk)
+                if overlapping_room.exists():
+                    raise ValidationError({'scheduled_start': 'Room is already occupied by another session during this time.'})
 
     def save(self, *args, **kwargs):
         self.full_clean()

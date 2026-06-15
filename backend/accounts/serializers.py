@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance, Organization, OrgMember, Role, Certificate, AuditLog, Permission, UserSession
+from .models import User, Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance, Organization, OrgMember, Role, Certificate, AuditLog, Permission, UserSession, InvoiceLineItem
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -137,11 +137,19 @@ class EnrollmentSerializer(serializers.ModelSerializer):
         return value
 
 
+class InvoiceLineItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InvoiceLineItem
+        fields = ('description', 'quantity', 'unit_price')
+
+
 class TuitionInvoiceSerializer(serializers.ModelSerializer):
     student_username = serializers.CharField(source='student.username', read_only=True)
     student_full_name = serializers.CharField(source='student.full_name', read_only=True)
     class_name = serializers.CharField(source='academy_class.name', read_only=True)
-    items = serializers.JSONField(required=False, default=list)
+    items = InvoiceLineItemSerializer(many=True, source='line_items', required=False)
+
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
 
     class Meta:
         model = TuitionInvoice
@@ -152,63 +160,29 @@ class TuitionInvoiceSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('id', 'invoice_number', 'issued_by', 'created_at')
 
-    def to_representation(self, instance):
-        ret = super().to_representation(instance)
-        notes_val = instance.notes or ""
-        import json
-        if notes_val.strip().startswith("{") and notes_val.strip().endswith("}"):
-            try:
-                data = json.loads(notes_val)
-                ret["notes"] = data.get("notes", "")
-                ret["items"] = data.get("items", [])
-            except Exception:
-                ret["notes"] = notes_val
-                ret["items"] = []
-        else:
-            ret["notes"] = notes_val
-            ret["items"] = []
-        return ret
-
     def validate(self, attrs):
-        import json
-        items_data = attrs.pop("items", None)
+        # Line items are represented under the source name 'line_items'
+        line_items_data = attrs.get('line_items', None)
         
-        if items_data is not None:
-            if not isinstance(items_data, list):
-                raise serializers.ValidationError({"items": "Items must be a list."})
-            
+        if line_items_data is not None:
             try:
                 total_amount = sum(
                     float(item.get("unit_price", 0)) * int(item.get("quantity", 1))
-                    for item in items_data
+                    for item in line_items_data
                 )
-                if total_amount > 0:
-                    attrs["amount"] = total_amount
+                attrs["amount"] = total_amount
             except (ValueError, TypeError):
                 raise serializers.ValidationError({"items": "Invalid line item price or quantity."})
 
-            notes_text = attrs.get("notes", "")
-            if "notes" not in attrs and self.instance:
-                existing_notes = self.instance.notes or ""
-                if existing_notes.strip().startswith("{") and existing_notes.strip().endswith("}"):
-                    try:
-                        existing_data = json.loads(existing_notes)
-                        notes_text = existing_data.get("notes", "")
-                    except Exception:
-                        notes_text = existing_notes
-                else:
-                    notes_text = existing_notes
-            
-            structured_notes = {
-                "notes": notes_text,
-                "items": items_data
-            }
-            attrs["notes"] = json.dumps(structured_notes)
+        if not self.instance and 'amount' not in attrs:
+            raise serializers.ValidationError({"amount": "This field is required."})
 
         return attrs
 
     def create(self, validated_data):
         from django.db import transaction
+        line_items_data = validated_data.pop('line_items', [])
+        
         request = self.context.get('request')
         if request and hasattr(request, 'organization'):
             org = request.organization
@@ -222,7 +196,28 @@ class TuitionInvoiceSerializer(serializers.ModelSerializer):
                     validated_data['invoice_number'] = f"INV-{org.id}-{count + 1:04d}"
         if request and request.user and request.user.is_authenticated:
             validated_data['issued_by'] = request.user
-        return super().create(validated_data)
+            
+        with transaction.atomic():
+            invoice = TuitionInvoice.objects.create(**validated_data)
+            for item_data in line_items_data:
+                InvoiceLineItem.objects.create(invoice=invoice, **item_data)
+                
+        return invoice
+
+    def update(self, instance, validated_data):
+        from django.db import transaction
+        line_items_data = validated_data.pop('line_items', None)
+        
+        with transaction.atomic():
+            instance = super().update(instance, validated_data)
+            
+            if line_items_data is not None:
+                # Normalization replacement strategy: delete old line items and insert new ones
+                instance.line_items.all().delete()
+                for item_data in line_items_data:
+                    InvoiceLineItem.objects.create(invoice=instance, **item_data)
+                    
+        return instance
 
     def validate_academy_class(self, value):
         if value:
@@ -230,7 +225,7 @@ class TuitionInvoiceSerializer(serializers.ModelSerializer):
             if request and hasattr(request, 'organization'):
                 if value.course.organization != request.organization:
                     raise serializers.ValidationError("Class does not belong to your organization.")
-        return value
+            return value
 
 
 class ExpenseItemSerializer(serializers.ModelSerializer):

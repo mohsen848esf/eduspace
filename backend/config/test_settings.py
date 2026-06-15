@@ -13,3 +13,6 @@ CACHES = {
         'LOCATION': 'test-unique-cache',
     }
 }
+
+TEST_RUNNER = 'config.test_runner.CacheClearingDiscoverRunner'
+

@@ -349,3 +349,86 @@ class CRMViewsIntegrationTest(APITestCase):
         res_enroll = self.client.post(enroll_url, post_enroll_data, format='json', HTTP_X_ORGANIZATION_SLUG='crm-org')
         self.assertEqual(res_enroll.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('academy_class', res_enroll.data)
+
+    def test_nested_tuition_invoice_creation_and_update(self):
+        student = User.objects.create_user(username='student_nested', password='password')
+        url = reverse('invoice-list')
+        
+        # 1. Create with nested items
+        post_data = {
+            'student': student.id,
+            'payment_method': 'cash',
+            'notes': 'Normal notes',
+            'items': [
+                {'description': 'Tuition fee', 'quantity': 1, 'unit_price': '200.00'},
+                {'description': 'Books', 'quantity': 2, 'unit_price': '25.00'}
+            ]
+        }
+        res = self.client.post(url, post_data, format='json', HTTP_X_ORGANIZATION_SLUG='crm-org')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(float(res.data['amount']), 250.00) # Auto calculated
+        self.assertEqual(len(res.data['items']), 2)
+        self.assertEqual(res.data['notes'], 'Normal notes')
+        
+        invoice_id = res.data['id']
+        invoice = TuitionInvoice.objects.get(id=invoice_id)
+        self.assertEqual(invoice.line_items.count(), 2)
+        
+        # 2. Update nested items
+        update_data = {
+            'items': [
+                {'description': 'Registration', 'quantity': 1, 'unit_price': '50.00'}
+            ]
+        }
+        detail_url = reverse('invoice-detail', args=[invoice_id])
+        res_update = self.client.patch(detail_url, update_data, format='json', HTTP_X_ORGANIZATION_SLUG='crm-org')
+        self.assertEqual(res_update.status_code, status.HTTP_200_OK)
+        self.assertEqual(float(res_update.data['amount']), 50.00)
+        self.assertEqual(len(res_update.data['items']), 1)
+        self.assertEqual(res_update.data['items'][0]['description'], 'Registration')
+        self.assertEqual(invoice.line_items.count(), 1)
+
+    def test_tuition_invoice_data_migration_logic(self):
+        import json
+        import importlib
+        migration_mod = importlib.import_module('accounts.migrations.0022_invoicelineitem')
+        migrate_json_items_to_table = migration_mod.migrate_json_items_to_table
+        
+        student = User.objects.create_user(username='student_migr', password='password')
+        # Create an invoice with old JSON notes structure
+        old_structured_notes = {
+            'notes': 'Migration test notes',
+            'items': [
+                {'description': 'Old course fee', 'quantity': 1, 'unit_price': 120.00},
+                {'description': 'Lab fee', 'quantity': 1, 'unit_price': 30.00}
+            ]
+        }
+        invoice = TuitionInvoice.objects.create(
+            organization=self.org,
+            student=student,
+            amount=150.00,
+            notes=json.dumps(old_structured_notes)
+        )
+        
+        # Mock apps for migrations.RunPython
+        class DummyApps:
+            @staticmethod
+            def get_model(app_label, model_name):
+                if model_name == 'TuitionInvoice':
+                    return TuitionInvoice
+                elif model_name == 'InvoiceLineItem':
+                    from accounts.models import InvoiceLineItem
+                    return InvoiceLineItem
+        
+        # Execute migration function
+        migrate_json_items_to_table(DummyApps(), None)
+        
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.notes, 'Migration test notes')
+        self.assertEqual(invoice.line_items.count(), 2)
+        items = list(invoice.line_items.all().order_by('id'))
+        self.assertEqual(items[0].description, 'Old course fee')
+        self.assertEqual(float(items[0].unit_price), 120.00)
+        self.assertEqual(items[1].description, 'Lab fee')
+        self.assertEqual(float(items[1].unit_price), 30.00)
+
