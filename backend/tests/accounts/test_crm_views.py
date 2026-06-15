@@ -280,8 +280,8 @@ class CRMViewsIntegrationTest(APITestCase):
         res = self.client.get(url, HTTP_X_ORGANIZATION_SLUG='crm-org')
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         # Student should only see their own invoice
-        self.assertEqual(len(res.data), 1)
-        self.assertEqual(res.data[0]['id'], inv_student.id)
+        self.assertEqual(len(res.data['results']), 1)
+        self.assertEqual(res.data['results'][0]['id'], inv_student.id)
 
     def test_expense_denied_without_permission(self):
         regular_user = User.objects.create_user(username='regular_user', password='password')

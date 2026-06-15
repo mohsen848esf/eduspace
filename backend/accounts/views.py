@@ -530,9 +530,18 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         return queryset
 
 
+from rest_framework.pagination import PageNumberPagination
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 15
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
 class TuitionInvoiceViewSet(viewsets.ModelViewSet):
     serializer_class = TuitionInvoiceSerializer
     permission_classes = [HasOrgPermission]
+    pagination_class = StandardResultsSetPagination
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
@@ -552,7 +561,28 @@ class TuitionInvoiceViewSet(viewsets.ModelViewSet):
         if not has_org_permission(self.request.user, org, 'can_view_financials'):
             queryset = queryset.filter(student=self.request.user)
             
-        return queryset
+        # Query parameter filtering
+        q = self.request.query_params.get('q')
+        if q:
+            queryset = queryset.filter(
+                models.Q(student__username__icontains=q) |
+                models.Q(student__full_name__icontains=q) |
+                models.Q(invoice_number__icontains=q)
+            )
+            
+        status = self.request.query_params.get('status')
+        if status:
+            queryset = queryset.filter(status=status)
+            
+        start_date = self.request.query_params.get('start_date')
+        if start_date:
+            queryset = queryset.filter(due_date__gte=start_date)
+            
+        end_date = self.request.query_params.get('end_date')
+        if end_date:
+            queryset = queryset.filter(due_date__lte=end_date)
+            
+        return queryset.order_by('-id')
 
     def perform_create(self, serializer):
         invoice = serializer.save()
@@ -596,6 +626,7 @@ class TuitionInvoiceViewSet(viewsets.ModelViewSet):
 class ExpenseItemViewSet(viewsets.ModelViewSet):
     serializer_class = ExpenseItemSerializer
     permission_classes = [HasOrgPermission]
+    pagination_class = StandardResultsSetPagination
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
@@ -613,7 +644,38 @@ class ExpenseItemViewSet(viewsets.ModelViewSet):
         if not has_org_permission(self.request.user, org, 'can_view_financials'):
             return ExpenseItem.objects.none()
             
-        return ExpenseItem.objects.select_related('recipient', 'approved_by').filter(organization=org)
+        queryset = ExpenseItem.objects.select_related('recipient', 'approved_by').filter(organization=org)
+
+        # Query parameter filtering
+        q = self.request.query_params.get('q')
+        if q:
+            queryset = queryset.filter(
+                models.Q(recipient__username__icontains=q) |
+                models.Q(recipient__full_name__icontains=q) |
+                models.Q(description__icontains=q)
+            )
+            
+        category = self.request.query_params.get('category')
+        if category:
+            queryset = queryset.filter(category=category)
+            
+        min_amount = self.request.query_params.get('min_amount')
+        if min_amount:
+            queryset = queryset.filter(amount__gte=min_amount)
+            
+        max_amount = self.request.query_params.get('max_amount')
+        if max_amount:
+            queryset = queryset.filter(amount__lte=max_amount)
+            
+        start_date = self.request.query_params.get('start_date')
+        if start_date:
+            queryset = queryset.filter(incurred_at__date__gte=start_date)
+            
+        end_date = self.request.query_params.get('end_date')
+        if end_date:
+            queryset = queryset.filter(incurred_at__date__lte=end_date)
+            
+        return queryset.order_by('-incurred_at', '-id')
 
     @action(detail=True, methods=['POST'])
     def approve(self, request, pk=None):
@@ -621,6 +683,76 @@ class ExpenseItemViewSet(viewsets.ModelViewSet):
         expense.approved_by = request.user
         expense.save()
         return Response(ExpenseItemSerializer(expense).data)
+
+
+from rest_framework.views import APIView
+from django.db.models import Sum
+
+class FinanceSummaryView(APIView):
+    permission_classes = [IsAuthenticated, HasOrgPermission]
+    required_org_permission = 'can_view_financials'
+
+    def get(self, request):
+        org = getattr(request, 'organization', None)
+        if not org:
+            return Response({"detail": "Organization context missing."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        invoices = TuitionInvoice.objects.filter(organization=org)
+        expenses = ExpenseItem.objects.filter(organization=org)
+        
+        total_revenue = invoices.filter(status='paid').aggregate(total=Sum('amount'))['total'] or 0.0
+        total_expenses = expenses.aggregate(total=Sum('amount'))['total'] or 0.0
+        total_outstanding = invoices.filter(status__in=['unpaid', 'partial', 'overdue']).aggregate(total=Sum('amount'))['total'] or 0.0
+        
+        total_revenue = float(total_revenue)
+        total_expenses = float(total_expenses)
+        total_outstanding = float(total_outstanding)
+        
+        if (total_revenue + total_outstanding) > 0:
+            collection_rate = (total_revenue / (total_revenue + total_outstanding)) * 100
+        else:
+            collection_rate = 100.0
+            
+        # Monthly trends
+        from django.utils import timezone
+        from datetime import datetime, timedelta
+        
+        monthly_trends = []
+        now = timezone.now()
+        
+        for i in range(5, -1, -1):
+            year = now.year
+            month = now.month - i
+            while month <= 0:
+                month += 12
+                year -= 1
+                
+            start_of_month = timezone.make_aware(datetime(year, month, 1))
+            next_month = month + 1
+            next_year = year
+            if next_month > 12:
+                next_month = 1
+                next_year += 1
+            end_of_month = timezone.make_aware(datetime(next_year, next_month, 1)) - timedelta(seconds=1)
+            
+            month_label = start_of_month.strftime('%b')
+            
+            rev = invoices.filter(status='paid', paid_at__range=(start_of_month, end_of_month)).aggregate(total=Sum('amount'))['total'] or 0.0
+            exp = expenses.filter(incurred_at__range=(start_of_month, end_of_month)).aggregate(total=Sum('amount'))['total'] or 0.0
+            
+            monthly_trends.append({
+                "label": month_label,
+                "revenue": float(rev),
+                "expense": float(exp)
+            })
+            
+        return Response({
+            "revenue": total_revenue,
+            "expenses": total_expenses,
+            "outstanding": total_outstanding,
+            "collection_rate": round(collection_rate, 1),
+            "monthly_trends": monthly_trends
+        })
 
 
 class SessionViewSet(viewsets.ModelViewSet):

@@ -39,6 +39,25 @@ export interface Enrollment {
   completion_status?: "in_progress" | "completed" | "dropped";
 }
 
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+export interface FinanceSummary {
+  revenue: number;
+  expenses: number;
+  outstanding: number;
+  collection_rate: number;
+  monthly_trends: {
+    label: string;
+    revenue: number;
+    expense: number;
+  }[];
+}
+
 export interface TuitionInvoiceItem {
   description: string;
   quantity: number;
@@ -53,7 +72,7 @@ export interface TuitionInvoice {
   academy_class: number | null;
   class_name?: string;
   amount: string;
-  status: "paid" | "unpaid" | "void" | "cancelled";
+  status: "paid" | "unpaid" | "partial" | "overdue" | "cancelled" | "refunded" | "void";
   due_date: string | null;
   paid_at: string | null;
   payment_method?: "cash" | "bank_transfer" | "online" | "";
@@ -65,7 +84,7 @@ export interface TuitionInvoice {
 export interface ExpenseItem {
   id: number;
   amount: string;
-  category: "rent" | "utilities" | "teacher_payout" | "marketing" | "other";
+  category: "rent" | "utilities" | "teacher_payout" | "marketing" | "infrastructure" | "other";
   description: string;
   recipient?: number | null;
   recipient_username?: string;
@@ -140,8 +159,15 @@ export const crmApi = {
   },
 
   // Invoices CRUD
-  getInvoices: async (): Promise<TuitionInvoice[]> => {
-    const res = await client.get("/auth/invoices/");
+  getInvoices: async (params?: {
+    page?: number;
+    page_size?: number;
+    q?: string;
+    status?: string;
+    start_date?: string;
+    end_date?: string;
+  }): Promise<PaginatedResponse<TuitionInvoice>> => {
+    const res = await client.get("/auth/invoices/", { params });
     return res.data;
   },
   createInvoice: async (data: Partial<TuitionInvoice>): Promise<TuitionInvoice> => {
@@ -157,8 +183,17 @@ export const crmApi = {
   },
 
   // Expenses CRUD
-  getExpenses: async (): Promise<ExpenseItem[]> => {
-    const res = await client.get("/auth/expenses/");
+  getExpenses: async (params?: {
+    page?: number;
+    page_size?: number;
+    q?: string;
+    category?: string;
+    min_amount?: string;
+    max_amount?: string;
+    start_date?: string;
+    end_date?: string;
+  }): Promise<PaginatedResponse<ExpenseItem>> => {
+    const res = await client.get("/auth/expenses/", { params });
     return res.data;
   },
   createExpense: async (data: FormData | Partial<ExpenseItem>): Promise<ExpenseItem> => {
@@ -176,6 +211,10 @@ export const crmApi = {
   },
   approveExpense: async (id: number): Promise<ExpenseItem> => {
     const res = await client.post(`/auth/expenses/${id}/approve/`);
+    return res.data;
+  },
+  getFinanceSummary: async (): Promise<FinanceSummary> => {
+    const res = await client.get("/auth/finance/summary/");
     return res.data;
   },
 

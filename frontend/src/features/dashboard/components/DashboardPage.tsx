@@ -43,14 +43,9 @@ export default function DashboardPage() {
     queryFn: crmApi.getEnrollments,
   });
 
-  const { data: invoices = [], isLoading: loadingInvoices } = useQuery({
-    queryKey: ["invoices"],
-    queryFn: crmApi.getInvoices,
-  });
-
-  const { data: expenses = [], isLoading: loadingExpenses } = useQuery({
-    queryKey: ["expenses"],
-    queryFn: crmApi.getExpenses,
+  const { data: summaryData, isLoading: loadingSummary } = useQuery({
+    queryKey: ["financeSummary"],
+    queryFn: crmApi.getFinanceSummary,
     enabled: hasPermission("can_view_financials"),
   });
 
@@ -72,63 +67,21 @@ export default function DashboardPage() {
   });
 
   // Financial Summary Helpers
-  const totalRevenue = invoices
-    .filter((inv) => inv.status === "paid")
-    .reduce((sum, inv) => sum + parseFloat(inv.amount), 0);
+  const totalRevenue = summaryData?.revenue || 0;
+  const totalPendingRevenue = summaryData?.outstanding || 0;
+  const totalExpense = summaryData?.expenses || 0;
 
-  const totalPendingRevenue = invoices
-    .filter((inv) => inv.status === "unpaid")
-    .reduce((sum, inv) => sum + parseFloat(inv.amount), 0);
-
-  const totalExpense = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
-
-  const isDataLoading = loadingCourses || loadingClasses || loadingEnrollments || loadingInvoices || loadingExpenses || loadingSessions;
+  const isDataLoading = loadingCourses || loadingClasses || loadingEnrollments || loadingSummary || loadingSessions;
 
   // Aggregated data for past 6 months
-  const chartData = (() => {
-    const months: Array<{
-      year: number;
-      month: number;
-      label: string;
-      revenue: number;
-      expense: number;
-    }> = [];
-    const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      months.push({
-        year: d.getFullYear(),
-        month: d.getMonth(),
-        label: d.toLocaleDateString(language === "fa" ? "fa-IR" : "en-US", { month: "short" }),
-        revenue: 0,
-        expense: 0
-      });
-    }
-
-    // Aggregate Invoices (Revenue)
-    invoices.forEach(inv => {
-      if (inv.status === "paid" && inv.paid_at) {
-        const d = new Date(inv.paid_at);
-        const match = months.find(m => m.year === d.getFullYear() && m.month === d.getMonth());
-        if (match) {
-          match.revenue += parseFloat(inv.amount) || 0;
-        }
-      }
-    });
-
-    // Aggregate Expenses
-    expenses.forEach(exp => {
-      if (exp.incurred_at) {
-        const d = new Date(exp.incurred_at);
-        const match = months.find(m => m.year === d.getFullYear() && m.month === d.getMonth());
-        if (match) {
-          match.expense += parseFloat(exp.amount) || 0;
-        }
-      }
-    });
-
-    return months;
-  })();
+  const chartData = summaryData?.monthly_trends || [
+    { label: "Jan", revenue: 0, expense: 0 },
+    { label: "Feb", revenue: 0, expense: 0 },
+    { label: "Mar", revenue: 0, expense: 0 },
+    { label: "Apr", revenue: 0, expense: 0 },
+    { label: "May", revenue: 0, expense: 0 },
+    { label: "Jun", revenue: 0, expense: 0 }
+  ];
 
   const maxVal = Math.max(
     ...chartData.map(d => Math.max(d.revenue, d.expense)),

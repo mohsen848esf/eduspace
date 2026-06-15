@@ -274,8 +274,11 @@ class Enrollment(models.Model):
 class TuitionInvoice(models.Model):
     class Status(models.TextChoices):
         UNPAID = 'unpaid', 'Unpaid'
+        PARTIAL = 'partial', 'Partial'
         PAID = 'paid', 'Paid'
+        OVERDUE = 'overdue', 'Overdue'
         CANCELLED = 'cancelled', 'Cancelled'
+        REFUNDED = 'refunded', 'Refunded'
 
     class PaymentMethod(models.TextChoices):
         CASH = 'cash', 'Cash'
