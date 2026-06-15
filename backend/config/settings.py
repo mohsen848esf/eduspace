@@ -11,7 +11,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
 
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -227,3 +227,54 @@ LOGGING = {
         'games': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
     },
 }
+
+# ---------------------------------------------------------------------------
+# Sentry Error Monitoring
+# ---------------------------------------------------------------------------
+import sys
+TESTING = 'test' in sys.argv
+
+SENTRY_DSN = os.getenv('SENTRY_DSN')
+if SENTRY_DSN and not TESTING:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+    
+    def scrub_sentry_data(event, hint):
+        if "request" in event:
+            if "env" in event["request"]:
+                event["request"]["env"].pop("REMOTE_ADDR", None)
+                event["request"]["env"].pop("HTTP_X_FORWARDED_FOR", None)
+            if "headers" in event["request"]:
+                headers = event["request"]["headers"]
+                for key in list(headers.keys()):
+                    if key.lower() in ("authorization", "cookie", "set-cookie", "x-api-key"):
+                        headers[key] = "[SCRUBBED]"
+        if "user" in event:
+            event["user"].pop("ip_address", None)
+            event["user"].pop("email", None)
+            event["user"].pop("username", None)
+        return event
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        traces_sample_rate=1.0 if DEBUG else 0.2,
+        send_default_pii=False,
+        before_send=scrub_sentry_data
+    )
+
+
+# ---------------------------------------------------------------------------
+# Production Security Headers
+# ---------------------------------------------------------------------------
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+

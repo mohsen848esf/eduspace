@@ -3,10 +3,44 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { Toaster } from "react-hot-toast";
+import * as Sentry from "@sentry/react";
 
 import "./i18n/config";
 import "./index.css";
 import App from "./App.tsx";
+
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration(),
+    ],
+    tracesSampleRate: 1.0,
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
+    sendDefaultPii: false,
+    beforeSend(event) {
+      if (event.request && event.request.headers) {
+        const headers = event.request.headers;
+        const keysToScrub = ["authorization", "cookie", "set-cookie", "x-api-key"];
+        Object.keys(headers).forEach((key) => {
+          if (keysToScrub.includes(key.toLowerCase())) {
+            headers[key] = "[SCRUBBED]";
+          }
+        });
+      }
+      if (event.user) {
+        delete event.user.ip_address;
+        delete event.user.email;
+        delete event.user.username;
+      }
+      return event;
+    },
+  });
+}
+
 
 const queryClient = new QueryClient({
   defaultOptions: {

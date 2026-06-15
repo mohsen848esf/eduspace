@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance, Organization, OrgMember, Role, Certificate
+from .models import User, Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance, Organization, OrgMember, Role, Certificate, AuditLog
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -31,7 +31,13 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
     def get_organizations(self, obj):
-        memberships = obj.org_memberships.filter(is_active=True).select_related('organization', 'role')
+        if hasattr(obj, '_prefetched_objects_cache') and 'org_memberships' in obj._prefetched_objects_cache:
+            memberships = [
+                m for m in obj.org_memberships.all()
+                if m.is_active
+            ]
+        else:
+            memberships = obj.org_memberships.filter(is_active=True).select_related('organization', 'role')
         return [
             {
                 'id': m.organization.id,
@@ -410,4 +416,19 @@ class CertificateSerializer(serializers.ModelSerializer):
             'academy_class', 'class_name', 'course_title', 'certificate_number', 'issued_at'
         )
         read_only_fields = ('id', 'organization', 'student', 'certificate_number', 'issued_at')
+
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    actor_name = serializers.CharField(source='actor.full_name', read_only=True, default='')
+    actor_username = serializers.CharField(source='actor.username', read_only=True, default='')
+
+    class Meta:
+        model = AuditLog
+        fields = (
+            'id', 'actor', 'actor_name', 'actor_username', 'action',
+            'entity_type', 'entity_id', 'before_state', 'after_state',
+            'ip_address', 'user_agent', 'created_at'
+        )
+        read_only_fields = fields
+
 

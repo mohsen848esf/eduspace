@@ -18,7 +18,7 @@ export default function OrgSettingsPage() {
 
   const canManageMembers = hasPermission("can_manage_members");
 
-  const [activeTab, setActiveTab] = useState<"details" | "members">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "members" | "audit_logs">("details");
 
   // Edit organization details state
   const [orgName, setOrgName] = useState("");
@@ -30,6 +30,13 @@ export default function OrgSettingsPage() {
   const [inviteRoleId, setInviteRoleId] = useState<number | null>(null);
   const [inviteContract, setInviteContract] = useState("full_time");
   const [inviteExpires, setInviteExpires] = useState("");
+
+  // Audit Logs state
+  const [selectedActor, setSelectedActor] = useState("");
+  const [selectedAction, setSelectedAction] = useState("");
+  const [selectedEntity, setSelectedEntity] = useState("");
+  const [logsPage, setLogsPage] = useState(1);
+  const [expandedLogId, setExpandedLogId] = useState<number | null>(null);
 
   // Queries
   const { data: orgs, isLoading: loadingOrgs } = useQuery<OrganizationDetail[]>({
@@ -49,6 +56,24 @@ export default function OrgSettingsPage() {
     queryKey: ["orgRoles"],
     queryFn: authApi.getRoles,
     enabled: isInviteOpen,
+  });
+
+  // Audit Log queries
+  const { data: logsData, isLoading: loadingLogs } = useQuery({
+    queryKey: ["orgAuditLogs", logsPage, selectedActor, selectedAction, selectedEntity],
+    queryFn: () => authApi.getAuditLogs({
+      page: logsPage,
+      actor_id: selectedActor || undefined,
+      action: selectedAction || undefined,
+      entity_type: selectedEntity || undefined,
+    }),
+    enabled: activeTab === "audit_logs",
+  });
+
+  const { data: filterMeta } = useQuery({
+    queryKey: ["orgAuditLogFilters"],
+    queryFn: authApi.getAuditLogFilters,
+    enabled: activeTab === "audit_logs",
   });
 
   // Sync state with query result
@@ -199,6 +224,62 @@ export default function OrgSettingsPage() {
     return { backgroundColor: "var(--s3)", color: "var(--t2)", border: "1px solid var(--b)" };
   };
 
+  const renderStateChanges = (before: Record<string, any> | null, after: Record<string, any> | null) => {
+    if (!before && !after) return <div className="text-xs text-[var(--t3)]">{isFarsi ? "اطلاعاتی ثبت نشده است" : "No state recorded"}</div>;
+    
+    if (!before && after) {
+      return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[11px] bg-[var(--s3)] p-4 rounded-xl border border-[var(--b)] font-mono text-[var(--t2)] max-h-60 overflow-y-auto">
+          {Object.entries(after).map(([key, val]) => (
+            <div key={key} className="flex justify-between border-b border-[var(--b)] pb-1.5">
+              <span className="text-[var(--t3)] font-semibold">{key}:</span>
+              <span className="text-[var(--green)] truncate max-w-[200px]" title={JSON.stringify(val)}>{JSON.stringify(val)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    
+    if (before && !after) {
+      return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[11px] bg-[var(--s3)] p-4 rounded-xl border border-[var(--b)] font-mono text-[var(--t2)] max-h-60 overflow-y-auto">
+          {Object.entries(before).map(([key, val]) => (
+            <div key={key} className="flex justify-between border-b border-[var(--b)] pb-1.5">
+              <span className="text-[var(--t3)] font-semibold">{key}:</span>
+              <span className="text-[var(--red)] line-through truncate max-w-[200px]" title={JSON.stringify(val)}>{JSON.stringify(val)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    
+    const allKeys = Array.from(new Set([...Object.keys(before!), ...Object.keys(after!)]));
+    const changedKeys = allKeys.filter(k => JSON.stringify(before![k]) !== JSON.stringify(after![k]));
+    
+    if (changedKeys.length === 0) {
+      return <div className="text-xs text-[var(--t3)]">{isFarsi ? "تغییراتی در فیلدها ثبت نشده است" : "No field differences recorded"}</div>;
+    }
+    
+    return (
+      <div className="flex flex-col gap-2.5 bg-[var(--s3)] p-4 rounded-xl border border-[var(--b)] text-[11px] font-mono text-[var(--t2)] max-h-60 overflow-y-auto">
+        {changedKeys.map(key => (
+          <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--b)] pb-2">
+            <span className="text-[var(--t3)] font-semibold min-w-32">{key}:</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2 py-0.5 rounded bg-[var(--red)]/10 text-[var(--red)] line-through max-w-[180px] truncate" title={JSON.stringify(before![key])}>
+                {JSON.stringify(before![key])}
+              </span>
+              <span>➡️</span>
+              <span className="px-2 py-0.5 rounded bg-[var(--green)]/10 text-[var(--green)] max-w-[180px] truncate" title={JSON.stringify(after![key])}>
+                {JSON.stringify(after![key])}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   if (loadingOrgs) {
     return (
       <AppShell title={isFarsi ? "تنظیمات سازمان" : "Organization Settings"}>
@@ -234,6 +315,19 @@ export default function OrgSettingsPage() {
             }`}
           >
             {isFarsi ? "اعضا و پرسنل" : "Members & Staff"}
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("audit_logs");
+              setLogsPage(1);
+            }}
+            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 ${
+              activeTab === "audit_logs"
+                ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
+                : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
+            }`}
+          >
+            {isFarsi ? "سوابق فعالیت‌ها" : "Audit Logs"}
           </button>
         </div>
 
@@ -436,6 +530,179 @@ export default function OrgSettingsPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab content 3: Audit Logs */}
+        {activeTab === "audit_logs" && (
+          <div className="bg-[var(--s2)] rounded-2xl border border-[var(--b)] p-6 shadow-sm flex flex-col gap-6 animate-in fade-in duration-150">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-base font-bold text-[var(--t1)]">
+                  {isFarsi ? "سوابق فعالیت‌های سیستم" : "System Audit Logs"}
+                </h2>
+                <p className="text-xs text-[var(--t3)] mt-1">
+                  {isFarsi ? "ردیابی تمام تغییرات و عملیات‌های امنیتی آکادمی" : "Track all changes, updates, and configuration actions in the organization."}
+                </p>
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-[var(--s3)]/30 p-4 rounded-xl border border-[var(--b)]/60 text-xs">
+              <div className="flex flex-col gap-1.5">
+                <label className="font-semibold text-[var(--t2)]">{isFarsi ? "کاربر عامل" : "Actor"}</label>
+                <select
+                  value={selectedActor}
+                  onChange={(e) => { setSelectedActor(e.target.value); setLogsPage(1); }}
+                  className="h-9 px-3 rounded-lg bg-[var(--s3)] border border-[var(--b)] text-xs text-[var(--t1)] focus:outline-none focus:border-[var(--brand-text)]"
+                >
+                  <option value="">{isFarsi ? "همه کاربران" : "All Users"}</option>
+                  {filterMeta?.actors?.map((actor) => (
+                    <option key={actor.actor_id} value={actor.actor_id}>
+                      {actor.actor__full_name || actor.actor__username} (@{actor.actor__username})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="font-semibold text-[var(--t2)]">{isFarsi ? "نوع عملیات" : "Action"}</label>
+                <select
+                  value={selectedAction}
+                  onChange={(e) => { setSelectedAction(e.target.value); setLogsPage(1); }}
+                  className="h-9 px-3 rounded-lg bg-[var(--s3)] border border-[var(--b)] text-xs text-[var(--t1)] focus:outline-none focus:border-[var(--brand-text)]"
+                >
+                  <option value="">{isFarsi ? "همه عملیات‌ها" : "All Actions"}</option>
+                  {filterMeta?.actions?.map((act) => (
+                    <option key={act} value={act}>{act}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="font-semibold text-[var(--t2)]">{isFarsi ? "نوع داده" : "Entity Type"}</label>
+                <select
+                  value={selectedEntity}
+                  onChange={(e) => { setSelectedEntity(e.target.value); setLogsPage(1); }}
+                  className="h-9 px-3 rounded-lg bg-[var(--s3)] border border-[var(--b)] text-xs text-[var(--t1)] focus:outline-none focus:border-[var(--brand-text)]"
+                >
+                  <option value="">{isFarsi ? "همه موجودیت‌ها" : "All Entities"}</option>
+                  {filterMeta?.entities?.map((ent) => (
+                    <option key={ent} value={ent}>{ent}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {loadingLogs ? (
+              <div className="flex h-32 items-center justify-center">
+                <Spinner />
+              </div>
+            ) : !logsData || logsData.results.length === 0 ? (
+              <div className="text-center py-12 border border-dashed border-[var(--b)] rounded-2xl">
+                <span className="text-4xl block mb-2">📜</span>
+                <h3 className="text-sm font-semibold text-[var(--t1)]">
+                  {isFarsi ? "سابقه‌ای یافت نشد" : "No logs found"}
+                </h3>
+                <p className="text-xs text-[var(--t3)] mt-1">
+                  {isFarsi ? "هیچ فعالیت منطبقی در این سازمان ثبت نشده است." : "No matching system audit records were found."}
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-start border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-[var(--b)] text-[var(--t3)] font-semibold">
+                        <th className="py-3 px-2 text-start">{isFarsi ? "کاربر" : "Actor"}</th>
+                        <th className="py-3 px-2 text-start">{isFarsi ? "عملیات" : "Action"}</th>
+                        <th className="py-3 px-2 text-start">{isFarsi ? "موجودیت" : "Target"}</th>
+                        <th className="py-3 px-2 text-start">{isFarsi ? "آدرس IP" : "IP Address"}</th>
+                        <th className="py-3 px-2 text-start">{isFarsi ? "تاریخ و زمان" : "Timestamp"}</th>
+                        <th className="py-3 px-2 text-end"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {logsData.results.map((log) => {
+                        const isExpanded = expandedLogId === log.id;
+                        return (
+                          <>
+                            <tr
+                              key={log.id}
+                              onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                              className="border-b border-[var(--b)]/60 text-[var(--t2)] hover:bg-[var(--s3)]/30 transition-colors cursor-pointer"
+                            >
+                              <td className="py-3 px-2 font-semibold">
+                                {log.actor_name ? `${log.actor_name} (@${log.actor_username})` : (isFarsi ? "سیستم" : "System")}
+                              </td>
+                              <td className="py-3 px-2">
+                                <span className="px-2 py-0.5 rounded bg-[var(--s3)] border border-[var(--b)] font-mono text-[10px]">
+                                  {log.action}
+                                </span>
+                              </td>
+                              <td className="py-3 px-2">
+                                {log.entity_type} (ID: {log.entity_id})
+                              </td>
+                              <td className="py-3 px-2 text-[var(--t3)] font-mono">
+                                {log.ip_address || "-"}
+                              </td>
+                              <td className="py-3 px-2 text-[var(--t3)]">
+                                {new Date(log.created_at).toLocaleString(isFarsi ? "fa-IR" : "en-US")}
+                              </td>
+                              <td className="py-3 px-2 text-end text-[var(--t3)]">
+                                {isExpanded ? "▲" : "▼"}
+                              </td>
+                            </tr>
+                            {isExpanded && (
+                              <tr className="bg-[var(--s3)]/10">
+                                <td colSpan={6} className="py-4 px-6 border-b border-[var(--b)]/60">
+                                  <div className="flex flex-col gap-3">
+                                    <div className="text-[10px] font-semibold text-[var(--t3)] tracking-wide uppercase">
+                                      {isFarsi ? "تغییرات داده‌ها (قبل ➡️ بعد)" : "Data Changes (Before ➡️ After)"}
+                                    </div>
+                                    {renderStateChanges(log.before_state, log.after_state)}
+                                    {log.user_agent && (
+                                      <div className="text-[10px] text-[var(--t3)] mt-2 font-mono truncate max-w-4xl" title={log.user_agent}>
+                                        <strong>User Agent:</strong> {log.user_agent}
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                <div className="flex justify-between items-center mt-2 text-xs">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setLogsPage(prev => Math.max(prev - 1, 1))}
+                    disabled={logsPage === 1}
+                  >
+                    {isFarsi ? "قبلی" : "Previous"}
+                  </Button>
+                  <span className="text-[var(--t3)]">
+                    {isFarsi ? `صفحه ${logsPage} از ${Math.ceil(logsData.count / 15)}` : `Page ${logsPage} of ${Math.ceil(logsData.count / 15)}`}
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setLogsPage(prev => prev + 1)}
+                    disabled={logsPage * 15 >= logsData.count}
+                  >
+                    {isFarsi ? "بعدی" : "Next"}
+                  </Button>
+                </div>
               </div>
             )}
           </div>

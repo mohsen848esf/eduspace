@@ -4,6 +4,26 @@ from accounts.models import AuditLog
 
 logger = logging.getLogger(__name__)
 
+SENSITIVE_KEYS = {
+    'password', 'password_hash', 'token', 'access_token', 'refresh_token',
+    'api_key', 'secret', 'private_key', 'authorization', 'signature',
+    'session_id', 'csrf', 'jwt', 'passwd', 'key'
+}
+
+def scrub_sensitive_data(data):
+    if isinstance(data, dict):
+        cleaned = {}
+        for k, v in data.items():
+            k_lower = str(k).lower()
+            if any(sec in k_lower for sec in SENSITIVE_KEYS):
+                cleaned[k] = "[REDACTED]"
+            else:
+                cleaned[k] = scrub_sensitive_data(v)
+        return cleaned
+    elif isinstance(data, list):
+        return [scrub_sensitive_data(item) for item in data]
+    return data
+
 class AuditService:
     @staticmethod
     def log(actor, action: str, entity, before=None, after=None, organization=None, request=None):
@@ -26,6 +46,9 @@ class AuditService:
             if not entity_id:
                 logger.warning(f"AuditService skipped: Entity {entity_type} is unsaved (no pk/id).")
                 return
+
+            before = scrub_sensitive_data(before)
+            after = scrub_sensitive_data(after)
 
             if not organization:
                 # Try to infer organization from the entity

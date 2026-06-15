@@ -47,6 +47,7 @@ urlpatterns = [
     ),
 
     path('org-context/', views.org_context, name='org_context'),
+    path('audit-logs/', views.audit_logs, name='audit_logs'),
 
     # CRM and Financial API ViewSets
     path('', include(router.urls)),
