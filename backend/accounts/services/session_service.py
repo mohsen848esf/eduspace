@@ -53,6 +53,13 @@ class SessionService:
             if current != Session.Status.SCHEDULED:
                 raise ValidationError(f"Cannot start session. Invalid transition from {current} to LIVE.")
 
+            # Check active sessions quota
+            from sys_admin.services import QuotaService
+            try:
+                QuotaService.check_quota(org, 'active_sessions')
+            except Exception as qe:
+                raise ValidationError(str(qe))
+
             # Lock the AcademyClass to serialize operations for sessions belonging to this class
             if session.academy_class_id:
                 # Lock the class row to prevent race conditions on duplicate live sessions
@@ -98,6 +105,9 @@ class SessionService:
             session.active_room = room
             session.status = Session.Status.LIVE
             session.save()
+
+            if org:
+                QuotaService.recalculate_usage(org)
 
             after_state = {
                 'status': session.status,
@@ -188,6 +198,9 @@ class SessionService:
             session.status = Session.Status.COMPLETED
             session.save()
 
+            if org:
+                QuotaService.recalculate_usage(org)
+
             after_state = {
                 'status': session.status
             }
@@ -252,6 +265,9 @@ class SessionService:
 
             session.status = Session.Status.CANCELLED
             session.save()
+
+            if org:
+                QuotaService.recalculate_usage(org)
 
             after_state = {
                 'status': session.status

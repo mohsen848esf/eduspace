@@ -12,6 +12,13 @@ logger = logging.getLogger(__name__)
 def dispatch_notification_task(self, notification_id: int):
     try:
         notification = Notification.objects.get(id=notification_id)
+        
+        # Check if organization is suspended
+        if notification.organization and notification.organization.is_suspended:
+            logger.warning("Aborting dispatch_notification_task because organization %s is suspended", notification.organization_id)
+            notification.status = Notification.Status.FAILED
+            notification.save(update_fields=['status'])
+            return
     except Notification.DoesNotExist:
         logger.error("Notification with ID %s does not exist", notification_id)
         return
@@ -59,6 +66,16 @@ def dispatch_notification_task(self, notification_id: int):
 
 @shared_task(name="notifications.tasks.class_broadcast_task")
 def class_broadcast_task(sender_id: int, class_id: int, channels: list[str], title: str, message: str, organization_id: int):
+    # Check if organization is suspended
+    from accounts.models import Organization
+    try:
+        org = Organization.objects.get(id=organization_id)
+        if org.is_suspended:
+            logger.warning("Aborting class_broadcast_task because organization %s is suspended", organization_id)
+            return
+    except Organization.DoesNotExist:
+        pass
+
     # Enumerate enrolled class members
     enrollments = Enrollment.objects.filter(
         academy_class_id=class_id,

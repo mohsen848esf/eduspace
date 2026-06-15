@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'notifications',
     'analytics',
+    'sys_admin',
 ]
 
 MIDDLEWARE = [
@@ -42,6 +43,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'sys_admin.middleware.SuspensionMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -137,6 +139,7 @@ CELERY_TASK_ROUTES = {
     'accounts.tasks.export_audit_logs_task': {'queue': 'compliance'},
     'accounts.tasks.monthly_generate_billing_and_usage_reports': {'queue': 'finance'},
     'accounts.tasks.weekly_recalculate_reports_and_storage': {'queue': 'finance'},
+    'sys_admin.tasks.daily_usage_recalculation': {'queue': 'finance'},
 }
 
 AUTH_USER_MODEL = 'accounts.User'

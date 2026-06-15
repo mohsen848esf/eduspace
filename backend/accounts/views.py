@@ -66,6 +66,11 @@ def login(request):
     password = request.data.get('password')
     user = authenticate(username=username, password=password)
     if user:
+        if not user.is_superuser:
+            memberships = user.org_memberships.filter(is_active=True)
+            if memberships.exists() and not memberships.filter(organization__is_suspended=False).exists():
+                return Response({'error': 'Your organization is suspended.'}, status=status.HTTP_403_FORBIDDEN)
+
         from .models import UserSession
         refresh = RefreshToken.for_user(user)
         session = UserSession.objects.create(
@@ -521,6 +526,22 @@ class CourseViewSet(viewsets.ModelViewSet):
         if not include_archived:
             queryset = queryset.filter(is_active=True)
         return queryset
+
+    def perform_create(self, serializer):
+        org = getattr(self.request, 'organization', None)
+        if org:
+            from sys_admin.services import QuotaService
+            try:
+                QuotaService.check_quota(org, 'courses')
+            except ValidationError as e:
+                from rest_framework.exceptions import ValidationError as DRFValidationError
+                raise DRFValidationError(detail=str(e))
+        
+        serializer.save()
+        
+        if org:
+            from sys_admin.services import QuotaService
+            QuotaService.recalculate_usage(org)
 
 
 class AcademyClassViewSet(viewsets.ModelViewSet):
@@ -1035,19 +1056,51 @@ class OrgMemberViewSet(viewsets.ModelViewSet):
             'user__org_memberships__role'
         )
 
+    def perform_create(self, serializer):
+        org = getattr(self.request, 'organization', None)
+        if org:
+            role = serializer.validated_data.get('role')
+            role_name = role.name if role else 'Student'
+            
+            from sys_admin.services import QuotaService
+            try:
+                if role_name in ['Teacher', 'Admin']:
+                    QuotaService.check_quota(org, 'teachers')
+                else:
+                    QuotaService.check_quota(org, 'students')
+            except ValidationError as e:
+                from rest_framework.exceptions import ValidationError as DRFValidationError
+                raise DRFValidationError(detail=str(e))
+                
+        serializer.save()
+        
+        if org:
+            from sys_admin.services import QuotaService
+            QuotaService.recalculate_usage(org)
+
     def perform_update(self, serializer):
         instance = serializer.save()
         from django.core.cache import cache
         cache_key = f"user_org_perms:{instance.user_id}:{instance.organization_id}"
         cache.delete(cache_key)
+        
+        org = getattr(self.request, 'organization', None)
+        if org:
+            from sys_admin.services import QuotaService
+            QuotaService.recalculate_usage(org)
 
     def perform_destroy(self, instance):
         user_id = instance.user_id
         org_id = instance.organization_id
+        org = instance.organization
         instance.delete()
         from django.core.cache import cache
         cache_key = f"user_org_perms:{user_id}:{org_id}"
         cache.delete(cache_key)
+        
+        if org:
+            from sys_admin.services import QuotaService
+            QuotaService.recalculate_usage(org)
 
 
 from rest_framework.decorators import action

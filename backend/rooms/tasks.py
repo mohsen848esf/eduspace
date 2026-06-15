@@ -26,6 +26,15 @@ def finalize_client_recording_task(recording_pk: int):
     """
     try:
         recording = Recording.objects.get(pk=recording_pk)
+        
+        # Check if organization is suspended
+        org = recording.room.organization if recording.room else None
+        if org and org.is_suspended:
+            logger.warning("Aborting finalize_client_recording_task for PK %s because organization %s is suspended", recording_pk, org.id)
+            recording.status = Recording.Status.FAILED
+            recording.save(update_fields=['status'])
+            return f"Aborted: Organization {org.id} is suspended"
+
         recording_token = recording.public_token
         chunks_dir = Path(settings.RECORDING_OUTPUT_DIR) / recording_token / 'chunks'
         
@@ -104,6 +113,10 @@ def finalize_client_recording_task(recording_pk: int):
             'file_path', 'duration_seconds', 'size_bytes', 'status', 'completed_at'
         ])
 
+        if org:
+            from sys_admin.services import QuotaService
+            QuotaService.recalculate_usage(org)
+
         # Clean up chunk directory
         try:
             shutil.rmtree(chunks_dir)
@@ -153,6 +166,15 @@ def finalize_recording_task(recording_pk: int, trim_start: float, trim_end: floa
     """
     try:
         rec = Recording.objects.get(pk=recording_pk)
+        
+        # Check if organization is suspended
+        org = rec.room.organization if rec.room else None
+        if org and org.is_suspended:
+            logger.warning("Aborting finalize_recording_task for PK %s because organization %s is suspended", recording_pk, org.id)
+            rec.status = Recording.Status.FAILED
+            rec.save(update_fields=['status'])
+            return f"Aborted: Organization {org.id} is suspended"
+
         recording_token = rec.public_token
         recording_dir = Path(settings.RECORDING_OUTPUT_DIR) / recording_token
 
@@ -257,6 +279,10 @@ def finalize_recording_task(recording_pk: int, trim_start: float, trim_end: floa
             'file_path', 'duration_seconds', 'size_bytes',
             'trim_start_seconds', 'trim_end_seconds', 'status', 'completed_at'
         ])
+
+        if org:
+            from sys_admin.services import QuotaService
+            QuotaService.recalculate_usage(org)
 
         logger.info("Successfully finalized server-side recording %s via Celery task", recording_token)
         CELERY_TASKS_TOTAL.labels(task_name="finalize_recording_task", status="success").inc()

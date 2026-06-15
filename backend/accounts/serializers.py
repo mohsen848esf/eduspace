@@ -27,7 +27,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'full_name', 'avatar', 'is_online', 'organizations')
+        fields = ('id', 'username', 'email', 'full_name', 'avatar', 'is_online', 'is_superuser', 'organizations')
         read_only_fields = ('id',)
 
     def get_organizations(self, obj):
@@ -449,6 +449,14 @@ class SessionTokenRefreshSerializer(TokenRefreshSerializer):
                 if not session.is_active:
                     from rest_framework_simplejwt.exceptions import InvalidToken
                     raise InvalidToken("Session has been revoked or is inactive.")
+
+                # Check organization suspension
+                user = session.user
+                if not user.is_superuser:
+                    memberships = user.org_memberships.filter(is_active=True)
+                    if memberships.exists() and not memberships.filter(organization__is_suspended=False).exists():
+                        from rest_framework_simplejwt.exceptions import InvalidToken
+                        raise InvalidToken("Your organization is suspended.")
             except UserSession.DoesNotExist:
                 from rest_framework_simplejwt.exceptions import InvalidToken
                 raise InvalidToken("Session not found.")

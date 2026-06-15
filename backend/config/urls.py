@@ -13,6 +13,7 @@ urlpatterns = [
     path('api/assessments/', include('assessments.urls')),
     path('api/system/', include('accounts.system_urls')),
     path('api/notifications/', include('notifications.urls')),
+    path('api/sys-admin/', include('sys_admin.urls')),
     path('api/accounts/preferences/notifications/', notifications_views.notifications_preferences),
     path('api/classes/<int:class_id>/broadcast/', notifications_views.class_broadcast),
 ]
