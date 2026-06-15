@@ -269,3 +269,50 @@ def concat_webm_to_mp4(
         except OSError:
             pass
 
+
+def transcode_and_trim(
+    source_path: Path,
+    output_path: Path,
+    height: int,
+    start_seconds: float,
+    end_seconds: Optional[float] = None,
+) -> None:
+    """
+    Trim and downscale the input video using libx264/aac and output a web-playable MP4.
+    """
+    if start_seconds < 0:
+        raise FFmpegError(f'start_seconds must be >= 0, got {start_seconds}')
+    if end_seconds is not None and end_seconds <= start_seconds:
+        raise FFmpegError(
+            f'end_seconds ({end_seconds}) must be greater than start_seconds ({start_seconds})'
+        )
+
+    ffmpeg = _which('ffmpeg')
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    cmd = [
+        ffmpeg,
+        '-y',
+        '-hide_banner',
+        '-loglevel', 'error',
+    ]
+    if start_seconds > 0:
+        cmd += ['-ss', f'{start_seconds:.3f}']
+    
+    cmd += ['-i', str(source_path)]
+    
+    if end_seconds is not None:
+        cmd += ['-t', f'{end_seconds - start_seconds:.3f}']
+
+    cmd += [
+        '-vf', f'scale=-2:{height}',
+        '-c:v', 'libx264',
+        '-preset', 'fast',
+        '-crf', '23',
+        '-c:a', 'aac',
+        '-movflags', '+faststart',
+        str(output_path),
+    ]
+    _run(cmd)
+
+

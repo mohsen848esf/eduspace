@@ -39,6 +39,8 @@ export default function RecordingViewPage() {
   const { token } = useParams<{ token: string }>();
   const [recording, setRecording] = useState<Recording | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [quality, setQuality] = useState<string>("Auto");
+
 
   useEffect(() => {
     if (!token) return;
@@ -114,14 +116,26 @@ export default function RecordingViewPage() {
           </div>
         </div>
 
-        <span className="text-[11px] font-mono text-[var(--t2)] force-ltr">
-          {formatBytes(recording.size_bytes)} · {formatTimecode(recording.duration_seconds)}
-        </span>
+        <div className="flex items-center gap-3">
+          <select
+            value={quality}
+            onChange={(e) => setQuality(e.target.value)}
+            className="text-xs bg-[var(--s2)] text-[var(--t2)] border border-[var(--b)] rounded px-2 py-1 outline-none cursor-pointer hover:text-[var(--t1)] hover:bg-[var(--s3)] transition-colors"
+          >
+            <option value="Auto">Auto</option>
+            <option value="1080p">1080p</option>
+            <option value="720p">720p</option>
+          </select>
+          <span className="text-[11px] font-mono text-[var(--t2)] force-ltr">
+            {formatBytes(recording.size_bytes)} · {formatTimecode(recording.duration_seconds)}
+          </span>
+        </div>
       </header>
 
       <main className="max-w-5xl mx-auto p-3 md:p-5">
         <RecordingPlayer
           token={recording.public_token}
+          quality={quality === "Auto" ? undefined : quality}
           autoPlay
           trackProgress
           startSeconds={

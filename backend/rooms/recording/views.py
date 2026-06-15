@@ -561,16 +561,13 @@ def complete_client_recording(request, token: str):
     recording.status = Recording.Status.PROCESSING
     recording.save(update_fields=['status'])
 
-    import threading
+    from rooms.tasks import finalize_client_recording_task
     from django.db import transaction
-    transaction.on_commit(lambda: threading.Thread(
-        target=_finalize_client_recording_bg,
-        args=(recording.pk,),
-        daemon=True,
-    ).start())
+    transaction.on_commit(lambda: finalize_client_recording_task.delay(recording.pk))
 
-    logger.info('client_recording.complete token=%s triggered background processing', token)
+    logger.info('client_recording.complete token=%s triggered Celery background task', token)
     return Response(_serialize(recording))
+
 
 
 
@@ -947,7 +944,27 @@ def stream_recording(request, token: str):
             status=http.HTTP_409_CONFLICT,
         )
 
-    abs_path: Path = settings.RECORDING_OUTPUT_DIR / rec.file_path
+    # Check for requested quality (e.g. ?quality=720p or ?quality=1080p)
+    quality = request.GET.get('quality')
+    file_path = rec.file_path
+    if quality in ('720p', '1080p'):
+        p = Path(file_path)
+        quality_file_path = f"{p.parent}/{p.stem}_{quality}{p.suffix}"
+        
+        if getattr(settings, 'S3_ENABLED', False):
+            file_path = quality_file_path
+        else:
+            abs_quality_path = settings.RECORDING_OUTPUT_DIR / quality_file_path
+            if abs_quality_path.exists():
+                file_path = quality_file_path
+
+    # Redirect to CDN if S3 and CDN are enabled
+    if getattr(settings, 'S3_ENABLED', False) and getattr(settings, 'CDN_URL', ''):
+        cdn_url = f"{settings.CDN_URL.rstrip('/')}/{file_path}"
+        from django.http import HttpResponseRedirect
+        return HttpResponseRedirect(cdn_url)
+
+    abs_path: Path = settings.RECORDING_OUTPUT_DIR / file_path
     if not abs_path.exists():
         logger.error(
             'recording %s missing on disk: expected %s',
@@ -958,8 +975,6 @@ def stream_recording(request, token: str):
             status=http.HTTP_410_GONE,
         )
 
-    # File name surfaced to the browser. Title-cased on the server side
-    # so the user sees something sensible if they save the file.
     filename = f'eduspace-{rec.room.room_code}-{rec.public_token}.mp4'
     return serve_video_with_range(
         abs_path,
@@ -1072,67 +1087,16 @@ def finalize_recording(request, token: str):
             status=http.HTTP_410_GONE,
         )
 
-    final_path = _finalize_path(rec)
-    final_path.parent.mkdir(parents=True, exist_ok=True)
-    intermediate_path = final_path.with_suffix('.concat.mp4')
+    # Put the recording into PROCESSING state
+    rec.status = Recording.Status.PROCESSING
+    rec.save(update_fields=['status'])
 
-    try:
-        # 1. Concatenate (or copy if a single segment).
-        ffmpeg_ops.concat_segments(seg_paths, intermediate_path)
+    # Delegate transcoding, scaling, S3 uploads and trim to Celery
+    from rooms.tasks import finalize_recording_task
+    from django.db import transaction
+    transaction.on_commit(lambda: finalize_recording_task.delay(rec.pk, trim_start, trim_end))
 
-        # 2. Sanity-check trim bounds against the actual concat duration.
-        probe = ffmpeg_ops.probe(intermediate_path)
-        if trim_end is not None and trim_end > probe.duration_seconds:
-            trim_end = probe.duration_seconds
-        if trim_start >= probe.duration_seconds:
-            return Response(
-                {'error': f'trim_start_seconds ({trim_start}) is past the recording end '
-                          f'({probe.duration_seconds:.2f}s)'},
-                status=http.HTTP_400_BAD_REQUEST,
-            )
-
-        # 3. Apply trim (or copy if no trim requested).
-        ffmpeg_ops.trim_inplace(
-            intermediate_path,
-            final_path,
-            start_seconds=trim_start,
-            end_seconds=trim_end,
-        )
-    except ffmpeg_ops.FFmpegError as exc:
-        logger.exception('finalize failed for token=%s', rec.public_token)
-        return Response(
-            {'error': f'Finalize failed: {exc}'},
-            status=http.HTTP_502_BAD_GATEWAY,
-        )
-    finally:
-        # Drop the intermediate concat file unless it's the final destination
-        # (single-segment edge case where trim was a no-op and concat == final).
-        if intermediate_path.exists() and intermediate_path != final_path:
-            try:
-                intermediate_path.unlink()
-            except OSError:
-                logger.exception('failed to remove intermediate %s', intermediate_path)
-
-    # Re-probe the final file so duration/size reflect the trimmed result.
-    final_probe = ffmpeg_ops.probe(final_path)
-
-    rec.file_path = f'{rec.public_token}/final.mp4'
-    rec.duration_seconds = int(round(final_probe.duration_seconds))
-    rec.size_bytes = final_probe.size_bytes
-    rec.trim_start_seconds = trim_start
-    rec.trim_end_seconds = trim_end
-    rec.save(update_fields=[
-        'file_path', 'duration_seconds', 'size_bytes',
-        'trim_start_seconds', 'trim_end_seconds',
-    ])
-
-    logger.info(
-        'finalized token=%s trim=[%.2f, %s] duration=%ds size=%dB',
-        rec.public_token, trim_start,
-        f'{trim_end:.2f}' if trim_end is not None else 'end',
-        rec.duration_seconds, rec.size_bytes,
-    )
-
+    logger.info('finalize: token=%s scheduled Celery background task', token)
     payload = _serialize(rec, detail=True, viewer=request.user)
     payload['is_owner'] = True
     return Response(payload)

@@ -277,8 +277,14 @@ const recordingsApi = {
   // ── Stream URL helper ─────────────────────────────────────────────────
   // Stream needs a Bearer JWT; the browser <video src> tag won't send it.
   // We hand the URL to RecordingPlayer.tsx which wires fetch + Blob URL.
-  streamUrl: (token: string) =>
-    `${client.defaults.baseURL}/recordings/${token}/stream/`,
+  streamUrl: (token: string, quality?: string) => {
+    let url = `${client.defaults.baseURL}/recordings/${token}/stream/`;
+    if (quality) {
+      url += `?quality=${quality}`;
+    }
+    return url;
+  },
+
 
   // Public-facing watch URL we copy into the user's clipboard when the
   // owner enables link-sharing on a recording.

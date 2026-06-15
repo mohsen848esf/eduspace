@@ -222,6 +222,17 @@ RECORDING_MAX_DURATION_SECONDS = int(
 os.makedirs(RECORDING_OUTPUT_DIR, exist_ok=True)
 
 # ---------------------------------------------------------------------------
+# S3 / MinIO Recording Storage
+# ---------------------------------------------------------------------------
+S3_ENABLED = os.getenv('S3_ENABLED', 'False').lower() == 'true'
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID', '')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY', '')
+AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME', '')
+AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL', None)
+CDN_URL = os.getenv('CDN_URL', '')
+
+
+# ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
 # Send our app loggers to stdout at INFO so recording/webhook/egress events
