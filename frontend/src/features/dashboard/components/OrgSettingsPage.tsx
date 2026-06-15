@@ -3,12 +3,67 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import { useLocale } from "../../../i18n/useLocale";
 import { useOrgPermission } from "../../../hooks/useOrgPermission";
-import { authApi, type OrganizationDetail, type OrgMember, type Role } from "../../auth/api/auth.api";
+import { authApi, type OrganizationDetail, type OrgMember, type Role, type UserSession, type SystemPermission } from "../../auth/api/auth.api";
 import AppShell from "../../../components/layout/AppShell";
 import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
 import { Modal, ModalHeader, ModalTitle, ModalBody, ModalFooter } from "../../../components/ui/Modal";
 import Spinner from "../../../components/ui/Spinner";
+
+const parseUA = (ua: string) => {
+  if (!ua) return "Unknown Device";
+  const userAgent = ua.toLowerCase();
+  
+  let browser = "Browser";
+  if (userAgent.includes("firefox")) browser = "Firefox";
+  else if (userAgent.includes("chrome") && !userAgent.includes("chromium")) browser = "Chrome";
+  else if (userAgent.includes("safari") && !userAgent.includes("chrome")) browser = "Safari";
+  else if (userAgent.includes("edge") || userAgent.includes("edg")) browser = "Edge";
+  else if (userAgent.includes("opera") || userAgent.includes("opr")) browser = "Opera";
+  
+  let os = "OS";
+  if (userAgent.includes("windows")) os = "Windows";
+  else if (userAgent.includes("macintosh") || userAgent.includes("mac os")) os = "macOS";
+  else if (userAgent.includes("linux")) os = "Linux";
+  else if (userAgent.includes("android")) os = "Android";
+  else if (userAgent.includes("iphone") || userAgent.includes("ipad")) os = "iOS";
+
+  return `${browser} on ${os}`;
+};
+
+const getFarsiPermName = (codename: string, fallback: string) => {
+  const map: Record<string, string> = {
+    can_view_dashboard: "مشاهده داشبورد",
+    can_attend_class: "حضور در کلاس",
+    can_teach_class: "تدریس کلاس",
+    can_manage_members: "مدیریت اعضا و پرسنل",
+    can_view_financials: "مشاهده گزارشات مالی",
+    can_manage_financials: "مدیریت امور مالی",
+    can_control_recordings: "مدیریت ضبط کلاس",
+    can_view_sessions: "مشاهده جلسات",
+    can_manage_sessions: "مدیریت جلسات",
+    can_view_attendance: "مشاهده حضور و غیاب",
+    can_manage_attendance: "مدیریت حضور و غیاب",
+  };
+  return map[codename] || fallback;
+};
+
+const getFarsiPermDesc = (codename: string, fallback: string) => {
+  const map: Record<string, string> = {
+    can_view_dashboard: "دسترسی به داشبورد و آمارهای عمومی",
+    can_attend_class: "شرکت در جلسات زنده به عنوان دانش‌آموز",
+    can_teach_class: "برگزاری کلاس‌های زنده و تدریس دروس",
+    can_manage_members: "افزودن، ویرایش یا حذف دانش‌آموزان و دبیران",
+    can_view_financials: "مشاهده صورت‌حساب‌ها و گزارشات درآمد و هزینه",
+    can_manage_financials: "صدور فاکتور شهریه، تایید هزینه‌ها و پرداخت‌ها",
+    can_control_recordings: "شروع، توقف یا مکث در ضبط کلاس‌های آنلاین",
+    can_view_sessions: "مشاهده لیست جلسات و کلاس‌های برگزار شده",
+    can_manage_sessions: "برنامه‌ریزی، ایجاد، ویرایش و حذف جلسات درسی",
+    can_view_attendance: "مشاهده گزارش وضعیت حضور دانش‌آموزان",
+    can_manage_attendance: "ثبت یا تغییر وضعیت حضور و غیاب دانش‌آموزان",
+  };
+  return map[codename] || fallback;
+};
 
 export default function OrgSettingsPage() {
   const { language } = useLocale();
@@ -18,7 +73,7 @@ export default function OrgSettingsPage() {
 
   const canManageMembers = hasPermission("can_manage_members");
 
-  const [activeTab, setActiveTab] = useState<"details" | "members" | "audit_logs">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "members" | "connections" | "roles" | "audit_logs">("details");
 
   // Edit organization details state
   const [orgName, setOrgName] = useState("");
@@ -30,6 +85,12 @@ export default function OrgSettingsPage() {
   const [inviteRoleId, setInviteRoleId] = useState<number | null>(null);
   const [inviteContract, setInviteContract] = useState("full_time");
   const [inviteExpires, setInviteExpires] = useState("");
+
+  // Custom role creation state
+  const [isCreateRoleOpen, setIsCreateRoleOpen] = useState(false);
+  const [newRoleName, setNewRoleName] = useState("");
+  const [newRoleDesc, setNewRoleDesc] = useState("");
+  const [newRolePerms, setNewRolePerms] = useState<string[]>([]);
 
   // Audit Logs state
   const [selectedActor, setSelectedActor] = useState("");
@@ -52,10 +113,22 @@ export default function OrgSettingsPage() {
     enabled: activeTab === "members",
   });
 
-  const { data: roles = [] } = useQuery<Role[]>({
+  const { data: roles = [], isLoading: loadingRoles } = useQuery<Role[]>({
     queryKey: ["orgRoles"],
     queryFn: authApi.getRoles,
-    enabled: isInviteOpen,
+    enabled: activeTab === "roles" || isInviteOpen,
+  });
+
+  const { data: sessions = [], isLoading: loadingSessions } = useQuery<UserSession[]>({
+    queryKey: ["orgSessions"],
+    queryFn: authApi.getSessions,
+    enabled: activeTab === "connections",
+  });
+
+  const { data: systemPermissions = [], isLoading: loadingPermissions } = useQuery<SystemPermission[]>({
+    queryKey: ["systemPermissions"],
+    queryFn: authApi.getPermissions,
+    enabled: activeTab === "roles",
   });
 
   // Audit Log queries
@@ -86,7 +159,6 @@ export default function OrgSettingsPage() {
   // Set default role when roles load
   useEffect(() => {
     if (roles.length > 0 && !inviteRoleId) {
-      // Find 'Student' or fallback to first role
       const student = roles.find(r => r.name.toLowerCase().includes("student"));
       setInviteRoleId(student ? student.id : roles[0].id);
     }
@@ -111,7 +183,6 @@ export default function OrgSettingsPage() {
       queryClient.invalidateQueries({ queryKey: ["orgMembers"] });
       toast.success(isFarsi ? "عضو جدید با موفقیت دعوت شد" : "Member invited successfully");
       setIsInviteOpen(false);
-      // Reset form
       setInviteUser("");
       setInviteExpires("");
     },
@@ -145,7 +216,56 @@ export default function OrgSettingsPage() {
     }
   });
 
-  // Form Handlers
+  const revokeSessionMutation = useMutation({
+    mutationFn: authApi.revokeSession,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orgSessions"] });
+      toast.success(isFarsi ? "اتصال با موفقیت خاتمه یافت" : "Session revoked successfully");
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در لغو اتصال" : "Failed to revoke session"));
+    }
+  });
+
+  const createRoleMutation = useMutation({
+    mutationFn: authApi.createRole,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orgRoles"] });
+      toast.success(isFarsi ? "نقش با موفقیت ایجاد شد" : "Role created successfully");
+      setIsCreateRoleOpen(false);
+      setNewRoleName("");
+      setNewRoleDesc("");
+      setNewRolePerms([]);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ایجاد نقش" : "Failed to create role"));
+    }
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { name?: string; description?: string; permissions?: string[] } }) => 
+      authApi.updateRole(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orgRoles"] });
+      toast.success(isFarsi ? "نقش با موفقیت بروزرسانی شد" : "Role updated successfully");
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در بروزرسانی نقش" : "Failed to update role"));
+    }
+  });
+
+  const deleteRoleMutation = useMutation({
+    mutationFn: authApi.deleteRole,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orgRoles"] });
+      toast.success(isFarsi ? "نقش با موفقیت حذف شد" : "Role deleted successfully");
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در حذف نقش" : "Failed to delete role"));
+    }
+  });
+
+  // Handlers
   const handleSaveDetails = (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeOrg || !orgName.trim()) return;
@@ -183,6 +303,19 @@ export default function OrgSettingsPage() {
     });
   };
 
+  const handleCreateRoleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRoleName.trim()) {
+      toast.error(isFarsi ? "لطفاً نام نقش را وارد کنید" : "Please enter a role name");
+      return;
+    }
+    createRoleMutation.mutate({
+      name: newRoleName,
+      description: newRoleDesc,
+      permissions: newRolePerms
+    });
+  };
+
   const toggleMemberActive = (member: OrgMember) => {
     if (!canManageMembers) return;
     updateMemberMutation.mutate({
@@ -195,6 +328,34 @@ export default function OrgSettingsPage() {
     if (!canManageMembers) return;
     if (window.confirm(isFarsi ? "آیا از حذف این عضو اطمینان دارید؟" : "Are you sure you want to remove this member?")) {
       removeMemberMutation.mutate(memberId);
+    }
+  };
+
+  const handleRevokeSession = (sessionId: number, isCurrent: boolean) => {
+    const confirmMessage = isCurrent
+      ? (isFarsi ? "این اتصال، دستگاه فعلی شما است. آیا مطمئنید می‌خواهید خارج شوید؟" : "This is your current active connection. Are you sure you want to log out?")
+      : (isFarsi ? "آیا از خاتمه دادن به این اتصال اطمینان دارید؟" : "Are you sure you want to revoke this session?");
+    
+    if (window.confirm(confirmMessage)) {
+      revokeSessionMutation.mutate(sessionId);
+    }
+  };
+
+  const handleTogglePermission = (role: Role, permCodename: string, checked: boolean) => {
+    if (!role.permissions) return;
+    const updatedPerms = checked
+      ? [...role.permissions, permCodename]
+      : role.permissions.filter(p => p !== permCodename);
+      
+    updateRoleMutation.mutate({
+      id: role.id,
+      data: { permissions: updatedPerms }
+    });
+  };
+
+  const handleDeleteRole = (roleId: number) => {
+    if (window.confirm(isFarsi ? "آیا از حذف این نقش اطمینان دارید؟" : "Are you sure you want to delete this role?")) {
+      deleteRoleMutation.mutate(roleId);
     }
   };
 
@@ -295,10 +456,10 @@ export default function OrgSettingsPage() {
       <div className="flex flex-col gap-6 max-w-5xl mx-auto">
         
         {/* Tabs navigation */}
-        <div className="flex border-b border-[var(--b)] gap-6">
+        <div className="flex border-b border-[var(--b)] gap-6 overflow-x-auto">
           <button
             onClick={() => setActiveTab("details")}
-            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 ${
+            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${
               activeTab === "details"
                 ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
                 : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
@@ -308,7 +469,7 @@ export default function OrgSettingsPage() {
           </button>
           <button
             onClick={() => setActiveTab("members")}
-            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 ${
+            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${
               activeTab === "members"
                 ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
                 : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
@@ -317,11 +478,31 @@ export default function OrgSettingsPage() {
             {isFarsi ? "اعضا و پرسنل" : "Members & Staff"}
           </button>
           <button
+            onClick={() => setActiveTab("connections")}
+            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${
+              activeTab === "connections"
+                ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
+                : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
+            }`}
+          >
+            {isFarsi ? "دستگاه‌ها و اتصالات" : "Devices & Connections"}
+          </button>
+          <button
+            onClick={() => setActiveTab("roles")}
+            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${
+              activeTab === "roles"
+                ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
+                : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
+            }`}
+          >
+            {isFarsi ? "نقش‌ها و دسترسی‌ها" : "Roles & Permissions"}
+          </button>
+          <button
             onClick={() => {
               setActiveTab("audit_logs");
               setLogsPage(1);
             }}
-            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 ${
+            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${
               activeTab === "audit_logs"
                 ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
                 : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
@@ -535,7 +716,176 @@ export default function OrgSettingsPage() {
           </div>
         )}
 
-        {/* Tab content 3: Audit Logs */}
+        {/* Tab content 3: Connections */}
+        {activeTab === "connections" && (
+          <div className="bg-[var(--s2)] rounded-2xl border border-[var(--b)] p-6 shadow-sm flex flex-col gap-6 animate-in fade-in duration-150">
+            <div>
+              <h2 className="text-base font-bold text-[var(--t1)]">
+                {isFarsi ? "دستگاه‌ها و اتصالات فعال" : "Active Devices & Connections"}
+              </h2>
+              <p className="text-xs text-[var(--t3)] mt-1">
+                {isFarsi 
+                  ? "لیست دستگاه‌هایی که به حساب کاربری اعضای آکادمی متصل هستند. شما می‌توانید دسترسی هر کدام را لغو کنید."
+                  : "List of devices connected to academy members. You can revoke connections to force logout."}
+              </p>
+            </div>
+
+            {loadingSessions ? (
+              <div className="flex h-32 items-center justify-center">
+                <Spinner />
+              </div>
+            ) : sessions.length === 0 ? (
+              <div className="text-center py-12 border border-dashed border-[var(--b)] rounded-2xl">
+                <span className="text-4xl block mb-2">💻</span>
+                <h3 className="text-sm font-semibold text-[var(--t1)]">
+                  {isFarsi ? "اتصالی یافت نشد" : "No connections found"}
+                </h3>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-start border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-[var(--b)] text-[var(--t3)] font-semibold">
+                      <th className="py-3 px-2 text-start">{isFarsi ? "کاربر" : "User"}</th>
+                      <th className="py-3 px-2 text-start">{isFarsi ? "دستگاه و مرورگر" : "Device & Browser"}</th>
+                      <th className="py-3 px-2 text-start">{isFarsi ? "آدرس IP" : "IP Address"}</th>
+                      <th className="py-3 px-2 text-start">{isFarsi ? "آخرین فعالیت" : "Logged/Active"}</th>
+                      <th className="py-3 px-2 text-center">{isFarsi ? "وضعیت" : "Status"}</th>
+                      <th className="py-3 px-2 text-end">{isFarsi ? "عملیات" : "Action"}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sessions.map((sess) => (
+                      <tr key={sess.id} className="border-b border-[var(--b)]/60 text-[var(--t2)] hover:bg-[var(--s3)]/30 transition-colors">
+                        <td className="py-3 px-2 font-semibold">
+                          {sess.full_name || sess.username}
+                          <span className="text-[10px] text-[var(--t3)] block mt-0.5 font-normal">@{sess.username}</span>
+                        </td>
+                        <td className="py-3 px-2 font-mono text-[11px] text-[var(--t2)]">
+                          {parseUA(sess.user_agent)}
+                        </td>
+                        <td className="py-3 px-2 font-mono text-[var(--t3)]">{sess.ip_address || "-"}</td>
+                        <td className="py-3 px-2 text-[var(--t3)]">
+                          {new Date(sess.created_at).toLocaleString(isFarsi ? "fa-IR" : "en-US", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit"
+                          })}
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          {sess.is_current ? (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[var(--green)]/15 text-[var(--green)]">
+                              {isFarsi ? "این دستگاه" : "Current Device"}
+                            </span>
+                          ) : (
+                            <span className="w-2 h-2 rounded-full bg-[var(--green)] inline-block" title="Active" />
+                          )}
+                        </td>
+                        <td className="py-3 px-2 text-end">
+                          <button
+                            onClick={() => handleRevokeSession(sess.id, sess.is_current)}
+                            disabled={revokeSessionMutation.isPending}
+                            className="px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-transparent border border-[var(--red)]/40 text-[var(--red)] cursor-pointer hover:bg-[var(--red)]/10 transition-colors"
+                          >
+                            {isFarsi ? "خاتمه دسترسی" : "Revoke"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab content 4: Roles & Permissions */}
+        {activeTab === "roles" && (
+          <div className="bg-[var(--s2)] rounded-2xl border border-[var(--b)] p-6 shadow-sm flex flex-col gap-6 animate-in fade-in duration-150">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-[var(--t1)]">
+                  {isFarsi ? "نقش‌ها و ماتریس دسترسی‌ها" : "Roles & Permissions Builder"}
+                </h2>
+                <p className="text-xs text-[var(--t3)] mt-1">
+                  {isFarsi 
+                    ? "مدیریت سطوح دسترسی و تعریف نقش‌های شخصی‌سازی شده برای اعضای سازمان."
+                    : "Configure permission scopes for standard and custom roles in your organization."}
+                </p>
+              </div>
+              {canManageMembers && (
+                <Button onClick={() => setIsCreateRoleOpen(true)} size="sm">
+                  {isFarsi ? "ایجاد نقش جدید" : "Create Custom Role"}
+                </Button>
+              )}
+            </div>
+
+            {loadingPermissions || loadingRoles ? (
+              <div className="flex h-32 items-center justify-center">
+                <Spinner />
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-start border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-[var(--b)] text-[var(--t3)] font-semibold">
+                      <th className="py-3 px-2 text-start min-w-[220px]">{isFarsi ? "عنوان و شرح دسترسی" : "Permission Title & Description"}</th>
+                      {roles.map((role) => (
+                        <th key={role.id} className="py-3 px-2 text-center min-w-[100px]">
+                          <div className="flex flex-col items-center gap-1.5">
+                            <span className="font-semibold text-[var(--t1)]">{role.name}</span>
+                            {!["admin", "teacher", "student"].includes(role.name.toLowerCase()) && canManageMembers && (
+                              <button
+                                onClick={() => handleDeleteRole(role.id)}
+                                className="px-1.5 py-0.5 rounded text-[9px] bg-[var(--red)]/10 text-[var(--red)] border border-none cursor-pointer hover:bg-[var(--red)]/20 transition-all font-semibold"
+                              >
+                                {isFarsi ? "حذف نقش" : "Delete"}
+                              </button>
+                            )}
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {systemPermissions.map((perm) => (
+                      <tr key={perm.codename} className="border-b border-[var(--b)]/60 text-[var(--t2)] hover:bg-[var(--s3)]/30 transition-colors">
+                        <td className="py-3 px-2">
+                          <div className="flex flex-col">
+                            <span className="font-medium text-[var(--t1)]">
+                              {isFarsi ? getFarsiPermName(perm.codename, perm.name) : perm.name}
+                            </span>
+                            <span className="text-[10px] text-[var(--t3)] mt-0.5">
+                              {isFarsi ? getFarsiPermDesc(perm.codename, perm.description) : perm.description}
+                            </span>
+                          </div>
+                        </td>
+                        {roles.map((role) => {
+                          const isSystem = ["admin", "teacher", "student"].includes(role.name.toLowerCase());
+                          const hasPerm = role.permissions?.includes(perm.codename);
+                          return (
+                            <td key={role.id} className="py-3 px-2 text-center">
+                              <input
+                                type="checkbox"
+                                checked={hasPerm || false}
+                                disabled={isSystem || !canManageMembers || updateRoleMutation.isPending}
+                                onChange={(e) => handleTogglePermission(role, perm.codename, e.target.checked)}
+                                className="w-4.5 h-4.5 cursor-pointer accent-[var(--brand-text)] disabled:opacity-60 disabled:cursor-not-allowed"
+                              />
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab content 5: Audit Logs */}
         {activeTab === "audit_logs" && (
           <div className="bg-[var(--s2)] rounded-2xl border border-[var(--b)] p-6 shadow-sm flex flex-col gap-6 animate-in fade-in duration-150">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -774,6 +1124,67 @@ export default function OrgSettingsPage() {
               </Button>
               <Button type="submit" disabled={inviteMemberMutation.isPending}>
                 {inviteMemberMutation.isPending ? <Spinner size="sm" /> : (isFarsi ? "ارسال دعوت" : "Send Invite")}
+              </Button>
+            </ModalFooter>
+          </form>
+        </Modal>
+
+        {/* Custom Role Creation Dialog */}
+        <Modal open={isCreateRoleOpen} onOpenChange={setIsCreateRoleOpen}>
+          <form onSubmit={handleCreateRoleSubmit}>
+            <ModalHeader>
+              <ModalTitle>
+                {isFarsi ? "ایجاد نقش سفارشی" : "Create Custom Role"}
+              </ModalTitle>
+            </ModalHeader>
+            <ModalBody>
+              <div className="flex flex-col gap-4">
+                <Input
+                  label={isFarsi ? "نام نقش" : "Role Name"}
+                  placeholder={isFarsi ? "مثال: پشتیبان فنی" : "e.g. Support Specialist"}
+                  value={newRoleName}
+                  onChange={(e) => setNewRoleName(e.target.value)}
+                  required
+                />
+                <Input
+                  label={isFarsi ? "توضیحات" : "Description"}
+                  placeholder={isFarsi ? "مثال: نظارت بر عملکرد فنی سیستم" : "e.g. Manages technical system logs"}
+                  value={newRoleDesc}
+                  onChange={(e) => setNewRoleDesc(e.target.value)}
+                />
+                
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-semibold text-[var(--t2)]">
+                    {isFarsi ? "مجوزها و دسترسی‌های اولیه" : "Initial Permissions"}
+                  </label>
+                  <div className="max-h-60 overflow-y-auto border border-[var(--b)] rounded-xl p-3 flex flex-col gap-2">
+                    {systemPermissions.map((perm) => (
+                      <label key={perm.codename} className="flex items-center gap-2 text-xs text-[var(--t2)] cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={newRolePerms.includes(perm.codename)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setNewRolePerms([...newRolePerms, perm.codename]);
+                            } else {
+                              setNewRolePerms(newRolePerms.filter(p => p !== perm.codename));
+                            }
+                          }}
+                          className="accent-[var(--brand-text)]"
+                        />
+                        <span>{isFarsi ? getFarsiPermName(perm.codename, perm.name) : perm.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </ModalBody>
+            <ModalFooter>
+              <Button type="button" variant="secondary" onClick={() => setIsCreateRoleOpen(false)}>
+                {isFarsi ? "انصراف" : "Cancel"}
+              </Button>
+              <Button type="submit" disabled={createRoleMutation.isPending}>
+                {createRoleMutation.isPending ? <Spinner size="sm" /> : (isFarsi ? "ایجاد" : "Create")}
               </Button>
             </ModalFooter>
           </form>

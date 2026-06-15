@@ -15,10 +15,12 @@ router.register('organizations', views.OrganizationViewSet, basename='organizati
 router.register('org-members', views.OrgMemberViewSet, basename='org-member')
 router.register('roles', views.RoleViewSet, basename='role')
 router.register('certificates', views.CertificateViewSet, basename='certificate')
+router.register('user-sessions', views.UserSessionViewSet, basename='user-session')
 
 urlpatterns = [
     path('register/', views.register, name='register'),
     path('login/', views.login, name='login'),
+    path('token/refresh/', views.SessionTokenRefreshView.as_view(), name='token_refresh'),
     path('me/', views.me, name='me'),
     path('logout/', views.logout, name='logout'),
     path('search/', views.search_users, name='search_users'),

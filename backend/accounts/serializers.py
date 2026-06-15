@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance, Organization, OrgMember, Role, Certificate, AuditLog
+from .models import User, Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance, Organization, OrgMember, Role, Certificate, AuditLog, Permission, UserSession
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -398,9 +398,16 @@ class OrgMemberSerializer(serializers.ModelSerializer):
 
 
 class RoleSerializer(serializers.ModelSerializer):
+    permissions = serializers.SlugRelatedField(
+        many=True,
+        slug_field='codename',
+        queryset=Permission.objects.all(),
+        required=False
+    )
+
     class Meta:
         model = Role
-        fields = ('id', 'name', 'description')
+        fields = ('id', 'name', 'description', 'permissions')
 
 
 class CertificateSerializer(serializers.ModelSerializer):
@@ -430,5 +437,49 @@ class AuditLogSerializer(serializers.ModelSerializer):
             'ip_address', 'user_agent', 'created_at'
         )
         read_only_fields = fields
+
+
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
+
+class SessionTokenRefreshSerializer(TokenRefreshSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        refresh = RefreshToken(attrs['refresh'])
+        session_id = refresh.payload.get('session_id')
+        if session_id:
+            from .models import UserSession
+            try:
+                session = UserSession.objects.get(id=session_id)
+                if not session.is_active:
+                    from rest_framework_simplejwt.exceptions import InvalidToken
+                    raise InvalidToken("Session has been revoked or is inactive.")
+            except UserSession.DoesNotExist:
+                from rest_framework_simplejwt.exceptions import InvalidToken
+                raise InvalidToken("Session not found.")
+            
+            # Inject session_id into new access token
+            access_token = AccessToken(data['access'])
+            access_token['session_id'] = session_id
+            data['access'] = str(access_token)
+        return data
+
+
+class UserSessionSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    full_name = serializers.CharField(source='user.full_name', read_only=True)
+    is_current = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UserSession
+        fields = ('id', 'username', 'full_name', 'ip_address', 'user_agent', 'is_active', 'is_current', 'created_at', 'updated_at')
+        read_only_fields = fields
+
+    def get_is_current(self, obj):
+        request = self.context.get('request')
+        if request and hasattr(request, 'auth') and request.auth:
+            return request.auth.get('session_id') == obj.id
+        return False
+
 
 

@@ -478,5 +478,19 @@ class Certificate(models.Model):
         return f"Certificate {self.certificate_number} for {self.student.username} - {self.academy_class.course.title}"
 
 
+class UserSession(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sessions')
+    refresh_token_jti = models.CharField(max_length=255, unique=True, db_index=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True, default='')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Session {self.id} for {self.user.username} (Active: {self.is_active})"
+
+
+
 
 
