@@ -7,6 +7,7 @@ export interface Course {
   code: string;
   description: string;
   price: string;
+  thumbnail?: string | null;
   created_at: string;
 }
 
@@ -90,12 +91,14 @@ export const crmApi = {
     const res = await client.get("/auth/courses/?include_archived=true");
     return res.data;
   },
-  createCourse: async (data: Partial<Course>): Promise<Course> => {
-    const res = await client.post("/auth/courses/", data);
+  createCourse: async (data: FormData | Partial<Course>): Promise<Course> => {
+    const headers = data instanceof FormData ? { "Content-Type": "multipart/form-data" } : {};
+    const res = await client.post("/auth/courses/", data, { headers });
     return res.data;
   },
-  updateCourse: async (id: number, data: Partial<Course>): Promise<Course> => {
-    const res = await client.patch(`/auth/courses/${id}/`, data);
+  updateCourse: async (id: number, data: FormData | Partial<Course>): Promise<Course> => {
+    const headers = data instanceof FormData ? { "Content-Type": "multipart/form-data" } : {};
+    const res = await client.patch(`/auth/courses/${id}/`, data, { headers });
     return res.data;
   },
   deleteCourse: async (id: number): Promise<void> => {

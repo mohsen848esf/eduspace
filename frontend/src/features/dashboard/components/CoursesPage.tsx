@@ -36,7 +36,7 @@ export default function CoursesPage() {
   });
 
   const updateCourseMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Course> }) => crmApi.updateCourse(id, data),
+    mutationFn: ({ id, data }: { id: number; data: FormData | Partial<Course> }) => crmApi.updateCourse(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["courses"] });
       toast.success(isFarsi ? "دوره با موفقیت ویرایش شد" : "Course updated successfully");
@@ -61,25 +61,61 @@ export default function CoursesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [courseForm, setCourseForm] = useState({ title: "", code: "", description: "", price: "" });
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [thumbnailCleared, setThumbnailCleared] = useState(false);
 
   const openCreateModal = () => {
     setEditId(null);
     setCourseForm({ title: "", code: "", description: "", price: "" });
+    setThumbnailFile(null);
+    setThumbnailPreview(null);
+    setThumbnailCleared(false);
     setIsModalOpen(true);
   };
 
   const openEditModal = (item: Course) => {
     setEditId(item.id);
     setCourseForm({ title: item.title, code: item.code, description: item.description, price: item.price });
+    setThumbnailFile(null);
+    setThumbnailPreview(item.thumbnail || null);
+    setThumbnailCleared(false);
     setIsModalOpen(true);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setThumbnailFile(file);
+      setThumbnailPreview(URL.createObjectURL(file));
+      setThumbnailCleared(false);
+    }
+  };
+
+  const handleClearThumbnail = () => {
+    setThumbnailFile(null);
+    setThumbnailPreview(null);
+    setThumbnailCleared(true);
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const formData = new FormData();
+    formData.append("title", courseForm.title);
+    formData.append("code", courseForm.code);
+    formData.append("description", courseForm.description);
+    formData.append("price", courseForm.price);
+    
+    if (thumbnailFile) {
+      formData.append("thumbnail", thumbnailFile);
+    } else if (thumbnailCleared) {
+      formData.append("thumbnail", "");
+    }
+
     if (editId) {
-      updateCourseMutation.mutate({ id: editId, data: courseForm });
+      updateCourseMutation.mutate({ id: editId, data: formData });
     } else {
-      createCourseMutation.mutate(courseForm);
+      createCourseMutation.mutate(formData);
     }
   };
 
@@ -108,8 +144,7 @@ export default function CoursesPage() {
             <table className="w-full text-start text-sm border-collapse">
               <thead>
                 <tr className="border-b border-[var(--b)] text-[var(--t3)] text-xs uppercase text-left">
-                  <th className="p-4">{isFarsi ? "کد دوره" : "Code"}</th>
-                  <th className="p-4">{isFarsi ? "عنوان" : "Title"}</th>
+                  <th className="p-4">{isFarsi ? "دوره آموزشی" : "Course"}</th>
                   <th className="p-4">{isFarsi ? "توضیحات" : "Description"}</th>
                   <th className="p-4">{isFarsi ? "شهریه (دلار)" : "Price"}</th>
                   {isOrisAdmin && <th className="p-4 text-right">{isFarsi ? "عملیات" : "Actions"}</th>}
@@ -118,10 +153,27 @@ export default function CoursesPage() {
               <tbody>
                 {courses.map((c) => (
                   <tr key={c.id} className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors text-left">
-                    <td className="p-4 font-semibold text-[var(--brand-text)]">{c.code}</td>
-                    <td className="p-4 text-[var(--t1)]">{c.title}</td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        {c.thumbnail ? (
+                          <img
+                            src={c.thumbnail}
+                            alt={c.title}
+                            className="w-10 h-10 object-cover rounded-lg border border-[var(--b)] flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-[var(--s3)] border border-[var(--b)] flex items-center justify-center text-[var(--t3)] text-xs font-bold uppercase flex-shrink-0">
+                            {c.code.slice(0, 2)}
+                          </div>
+                        )}
+                        <div>
+                          <div className="font-semibold text-[var(--t1)]">{c.title}</div>
+                          <div className="text-xs text-[var(--t3)] font-mono">{c.code}</div>
+                        </div>
+                      </div>
+                    </td>
                     <td className="p-4 text-[var(--t2)] max-w-xs truncate">{c.description || "—"}</td>
-                    <td className="p-4 text-[var(--t1)]">${parseFloat(c.price).toFixed(2)}</td>
+                    <td className="p-4 text-[var(--t1)] font-mono">${parseFloat(c.price).toFixed(2)}</td>
                     {isOrisAdmin && (
                       <td className="p-4 text-right flex justify-end gap-2">
                         <button
@@ -174,6 +226,47 @@ export default function CoursesPage() {
               placeholder="e.g. Python Programming"
               required
             />
+            <div className="flex flex-col gap-1.5 w-full">
+              <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                {isFarsi ? "تصویر کاور دوره (Thumbnail)" : "Course Thumbnail"}
+              </label>
+              <div className="flex items-center gap-4 bg-[var(--s3)] p-3 rounded-xl border border-[var(--b)]">
+                {thumbnailPreview ? (
+                  <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-[var(--b)] flex-shrink-0 group">
+                    <img src={thumbnailPreview} alt="Preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={handleClearThumbnail}
+                      className="absolute inset-0 bg-black/60 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity border-none cursor-pointer text-xs font-bold"
+                    >
+                      {isFarsi ? "حذف" : "Remove"}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-lg bg-[var(--s2)] border border-dashed border-[var(--b)] flex items-center justify-center text-[var(--t3)] text-xs flex-shrink-0">
+                    {isFarsi ? "بدون تصویر" : "No Image"}
+                  </div>
+                )}
+                <div className="flex flex-col gap-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    id="course-thumbnail-upload"
+                  />
+                  <label
+                    htmlFor="course-thumbnail-upload"
+                    className="px-3 py-1.5 bg-[var(--s2)] text-[var(--t1)] text-xs font-semibold rounded-lg border border-[var(--b)] hover:bg-[var(--s1)] cursor-pointer text-center transition-colors inline-block"
+                  >
+                    {isFarsi ? "انتخاب تصویر" : "Select Image"}
+                  </label>
+                  <span className="text-[10px] text-[var(--t3)]">
+                    {isFarsi ? "فرمت‌های مجاز: PNG, JPG" : "Allowed: PNG, JPG"}
+                  </span>
+                </div>
+              </div>
+            </div>
             <div className="flex flex-col gap-1.5 w-full">
               <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
                 {isFarsi ? "توضیحات" : "Description"}
