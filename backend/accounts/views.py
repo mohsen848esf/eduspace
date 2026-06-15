@@ -1,5 +1,5 @@
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -7,6 +7,7 @@ from django.contrib.auth import authenticate
 from django.db import models
 from .models import User
 from .serializers import RegisterSerializer, UserSerializer
+from accounts.throttling import TenantScopedRateThrottle
 
 
 def get_client_ip(request):
@@ -18,6 +19,7 @@ def get_client_ip(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([TenantScopedRateThrottle])
 def register(request):
     serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
@@ -53,9 +55,12 @@ def register(request):
         }, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+register.throttle_scope = 'authentication'
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([TenantScopedRateThrottle])
 def login(request):
     username = request.data.get('username')
     password = request.data.get('password')
@@ -79,6 +84,8 @@ def login(request):
             'refresh': str(refresh),
         })
     return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+login.throttle_scope = 'authentication'
 
 
 @api_view(['GET', 'PATCH'])

@@ -44,3 +44,10 @@ PyYAML==6.0.3
 
 # Error monitoring
 sentry-sdk==2.8.0
+
+# Celery & background tasks
+celery>=5.4.0
+django-celery-beat>=2.6.0
+
+# Monitoring Metrics
+prometheus-client>=0.20.0

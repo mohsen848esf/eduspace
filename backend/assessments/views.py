@@ -2,6 +2,7 @@ from rest_framework import viewsets, status, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
+from accounts.throttling import TenantScopedRateThrottle
 
 from assessments.models import QuestionBank, Question, Assessment, Submission, StudentAnswer
 from assessments.serializers import (
@@ -137,6 +138,8 @@ class AssessmentViewSet(viewsets.ModelViewSet):
     - Managers/Admins can perform full CRUD and publish exams.
     - Students can list and retrieve published assessments.
     """
+    throttle_classes = [TenantScopedRateThrottle]
+    throttle_scope = 'assessments'
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy', 'publish']:
             return [IsAssessmentManagerOrAdmin()]

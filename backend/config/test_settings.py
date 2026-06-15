@@ -16,3 +16,7 @@ CACHES = {
 
 TEST_RUNNER = 'config.test_runner.CacheClearingDiscoverRunner'
 
+# Celery Testing Settings
+CELERY_TASK_ALWAYS_EAGER = True
+
+

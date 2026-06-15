@@ -73,46 +73,54 @@ def resolve_organization(request, view_kwargs=None):
     """
     Dynamically resolve the Organization model instance based on request context.
     """
+    # Use request-scope cache if available to avoid duplicate database hits
+    if request and hasattr(request, '_resolved_organization_cache'):
+        return request._resolved_organization_cache
+
     from accounts.models import Organization
+    org = None
     
     slug_or_id, key_type = get_organization_from_request(request, view_kwargs)
     if slug_or_id:
         if key_type == 'slug':
             try:
-                return Organization.objects.get(slug=slug_or_id)
+                org = Organization.objects.get(slug=slug_or_id)
             except Organization.DoesNotExist:
-                return None
+                pass
         elif key_type == 'id':
             try:
-                return Organization.objects.get(id=int(slug_or_id))
+                org = Organization.objects.get(id=int(slug_or_id))
             except (Organization.DoesNotExist, ValueError):
-                return None
+                pass
                 
     # Fallback: check if room_code is in view_kwargs
-    if view_kwargs and 'room_code' in view_kwargs:
+    if not org and view_kwargs and 'room_code' in view_kwargs:
         from rooms.models import Room
         from django.http import Http404
         try:
             room = Room.objects.get(room_code=view_kwargs['room_code'])
             academy_class = room.academy_classes.first()
             if academy_class:
-                return academy_class.course.organization
+                org = academy_class.course.organization
         except Room.DoesNotExist:
             raise Http404("Room not found")
             
     # Fallback: check if recording token is in view_kwargs
-    if view_kwargs and 'token' in view_kwargs:
+    if not org and view_kwargs and 'token' in view_kwargs:
         from rooms.models import Recording
         from django.http import Http404
         try:
             recording = Recording.objects.get(public_token=view_kwargs['token'])
             academy_class = recording.room.academy_classes.first()
             if academy_class:
-                return academy_class.course.organization
+                org = academy_class.course.organization
         except Recording.DoesNotExist:
             raise Http404("Recording not found")
 
-    return None
+    if org and request:
+        request._resolved_organization_cache = org
+    return org
+
 
 
 def has_org_permission(user, organization, permission_codename) -> bool:

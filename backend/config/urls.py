@@ -10,6 +10,7 @@ urlpatterns = [
     path('api/rooms/', include('rooms.urls')),
     path('api/recordings/', include('rooms.recording_urls')),
     path('api/assessments/', include('assessments.urls')),
+    path('api/system/', include('accounts.system_urls')),
 ]
 
 if settings.DEBUG:
