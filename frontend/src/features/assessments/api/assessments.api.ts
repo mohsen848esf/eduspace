@@ -64,6 +64,10 @@ export const assessmentsApi = {
     const res = await client.post(`/assessments/assessments/${id}/start/`);
     return res.data;
   },
+  getAssessmentAnalytics: async (id: number): Promise<{ average_score: number; highest_score: number; average_tab_focus_losses: number }> => {
+    const res = await client.get(`/assessments/assessments/${id}/analytics/`);
+    return res.data;
+  },
 
   // Submissions API
   getSubmissions: async (params?: { assessment_id?: number }): Promise<Submission[]> => {

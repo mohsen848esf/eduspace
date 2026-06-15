@@ -7,6 +7,7 @@ interface AnswerState {
 }
 
 interface UseAutosaveProps {
+  submissionId: number;
   answers?: Array<{
     id: number;
     question: number;
@@ -15,7 +16,7 @@ interface UseAutosaveProps {
   }>;
 }
 
-export function useAutosave({ answers }: UseAutosaveProps) {
+export function useAutosave({ submissionId, answers }: UseAutosaveProps) {
   const updateAnswerMutation = useUpdateAnswer();
   const [localAnswers, setLocalAnswers] = useState<Record<number, AnswerState>>({});
   const [autosaveStatus, setAutosaveStatus] = useState<"saved" | "saving" | "error">("saved");
@@ -24,20 +25,39 @@ export function useAutosave({ answers }: UseAutosaveProps) {
   const debounceTimersRef = useRef<Record<number, any>>({});
   const pendingSaveRef = useRef<{ answerId: number; selected: string[] | null; text: string | null } | null>(null);
 
-  // Initialize local answers state on load
+  // Initialize local answers state on load, merging with localStorage draft if available
   useEffect(() => {
     if (answers && !isInitializedRef.current) {
       const initialAnswers: Record<number, AnswerState> = {};
+      let cachedAnswers: Record<number, AnswerState> | null = null;
+
+      try {
+        const cached = localStorage.getItem(`eduspace_exam_draft_v2_${submissionId}`);
+        if (cached) {
+          cachedAnswers = JSON.parse(cached);
+        }
+      } catch (err) {
+        console.error("Failed to parse cached exam draft", err);
+      }
+
       answers.forEach((ans) => {
+        const cachedAns = cachedAnswers ? cachedAnswers[ans.id] : null;
         initialAnswers[ans.id] = {
-          selected_options: ans.selected_options,
-          text_answer: ans.text_answer,
+          selected_options:
+            cachedAns?.selected_options !== undefined
+              ? cachedAns.selected_options
+              : ans.selected_options,
+          text_answer:
+            cachedAns?.text_answer !== undefined
+              ? cachedAns.text_answer
+              : ans.text_answer,
         };
       });
+
       setLocalAnswers(initialAnswers);
       isInitializedRef.current = true;
     }
-  }, [answers]);
+  }, [answers, submissionId]);
 
   const triggerAutosave = useCallback((answerId: number, selected: string[] | null, text: string | null) => {
     setAutosaveStatus("saving");
@@ -148,6 +168,25 @@ export function useAutosave({ answers }: UseAutosaveProps) {
     triggerAutosave(answerId, currentAnswerState.selected_options, text);
   }, [triggerAutosave]);
 
+  // Sync to localStorage
+  useEffect(() => {
+    if (isInitializedRef.current && Object.keys(localAnswers).length > 0) {
+      try {
+        localStorage.setItem(`eduspace_exam_draft_v2_${submissionId}`, JSON.stringify(localAnswers));
+      } catch (err) {
+        console.error("Failed to save draft to localStorage", err);
+      }
+    }
+  }, [localAnswers, submissionId]);
+
+  const clearLocalCache = useCallback(() => {
+    try {
+      localStorage.removeItem(`eduspace_exam_draft_v2_${submissionId}`);
+    } catch (err) {
+      console.error("Failed to clear local exam draft cache", err);
+    }
+  }, [submissionId]);
+
   return {
     localAnswers,
     autosaveStatus,
@@ -155,5 +194,6 @@ export function useAutosave({ answers }: UseAutosaveProps) {
     changeTextAnswer,
     flushPendingSave,
     hasPendingSave: !!pendingSaveRef.current,
+    clearLocalCache,
   };
 }

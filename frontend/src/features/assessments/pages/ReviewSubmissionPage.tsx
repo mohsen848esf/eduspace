@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useSubmission, useGradeSubmission } from "../hooks";
+import { useSubmission, useGradeSubmission, useAssessmentAnalytics } from "../hooks";
 
 export default function ReviewSubmissionPage() {
   const { submissionId } = useParams<{ submissionId: string }>();
@@ -9,6 +9,10 @@ export default function ReviewSubmissionPage() {
 
   const { data: submission, isLoading, error } = useSubmission(parsedId);
   const gradeSubmissionMutation = useGradeSubmission();
+
+  const { data: analytics, isLoading: isLoadingAnalytics } = useAssessmentAnalytics(
+    submission?.assessment.id ?? 0
+  );
 
   const [grades, setGrades] = useState<Record<number, { score: string; is_correct: boolean; teacher_notes: string }>>({});
   const [validationErrors, setValidationErrors] = useState<Record<number, string>>({});
@@ -118,6 +122,11 @@ export default function ReviewSubmissionPage() {
     0
   );
 
+  // Dynamic Peer Calculations from analytics endpoint
+  const classAverage = analytics?.average_score ?? 0;
+  const topScore = analytics?.highest_score ?? 0;
+  const averageFocusLosses = analytics?.average_tab_focus_losses ?? 0;
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-8 md:p-16">
       <div className="max-w-5xl mx-auto">
@@ -155,30 +164,93 @@ export default function ReviewSubmissionPage() {
         </div>
 
         {/* Anti-cheat and telemetry alerts card */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div>
-            <h3 className="text-base font-bold text-slate-300 mb-1">Attempt Telemetry Summary</h3>
-            <p className="text-slate-500 text-xs">Verified browser and connection attributes logged during start</p>
-            <div className="flex flex-wrap gap-4 mt-3">
-              <div className="text-sm">
-                <span className="text-slate-500">IP Address:</span> <span className="font-mono text-slate-300 font-semibold">{submission.ip_address || "None"}</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Telemetry card */}
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between gap-4 shadow-lg">
+            <div>
+              <h3 className="text-base font-bold text-slate-300 mb-1">Attempt Telemetry Summary</h3>
+              <p className="text-slate-500 text-xs">Verified browser and connection attributes logged during start</p>
+              <div className="flex flex-col gap-2.5 mt-3">
+                <div className="text-sm">
+                  <span className="text-slate-500">IP Address:</span> <span className="font-mono text-slate-300 font-semibold">{submission.ip_address || "None"}</span>
+                </div>
+                <div className="text-sm">
+                  <span className="text-slate-500">Browser info:</span> <span className="text-slate-400 truncate max-w-xs inline-block align-bottom" title={submission.browser_info}>{submission.browser_info || "None"}</span>
+                </div>
               </div>
-              <div className="text-sm">
-                <span className="text-slate-500">Browser info:</span> <span className="text-slate-400 truncate max-w-xs inline-block align-bottom">{submission.browser_info || "None"}</span>
+            </div>
+
+            <div className={`px-5 py-4 rounded-xl border flex items-center space-x-3 self-start ${
+              submission.tab_focus_losses > 3
+                ? "bg-rose-500/10 border-rose-500/40 text-rose-400 font-bold"
+                : "bg-slate-950 border-slate-850 text-slate-400"
+            }`}>
+              <div className="text-lg">⚠️</div>
+              <div>
+                <div className="text-xs uppercase tracking-wider font-bold">Window blurs logged</div>
+                <div className="text-lg font-mono font-bold leading-none mt-1">{submission.tab_focus_losses} focus losses</div>
               </div>
             </div>
           </div>
 
-          <div className={`px-5 py-4 rounded-xl border flex items-center space-x-3 ${
-            submission.tab_focus_losses > 3
-              ? "bg-rose-500/10 border-rose-500/40 text-rose-400"
-              : "bg-slate-950 border-slate-850 text-slate-400"
-          }`}>
-            <div className="text-lg">⚠️</div>
+          {/* Peer comparisons card */}
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between gap-4 shadow-lg">
             <div>
-              <div className="text-xs uppercase tracking-wider font-bold">Window blurs logged</div>
-              <div className="text-lg font-mono font-bold leading-none mt-1">{submission.tab_focus_losses} focus losses</div>
+              <h3 className="text-base font-bold text-slate-300 mb-1">Peer Comparison & Performance Analytics</h3>
+              <p className="text-slate-500 text-xs">How this student compares to others who took the assessment</p>
+              
+              {isLoadingAnalytics ? (
+                <div className="flex items-center space-x-2 text-sm text-slate-500 mt-6">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent"></div>
+                  <span>Calculating peer statistics...</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div className="bg-slate-950/50 border border-slate-850 p-3 rounded-xl">
+                    <span className="block text-[10px] uppercase font-bold tracking-widest text-slate-500">Class Average Score</span>
+                    <span className="text-lg font-mono font-bold text-indigo-400">
+                      {classAverage.toFixed(2)} <span className="text-slate-500 text-xs">pts</span>
+                    </span>
+                  </div>
+                  <div className="bg-slate-950/50 border border-slate-850 p-3 rounded-xl">
+                    <span className="block text-[10px] uppercase font-bold tracking-widest text-slate-500">Class High Score</span>
+                    <span className="text-lg font-mono font-bold text-cyan-400">
+                      {topScore.toFixed(2)} <span className="text-slate-500 text-xs">pts</span>
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
+
+            {!isLoadingAnalytics && (
+              <div className="flex flex-col gap-2.5">
+                {/* Visual bar comparing current score to class average */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs font-semibold text-slate-400">
+                    <span>Performance vs. Class Average ({classAverage.toFixed(1)} pts)</span>
+                    <span className={parseFloat(submission.score) >= classAverage ? "text-emerald-400" : "text-rose-400"}>
+                      {parseFloat(submission.score) >= classAverage ? "Above Average" : "Below Average"}
+                    </span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-850">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${parseFloat(submission.score) >= classAverage ? "bg-emerald-500" : "bg-rose-500"}`}
+                      style={{ width: `${Math.min(100, totalMaxPoints > 0 ? (parseFloat(submission.score) / totalMaxPoints) * 100 : 0)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Infraction compared to average focus losses */}
+                <div className="text-xs text-slate-400 mt-1">
+                  Average focus losses among peers: <span className="font-mono text-slate-300 font-bold">{averageFocusLosses.toFixed(1)}</span>. 
+                  {submission.tab_focus_losses > averageFocusLosses ? (
+                    <span className="text-rose-400 font-bold ml-1">⚠️ Above average behavior flags</span>
+                  ) : (
+                    <span className="text-emerald-400 font-semibold ml-1">✓ Within typical bounds</span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

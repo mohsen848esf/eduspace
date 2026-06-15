@@ -7,6 +7,7 @@ import {
   useAntiCheat,
   useAutosave,
 } from "../hooks";
+import ConfirmModal from "../../../components/ui/ConfirmModal";
 
 export default function TakeAssessmentPage() {
   const { submissionId } = useParams<{ submissionId: string }>();
@@ -19,6 +20,7 @@ export default function TakeAssessmentPage() {
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [warningMessage, setWarningMessage] = useState("");
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Handler for focus loss updates from anti-cheat
   const handleTabLoss = useCallback((lossesCount: number) => {
@@ -42,7 +44,9 @@ export default function TakeAssessmentPage() {
     selectOption,
     changeTextAnswer,
     flushPendingSave,
+    clearLocalCache,
   } = useAutosave({
+    submissionId: parsedId,
     answers: submission?.answers,
   });
 
@@ -55,10 +59,11 @@ export default function TakeAssessmentPage() {
     }
     submitSubmissionMutation.mutate(parsedId, {
       onSuccess: () => {
+        clearLocalCache();
         navigate(`/assessments/results/${parsedId}`);
       },
     });
-  }, [parsedId, flushPendingSave, submitSubmissionMutation, navigate]);
+  }, [parsedId, flushPendingSave, submitSubmissionMutation, clearLocalCache, navigate]);
 
   // Countdown Timer orchestration
   const { timeLeft, formatTime } = useExamTimer({
@@ -138,21 +143,25 @@ export default function TakeAssessmentPage() {
     changeTextAnswer(currentAnswer.id, e.target.value, localState);
   };
 
-  const handleSubmitClick = async () => {
-    if (window.confirm("Are you sure you want to submit your assessment? Once submitted, answers are permanently locked.")) {
-      try {
-        await flushPendingSave();
-      } catch (err) {
-        alert("An error occurred while saving your latest answers. Please try submitting again.");
-        return;
-      }
+  const handleSubmitClick = () => {
+    setShowConfirmModal(true);
+  };
 
-      submitSubmissionMutation.mutate(parsedId, {
-        onSuccess: () => {
-          navigate(`/assessments/results/${parsedId}`);
-        },
-      });
+  const handleConfirmSubmit = async () => {
+    try {
+      await flushPendingSave();
+    } catch (err) {
+      alert("An error occurred while saving your latest answers. Please try submitting again.");
+      return;
     }
+
+    submitSubmissionMutation.mutate(parsedId, {
+      onSuccess: () => {
+        clearLocalCache();
+        setShowConfirmModal(false);
+        navigate(`/assessments/results/${parsedId}`);
+      },
+    });
   };
 
   return (
@@ -341,6 +350,19 @@ export default function TakeAssessmentPage() {
           </div>
         </div>
       )}
+
+      {/* Confirm Submission Modal */}
+      <ConfirmModal
+        open={showConfirmModal}
+        onOpenChange={setShowConfirmModal}
+        title="Submit Assessment"
+        description="Are you sure you want to submit your assessment? Once submitted, your answers are permanently locked and cannot be edited."
+        confirmLabel="Submit Assessment"
+        cancelLabel="Cancel"
+        confirmVariant="primary"
+        onConfirm={handleConfirmSubmit}
+        isLoading={submitSubmissionMutation.isPending}
+      />
     </div>
   );
 }

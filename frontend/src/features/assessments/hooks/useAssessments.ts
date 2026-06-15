@@ -59,3 +59,11 @@ export function usePublishAssessment() {
     },
   });
 }
+
+export function useAssessmentAnalytics(id: number) {
+  return useQuery({
+    queryKey: ["assessment", id, "analytics"],
+    queryFn: () => assessmentsApi.getAssessmentAnalytics(id),
+    enabled: !!id,
+  });
+}

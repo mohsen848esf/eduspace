@@ -413,3 +413,45 @@ class AssessmentViewsIntegrationTest(APITestCase):
         ).first()
         self.assertIsNotNone(audit_delete)
         self.assertEqual(audit_delete.actor, self.teacher)
+
+    def test_assessment_analytics_endpoint(self):
+        """Verify the assessment analytics action aggregates submission data correctly."""
+        # Create finalized submissions
+        Submission.objects.create(
+            assessment=self.assessment,
+            student=self.student,
+            status=Submission.Status.GRADED,
+            score=Decimal("4.50"),
+            tab_focus_losses=2
+        )
+        Submission.objects.create(
+            assessment=self.assessment,
+            student=self.other_student,
+            status=Submission.Status.GRADED,
+            score=Decimal("3.50"),
+            tab_focus_losses=4
+        )
+        # Create started submission (should be ignored by score calculations)
+        started_user = User.objects.create_user(
+            username="student3",
+            email="student3@example.com",
+            password="password123"
+        )
+        OrgMember.objects.create(organization=self.org, user=started_user, role=self.student_role)
+        Submission.objects.create(
+            assessment=self.assessment,
+            student=started_user,
+            status=Submission.Status.STARTED,
+            score=Decimal("0.00"),
+            tab_focus_losses=1
+        )
+
+        self.client.force_authenticate(user=self.teacher)
+        analytics_url = reverse('assessments:assessment-analytics', kwargs={'pk': self.assessment.id})
+        response = self.client.get(analytics_url, HTTP_X_ORGANIZATION_SLUG=self.org.slug)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Finalized average score = (4.50 + 3.50) / 2 = 4.00
+        self.assertEqual(response.data["average_score"], 4.00)
+        self.assertEqual(response.data["highest_score"], 4.50)
+        # Finalized average tab focus losses = (2 + 4) / 2 = 3.00
+        self.assertEqual(response.data["average_tab_focus_losses"], 3.0)

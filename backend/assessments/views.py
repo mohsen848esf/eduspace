@@ -238,6 +238,26 @@ class AssessmentViewSet(viewsets.ModelViewSet):
         serializer = SubmissionStudentSerializer(submission, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=['get'], url_path='analytics')
+    def analytics(self, request, pk=None):
+        assessment = self.get_object()
+        from django.db.models import Avg, Max
+        # Aggregate stats over all finalized submissions (submitted or graded)
+        submissions = Submission.objects.filter(
+            assessment=assessment,
+            status__in=[Submission.Status.SUBMITTED, Submission.Status.GRADED]
+        )
+        stats = submissions.aggregate(
+            avg_score=Avg('score'),
+            max_score=Max('score'),
+            avg_losses=Avg('tab_focus_losses')
+        )
+        return Response({
+            "average_score": float(stats["avg_score"]) if stats["avg_score"] is not None else 0.0,
+            "highest_score": float(stats["max_score"]) if stats["max_score"] is not None else 0.0,
+            "average_tab_focus_losses": float(stats["avg_losses"]) if stats["avg_losses"] is not None else 0.0
+        })
+
 
 class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
     """
