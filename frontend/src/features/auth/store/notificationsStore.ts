@@ -84,18 +84,35 @@ function makeLocalId(kind: NotificationKind, data: Record<string, unknown>): str
 
 interface ServerNotification {
   id: number;
-  kind: NotificationKind;
-  data: Record<string, unknown>;
+  kind?: NotificationKind;
+  channel?: string;
+  title?: string;
+  message?: string;
+  data?: Record<string, unknown>;
   created_at: string;
-  delivered_at: string | null;
+  delivered_at?: string | null;
   read_at: string | null;
 }
 
 function fromServer(n: ServerNotification): NotificationItem {
+  if (n.channel) {
+    return {
+      id: `srv:${n.id}`,
+      serverId: n.id,
+      kind: "IN_APP" as any,
+      data: {
+        title: n.title,
+        message: n.message,
+        channel: n.channel
+      },
+      receivedAt: Date.parse(n.created_at) || Date.now(),
+      readAt: n.read_at ? Date.parse(n.read_at) : null,
+    };
+  }
   return {
     id: `srv:${n.id}`,
     serverId: n.id,
-    kind: n.kind,
+    kind: n.kind || ("IN_APP" as any),
     data: n.data ?? {},
     receivedAt: Date.parse(n.created_at) || Date.now(),
     readAt: n.read_at ? Date.parse(n.read_at) : null,
@@ -173,10 +190,8 @@ export const useNotificationsStore = create<NotificationsState>()(
             items: [next, ...state.items].slice(0, MAX_ITEMS),
           };
         }),
-
       markRead: (id) => {
         const item = get().items.find((it) => it.id === id);
-        // Optimistic local update first.
         set((state) => ({
           items: state.items.map((it) =>
             it.id === id && it.readAt === null
@@ -184,10 +199,9 @@ export const useNotificationsStore = create<NotificationsState>()(
               : it,
           ),
         }));
-        // Persist if the item has a server id.
         if (item?.serverId) {
           client
-            .post(`/auth/notifications/${item.serverId}/read/`)
+            .patch(`/notifications/read/`, { id: item.serverId })
             .catch(() => {
               /* swallow — local state already updated */
             });
@@ -205,7 +219,7 @@ export const useNotificationsStore = create<NotificationsState>()(
           ),
         }));
         if (ids.length > 0) {
-          client.post(`/auth/notifications/read-all/`).catch(() => {
+          client.patch(`/notifications/read/`, { all: true }).catch(() => {
             /* swallow */
           });
         }
@@ -218,7 +232,7 @@ export const useNotificationsStore = create<NotificationsState>()(
         }));
         if (item?.serverId) {
           client
-            .delete(`/auth/notifications/${item.serverId}/`)
+            .delete(`/notifications/${item.serverId}/`)
             .catch(() => {
               /* swallow */
             });
@@ -226,11 +240,6 @@ export const useNotificationsStore = create<NotificationsState>()(
       },
 
       clearAll: () => {
-        // Local-only clear. The server-side rows are untouched on
-        // purpose — clearAll is a "hide everything from this view"
-        // gesture, not a destructive delete. If the user wants the
-        // rows gone server-side they can mark-all-read or delete
-        // individually.
         set({ items: [] });
       },
 
@@ -240,15 +249,10 @@ export const useNotificationsStore = create<NotificationsState>()(
         if (get().isHydrating) return;
         set({ isHydrating: true });
         try {
-          const res = await client.get("/auth/notifications/");
-          const serverItems: NotificationItem[] = (
-            res.data?.results ?? []
-          ).map((n: ServerNotification) => fromServer(n));
+          const res = await client.get("/notifications/");
+          const data = Array.isArray(res.data) ? res.data : (res.data?.results ?? []);
+          const serverItems: NotificationItem[] = data.map((n: any) => fromServer(n));
 
-          // Merge: server items become the source of truth for anything
-          // with a serverId; preserve any purely local items (no
-          // serverId) that arrived between the request being sent and
-          // the response landing.
           set((state) => {
             const localOnly = state.items.filter((it) => !it.serverId);
             const merged = [...serverItems, ...localOnly]
@@ -260,8 +264,7 @@ export const useNotificationsStore = create<NotificationsState>()(
             };
           });
         } catch {
-          // Hydration is best-effort; failure leaves the existing
-          // local cache in place. The toast UI keeps working.
+          // Hydration is best-effort
         } finally {
           set({ isHydrating: false });
         }

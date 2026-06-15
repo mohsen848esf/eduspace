@@ -58,6 +58,12 @@ const ProfileCompletionPage = lazy(
 const LeaderboardPage = lazy(
   () => import("../features/dashboard/components/LeaderboardPage"),
 );
+const NotificationSettingsPage = lazy(
+  () => import("../features/auth/components/NotificationSettings"),
+);
+const TemplateManagerPage = lazy(
+  () => import("../features/dashboard/components/TemplateManager"),
+);
 
 export interface RouteConfig {
   path: string;
@@ -130,6 +136,18 @@ export const routes: RouteConfig[] = [
     component: ProfileCompletionPage,
     isPrivate: true,
     requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/settings/notifications",
+    component: NotificationSettingsPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/settings/templates",
+    component: TemplateManagerPage,
+    isPrivate: true,
+    requiredPermissions: ["can_manage_members"],
   },
   {
     path: "/leaderboard",

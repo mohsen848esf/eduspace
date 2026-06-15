@@ -286,6 +286,11 @@ function NotificationRow({
       hostName: data.host_name ?? ""
     });
     actionLabel = t("notifications:sessionStarted.join");
+  } else {
+    icon = Icons.bell;
+    title = (data.title as string) || "Notification";
+    subtitle = (data.message as string) || "";
+    actionLabel = "View";
   }
 
   return (

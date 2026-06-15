@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from notifications import views as notifications_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -11,6 +12,9 @@ urlpatterns = [
     path('api/recordings/', include('rooms.recording_urls')),
     path('api/assessments/', include('assessments.urls')),
     path('api/system/', include('accounts.system_urls')),
+    path('api/notifications/', include('notifications.urls')),
+    path('api/accounts/preferences/notifications/', notifications_views.notifications_preferences),
+    path('api/classes/<int:class_id>/broadcast/', notifications_views.class_broadcast),
 ]
 
 if settings.DEBUG:

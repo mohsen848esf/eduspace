@@ -30,7 +30,8 @@ INSTALLED_APPS = [
     'rooms',
     'assessments',
     'corsheaders',
-
+    'notifications',
+    'analytics',
 ]
 
 MIDDLEWARE = [
@@ -125,6 +126,18 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Asia/Tehran'
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+CELERY_TASK_DEFAULT_QUEUE = 'default'
+CELERY_TASK_ROUTES = {
+    'accounts.tasks.send_email_task': {'queue': 'notifications'},
+    'accounts.tasks.send_sms_task': {'queue': 'notifications'},
+    'notifications.tasks.dispatch_notification_task': {'queue': 'notifications'},
+    'notifications.tasks.class_broadcast_task': {'queue': 'notifications'},
+    'rooms.tasks.finalize_client_recording_task': {'queue': 'recordings'},
+    'rooms.tasks.finalize_recording_task': {'queue': 'recordings'},
+    'accounts.tasks.export_audit_logs_task': {'queue': 'compliance'},
+    'accounts.tasks.monthly_generate_billing_and_usage_reports': {'queue': 'finance'},
+    'accounts.tasks.weekly_recalculate_reports_and_storage': {'queue': 'finance'},
+}
 
 AUTH_USER_MODEL = 'accounts.User'
 

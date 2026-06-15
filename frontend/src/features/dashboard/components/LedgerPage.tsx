@@ -184,7 +184,6 @@ export default function LedgerPage() {
   const [bankReference, setBankReference] = useState("");
   const [receivingAccount, setReceivingAccount] = useState("");
   const [invoicePaymentStatus, setInvoicePaymentStatus] = useState<"paid" | "partial" | "refunded">("paid");
-  const [partialAmountPaid, setPartialAmountPaid] = useState("");
 
   // Receipt Preview states
   const [previewFileUrl, setPreviewFileUrl] = useState<string | null>(null);
@@ -681,7 +680,6 @@ export default function LedgerPage() {
                                       setBankReference("");
                                       setReceivingAccount("");
                                       setInvoicePaymentStatus("paid");
-                                      setPartialAmountPaid("");
                                       setPaymentDate(new Date().toISOString().split("T")[0]);
                                       setIsPaymentModalOpen(true);
                                     }}

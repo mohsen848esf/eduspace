@@ -10,16 +10,23 @@ import Spinner from "../../../components/ui/Spinner";
 import ClassSessionsSubTable from "../../sessions/components/ClassSessionsSubTable";
 import AppShell from "../../../components/layout/AppShell";
 import { useLocale } from "../../../i18n/useLocale";
+import { useAuthStore } from "../../auth/store/authStore";
+import BroadcastComposer from "./BroadcastComposer";
 
 export default function ClassesPage() {
   const { language } = useLocale();
   const { hasPermission } = useOrgPermission();
   const queryClient = useQueryClient();
   const isFarsi = language === "fa";
+  const { user } = useAuthStore();
 
   const isOrisAdmin = hasPermission("can_manage_members");
 
   const [expandedClassId, setExpandedClassId] = useState<number | null>(null);
+
+  // Broadcast modal states
+  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
+  const [selectedClassForBroadcast, setSelectedClassForBroadcast] = useState<AcademyClass | null>(null);
 
   // Queries
   const { data: classes = [], isLoading: loadingClasses } = useQuery({
@@ -199,6 +206,17 @@ export default function ClassesPage() {
                         >
                           {isFarsi ? `جلسات (${cls.session_count || 0})` : `Sessions (${cls.session_count || 0})`}
                         </button>
+                        {(isOrisAdmin || (hasPermission("can_teach_class") && cls.teacher === user?.id)) && (
+                          <button
+                            onClick={() => {
+                              setSelectedClassForBroadcast(cls);
+                              setIsBroadcastModalOpen(true);
+                            }}
+                            className="text-xs bg-transparent text-[var(--brand-text)] hover:underline border-none cursor-pointer font-bold"
+                          >
+                            {isFarsi ? "ارسال پیام" : "Broadcast"}
+                          </button>
+                        )}
                         {isOrisAdmin && (
                           <>
                             <button
@@ -406,6 +424,18 @@ export default function ClassesPage() {
           onClose={() => {
             setIsEnrollmentModalOpen(false);
             setSelectedClassForEnrollment(null);
+          }}
+        />
+      )}
+
+      {isBroadcastModalOpen && selectedClassForBroadcast && (
+        <BroadcastComposer
+          classId={selectedClassForBroadcast.id}
+          className={selectedClassForBroadcast.name}
+          isFarsi={isFarsi}
+          onClose={() => {
+            setIsBroadcastModalOpen(false);
+            setSelectedClassForBroadcast(null);
           }}
         />
       )}

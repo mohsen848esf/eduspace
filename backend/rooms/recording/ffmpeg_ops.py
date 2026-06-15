@@ -50,15 +50,20 @@ def _which(binary: str) -> str:
     return found
 
 
-def _run(cmd: list[str]) -> str:
+def _run(cmd: list[str], timeout: float = 300.0) -> str:
     """Run a command, capturing combined output. Raises FFmpegError on failure."""
     logger.debug('exec: %s', shlex.join(cmd))
-    proc = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise FFmpegError(f'{cmd[0]} expired after {timeout} seconds') from exc
+        
     if proc.returncode != 0:
         raise FFmpegError(
             f'{cmd[0]} exited {proc.returncode}: {proc.stderr.strip()[:500]}'

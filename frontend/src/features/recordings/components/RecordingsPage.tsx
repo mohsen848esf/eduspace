@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import AppShell from "../../../components/layout/AppShell";
 import Spinner from "../../../components/ui/Spinner";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
+import Button from "../../../components/ui/Button";
 import RecordingCard from "./RecordingCard";
 import PublishModal from "./PublishModal";
 import recordingsApi, { type Recording } from "../api/recordings.api";

@@ -78,6 +78,7 @@ export interface TuitionInvoice {
   payment_method?: "cash" | "bank_transfer" | "online" | "";
   notes?: string;
   items?: TuitionInvoiceItem[];
+  invoice_number?: string;
   created_at: string;
 }
 

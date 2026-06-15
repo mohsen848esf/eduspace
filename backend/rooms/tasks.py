@@ -2,6 +2,7 @@ import logging
 import shutil
 from pathlib import Path
 from celery import shared_task
+from celery.exceptions import SoftTimeLimitExceeded
 from django.conf import settings
 from django.utils import timezone
 from accounts.metrics import CELERY_TASKS_TOTAL
@@ -12,7 +13,11 @@ from rooms.recording.s3_utils import upload_recording_to_s3
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name="rooms.tasks.finalize_client_recording_task")
+@shared_task(
+    name="rooms.tasks.finalize_client_recording_task",
+    soft_time_limit=1800,
+    time_limit=1900,
+)
 def finalize_client_recording_task(recording_pk: int):
     """
     Concatenates client WebM chunks, transcodes them to standard MP4 (720p or 1080p),
@@ -108,6 +113,21 @@ def finalize_client_recording_task(recording_pk: int):
         logger.info("Successfully finalized client-side recording %s via Celery task", recording_token)
         CELERY_TASKS_TOTAL.labels(task_name="finalize_client_recording_task", status="success").inc()
         return f"Client recording {recording_token} completed"
+    except SoftTimeLimitExceeded as e:
+        logger.error("Soft time limit exceeded in finalize_client_recording_task for pk=%s", recording_pk)
+        CELERY_TASKS_TOTAL.labels(task_name="finalize_client_recording_task", status="failure").inc()
+        try:
+            rec = Recording.objects.get(pk=recording_pk)
+            rec.status = Recording.Status.FAILED
+            rec.save(update_fields=['status'])
+            
+            # Clean up any partial output
+            rec_dir = Path(settings.RECORDING_OUTPUT_DIR) / rec.public_token
+            if rec_dir.exists():
+                shutil.rmtree(rec_dir, ignore_errors=True)
+        except Exception:
+            pass
+        raise e
     except Exception as e:
         logger.exception("Failed to run finalize_client_recording_task")
         CELERY_TASKS_TOTAL.labels(task_name="finalize_client_recording_task", status="failure").inc()
@@ -120,7 +140,11 @@ def finalize_client_recording_task(recording_pk: int):
         raise e
 
 
-@shared_task(name="rooms.tasks.finalize_recording_task")
+@shared_task(
+    name="rooms.tasks.finalize_recording_task",
+    soft_time_limit=1800,
+    time_limit=1900,
+)
 def finalize_recording_task(recording_pk: int, trim_start: float, trim_end: float | None):
     """
     Stitches server-side RoomCompositeEgress segments, applies optional trim boundaries,
@@ -237,6 +261,21 @@ def finalize_recording_task(recording_pk: int, trim_start: float, trim_end: floa
         logger.info("Successfully finalized server-side recording %s via Celery task", recording_token)
         CELERY_TASKS_TOTAL.labels(task_name="finalize_recording_task", status="success").inc()
         return f"Server recording {recording_token} finalized"
+    except SoftTimeLimitExceeded as e:
+        logger.error("Soft time limit exceeded in finalize_recording_task for pk=%s", recording_pk)
+        CELERY_TASKS_TOTAL.labels(task_name="finalize_recording_task", status="failure").inc()
+        try:
+            recording = Recording.objects.get(pk=recording_pk)
+            recording.status = Recording.Status.FAILED
+            recording.save(update_fields=['status'])
+            
+            # Clean up any partial output
+            rec_dir = Path(settings.RECORDING_OUTPUT_DIR) / recording.public_token
+            if rec_dir.exists():
+                shutil.rmtree(rec_dir, ignore_errors=True)
+        except Exception:
+            pass
+        raise e
     except Exception as e:
         logger.exception("Failed to run finalize_recording_task")
         CELERY_TASKS_TOTAL.labels(task_name="finalize_recording_task", status="failure").inc()
