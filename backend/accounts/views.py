@@ -9,6 +9,13 @@ from .models import User
 from .serializers import RegisterSerializer, UserSerializer
 
 
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR')
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register(request):
@@ -17,7 +24,7 @@ def register(request):
         user = serializer.save()
         
         # Onboarding: Automatically assign new users to the default organization
-        from .models import Organization, Role, OrgMember
+        from .models import Organization, Role, OrgMember, UserSession
         default_org = Organization.objects.filter(slug='default-academy').first()
         if default_org:
             student_role = Role.objects.filter(name='Student', organization__isnull=True).first()
@@ -29,9 +36,19 @@ def register(request):
                 )
                 
         refresh = RefreshToken.for_user(user)
+        session = UserSession.objects.create(
+            user=user,
+            refresh_token_jti=refresh['jti'],
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', '')
+        )
+        refresh['session_id'] = session.id
+        access = refresh.access_token
+        access['session_id'] = session.id
+
         return Response({
             'user': UserSerializer(user).data,
-            'access': str(refresh.access_token),
+            'access': str(access),
             'refresh': str(refresh),
         }, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -44,10 +61,21 @@ def login(request):
     password = request.data.get('password')
     user = authenticate(username=username, password=password)
     if user:
+        from .models import UserSession
         refresh = RefreshToken.for_user(user)
+        session = UserSession.objects.create(
+            user=user,
+            refresh_token_jti=refresh['jti'],
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', '')
+        )
+        refresh['session_id'] = session.id
+        access = refresh.access_token
+        access['session_id'] = session.id
+
         return Response({
             'user': UserSerializer(user).data,
-            'access': str(refresh.access_token),
+            'access': str(access),
             'refresh': str(refresh),
         })
     return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
@@ -68,12 +96,31 @@ def me(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout(request):
+    from .models import UserSession
+    session_id = None
+    if hasattr(request, 'auth') and request.auth:
+        session_id = request.auth.get('session_id')
+    
     try:
         refresh_token = request.data.get('refresh')
-        token = RefreshToken(refresh_token)
-        token.blacklist()
+        if refresh_token:
+            token = RefreshToken(refresh_token)
+            try:
+                token.blacklist()
+            except Exception:
+                pass
+            if not session_id:
+                session_id = token.get('session_id')
+            if not session_id:
+                jti = token.get('jti')
+                if jti:
+                    UserSession.objects.filter(refresh_token_jti=jti).update(is_active=False)
     except Exception:
         pass
+
+    if session_id:
+        UserSession.objects.filter(id=session_id).update(is_active=False)
+
     return Response({'message': 'Logged out'})
 
 @api_view(['GET'])
@@ -996,10 +1043,18 @@ class OrgMemberViewSet(viewsets.ModelViewSet):
         cache.delete(cache_key)
 
 
-class RoleViewSet(viewsets.ReadOnlyModelViewSet):
+from rest_framework.decorators import action
+
+class RoleViewSet(viewsets.ModelViewSet):
     serializer_class = RoleSerializer
     permission_classes = [HasOrgPermission]
-    required_org_permission = 'can_view_dashboard'
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'permissions']:
+            self.required_org_permission = 'can_view_dashboard'
+        else:
+            self.required_org_permission = 'can_manage_members'
+        return super().get_permissions()
 
     def get_queryset(self):
         org = getattr(self.request, 'organization', None)
@@ -1008,6 +1063,39 @@ class RoleViewSet(viewsets.ReadOnlyModelViewSet):
         return Role.objects.filter(
             models.Q(organization=org) | models.Q(organization__isnull=True)
         )
+
+    def perform_create(self, serializer):
+        from rest_framework.exceptions import ValidationError as DRFValidationError
+        org = getattr(self.request, 'organization', None)
+        if not org:
+            raise DRFValidationError({"error": "Organization context required."})
+        serializer.save(organization=org)
+
+    def perform_update(self, serializer):
+        from rest_framework.exceptions import ValidationError as DRFValidationError
+        role = self.get_object()
+        if role.organization is None:
+            raise DRFValidationError({"error": "System default roles cannot be modified."})
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        from rest_framework.exceptions import ValidationError as DRFValidationError
+        if instance.organization is None:
+            raise DRFValidationError({"error": "System default roles cannot be deleted."})
+        instance.delete()
+
+    @action(detail=False, methods=['GET'], url_path='permissions')
+    def permissions(self, request):
+        from accounts.models import Permission
+        perms = Permission.objects.all()
+        return Response([
+            {
+                'codename': p.codename,
+                'name': p.name,
+                'description': p.description
+            }
+            for p in perms
+        ])
 
 
 class CertificateViewSet(viewsets.ModelViewSet):
@@ -1086,5 +1174,59 @@ def audit_logs(request):
     result_page = paginator.paginate_queryset(queryset, request)
     serializer = AuditLogSerializer(result_page, many=True)
     return paginator.get_paginated_response(serializer.data)
+
+
+from rest_framework import mixins
+from rest_framework_simplejwt.views import TokenRefreshView
+from accounts.models import UserSession
+from accounts.serializers import UserSessionSerializer, SessionTokenRefreshSerializer
+from accounts.permissions import has_org_permission, resolve_organization
+from rest_framework.exceptions import PermissionDenied
+
+class UserSessionViewSet(mixins.ListModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet):
+    serializer_class = UserSessionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        org = resolve_organization(self.request, self.kwargs)
+        queryset = UserSession.objects.filter(is_active=True).select_related('user')
+        
+        if org and has_org_permission(self.request.user, org, 'can_manage_members'):
+            return queryset.filter(
+                user__org_memberships__organization=org,
+                user__org_memberships__is_active=True
+            ).distinct().order_by('-created_at')
+        else:
+            return queryset.filter(user=self.request.user).order_by('-created_at')
+
+    def destroy(self, request, *args, **kwargs):
+        session = self.get_object()
+        
+        # User revoking their own session
+        if session.user_id == request.user.id:
+            session.is_active = False
+            session.save()
+            return Response({'message': 'Session revoked successfully.'})
+            
+        # Admin revoking a session of an org member
+        org = resolve_organization(request, self.kwargs)
+        if org and has_org_permission(request.user, org, 'can_manage_members'):
+            from accounts.models import OrgMember
+            is_member = OrgMember.objects.filter(organization=org, user=session.user, is_active=True).exists()
+            if is_member:
+                session.is_active = False
+                session.save()
+                return Response({'message': 'Session revoked successfully.'})
+                
+        raise PermissionDenied("You do not have permission to revoke this session.")
+
+    @action(detail=True, methods=['POST'], url_path='revoke')
+    def revoke(self, request, pk=None):
+        return self.destroy(request)
+
+
+class SessionTokenRefreshView(TokenRefreshView):
+    serializer_class = SessionTokenRefreshSerializer
+
 
 

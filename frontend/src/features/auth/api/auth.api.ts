@@ -60,7 +60,27 @@ export interface Role {
   id: number;
   name: string;
   description: string;
+  permissions?: string[];
 }
+
+export interface SystemPermission {
+  codename: string;
+  name: string;
+  description: string;
+}
+
+export interface UserSession {
+  id: number;
+  username: string;
+  full_name: string;
+  ip_address: string | null;
+  user_agent: string;
+  is_active: boolean;
+  is_current: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 
 export const authApi = {
   login: async (data: LoginInput): Promise<AuthResponse> => {
@@ -129,6 +149,34 @@ export const authApi = {
   getRoles: async (): Promise<Role[]> => {
     const res = await client.get("/auth/roles/");
     return res.data;
+  },
+
+  createRole: async (data: { name: string; description: string; permissions: string[] }): Promise<Role> => {
+    const res = await client.post("/auth/roles/", data);
+    return res.data;
+  },
+
+  updateRole: async (id: number, data: { name?: string; description?: string; permissions?: string[] }): Promise<Role> => {
+    const res = await client.patch(`/auth/roles/${id}/`, data);
+    return res.data;
+  },
+
+  deleteRole: async (id: number): Promise<void> => {
+    await client.delete(`/auth/roles/${id}/`);
+  },
+
+  getPermissions: async (): Promise<SystemPermission[]> => {
+    const res = await client.get("/auth/roles/permissions/");
+    return res.data;
+  },
+
+  getSessions: async (): Promise<UserSession[]> => {
+    const res = await client.get("/auth/user-sessions/");
+    return res.data;
+  },
+
+  revokeSession: async (id: number): Promise<void> => {
+    await client.delete(`/auth/user-sessions/${id}/`);
   },
 
   globalSearch: async (q: string): Promise<GlobalSearchResult> => {
