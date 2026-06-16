@@ -258,6 +258,21 @@ export const crmApi = {
     const res = await client.get("/auth/roles/");
     return res.data;
   },
+  createRole: async (data: { name: string; description: string; permissions: string[] }): Promise<Role> => {
+    const res = await client.post("/auth/roles/", data);
+    return res.data;
+  },
+  updateRole: async (id: number, data: { name?: string; description?: string; permissions?: string[] }): Promise<Role> => {
+    const res = await client.patch(`/auth/roles/${id}/`, data);
+    return res.data;
+  },
+  deleteRole: async (id: number): Promise<void> => {
+    await client.delete(`/auth/roles/${id}/`);
+  },
+  getAvailablePermissions: async (): Promise<Permission[]> => {
+    const res = await client.get("/auth/roles/permissions/");
+    return res.data;
+  },
 };
 
 export interface OrgMember {
@@ -285,4 +300,10 @@ export interface Role {
   name: string;
   description: string;
   permissions: string[];
+}
+
+export interface Permission {
+  codename: string;
+  name: string;
+  description: string;
 }

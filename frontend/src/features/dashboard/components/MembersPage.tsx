@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
-import { crmApi, type Enrollment, type SimpleUser, type OrgMember } from "../api/crm.api";
+import { crmApi, type Enrollment, type SimpleUser, type OrgMember, type Permission } from "../api/crm.api";
 import { useSessions } from "../../sessions/hooks/useSessions";
 import { useOrgPermission } from "../../../hooks/useOrgPermission";
 import Button from "../../../components/ui/Button";
@@ -51,6 +51,17 @@ export default function MembersPage() {
   });
 
   // ──────────────────────────────────────────────
+  // Role Modal State
+  // ──────────────────────────────────────────────
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [editRoleId, setEditRoleId] = useState<number | null>(null);
+  const [roleForm, setRoleForm] = useState({
+    name: "",
+    description: "",
+    permissions: [] as string[],
+  });
+
+  // ──────────────────────────────────────────────
   // Enrollment Modal State
   // ──────────────────────────────────────────────
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -92,6 +103,12 @@ export default function MembersPage() {
   const { data: roles = [] } = useQuery({
     queryKey: ["roles"],
     queryFn: crmApi.getRoles,
+  });
+
+  const { data: availablePermissions = [] } = useQuery<Permission[]>({
+    queryKey: ["available-permissions"],
+    queryFn: crmApi.getAvailablePermissions,
+    staleTime: Infinity,
   });
 
   // ──────────────────────────────────────────────
@@ -194,6 +211,80 @@ export default function MembersPage() {
       toast.error(isFarsi ? "خطا در حذف عضو" : "Failed to remove member");
     }
   });
+
+  // ──────────────────────────────────────────────
+  // Role Mutations
+  // ──────────────────────────────────────────────
+  const createRoleMutation = useMutation({
+    mutationFn: crmApi.createRole,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["roles"] });
+      toast.success(isFarsi ? "نقش جدید ایجاد شد" : "Role created successfully");
+      setIsRoleModalOpen(false);
+      setRoleForm({ name: "", description: "", permissions: [] });
+    },
+    onError: (err: any) => {
+      const msg = err.response?.data?.name?.[0] || err.response?.data?.detail || (isFarsi ? "خطا در ایجاد نقش" : "Failed to create role");
+      toast.error(msg);
+    }
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<{ name: string; description: string; permissions: string[] }> }) =>
+      crmApi.updateRole(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["roles"] });
+      toast.success(isFarsi ? "نقش با موفقیت ویرایش شد" : "Role updated");
+      setIsRoleModalOpen(false);
+      setRoleForm({ name: "", description: "", permissions: [] });
+    },
+    onError: (err: any) => {
+      const msg = err.response?.data?.name?.[0] || err.response?.data?.detail || (isFarsi ? "خطا در ویرایش نقش" : "Failed to update role");
+      toast.error(msg);
+    }
+  });
+
+  const deleteRoleMutation = useMutation({
+    mutationFn: crmApi.deleteRole,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["roles"] });
+      toast.success(isFarsi ? "نقش حذف شد" : "Role deleted");
+    },
+    onError: (err: any) => {
+      const msg = err.response?.data?.error || err.response?.data?.detail || (isFarsi ? "خطا در حذف نقش" : "Failed to delete role");
+      toast.error(msg);
+    }
+  });
+
+  const openCreateRoleModal = () => {
+    setEditRoleId(null);
+    setRoleForm({ name: "", description: "", permissions: [] });
+    setIsRoleModalOpen(true);
+  };
+
+  const openEditRoleModal = (role: { id: number; name: string; description: string; permissions: string[] }) => {
+    setEditRoleId(role.id);
+    setRoleForm({ name: role.name, description: role.description, permissions: role.permissions });
+    setIsRoleModalOpen(true);
+  };
+
+  const handleRoleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editRoleId) {
+      updateRoleMutation.mutate({ id: editRoleId, data: roleForm });
+    } else {
+      createRoleMutation.mutate(roleForm);
+    }
+  };
+
+  const togglePermission = (codename: string) => {
+    setRoleForm((prev) => ({
+      ...prev,
+      permissions: prev.permissions.includes(codename)
+        ? prev.permissions.filter((p) => p !== codename)
+        : [...prev.permissions, codename],
+    }));
+  };
 
   // ──────────────────────────────────────────────
   // Student search autocomplete for enrollment modal
@@ -589,6 +680,11 @@ export default function MembersPage() {
                 <span className="text-xs font-semibold text-[var(--t3)] uppercase tracking-wider">
                   {isFarsi ? "نقش‌های تعریف شده" : "Defined Roles"}
                 </span>
+                {isOrisAdmin && (
+                  <Button size="sm" onClick={openCreateRoleModal}>
+                    {isFarsi ? "+ نقش جدید" : "+ New Role"}
+                  </Button>
+                )}
               </div>
 
               {roles.length === 0 ? (
@@ -603,10 +699,10 @@ export default function MembersPage() {
                     return (
                       <div
                         key={role.id}
-                        className="bg-[var(--s1)] border border-[var(--b)] rounded-xl p-4 hover:border-[var(--brand)]/30 transition-all"
+                        className="bg-[var(--s1)] border border-[var(--b)] rounded-xl p-4 hover:border-[var(--brand)]/30 transition-all group"
                       >
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${getRoleBadgeClass(role.name)}`}>
                               {role.name}
                             </span>
@@ -615,10 +711,30 @@ export default function MembersPage() {
                                 {isFarsi ? "سیستمی" : "System"}
                               </span>
                             )}
+                            <span className="text-[10px] text-[var(--t3)]">
+                              {memberCount} {isFarsi ? "عضو" : "member(s)"}
+                            </span>
                           </div>
-                          <span className="text-[10px] text-[var(--t3)]">
-                            {memberCount} {isFarsi ? "عضو" : "member(s)"}
-                          </span>
+                          {isOrisAdmin && !isSystem && (
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => openEditRoleModal(role)}
+                                className="text-[10px] bg-transparent text-[var(--cyan)] hover:underline border-none cursor-pointer px-1"
+                              >
+                                {isFarsi ? "ویرایش" : "Edit"}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (confirm(isFarsi ? `حذف نقش «${role.name}»؟` : `Delete role "${role.name}"?`)) {
+                                    deleteRoleMutation.mutate(role.id);
+                                  }
+                                }}
+                                className="text-[10px] bg-transparent text-[var(--red)] hover:underline border-none cursor-pointer px-1"
+                              >
+                                {isFarsi ? "حذف" : "Delete"}
+                              </button>
+                            </div>
+                          )}
                         </div>
                         <p className="text-xs text-[var(--t2)] mb-3 leading-relaxed">
                           {role.description || (isFarsi ? "بدون توضیحات" : "No description")}
@@ -815,6 +931,93 @@ export default function MembersPage() {
                 {inviteMemberMutation.isPending
                   ? (isFarsi ? "در حال افزودن..." : "Adding...")
                   : (isFarsi ? "افزودن عضو" : "Add Member")}
+              </Button>
+            </div>
+          </form>
+        </ModalBody>
+      </Modal>
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          Create / Edit Role Modal
+         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <Modal open={isRoleModalOpen} onOpenChange={setIsRoleModalOpen}>
+        <ModalHeader>
+          <ModalTitle>
+            {editRoleId
+              ? (isFarsi ? "ویرایش نقش" : "Edit Role")
+              : (isFarsi ? "ایجاد نقش جدید" : "Create New Role")}
+          </ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+          <form onSubmit={handleRoleSubmit} className="flex flex-col gap-4">
+            <Input
+              label={isFarsi ? "نام نقش" : "Role Name"}
+              value={roleForm.name}
+              onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
+              placeholder={isFarsi ? "مثال: مدیر محتوا" : "e.g. Content Manager"}
+              required
+            />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                {isFarsi ? "توضیحات" : "Description"}
+              </label>
+              <textarea
+                className="w-full bg-[var(--s2)] text-[var(--t1)] text-sm border border-[var(--b)] rounded-xl px-4 py-2.5 outline-none focus:border-[var(--brand)] transition-colors resize-none"
+                rows={2}
+                value={roleForm.description}
+                onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
+                placeholder={isFarsi ? "توضیح کوتاهی درباره این نقش..." : "Short description of this role..."}
+              />
+            </div>
+
+            {availablePermissions.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                  {isFarsi ? "دسترسی‌ها" : "Permissions"}
+                  <span className="ml-2 text-[var(--brand)] normal-case font-normal">
+                    ({roleForm.permissions.length} {isFarsi ? "انتخاب شده" : "selected"})
+                  </span>
+                </label>
+                <div className="bg-[var(--s1)] border border-[var(--b)] rounded-xl p-3 max-h-[220px] overflow-y-auto flex flex-col gap-1">
+                  {availablePermissions.map((perm) => (
+                    <label
+                      key={perm.codename}
+                      className="flex items-start gap-2.5 py-1.5 px-2 rounded-lg hover:bg-[var(--s3)] cursor-pointer transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 flex-shrink-0 accent-[var(--brand)]"
+                        checked={roleForm.permissions.includes(perm.codename)}
+                        onChange={() => togglePermission(perm.codename)}
+                      />
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-semibold text-[var(--t1)]">{perm.name}</span>
+                        <span className="text-[10px] font-mono text-[var(--t3)]">{perm.codename}</span>
+                        {perm.description && (
+                          <span className="text-[10px] text-[var(--t3)] leading-relaxed">{perm.description}</span>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 mt-4">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => { setIsRoleModalOpen(false); setRoleForm({ name: "", description: "", permissions: [] }); }}
+              >
+                {isFarsi ? "انصراف" : "Cancel"}
+              </Button>
+              <Button
+                type="submit"
+                disabled={createRoleMutation.isPending || updateRoleMutation.isPending}
+              >
+                {(createRoleMutation.isPending || updateRoleMutation.isPending)
+                  ? (isFarsi ? "در حال ذخیره..." : "Saving...")
+                  : (editRoleId ? (isFarsi ? "ذخیره تغییرات" : "Save Changes") : (isFarsi ? "ایجاد نقش" : "Create Role"))}
               </Button>
             </div>
           </form>
