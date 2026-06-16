@@ -334,6 +334,8 @@ class OrgContextSerializer(serializers.Serializer):
                 'id': org.id,
                 'name': org.name,
                 'slug': org.slug,
+                'is_suspended': org.is_suspended,
+                'suspension_reason': org.suspension_reason,
             }
         return None
 

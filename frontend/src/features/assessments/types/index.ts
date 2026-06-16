@@ -78,3 +78,35 @@ export interface Submission {
   ip_address: string | null;
   answers: StudentAnswer[];
 }
+
+export interface Assignment {
+  id: number;
+  academy_class: number;
+  class_name?: string;
+  title: string;
+  description: string;
+  due_date: string | null;
+  attachment: string | null;
+  created_by?: number;
+  created_at?: string;
+  updated_at?: string;
+  submissions_count?: number;
+  graded_count?: number;
+}
+
+export interface AssignmentSubmission {
+  id: number;
+  assignment: number;
+  assignment_title?: string;
+  student: number;
+  student_username?: string;
+  student_full_name?: string;
+  status: "submitted" | "graded";
+  submitted_at: string;
+  submission_file: string | null;
+  submission_text: string;
+  grade: string | null;
+  feedback: string;
+  graded_by: number | null;
+  graded_at: string | null;
+}

@@ -30,6 +30,8 @@ export interface OrgContext {
     id: number;
     name: string;
     slug: string;
+    is_suspended?: boolean;
+    suspension_reason?: string | null;
   } | null;
   role: string | null;
   permissions: string[];

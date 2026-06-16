@@ -14,6 +14,9 @@ import AppShell from "../../../components/layout/AppShell";
 import { useLocale } from "../../../i18n/useLocale";
 import BroadcastComposer from "./BroadcastComposer";
 import ClassSessionsSubTable from "../../sessions/components/ClassSessionsSubTable";
+import InspectionDrawer from "../../../components/ui/InspectionDrawer";
+import { assessmentsApi } from "../../assessments/api/assessments.api";
+import { FileText, CheckCircle, AlertCircle, Plus, Eye } from "lucide-react";
 
 export default function ClassDetailPage() {
   const { classId } = useParams<{ classId: string }>();
@@ -26,6 +29,10 @@ export default function ClassDetailPage() {
   const isAdmin = hasPermission("can_manage_members");
   const isTeacher = hasPermission("can_teach_class");
   const id = parseInt(classId || "0");
+
+  // ── Smart Inspection Drawer ─────────────────────────────────────
+  const [inspectType, setInspectType] = useState<"student" | "teacher" | "mentor" | "course" | "class" | "session" | "invoice" | null>(null);
+  const [inspectId, setInspectId] = useState<string | number | null>(null);
 
   // ── Queries ─────────────────────────────────────────────────────
   const { data: classes = [], isLoading: loadingClass } = useQuery({
@@ -52,6 +59,83 @@ export default function ClassDetailPage() {
 
   // ── Active live session for this class ──────────────────────────
   const liveSession = liveSessions.find((s) => s.academy_class === id);
+
+  // ── Assignments & Homework Subsystem Queries ─────────────────────
+  const { data: assignments = [], isLoading: loadingAssignments } = useQuery({
+    queryKey: ["assignments", id],
+    queryFn: () => assessmentsApi.getAssignments({ class_id: id }),
+  });
+
+  const { data: mySubmissions = [] } = useQuery({
+    queryKey: ["assignment-submissions", id],
+    queryFn: () => assessmentsApi.getAssignmentSubmissions({ class_id: id }),
+  });
+
+  // Create Assignment Form State
+  const [isCreateAssignmentOpen, setIsCreateAssignmentOpen] = useState(false);
+  const [assignmentForm, setAssignmentForm] = useState({ title: "", description: "", due_date: "" });
+  const [assignmentAttachment, setAssignmentAttachment] = useState<File | null>(null);
+
+  // Submit Homework Form State
+  const [isSubmitHomeworkOpen, setIsSubmitHomeworkOpen] = useState(false);
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<number | null>(null);
+  const [submissionForm, setSubmissionForm] = useState({ submission_text: "" });
+  const [submissionFile, setSubmissionFile] = useState<File | null>(null);
+
+  const createAssignmentMutation = useMutation({
+    mutationFn: (formData: FormData) => assessmentsApi.createAssignment(formData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["assignments", id] });
+      toast.success(isFarsi ? "تکلیف با موفقیت ایجاد شد" : "Assignment created successfully");
+      setIsCreateAssignmentOpen(false);
+      setAssignmentForm({ title: "", description: "", due_date: "" });
+      setAssignmentAttachment(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ایجاد تکلیف" : "Failed to create assignment"));
+    }
+  });
+
+  const submitHomeworkMutation = useMutation({
+    mutationFn: (formData: FormData) => assessmentsApi.createAssignmentSubmission(formData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["assignment-submissions", id] });
+      toast.success(isFarsi ? "پاسخ تکلیف با موفقیت ارسال شد" : "Homework submitted successfully");
+      setIsSubmitHomeworkOpen(false);
+      setSubmissionForm({ submission_text: "" });
+      setSubmissionFile(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ارسال پاسخ" : "Failed to submit homework"));
+    }
+  });
+
+  const handleCreateAssignmentSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append("academy_class", id.toString());
+    formData.append("title", assignmentForm.title);
+    formData.append("description", assignmentForm.description);
+    if (assignmentForm.due_date) {
+      formData.append("due_date", new Date(assignmentForm.due_date).toISOString());
+    }
+    if (assignmentAttachment) {
+      formData.append("attachment", assignmentAttachment);
+    }
+    createAssignmentMutation.mutate(formData);
+  };
+
+  const handleSubmitHomeworkSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAssignmentId) return;
+    const formData = new FormData();
+    formData.append("assignment", selectedAssignmentId.toString());
+    formData.append("submission_text", submissionForm.submission_text);
+    if (submissionFile) {
+      formData.append("submission_file", submissionFile);
+    }
+    submitHomeworkMutation.mutate(formData);
+  };
 
   // ── Edit Modal ───────────────────────────────────────────────────
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -274,17 +358,134 @@ export default function ClassDetailPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          {/* ── Left: Sessions sub-table ── */}
-          <div className="lg:col-span-2 bg-[var(--s2)] border border-[var(--b)] rounded-2xl overflow-hidden">
-            <div className="p-4 border-b border-[var(--b)] flex items-center justify-between">
-              <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wide">
-                {isFarsi ? "برنامه جلسات" : "Session Schedule"}
-              </span>
-              <Link to="/academic/sessions" className="text-[10px] text-[var(--brand)] hover:underline">
-                {isFarsi ? "مشاهده همه جلسات" : "View All Sessions"} →
-              </Link>
+          {/* ── Left: Sessions & Assignments ── */}
+          <div className="lg:col-span-2 flex flex-col gap-6">
+            
+            {/* Sessions sub-table */}
+            <div className="bg-[var(--s2)] border border-[var(--b)] rounded-2xl overflow-hidden">
+              <div className="p-4 border-b border-[var(--b)] flex items-center justify-between">
+                <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wide">
+                  {isFarsi ? "برنامه جلسات" : "Session Schedule"}
+                </span>
+                <Link to="/academic/sessions" className="text-[10px] text-[var(--brand)] hover:underline">
+                  {isFarsi ? "مشاهده همه جلسات" : "View All Sessions"} →
+                </Link>
+              </div>
+              <ClassSessionsSubTable cls={cls} language={language} />
             </div>
-            <ClassSessionsSubTable cls={cls} language={language} />
+
+            {/* Assignments Panel */}
+            <div className="bg-[var(--s2)] border border-[var(--b)] rounded-2xl overflow-hidden">
+              <div className="p-4 border-b border-[var(--b)] flex items-center justify-between">
+                <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wide">
+                  {isFarsi ? "تکالیف و کار خانگی" : "Assignments & Homework"}
+                </span>
+                {(isAdmin || (isTeacher && isMyClass)) && (
+                  <button
+                    onClick={() => setIsCreateAssignmentOpen(true)}
+                    className="text-[10px] text-[var(--brand)] hover:underline bg-transparent border-none cursor-pointer flex items-center gap-1 font-semibold"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    {isFarsi ? "ایجاد تکلیف جدید" : "Create Assignment"}
+                  </button>
+                )}
+              </div>
+
+              {loadingAssignments ? (
+                <div className="p-6 flex justify-center"><Spinner /></div>
+              ) : assignments.length === 0 ? (
+                <div className="p-8 text-center">
+                  <div className="text-2xl mb-2">📝</div>
+                  <p className="text-xs text-[var(--t3)]">
+                    {isFarsi ? "هیچ تکلیفی برای این کلاس ثبت نشده است." : "No assignments registered for this class."}
+                  </p>
+                  {(isAdmin || (isTeacher && isMyClass)) && (
+                    <button
+                      onClick={() => setIsCreateAssignmentOpen(true)}
+                      className="text-[10px] text-[var(--brand)] hover:underline bg-transparent border-none cursor-pointer mt-2"
+                    >
+                      {isFarsi ? "+ افزودن تکلیف" : "+ Add Assignment"}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="divide-y divide-[var(--b)]">
+                  {assignments.map((assignment) => {
+                    const submission = mySubmissions.find((s) => s.assignment === assignment.id);
+                    const isGraded = submission?.status === "graded";
+                    const isSubmitted = submission?.status === "submitted";
+
+                    return (
+                      <div key={assignment.id} className="p-4 hover:bg-[var(--s3)] transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-[var(--brand)]/10 text-[var(--brand)] flex items-center justify-center flex-shrink-0">
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <Link to={`/academic/assignments/${assignment.id}`} className="text-sm font-semibold text-[var(--t1)] hover:text-[var(--brand)] transition-colors no-underline block truncate">
+                              {assignment.title}
+                            </Link>
+                            <p className="text-xs text-[var(--t3)] truncate max-w-md mt-0.5">{assignment.description}</p>
+                            <div className="flex flex-wrap gap-3 mt-1.5 text-[10px] text-[var(--t3)] items-center">
+                              {assignment.due_date && (
+                                <span className="flex items-center gap-1">
+                                  📅 {isFarsi ? "مهلت:" : "Due:"} {new Date(assignment.due_date).toLocaleDateString(isFarsi ? "fa-IR" : "en-US")}
+                                </span>
+                              )}
+                              {assignment.attachment && (
+                                <a href={assignment.attachment} target="_blank" rel="noreferrer" className="text-[var(--brand-text)] hover:underline no-underline font-semibold flex items-center gap-1">
+                                  📎 {isFarsi ? "پیوست درس" : "Attachment"}
+                                </a>
+                              )}
+                              {(isAdmin || (isTeacher && isMyClass)) && (
+                                <span className="px-2 py-0.5 rounded-full bg-[var(--s3)] border border-[var(--b)] font-medium">
+                                  📊 {assignment.submissions_count || 0} {isFarsi ? "ارسال شده" : "submissions"}
+                                  {assignment.graded_count !== undefined && ` (${assignment.graded_count} ${isFarsi ? "نمره‌دهی شده" : "graded"})`}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-center">
+                          {(!isAdmin && !(isTeacher && isMyClass)) && (
+                            <>
+                              {isGraded ? (
+                                <span className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-[var(--green)]/15 text-[var(--green)]">
+                                  <CheckCircle className="w-3.5 h-3.5" />
+                                  {isFarsi ? `نمره: ${submission?.grade} از ۱۰۰` : `Grade: ${submission?.grade}/100`}
+                                </span>
+                              ) : isSubmitted ? (
+                                <span className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-[var(--cyan)]/15 text-[var(--cyan)]">
+                                  <CheckCircle className="w-3.5 h-3.5" />
+                                  {isFarsi ? "ارسال شده" : "Submitted"}
+                                </span>
+                              ) : (
+                                <Button
+                                  size="xs"
+                                  onClick={() => {
+                                    setSelectedAssignmentId(assignment.id);
+                                    setIsSubmitHomeworkOpen(true);
+                                  }}
+                                >
+                                  {isFarsi ? "ارسال پاسخ" : "Submit Homework"}
+                                </Button>
+                              )}
+                            </>
+                          )}
+                          <Link to={`/academic/assignments/${assignment.id}`}>
+                            <Button variant="secondary" size="xs" className="flex items-center gap-1">
+                              <Eye className="w-3 h-3" />
+                              {isFarsi ? "مشاهده" : "View"}
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* ── Right: Enrolled Students ── */}
@@ -325,12 +526,18 @@ export default function ClassDetailPage() {
               <div className="divide-y divide-[var(--b)] max-h-[360px] overflow-y-auto">
                 {classEnrollments.map((e) => (
                   <div key={e.id} className="flex items-center justify-between px-4 py-2.5 hover:bg-[var(--s3)] transition-colors">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-7 h-7 rounded-full bg-[var(--s3)] border border-[var(--b)] flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                    <div
+                      className="flex items-center gap-2 min-w-0 cursor-pointer group"
+                      onClick={() => {
+                        setInspectType("student");
+                        setInspectId(e.student);
+                      }}
+                    >
+                      <div className="w-7 h-7 rounded-full bg-[var(--s3)] border border-[var(--b)] flex items-center justify-center text-[10px] font-bold flex-shrink-0 group-hover:border-[var(--brand)] transition-colors">
                         {(e.student_full_name || e.student_username || "?").charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-medium text-[var(--t1)] truncate">{e.student_full_name || e.student_username}</div>
+                        <div className="text-xs font-medium text-[var(--t1)] truncate group-hover:text-[var(--brand)] transition-colors">{e.student_full_name || e.student_username}</div>
                         <div className="text-[9px] text-[var(--t3)] truncate">@{e.student_username}</div>
                       </div>
                     </div>
@@ -360,7 +567,7 @@ export default function ClassDetailPage() {
               label: isFarsi ? "فاکتورهای کلاس" : "Class Invoices",
               desc: isFarsi ? "مشاهده فاکتورهای این کلاس" : "Tuition invoices for this class",
               icon: "💰",
-              to: `/finance/ledger`,
+              to: `/finance/ledger?class_id=${id}`,
             },
             {
               label: isFarsi ? "اعضای سازمان" : "Org Members",
@@ -532,6 +739,100 @@ export default function ClassDetailPage() {
         </ModalBody>
       </Modal>
 
+      {/* ── Create Assignment Modal ── */}
+      <Modal open={isCreateAssignmentOpen} onOpenChange={setIsCreateAssignmentOpen}>
+        <ModalHeader>
+          <ModalTitle>{isFarsi ? "ایجاد تکلیف جدید" : "Create New Assignment"}</ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+          <form onSubmit={handleCreateAssignmentSubmit} className="flex flex-col gap-4">
+            <Input
+              label={isFarsi ? "عنوان تکلیف" : "Assignment Title"}
+              value={assignmentForm.title}
+              onChange={(e) => setAssignmentForm({ ...assignmentForm, title: e.target.value })}
+              required
+            />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                {isFarsi ? "توضیحات تکلیف" : "Description"}
+              </label>
+              <textarea
+                className="w-full bg-[var(--s2)] text-[var(--t1)] text-sm border border-[var(--b)] rounded-xl px-4 py-2.5 outline-none focus:border-[var(--brand)] transition-colors min-h-[100px]"
+                value={assignmentForm.description}
+                onChange={(e) => setAssignmentForm({ ...assignmentForm, description: e.target.value })}
+                placeholder={isFarsi ? "شرح تسک و انتظارات..." : "Provide assignment details..."}
+                required
+              />
+            </div>
+            <Input
+              label={isFarsi ? "مهلت ارسال (دلاین)" : "Due Date & Time"}
+              type="datetime-local"
+              value={assignmentForm.due_date}
+              onChange={(e) => setAssignmentForm({ ...assignmentForm, due_date: e.target.value })}
+            />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                {isFarsi ? "فایل پیوست" : "Attachment (File)"}
+              </label>
+              <input
+                type="file"
+                className="text-xs text-[var(--t3)]"
+                onChange={(e) => setAssignmentAttachment(e.target.files?.[0] || null)}
+              />
+            </div>
+            <div className="flex justify-end gap-2 mt-2">
+              <Button type="button" variant="secondary" onClick={() => setIsCreateAssignmentOpen(false)}>
+                {isFarsi ? "انصراف" : "Cancel"}
+              </Button>
+              <Button type="submit" disabled={createAssignmentMutation.isPending}>
+                {createAssignmentMutation.isPending ? (isFarsi ? "در حال ایجاد..." : "Creating...") : (isFarsi ? "ایجاد" : "Create")}
+              </Button>
+            </div>
+          </form>
+        </ModalBody>
+      </Modal>
+
+      {/* ── Submit Homework Modal ── */}
+      <Modal open={isSubmitHomeworkOpen} onOpenChange={setIsSubmitHomeworkOpen}>
+        <ModalHeader>
+          <ModalTitle>{isFarsi ? "ارسال پاسخ تکلیف" : "Submit Assignment"}</ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+          <form onSubmit={handleSubmitHomeworkSubmit} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                {isFarsi ? "توضیحات پاسخ (اختیاری)" : "Submission Notes (Optional)"}
+              </label>
+              <textarea
+                className="w-full bg-[var(--s2)] text-[var(--t1)] text-sm border border-[var(--b)] rounded-xl px-4 py-2.5 outline-none focus:border-[var(--brand)] transition-colors min-h-[100px]"
+                value={submissionForm.submission_text}
+                onChange={(e) => setSubmissionForm({ ...submissionForm, submission_text: e.target.value })}
+                placeholder={isFarsi ? "توضیحات خود را بنویسید..." : "Write any details or text answer..."}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                {isFarsi ? "فایل پاسخ" : "Submission File"}
+              </label>
+              <input
+                type="file"
+                className="text-xs text-[var(--t3)]"
+                onChange={(e) => setSubmissionFile(e.target.files?.[0] || null)}
+                required
+              />
+            </div>
+            <div className="flex justify-end gap-2 mt-2">
+              <Button type="button" variant="secondary" onClick={() => setIsSubmitHomeworkOpen(false)}>
+                {isFarsi ? "انصراف" : "Cancel"}
+              </Button>
+              <Button type="submit" disabled={submitHomeworkMutation.isPending}>
+                {submitHomeworkMutation.isPending ? (isFarsi ? "در حال ارسال..." : "Submitting...") : (isFarsi ? "ارسال" : "Submit")}
+              </Button>
+            </div>
+          </form>
+        </ModalBody>
+      </Modal>
+
       {/* ── Broadcast Modal ── */}
       {isBroadcastOpen && (
         <BroadcastComposer
@@ -541,6 +842,18 @@ export default function ClassDetailPage() {
           onClose={() => setIsBroadcastOpen(false)}
         />
       )}
+
+      <InspectionDrawer
+        open={!!inspectType}
+        onOpenChange={(open) => {
+          if (!open) {
+            setInspectType(null);
+            setInspectId(null);
+          }
+        }}
+        entityType={inspectType}
+        entityId={inspectId}
+      />
     </AppShell>
   );
 }

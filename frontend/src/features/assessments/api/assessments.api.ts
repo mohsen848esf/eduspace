@@ -1,5 +1,5 @@
 import client from "../../../lib/api/client";
-import type { QuestionBank, Question, Assessment, Submission, StudentAnswer } from "../types";
+import type { QuestionBank, Question, Assessment, Submission, StudentAnswer, Assignment, AssignmentSubmission } from "../types";
 
 export const assessmentsApi = {
   // QuestionBanks API
@@ -37,8 +37,8 @@ export const assessmentsApi = {
   },
 
   // Assessments (Exams) API
-  getAssessments: async (): Promise<Assessment[]> => {
-    const res = await client.get("/assessments/assessments/");
+  getAssessments: async (params?: { class_id?: number; session_id?: number }): Promise<Assessment[]> => {
+    const res = await client.get("/assessments/assessments/", { params });
     return res.data;
   },
   getAssessment: async (id: number): Promise<Assessment> => {
@@ -70,7 +70,7 @@ export const assessmentsApi = {
   },
 
   // Submissions API
-  getSubmissions: async (params?: { assessment_id?: number }): Promise<Submission[]> => {
+  getSubmissions: async (params?: { assessment_id?: number; class_id?: number }): Promise<Submission[]> => {
     const res = await client.get("/assessments/submissions/", { params });
     return res.data;
   },
@@ -98,6 +98,48 @@ export const assessmentsApi = {
   // Answers API
   updateAnswer: async (id: number, data: { selected_options?: string[] | null; text_answer?: string | null }): Promise<StudentAnswer> => {
     const res = await client.patch(`/assessments/answers/${id}/`, data);
+    return res.data;
+  },
+
+  // Assignments API
+  getAssignments: async (params?: { class_id?: number }): Promise<Assignment[]> => {
+    const res = await client.get("/assessments/assignments/", { params });
+    return res.data;
+  },
+  getAssignment: async (id: number): Promise<Assignment> => {
+    const res = await client.get(`/assessments/assignments/${id}/`);
+    return res.data;
+  },
+  createAssignment: async (data: FormData | Partial<Assignment>): Promise<Assignment> => {
+    const headers = data instanceof FormData ? { "Content-Type": "multipart/form-data" } : {};
+    const res = await client.post("/assessments/assignments/", data, { headers });
+    return res.data;
+  },
+  updateAssignment: async (id: number, data: FormData | Partial<Assignment>): Promise<Assignment> => {
+    const headers = data instanceof FormData ? { "Content-Type": "multipart/form-data" } : {};
+    const res = await client.patch(`/assessments/assignments/${id}/`, data, { headers });
+    return res.data;
+  },
+  deleteAssignment: async (id: number): Promise<void> => {
+    await client.delete(`/assessments/assignments/${id}/`);
+  },
+
+  // Assignment Submissions API
+  getAssignmentSubmissions: async (params?: { assignment_id?: number; class_id?: number }): Promise<AssignmentSubmission[]> => {
+    const res = await client.get("/assessments/assignment-submissions/", { params });
+    return res.data;
+  },
+  getAssignmentSubmission: async (id: number): Promise<AssignmentSubmission> => {
+    const res = await client.get(`/assessments/assignment-submissions/${id}/`);
+    return res.data;
+  },
+  createAssignmentSubmission: async (data: FormData | Partial<AssignmentSubmission>): Promise<AssignmentSubmission> => {
+    const headers = data instanceof FormData ? { "Content-Type": "multipart/form-data" } : {};
+    const res = await client.post("/assessments/assignment-submissions/", data, { headers });
+    return res.data;
+  },
+  gradeAssignmentSubmission: async (id: number, data: { grade: number; feedback: string }): Promise<AssignmentSubmission> => {
+    const res = await client.patch(`/assessments/assignment-submissions/${id}/`, data);
     return res.data;
   },
 };

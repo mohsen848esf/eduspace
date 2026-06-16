@@ -6,6 +6,8 @@ from assessments.views import (
     AssessmentViewSet,
     SubmissionViewSet,
     StudentAnswerViewSet,
+    AssignmentViewSet,
+    AssignmentSubmissionViewSet,
 )
 
 app_name = 'assessments'
@@ -16,6 +18,8 @@ router.register(r'questions', QuestionViewSet, basename='question')
 router.register(r'assessments', AssessmentViewSet, basename='assessment')
 router.register(r'submissions', SubmissionViewSet, basename='submission')
 router.register(r'answers', StudentAnswerViewSet, basename='studentanswer')
+router.register(r'assignments', AssignmentViewSet, basename='assignment')
+router.register(r'assignment-submissions', AssignmentSubmissionViewSet, basename='assignmentsubmission')
 
 urlpatterns = [
     path('', include(router.urls)),

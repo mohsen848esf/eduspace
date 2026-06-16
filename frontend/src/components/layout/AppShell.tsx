@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import IconRail from "./IconRail";
@@ -9,6 +9,9 @@ import DrawerNavList from "./DrawerNavList";
 import { cn } from "../../lib/utils";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { useShellStore } from "../../store/shellStore";
+import { useOrgContextStore } from "../../features/auth/store/orgContextStore";
+import { useLocale } from "../../i18n/useLocale";
+import { AlertTriangle } from "lucide-react";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -83,6 +86,11 @@ export default function AppShell({
     onNavigate?.(id);
   };
 
+  const { orgContext } = useOrgContextStore();
+  const { language } = useLocale();
+  const isFarsi = language === "fa";
+  const isSuspended = orgContext?.organization?.is_suspended;
+
   return (
     <div
       className={cn(
@@ -107,6 +115,47 @@ export default function AppShell({
           showHamburger={breakpoint === "mobile"}
           onHamburgerClick={() => setDrawerOpen(true)}
         />
+        {isSuspended && (
+          <div 
+            style={{
+              background: "rgba(239, 68, 68, 0.12)",
+              borderBottom: "1px solid rgba(239, 68, 68, 0.25)",
+              color: "var(--red)",
+              padding: "10px 16px",
+              fontSize: "12px",
+              fontWeight: "500",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              backdropFilter: "blur(4px)",
+              flexShrink: 0,
+            }}
+            className="no-print"
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <AlertTriangle style={{ width: "16px", height: "16px", flexShrink: 0 }} />
+              <span>
+                {isFarsi
+                  ? "دسترسی سازمان به دلیل فاکتورهای پرداخت‌نشده معلق شده است. برای فعال‌سازی مجدد لطفاً فاکتورهای معوقه را پرداخت کنید."
+                  : "Your organization suspension is active due to overdue/unpaid invoices. Please resolve billing to restore full service."}
+              </span>
+            </div>
+            <Link
+              to="/settings/billing"
+              style={{
+                fontWeight: "bold",
+                textDecoration: "underline",
+                color: "var(--brand-text)",
+                whiteSpace: "nowrap",
+                marginLeft: isFarsi ? "0" : "auto",
+                marginRight: isFarsi ? "auto" : "0",
+              }}
+            >
+              {isFarsi ? "پرداخت و مدیریت اشتراک" : "Manage Billing & Subscription"} &rarr;
+            </Link>
+          </div>
+        )}
         <main
           className={cn(
             "flex-1 overflow-y-auto p-4 md:p-5",

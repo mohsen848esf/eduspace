@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from assessments.models import QuestionBank, Question, Assessment, AssessmentQuestion, Submission, StudentAnswer
+from assessments.models import QuestionBank, Question, Assessment, AssessmentQuestion, Submission, StudentAnswer, Assignment, AssignmentSubmission
 
 
 class QuestionBankSerializer(serializers.ModelSerializer):
@@ -163,3 +163,55 @@ class SubmissionTeacherSerializer(serializers.ModelSerializer):
         model = Submission
         fields = ('id', 'assessment', 'student', 'student_username', 'status', 'started_at', 'submitted_at', 'score', 'graded_by', 'graded_at', 'tab_focus_losses', 'browser_info', 'ip_address', 'answers')
         read_only_fields = ('id', 'assessment', 'student', 'student_username', 'status', 'started_at', 'submitted_at', 'score', 'graded_by', 'graded_at', 'tab_focus_losses', 'browser_info', 'ip_address', 'answers')
+
+
+class AssignmentSerializer(serializers.ModelSerializer):
+    submissions_count = serializers.SerializerMethodField()
+    graded_count = serializers.SerializerMethodField()
+    class_name = serializers.CharField(source='academy_class.name', read_only=True)
+
+    class Meta:
+        model = Assignment
+        fields = ('id', 'academy_class', 'class_name', 'title', 'description', 'due_date', 'attachment', 'created_by', 'created_at', 'updated_at', 'submissions_count', 'graded_count')
+        read_only_fields = ('id', 'created_by', 'created_at', 'updated_at')
+
+    def get_submissions_count(self, obj):
+        return obj.submissions.count()
+
+    def get_graded_count(self, obj):
+        return obj.submissions.filter(status='graded').count()
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        if request and hasattr(request, 'organization'):
+            validated_data['organization'] = request.organization
+        if request and request.user and request.user.is_authenticated:
+            validated_data['created_by'] = request.user
+        return super().create(validated_data)
+
+
+class AssignmentSubmissionSerializer(serializers.ModelSerializer):
+    student_username = serializers.CharField(source='student.username', read_only=True)
+    student_full_name = serializers.CharField(source='student.full_name', read_only=True)
+    assignment_title = serializers.CharField(source='assignment.title', read_only=True)
+
+    class Meta:
+        model = AssignmentSubmission
+        fields = ('id', 'assignment', 'assignment_title', 'student', 'student_username', 'student_full_name', 'status', 'submitted_at', 'submission_file', 'submission_text', 'grade', 'feedback', 'graded_by', 'graded_at')
+        read_only_fields = ('id', 'student', 'status', 'submitted_at', 'graded_by', 'graded_at')
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        if request and request.user:
+            validated_data['student'] = request.user
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        request = self.context.get('request')
+        if 'grade' in validated_data or 'feedback' in validated_data:
+            validated_data['status'] = 'graded'
+            if request and request.user:
+                validated_data['graded_by'] = request.user
+                import django.utils.timezone as timezone
+                validated_data['graded_at'] = timezone.now()
+        return super().update(instance, validated_data)
