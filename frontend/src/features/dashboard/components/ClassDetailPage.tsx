@@ -31,7 +31,7 @@ export default function ClassDetailPage() {
   const id = parseInt(classId || "0");
 
   // ── Smart Inspection Drawer ─────────────────────────────────────
-  const [inspectType, setInspectType] = useState<"student" | "teacher" | "mentor" | "course" | "class" | "session" | "invoice" | null>(null);
+  const [inspectType, setInspectType] = useState<"student" | "teacher" | "mentor" | "course" | "class" | "session" | "invoice" | "assignment" | null>(null);
   const [inspectId, setInspectId] = useState<string | number | null>(null);
 
   // ── Queries ─────────────────────────────────────────────────────
@@ -51,6 +51,17 @@ export default function ClassDetailPage() {
   });
 
   const { data: liveSessions = [] } = useSessions(undefined, "live");
+
+  const { data: classInvoicesResponse } = useQuery({
+    queryKey: ["class-invoices", id],
+    queryFn: () => crmApi.getInvoices({ class_id: id }),
+  });
+  const classInvoices = classInvoicesResponse?.results || [];
+
+  const totalBilled = classInvoices.reduce((sum, inv) => sum + parseFloat(inv.amount || "0"), 0);
+  const outstandingBalance = classInvoices
+    .filter((inv) => inv.status !== "paid" && inv.status !== "cancelled")
+    .reduce((sum, inv) => sum + parseFloat(inv.amount || "0"), 0);
 
   const cls = classes.find((c) => c.id === id);
   const course = courses.find((c) => c.id === cls?.course);
@@ -319,8 +330,38 @@ export default function ClassDetailPage() {
                   ) : <span className="text-[var(--t3)]">—</span>}
                 </div>
                 <div className="flex flex-wrap gap-3 mt-2 text-[11px] text-[var(--t3)]">
-                  <span>👤 {cls.teacher_name || (isFarsi ? "بدون مدرس" : "No Teacher")}</span>
-                  <span>🤝 {cls.mentor_name || (isFarsi ? "بدون منتور" : "No Mentor")}</span>
+                  <span>
+                    👤{" "}
+                    {cls.teacher ? (
+                      <button
+                        onClick={() => {
+                          setInspectType("teacher");
+                          setInspectId(cls.teacher);
+                        }}
+                        className="bg-transparent border-none p-0 text-[var(--t3)] hover:text-[var(--brand)] hover:underline cursor-pointer font-medium text-[11px] align-baseline"
+                      >
+                        {cls.teacher_name || (isFarsi ? "بدون مدرس" : "No Teacher")}
+                      </button>
+                    ) : (
+                      <span>{cls.teacher_name || (isFarsi ? "بدون مدرس" : "No Teacher")}</span>
+                    )}
+                  </span>
+                  <span>
+                    🤝{" "}
+                    {cls.mentor ? (
+                      <button
+                        onClick={() => {
+                          setInspectType("mentor");
+                          setInspectId(cls.mentor);
+                        }}
+                        className="bg-transparent border-none p-0 text-[var(--t3)] hover:text-[var(--brand)] hover:underline cursor-pointer font-medium text-[11px] align-baseline"
+                      >
+                        {cls.mentor_name || (isFarsi ? "بدون منتور" : "No Mentor")}
+                      </button>
+                    ) : (
+                      <span>{cls.mentor_name || (isFarsi ? "بدون منتور" : "No Mentor")}</span>
+                    )}
+                  </span>
                   {cls.room && <span>🚪 {cls.room}</span>}
                   {cls.start_date && <span>📅 {cls.start_date}{cls.end_date ? ` → ${cls.end_date}` : ""}</span>}
                   <span>🎓 {classEnrollments.length} {isFarsi ? "دانشجو" : "students"}</span>
@@ -355,6 +396,33 @@ export default function ClassDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* ── Financial Summary Block ── */}
+        {hasPermission("can_view_financials") && (
+          <div className="bg-[var(--s2)] border border-[var(--b)] rounded-2xl p-4">
+            <h3 className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide mb-2">
+              {isFarsi ? "خلاصه مالی کلاس" : "Class Financial Summary"}
+            </h3>
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              <div className="p-3 bg-[var(--s3)] rounded-xl border border-[var(--b)]">
+                <div className="text-[10px] text-[var(--t3)] uppercase font-semibold mb-1">
+                  {isFarsi ? "کل مبلغ صادر شده" : "Total Billed"}
+                </div>
+                <div className="text-xl font-bold text-[var(--t1)]">
+                  ${totalBilled.toFixed(2)}
+                </div>
+              </div>
+              <div className="p-3 bg-[var(--s3)] rounded-xl border border-[var(--b)]">
+                <div className="text-[10px] text-[var(--t3)] uppercase font-semibold mb-1">
+                  {isFarsi ? "مطالبات معوق" : "Outstanding Balance"}
+                </div>
+                <div className="text-xl font-bold text-amber-500">
+                  ${outstandingBalance.toFixed(2)}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 

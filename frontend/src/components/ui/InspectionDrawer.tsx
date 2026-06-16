@@ -12,13 +12,14 @@ import {
   Calendar,
   UserCheck,
   Clock,
-  ArrowRight
+  ArrowRight,
+  FileText
 } from "lucide-react";
 
 interface InspectionDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  entityType: "student" | "teacher" | "mentor" | "course" | "class" | "session" | "invoice" | null;
+  entityType: "student" | "teacher" | "mentor" | "course" | "class" | "session" | "invoice" | "assignment" | null;
   entityId: string | number | null;
 }
 
@@ -34,8 +35,40 @@ export default function InspectionDrawer({
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [localType, setLocalType] = useState<InspectionDrawerProps["entityType"]>(null);
+  const [localId, setLocalId] = useState<InspectionDrawerProps["entityId"]>(null);
+  const [history, setHistory] = useState<{ type: InspectionDrawerProps["entityType"]; id: InspectionDrawerProps["entityId"] }[]>([]);
+
+  const [studentEnrollments, setStudentEnrollments] = useState<any[]>([]);
+  const [studentInvoices, setStudentInvoices] = useState<any[]>([]);
+  const [mentorStudents, setMentorStudents] = useState<any[]>([]);
+  const [mentorClasses, setMentorClasses] = useState<any[]>([]);
+  const [loadingExtra, setLoadingExtra] = useState(false);
+
   useEffect(() => {
-    if (!open || !entityType || !entityId) {
+    setLocalType(entityType);
+    setLocalId(entityId);
+    setHistory([]);
+  }, [entityType, entityId, open]);
+
+  const navigateTo = (type: InspectionDrawerProps["entityType"], id: InspectionDrawerProps["entityId"]) => {
+    if (localType && localId) {
+      setHistory((prev) => [...prev, { type: localType, id: localId }]);
+    }
+    setLocalType(type);
+    setLocalId(id);
+  };
+
+  const navigateBack = () => {
+    if (history.length === 0) return;
+    const previous = history[history.length - 1];
+    setHistory((prev) => prev.slice(0, -1));
+    setLocalType(previous.type);
+    setLocalId(previous.id);
+  };
+
+  useEffect(() => {
+    if (!open || !localType || !localId) {
       setData(null);
       setError(null);
       return;
@@ -46,39 +79,84 @@ export default function InspectionDrawer({
       setError(null);
       try {
         let endpoint = "";
-        if (entityType === "student" || entityType === "teacher" || entityType === "mentor") {
+        let match: any = null;
+        if (localType === "student" || localType === "teacher" || localType === "mentor") {
           const res = await client.get("/auth/org-members/");
           const members = res.data || [];
-          const match = members.find(
-            (m: any) => m.user === Number(entityId) || m.id === Number(entityId)
+          match = members.find(
+            (m: any) => m.user === Number(localId) || m.id === Number(localId)
           );
           if (match) {
             setData(match);
-            setLoading(false);
-            return;
+          } else {
+            endpoint = `/auth/org-members/${localId}/`;
           }
-          endpoint = `/auth/org-members/${entityId}/`;
-        } else if (entityType === "course") {
-          endpoint = `/auth/courses/${entityId}/`;
-        } else if (entityType === "class") {
-          endpoint = `/auth/classes/${entityId}/`;
-        } else if (entityType === "session") {
-          // We query sessions lists and find matching id
+        } else if (localType === "course") {
+          endpoint = `/auth/courses/${localId}/`;
+        } else if (localType === "class") {
+          endpoint = `/auth/classes/${localId}/`;
+        } else if (localType === "session") {
           const res = await client.get("/auth/sessions/");
           const sessions = res.data || [];
-          const match = sessions.find((s: any) => s.id === Number(entityId));
-          if (match) {
-            setData(match);
-            setLoading(false);
-            return;
+          const sessionMatch = sessions.find((s: any) => s.id === Number(localId));
+          if (sessionMatch) {
+            setData(sessionMatch);
+          } else {
+            endpoint = `/auth/sessions/${localId}/`;
           }
-          endpoint = `/auth/sessions/${entityId}/`;
-        } else if (entityType === "invoice") {
-          endpoint = `/auth/invoices/${entityId}/`;
+        } else if (localType === "invoice") {
+          endpoint = `/auth/invoices/${localId}/`;
+        } else if (localType === "assignment") {
+          endpoint = `/assessments/assignments/${localId}/`;
         }
 
-        const response = await client.get(endpoint);
-        setData(response.data);
+        let fetchedData = match;
+        if (endpoint) {
+          const response = await client.get(endpoint);
+          fetchedData = response.data;
+          setData(fetchedData);
+        }
+
+        // Fetch extra info if needed
+        if (localType === "student" && fetchedData) {
+          setLoadingExtra(true);
+          try {
+            const userId = fetchedData.user_details?.id || fetchedData.user;
+            if (userId) {
+              const [enrollRes, invoiceRes] = await Promise.all([
+                client.get("/auth/enrollments/?include_archived=true"),
+                client.get(`/auth/invoices/?student_id=${userId}`)
+              ]);
+              const enrolls = (enrollRes.data || []).filter((e: any) => e.student === userId);
+              setStudentEnrollments(enrolls);
+              setStudentInvoices(invoiceRes.data?.results || invoiceRes.data || []);
+            }
+          } catch (e) {
+            console.error("Failed to load student extra info", e);
+          } finally {
+            setLoadingExtra(false);
+          }
+        } else if (localType === "mentor" && fetchedData) {
+          setLoadingExtra(true);
+          try {
+            const userId = fetchedData.user_details?.id || fetchedData.user;
+            if (userId) {
+              const [classesRes, enrollRes] = await Promise.all([
+                client.get("/auth/classes/?include_archived=true"),
+                client.get("/auth/enrollments/?include_archived=true")
+              ]);
+              const mClasses = (classesRes.data || []).filter((c: any) => c.mentor === userId);
+              const classIds = mClasses.map((c: any) => c.id);
+              const mStudents = (enrollRes.data || []).filter((e: any) => classIds.includes(e.academy_class));
+              setMentorClasses(mClasses);
+              setMentorStudents(mStudents);
+            }
+          } catch (e) {
+            console.error("Failed to load mentor extra info", e);
+          } finally {
+            setLoadingExtra(false);
+          }
+        }
       } catch (err: any) {
         console.error(err);
         setError(isFarsi ? "خطا در بارگذاری اطلاعات" : "Failed to load details.");
@@ -88,7 +166,7 @@ export default function InspectionDrawer({
     };
 
     fetchEntityDetails();
-  }, [open, entityType, entityId, isFarsi]);
+  }, [open, localType, localId, isFarsi]);
 
   if (!open) return null;
 
@@ -96,7 +174,7 @@ export default function InspectionDrawer({
     let icon = <User className="w-5 h-5 text-indigo-400" />;
     let title = "";
 
-    switch (entityType) {
+    switch (localType) {
       case "student":
         title = isFarsi ? "جزئیات دانش‌آموز" : "Student Details";
         break;
@@ -120,6 +198,10 @@ export default function InspectionDrawer({
         icon = <Receipt className="w-5 h-5 text-pink-400" />;
         title = isFarsi ? "جزئیات فاکتور" : "Invoice Details";
         break;
+      case "assignment":
+        icon = <FileText className="w-5 h-5 text-yellow-400" />;
+        title = isFarsi ? "جزئیات تکلیف" : "Assignment Details";
+        break;
       default:
         title = isFarsi ? "اطلاعات عمومی" : "Entity Details";
     }
@@ -127,6 +209,15 @@ export default function InspectionDrawer({
     return (
       <DrawerHeader className="flex justify-between items-center bg-[var(--s1)] border-b border-[var(--b)] p-4">
         <div className="flex items-center gap-2">
+          {history.length > 0 && (
+            <button
+              onClick={navigateBack}
+              className="mr-2 p-1 rounded-lg text-[var(--t3)] hover:text-[var(--t1)] hover:bg-[var(--s3)] border-none bg-transparent cursor-pointer flex items-center"
+              title={isFarsi ? "بازگشت" : "Back"}
+            >
+              <ArrowRight className={`w-4 h-4 ${isFarsi ? "" : "rotate-180"}`} />
+            </button>
+          )}
           {icon}
           <DrawerTitle>{title}</DrawerTitle>
         </div>
@@ -157,11 +248,11 @@ export default function InspectionDrawer({
 
     if (!data) return null;
 
-    if (entityType === "student" || entityType === "teacher" || entityType === "mentor") {
+    if (localType === "student" || localType === "teacher" || localType === "mentor") {
       const user = data.user_details || {};
       const name = user.full_name || user.username || "";
       const email = user.email || "";
-      const roleName = data.role_name || entityType.toUpperCase();
+      const roleName = data.role_name || localType.toUpperCase();
       const statusLabel = data.is_active ? (isFarsi ? "فعال" : "Active") : (isFarsi ? "غیرفعال" : "Inactive");
 
       return (
@@ -203,10 +294,134 @@ export default function InspectionDrawer({
             </div>
           </div>
 
+          {/* Active Enrolled Classes */}
+          {localType === "student" && (
+            <div className="space-y-4 pt-4 border-t border-[var(--b)]/60 text-left">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--t3)]">{isFarsi ? "کلاس‌های فعال ثبت‌نامی" : "Active Enrolled Classes"}</h4>
+              {loadingExtra ? (
+                <div className="flex justify-center p-2"><Spinner size="sm" /></div>
+              ) : studentEnrollments.length === 0 ? (
+                <div className="text-xs text-[var(--t3)] italic bg-[var(--s2)] p-3 rounded-xl border border-[var(--b)]">{isFarsi ? "کلاس فعالی ثبت نشده است." : "No active classes enrolled."}</div>
+              ) : (
+                <div className="space-y-2">
+                  {studentEnrollments.map((enroll: any) => (
+                    <div key={enroll.id} className="flex justify-between items-center p-3 rounded-xl bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/20 transition-all text-xs">
+                      <div className="flex flex-col min-w-0">
+                        <button
+                          onClick={() => navigateTo("class", enroll.academy_class)}
+                          className="font-bold text-[var(--brand)] hover:underline bg-transparent border-none p-0 cursor-pointer text-left text-xs truncate"
+                        >
+                          {enroll.class_name || `#${enroll.academy_class}`}
+                        </button>
+                        <span className="text-[10px] text-[var(--t3)] mt-0.5">
+                          {isFarsi ? "ثبت‌نام:" : "Enrolled:"} {new Date(enroll.enrolled_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                        enroll.completion_status === "completed" ? "bg-emerald-500/10 text-emerald-400" :
+                        enroll.completion_status === "dropped" ? "bg-red-500/10 text-red-400" :
+                        "bg-indigo-500/10 text-indigo-400"
+                      }`}>
+                        {enroll.completion_status || "in_progress"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Outstanding Balance Info */}
+          {localType === "student" && (
+            <div className="space-y-4 pt-4 border-t border-[var(--b)]/60 text-left">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--t3)]">{isFarsi ? "وضعیت مالی" : "Financial Balance"}</h4>
+              {loadingExtra ? (
+                <div className="flex justify-center p-2"><Spinner size="sm" /></div>
+              ) : (
+                (() => {
+                  const outstandingInvoices = studentInvoices.filter(
+                    (inv: any) => inv.status !== "paid" && inv.status !== "cancelled"
+                  );
+                  const totalOutstanding = outstandingInvoices.reduce(
+                    (sum: number, inv: any) => sum + parseFloat(inv.amount || "0"),
+                    0
+                  );
+
+                  return (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-4 text-xs bg-[var(--s2)] p-4 rounded-xl border border-[var(--b)]">
+                        <div>
+                          <span className="block text-[var(--t3)] font-medium mb-1">{isFarsi ? "کل بدهی معوق" : "Outstanding Bal."}</span>
+                          <span className={`font-bold text-md ${totalOutstanding > 0 ? "text-amber-500" : "text-[var(--green)]"}`}>
+                            ${totalOutstanding.toFixed(2)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[var(--t3)] font-medium mb-1">{isFarsi ? "تعداد فاکتورهای معوق" : "Pending Invoices"}</span>
+                          <span className="font-bold text-[var(--t1)]">{outstandingInvoices.length}</span>
+                        </div>
+                      </div>
+
+                      {outstandingInvoices.length > 0 && (
+                        <div className="space-y-2">
+                          <span className="text-[10px] font-bold text-[var(--t3)] uppercase tracking-wide block">{isFarsi ? "فاکتورهای پرداخت نشده" : "Unpaid Invoices"}</span>
+                          {outstandingInvoices.slice(0, 3).map((inv: any) => (
+                            <div key={inv.id} className="flex justify-between items-center p-2.5 rounded-lg bg-[var(--s2)] border border-[var(--b)] text-xs">
+                              <div className="flex flex-col">
+                                <button
+                                  onClick={() => navigateTo("invoice", inv.id)}
+                                  className="font-bold text-[var(--brand)] hover:underline bg-transparent border-none p-0 cursor-pointer text-left text-xs"
+                                >
+                                  {inv.invoice_number || `#${inv.id}`}
+                                </button>
+                                <span className="text-[10px] text-[var(--t3)] mt-0.5">{inv.class_name || (isFarsi ? "عمومی" : "General")}</span>
+                              </div>
+                              <span className="font-bold text-[var(--t1)]">${parseFloat(inv.amount).toFixed(2)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+          )}
+
+          {/* Mentored Students list */}
+          {localType === "mentor" && (
+            <div className="space-y-4 pt-4 border-t border-[var(--b)]/60 text-left">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--t3)]">{isFarsi ? "دانش‌آموزان تحت منتورینگ" : "Mentored Students"}</h4>
+              {loadingExtra ? (
+                <div className="flex justify-center p-2"><Spinner size="sm" /></div>
+              ) : mentorStudents.length === 0 ? (
+                <div className="text-xs text-[var(--t3)] italic bg-[var(--s2)] p-3 rounded-xl border border-[var(--b)]">{isFarsi ? "کلاس یا دانش‌آموزی تحت منتورینگ یافت نشد." : "No mentored students found."}</div>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {mentorStudents.map((enroll: any) => (
+                    <div key={enroll.id} className="flex justify-between items-center p-3 rounded-xl bg-[var(--s2)] border border-[var(--b)] text-xs">
+                      <div className="flex flex-col min-w-0">
+                        <button
+                          onClick={() => navigateTo("student", enroll.student)}
+                          className="font-bold text-[var(--brand)] hover:underline bg-transparent border-none p-0 cursor-pointer text-left text-xs truncate"
+                        >
+                          {enroll.student_full_name || enroll.student_username || `#${enroll.student}`}
+                        </button>
+                        <span className="text-[10px] text-[var(--t3)] mt-0.5">
+                          {isFarsi ? "کلاس:" : "Class:"} <strong>{enroll.class_name}</strong>
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="space-y-3 pt-4 border-t border-[var(--b)]/60">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--t3)]">{isFarsi ? "ناوبری هوشمند و اکشن‌ها" : "Quick Actions"}</h4>
             
-            {entityType === "student" && (
+            {localType === "student" && (
               <>
                 <Link
                   to={`/finance/ledger?student=${encodeURIComponent(user.username)}`}
@@ -234,7 +449,7 @@ export default function InspectionDrawer({
               </>
             )}
 
-            {entityType === "teacher" && (
+            {localType === "teacher" && (
               <>
                 <Link
                   to={`/academic/classes?teacher=${data.id}`}
@@ -266,7 +481,7 @@ export default function InspectionDrawer({
       );
     }
 
-    if (entityType === "course") {
+    if (localType === "course") {
       return (
         <div className="space-y-6 p-4">
           <div className="border-b border-[var(--b)] pb-5 text-left">
@@ -309,7 +524,7 @@ export default function InspectionDrawer({
       );
     }
 
-    if (entityType === "class") {
+    if (localType === "class") {
       return (
         <div className="space-y-6 p-4">
           <div className="border-b border-[var(--b)] pb-5 text-left">
@@ -318,7 +533,17 @@ export default function InspectionDrawer({
             </span>
             <h3 className="font-bold text-[var(--t1)] text-xl mt-3">{data.name}</h3>
             <p className="text-xs text-[var(--t3)] mt-2 leading-relaxed">
-              {isFarsi ? "دوره:" : "Course:"} <strong>{data.course_title}</strong>
+              {isFarsi ? "دوره:" : "Course:"}{" "}
+              {data.course ? (
+                <button
+                  onClick={() => navigateTo("course", data.course)}
+                  className="font-bold text-[var(--brand)] hover:underline bg-transparent border-none p-0 cursor-pointer text-xs align-baseline"
+                >
+                  {data.course_title}
+                </button>
+              ) : (
+                <strong>{data.course_title}</strong>
+              )}
             </p>
           </div>
 
@@ -327,7 +552,29 @@ export default function InspectionDrawer({
             <div className="grid grid-cols-2 gap-4 text-xs bg-[var(--s2)] p-4 rounded-xl border border-[var(--b)] text-left">
               <div>
                 <span className="block text-[var(--t3)] font-medium mb-1">{isFarsi ? "مدرس اصلی" : "Lead Instructor"}</span>
-                <span className="font-bold text-[var(--t1)]">{data.teacher_name || "Unassigned"}</span>
+                {data.teacher ? (
+                  <button
+                    onClick={() => navigateTo("teacher", data.teacher)}
+                    className="font-bold text-[var(--brand)] hover:underline bg-transparent border-none p-0 cursor-pointer text-left text-xs"
+                  >
+                    {data.teacher_name || "Unassigned"}
+                  </button>
+                ) : (
+                  <span className="font-bold text-[var(--t1)]">{data.teacher_name || "Unassigned"}</span>
+                )}
+              </div>
+              <div>
+                <span className="block text-[var(--t3)] font-medium mb-1">{isFarsi ? "منتور" : "Mentor"}</span>
+                {data.mentor ? (
+                  <button
+                    onClick={() => navigateTo("mentor", data.mentor)}
+                    className="font-bold text-[var(--brand)] hover:underline bg-transparent border-none p-0 cursor-pointer text-left text-xs"
+                  >
+                    {data.mentor_name || "Unassigned"}
+                  </button>
+                ) : (
+                  <span className="font-bold text-[var(--t1)]">{data.mentor_name || "Unassigned"}</span>
+                )}
               </div>
               <div>
                 <span className="block text-[var(--t3)] font-medium mb-1">{isFarsi ? "اتاق پیش‌فرض" : "Default Room"}</span>
@@ -362,7 +609,7 @@ export default function InspectionDrawer({
       );
     }
 
-    if (entityType === "invoice") {
+    if (localType === "invoice") {
       const isPaid = data.status === "paid";
       return (
         <div className="space-y-6 p-4 text-left">
@@ -383,11 +630,29 @@ export default function InspectionDrawer({
             <div className="grid grid-cols-2 gap-4 text-xs bg-[var(--s2)] p-4 rounded-xl border border-[var(--b)]">
               <div>
                 <span className="block text-[var(--t3)] font-medium mb-1">{isFarsi ? "دانشجو" : "Student"}</span>
-                <span className="font-bold text-[var(--t1)]">{data.student_full_name || data.student_username}</span>
+                {data.student ? (
+                  <button
+                    onClick={() => navigateTo("student", data.student)}
+                    className="font-bold text-[var(--brand)] hover:underline bg-transparent border-none p-0 cursor-pointer text-left text-xs"
+                  >
+                    {data.student_full_name || data.student_username}
+                  </button>
+                ) : (
+                  <span className="font-bold text-[var(--t1)]">{data.student_full_name || data.student_username}</span>
+                )}
               </div>
               <div>
                 <span className="block text-[var(--t3)] font-medium mb-1">{isFarsi ? "کلاس" : "Class"}</span>
-                <span className="font-bold text-[var(--t1)] truncate block">{data.class_name || "—"}</span>
+                {data.academy_class ? (
+                  <button
+                    onClick={() => navigateTo("class", data.academy_class)}
+                    className="font-bold text-[var(--brand)] hover:underline bg-transparent border-none p-0 cursor-pointer text-left text-xs truncate block w-full"
+                  >
+                    {data.class_name || "—"}
+                  </button>
+                ) : (
+                  <span className="font-bold text-[var(--t1)] truncate block">{data.class_name || "—"}</span>
+                )}
               </div>
               <div>
                 <span className="block text-[var(--t3)] font-medium mb-1">{isFarsi ? "سررسید" : "Due Date"}</span>
@@ -410,6 +675,71 @@ export default function InspectionDrawer({
               <div className="flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-pink-400" />
                 <span>{isFarsi ? "مشاهده در دفتر مالی" : "Inspect in Ledger Dashboard"}</span>
+              </div>
+              <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
+    if (localType === "assignment") {
+      const isOverdue = data.due_date ? new Date(data.due_date) < new Date() : false;
+      return (
+        <div className="space-y-6 p-4 text-left">
+          <div className="border-b border-[var(--b)] pb-5">
+            <span className={`text-[10px] font-bold tracking-wider px-2.5 py-0.5 rounded-full uppercase ${
+              isOverdue ? "bg-red-500/10 text-red-400" : "bg-emerald-500/10 text-emerald-400"
+            }`}>
+              {isOverdue ? (isFarsi ? "گذشته از سررسید" : "Overdue") : (isFarsi ? "فعال" : "Active")}
+            </span>
+            <h3 className="font-bold text-[var(--t1)] text-xl mt-3">{data.title}</h3>
+            <p className="text-xs text-[var(--t3)] mt-2 leading-relaxed">
+              {data.description || (isFarsi ? "توضیحی برای این تکلیف ثبت نشده است." : "No description provided.")}
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--t3)]">{isFarsi ? "مشخصات تکلیف" : "Assignment Properties"}</h4>
+            <div className="grid grid-cols-2 gap-4 text-xs bg-[var(--s2)] p-4 rounded-xl border border-[var(--b)]">
+              <div>
+                <span className="block text-[var(--t3)] font-medium mb-1">{isFarsi ? "کلاس" : "Class"}</span>
+                {data.academy_class ? (
+                  <button
+                    onClick={() => navigateTo("class", data.academy_class)}
+                    className="font-bold text-[var(--brand)] hover:underline bg-transparent border-none p-0 cursor-pointer text-left text-xs"
+                  >
+                    {data.class_name || `#${data.academy_class}`}
+                  </button>
+                ) : (
+                  <span className="font-bold text-[var(--t1)]">—</span>
+                )}
+              </div>
+              <div>
+                <span className="block text-[var(--t3)] font-medium mb-1">{isFarsi ? "تاریخ سررسید" : "Due Date"}</span>
+                <span className="font-bold text-[var(--t1)]">{data.due_date ? new Date(data.due_date).toLocaleDateString() : (isFarsi ? "ندارد" : "None")}</span>
+              </div>
+              <div>
+                <span className="block text-[var(--t3)] font-medium mb-1">{isFarsi ? "تعداد تحویل‌ها" : "Submissions"}</span>
+                <span className="font-bold text-[var(--t1)]">{data.submissions_count || 0}</span>
+              </div>
+              <div>
+                <span className="block text-[var(--t3)] font-medium mb-1">{isFarsi ? "تصحیح شده" : "Graded"}</span>
+                <span className="font-bold text-[var(--t1)]">{data.graded_count || 0}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-4 border-t border-[var(--b)]/60">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--t3)]">{isFarsi ? "میانبرهای ناوبری" : "Linked Navigation"}</h4>
+            <Link
+              to={`/academic/assignments/${data.id}`}
+              onClick={() => onOpenChange(false)}
+              className="w-full flex items-center justify-between p-3 rounded-xl bg-[var(--s2)] hover:bg-[var(--s3)] border border-[var(--b)] hover:border-[var(--brand)]/35 text-xs text-[var(--t1)] no-underline font-semibold transition-all group"
+            >
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-amber-400" />
+                <span>{isFarsi ? "مشاهده جزئیات کامل تکلیف" : "View Full Assignment Details"}</span>
               </div>
               <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
             </Link>

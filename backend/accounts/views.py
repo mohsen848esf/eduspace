@@ -666,6 +666,10 @@ class TuitionInvoiceViewSet(viewsets.ModelViewSet):
         course_id = self.request.query_params.get('course_id')
         if course_id:
             queryset = queryset.filter(academy_class__course_id=course_id)
+
+        student_id = self.request.query_params.get('student_id')
+        if student_id:
+            queryset = queryset.filter(student_id=student_id)
             
         return queryset.order_by('-id')
 
