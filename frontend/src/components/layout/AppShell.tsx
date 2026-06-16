@@ -29,6 +29,7 @@ const NAV_ROUTES: Record<string, string> = {
   members: "/crm/members",
   ledger: "/finance/ledger",
   organization: "/settings/organization",
+  billing: "/settings/billing",
   recordings: "/recordings",
   miniapps: "/miniapps",
   sysAdmin: "/sys-admin",
