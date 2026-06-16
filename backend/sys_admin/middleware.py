@@ -15,5 +15,11 @@ class SuspensionMiddleware(MiddlewareMixin):
         org = resolve_organization(request, view_kwargs)
         if org and org.is_suspended:
             raise PermissionDenied("This organization has been suspended.")
+            
+        if org and request.method not in ['GET', 'HEAD', 'OPTIONS']:
+            from billing.models import OrganizationSubscription
+            sub = OrganizationSubscription.objects.filter(organization=org).first()
+            if sub and sub.status == OrganizationSubscription.Status.READ_ONLY:
+                raise PermissionDenied("This organization is in read-only mode due to subscription limits or failed payments.")
         
         return None

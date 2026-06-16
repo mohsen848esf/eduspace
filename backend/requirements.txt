@@ -58,3 +58,6 @@ boto3>=1.34.0
 # SMS Gateway
 twilio>=8.1.0
 
+# Stripe SaaS integration
+stripe>=8.0.0
+
