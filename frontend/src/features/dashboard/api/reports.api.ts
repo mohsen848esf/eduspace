@@ -1,6 +1,54 @@
 import client from "../../../lib/api/client";
 
+// ── Types ──────────────────────────────────────────────────────────────────── //
+
+export interface CourseAverage {
+  id: number;
+  code: string;
+  title: string;
+  avg_grade: number;
+  graded_count: number;
+}
+
+export interface StaffSessionCount {
+  user_id: number;
+  full_name: string;
+  role: string;
+  session_count: number;
+}
+
+export interface ClassProgressRate {
+  id: number;
+  name: string;
+  course_code: string;
+  enrolled_count: number;
+  total_assignments: number;
+  total_submitted: number;
+  completion_rate: number;
+}
+
+export interface AnalyticsSummary {
+  active_sessions: number;
+  active_students: number;
+  total_submissions: number;
+  average_grade: number;
+  quota: { max_students: number; max_storage_gb: number; max_recording_minutes: number };
+  usage: { students_count: number; storage_used_gb: number; recording_minutes_used: number };
+  course_averages: CourseAverage[];
+  staff_session_counts: StaffSessionCount[];
+  class_progress_rates: ClassProgressRate[];
+  timestamp: string;
+}
+
+// ── API ────────────────────────────────────────────────────────────────────── //
+
 export const reportsApi = {
+  /** Fetch the full analytics summary (KPIs + chart data). */
+  getAnalyticsSummary: async (): Promise<AnalyticsSummary> => {
+    const response = await client.get("/analytics/summary/");
+    return response.data;
+  },
+
   exportReport: async (type: "grades" | "financials" | "attendance"): Promise<void> => {
     const response = await client.get(`/analytics/reports/export/?type=${type}`, {
       responseType: "blob",
@@ -34,3 +82,4 @@ export const reportsApi = {
     return response.data;
   },
 };
+

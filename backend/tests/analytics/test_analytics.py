@@ -172,3 +172,52 @@ class AnalyticsTestCase(APITestCase):
         
         response = self.client.get(url, {'type': 'grades'}, HTTP_X_ORGANIZATION_SLUG='acme-academy')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_analytics_summary_detailed_metrics(self):
+        """
+        Verify AnalyticsSummaryView returns the H.7 detailed metrics:
+        course_averages, staff_session_counts, and class_progress_rates.
+        """
+        from assessments.models import Assignment, AssignmentSubmission
+
+        # Create an assignment in the existing class
+        assignment = Assignment.objects.create(
+            organization=self.org,
+            academy_class=self.class_instance,
+            title='Test Assignment H7',
+            description='A test assignment for H.7 analytics.',
+        )
+
+        # Submit and grade it
+        AssignmentSubmission.objects.create(
+            assignment=assignment,
+            student=self.student,
+            grade=88.0,
+        )
+
+        self.client.force_authenticate(user=self.owner)
+        url = reverse('analytics-summary')
+        response = self.client.get(url, HTTP_X_ORGANIZATION_SLUG='acme-academy')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Verify new top-level keys exist
+        self.assertIn('course_averages', response.data)
+        self.assertIn('staff_session_counts', response.data)
+        self.assertIn('class_progress_rates', response.data)
+
+        # course_averages: SCI101 should have avg of 88.0
+        averages = response.data['course_averages']
+        self.assertGreaterEqual(len(averages), 1, "Expected at least one course_average entry")
+        sci_avg = next((c for c in averages if c['code'] == 'SCI101'), None)
+        self.assertIsNotNone(sci_avg, "SCI101 not found in course_averages")
+        self.assertEqual(float(sci_avg['avg_grade']), 88.0)
+        self.assertEqual(sci_avg['graded_count'], 1)
+
+        # class_progress_rates: 1 submission / (1 assignment × 1 enrolled student) = 100%
+        rates = response.data['class_progress_rates']
+        self.assertGreaterEqual(len(rates), 1, "Expected at least one class_progress_rate entry")
+        cls_rate = next((r for r in rates if r['id'] == self.class_instance.id), None)
+        self.assertIsNotNone(cls_rate, "Class rate entry not found")
+        self.assertEqual(float(cls_rate['completion_rate']), 100.0)
+        self.assertEqual(cls_rate['total_submitted'], 1)
