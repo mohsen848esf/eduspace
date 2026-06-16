@@ -27,6 +27,7 @@ export const mainNavItems: NavItem[] = [
   { id: "attendance", icon: Icons.people, labelKey: "nav.attendance", to: "/academic/attendance", permissions: ["can_view_sessions"] },
   { id: "assessments", icon: Icons.tools, labelKey: "nav.assessments", to: "/academic/assessments", permissions: ["can_view_dashboard"] },
   { id: "leaderboard", icon: Icons.barChart, labelKey: "nav.leaderboard", to: "/leaderboard", permissions: ["can_view_dashboard"] },
+  { id: "reports", icon: Icons.barChart, labelKey: "nav.reports", to: "/academic/reports", permissions: ["can_manage_members"] },
 ];
 
 /** Items rendered in the desktop sidebar's MANAGE section + drawer. */
@@ -59,6 +60,7 @@ export const drawerNavItems: NavItem[] = [
   { id: "attendance", icon: Icons.people, labelKey: "nav.attendance", to: "/academic/attendance", permissions: ["can_view_sessions"] },
   { id: "assessments", icon: Icons.tools, labelKey: "nav.assessments", to: "/academic/assessments", permissions: ["can_view_dashboard"] },
   { id: "leaderboard", icon: Icons.barChart, labelKey: "nav.leaderboard", to: "/leaderboard", permissions: ["can_view_dashboard"] },
+  { id: "reports", icon: Icons.barChart, labelKey: "nav.reports", to: "/academic/reports", permissions: ["can_manage_members"] },
   { id: "members", icon: Icons.people, labelKey: "nav.members", to: "/crm/members", permissions: ["can_manage_members", "can_teach_class"] },
   { id: "ledger", icon: Icons.barChart, labelKey: "nav.ledger", to: "/finance/ledger", permissions: ["can_view_financials"] },
   { id: "notificationsSettings", icon: Icons.settings, labelKey: "nav.notificationSettings", to: "/settings/notifications", permissions: ["can_view_dashboard"] },
