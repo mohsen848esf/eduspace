@@ -100,28 +100,26 @@ def resolve_organization(request, view_kwargs=None):
     # Fallback: check if room_code is in view_kwargs
     if not org and view_kwargs and 'room_code' in view_kwargs:
         from rooms.models import Room
-        from django.http import Http404
         try:
             room = Room.objects.get(room_code=view_kwargs['room_code'])
             academy_class = room.academy_classes.first()
             if academy_class:
                 org = academy_class.course.organization
         except Room.DoesNotExist:
-            raise Http404("Room not found")
+            pass
         except Exception as e:
             logger.warning(f"Database error during resolve_organization: {e}")
             
     # Fallback: check if recording token is in view_kwargs
     if not org and view_kwargs and 'token' in view_kwargs:
         from rooms.models import Recording
-        from django.http import Http404
         try:
             recording = Recording.objects.get(public_token=view_kwargs['token'])
             academy_class = recording.room.academy_classes.first()
             if academy_class:
                 org = academy_class.course.organization
         except Recording.DoesNotExist:
-            raise Http404("Recording not found")
+            pass
         except Exception as e:
             logger.warning(f"Database error during resolve_organization: {e}")
 
