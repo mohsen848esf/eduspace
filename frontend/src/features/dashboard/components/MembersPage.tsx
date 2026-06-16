@@ -11,6 +11,8 @@ import { Modal, ModalHeader, ModalTitle, ModalBody } from "../../../components/u
 import Spinner from "../../../components/ui/Spinner";
 import AppShell from "../../../components/layout/AppShell";
 import { useLocale } from "../../../i18n/useLocale";
+import { useQueryParamState } from "../../../hooks/useQueryParamState";
+import InspectionDrawer from "../../../components/ui/InspectionDrawer";
 
 export default function MembersPage() {
   const { language } = useLocale();
@@ -19,6 +21,10 @@ export default function MembersPage() {
   const isFarsi = language === "fa";
 
   const isOrisAdmin = hasPermission("can_manage_members");
+
+  const [inspectType, setInspectType] = useQueryParamState("inspect_type");
+  const [inspectId, setInspectId] = useQueryParamState("inspect_id");
+  const isDrawerOpen = !!inspectType && !!inspectId;
 
   const [activeSubTab, setActiveSubTab] = useState<"enrollments" | "directory">("enrollments");
 
@@ -227,7 +233,13 @@ export default function MembersPage() {
                     <tbody>
                       {enrollments.map((e) => (
                         <tr key={e.id} className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors text-left">
-                          <td className="p-4 font-semibold text-[var(--t1)]">
+                          <td 
+                            className="p-4 font-semibold text-[var(--t1)] cursor-pointer hover:text-[var(--brand)] hover:underline"
+                            onClick={() => {
+                              setInspectType("student");
+                              setInspectId(e.student.toString());
+                            }}
+                          >
                             {e.student_full_name || e.student_username}
                           </td>
                           <td className="p-4 text-[var(--t2)]">{e.class_name}</td>
@@ -331,7 +343,15 @@ export default function MembersPage() {
                     <tbody>
                       {directoryResults.map((u) => (
                         <tr key={u.id} className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors text-left">
-                          <td className="p-4 font-semibold text-[var(--t1)]">{u.full_name}</td>
+                          <td 
+                            className="p-4 font-semibold text-[var(--t1)] cursor-pointer hover:text-[var(--brand)] hover:underline"
+                            onClick={() => {
+                              setInspectType(u.role === "teacher" ? "teacher" : u.role === "admin" ? "admin" : "student");
+                              setInspectId(u.id.toString());
+                            }}
+                          >
+                            {u.full_name}
+                          </td>
                           <td className="p-4 text-[var(--t2)]">@{u.username}</td>
                           <td className="p-4 text-[var(--t2)]">{u.email || "—"}</td>
                           <td className="p-4">
@@ -460,6 +480,18 @@ export default function MembersPage() {
           </form>
         </ModalBody>
       </Modal>
+
+      <InspectionDrawer
+        open={isDrawerOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setInspectType(null);
+            setInspectId(null);
+          }
+        }}
+        entityType={inspectType as any}
+        entityId={inspectId}
+      />
     </AppShell>
   );
 }
