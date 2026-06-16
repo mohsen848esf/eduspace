@@ -10,6 +10,8 @@ import { Drawer, DrawerHeader, DrawerTitle, DrawerBody, DrawerFooter } from "../
 import Spinner from "../../../components/ui/Spinner";
 import AppShell from "../../../components/layout/AppShell";
 import { useLocale } from "../../../i18n/useLocale";
+import { useQueryParamState } from "../../../hooks/useQueryParamState";
+import InspectionDrawer from "../../../components/ui/InspectionDrawer";
 
 export default function LedgerPage() {
   const { language } = useLocale();
@@ -22,8 +24,21 @@ export default function LedgerPage() {
 
   const [activeSubTab, setActiveSubTab] = useState<"invoices" | "expenses">("invoices");
 
+  const [inspectType, setInspectType] = useQueryParamState("inspect_type");
+  const [inspectId, setInspectId] = useQueryParamState("inspect_id");
+  const isInspectDrawerOpen = !!inspectType && !!inspectId;
+
+  const [invoiceIdParam, setInvoiceIdParam] = useQueryParamState("invoice_id", "");
+  useEffect(() => {
+    if (invoiceIdParam) {
+      setInspectType("invoice");
+      setInspectId(invoiceIdParam);
+      setInvoiceIdParam(null);
+    }
+  }, [invoiceIdParam]);
+
   // Invoices Filter & Pagination States
-  const [invoiceSearch, setInvoiceSearch] = useState("");
+  const [invoiceSearch, setInvoiceSearch] = useQueryParamState("student", "");
   const [invoiceStatus, setInvoiceStatus] = useState("");
   const [invoiceStartDate, setInvoiceStartDate] = useState("");
   const [invoiceEndDate, setInvoiceEndDate] = useState("");
@@ -642,7 +657,15 @@ export default function LedgerPage() {
                     <tbody>
                       {invoices.map((inv) => (
                         <tr key={inv.id} className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors text-left">
-                          <td className="p-4 font-semibold text-[var(--brand-text)]">{inv.invoice_number || `#${inv.id}`}</td>
+                          <td 
+                            className="p-4 font-semibold text-[var(--brand-text)] cursor-pointer hover:underline"
+                            onClick={() => {
+                              setInspectType("invoice");
+                              setInspectId(inv.id.toString());
+                            }}
+                          >
+                            {inv.invoice_number || `#${inv.id}`}
+                          </td>
                           <td className="p-4 text-[var(--t1)]">{inv.student_full_name || inv.student_username}</td>
                           <td className="p-4 text-[var(--t2)]">{inv.class_name || "—"}</td>
                           <td className="p-4 font-semibold text-[var(--t1)]">${parseFloat(inv.amount).toFixed(2)}</td>
@@ -1371,6 +1394,18 @@ export default function LedgerPage() {
           )}
         </ModalBody>
       </Modal>
+
+      <InspectionDrawer
+        open={isInspectDrawerOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setInspectType(null);
+            setInspectId(null);
+          }
+        }}
+        entityType={inspectType as any}
+        entityId={inspectId}
+      />
     </AppShell>
   );
 }
