@@ -88,6 +88,9 @@ const AttendanceExplorer = lazy(
 const SessionDetailPage = lazy(
   () => import("../features/dashboard/components/SessionDetailPage"),
 );
+const ReportsPage = lazy(
+  () => import("../features/dashboard/components/ReportsPage"),
+);
 
 export interface RouteConfig {
   path: string;
@@ -173,6 +176,12 @@ export const routes: RouteConfig[] = [
     component: AssessmentsPage,
     isPrivate: true,
     requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/academic/reports",
+    component: ReportsPage,
+    isPrivate: true,
+    requiredPermissions: ["can_manage_members"],
   },
   {
     path: "/crm/members",
