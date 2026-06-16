@@ -9,6 +9,7 @@ import AppShell from "../../../components/layout/AppShell";
 import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
 import Spinner from "../../../components/ui/Spinner";
+import GDPRControl from "../../auth/components/GDPRControl";
 
 export default function ProfileCompletionPage() {
   const { language } = useLocale();
@@ -347,6 +348,21 @@ export default function ProfileCompletionPage() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* GDPR Privacy Controls */}
+        <div className="border-t border-[var(--b)]/60 pt-8 mt-4">
+          <div className="mb-6">
+            <h2 className="text-base font-bold text-[var(--t1)]">
+              {isFarsi ? "حریم خصوصی و انطباق GDPR" : "Privacy & GDPR Compliance"}
+            </h2>
+            <p className="text-xs text-[var(--t3)] mt-1">
+              {isFarsi 
+                ? "داده‌های شخصی خود را صادر کنید یا حساب خود را برای همیشه حذف و ناشناس کنید." 
+                : "Export your personal profile data or permanently delete and anonymize your account records."}
+            </p>
+          </div>
+          <GDPRControl />
         </div>
 
       </div>
