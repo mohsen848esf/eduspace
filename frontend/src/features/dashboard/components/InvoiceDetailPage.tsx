@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { crmApi } from "../api/crm.api";
@@ -6,6 +7,7 @@ import AppShell from "../../../components/layout/AppShell";
 import Spinner from "../../../components/ui/Spinner";
 import Button from "../../../components/ui/Button";
 import { Printer, ArrowLeft, CheckCircle, Clock, AlertTriangle, Receipt, FileText } from "lucide-react";
+import InspectionDrawer from "../../../components/ui/InspectionDrawer";
 
 export default function InvoiceDetailPage() {
   const { invoiceId } = useParams<{ invoiceId: string }>();
@@ -13,11 +15,23 @@ export default function InvoiceDetailPage() {
   const isFarsi = language === "fa";
   const id = parseInt(invoiceId || "0");
 
+  // ── Smart Inspection Drawer ─────────────────────────────────────
+  const [inspectType, setInspectType] = useState<"student" | "teacher" | "mentor" | "course" | "class" | "session" | "invoice" | "assignment" | null>(null);
+  const [inspectId, setInspectId] = useState<string | number | null>(null);
+
   const { data: invoice, isLoading, error } = useQuery({
     queryKey: ["invoice", id],
     queryFn: () => crmApi.getInvoice(id),
     enabled: id > 0,
   });
+
+  const { data: classes = [] } = useQuery({
+    queryKey: ["classes"],
+    queryFn: crmApi.getClasses,
+    enabled: !!invoice?.academy_class,
+  });
+  
+  const cls = classes.find((c) => c.id === invoice?.academy_class);
 
   const handlePrint = () => {
     window.print();
@@ -163,12 +177,44 @@ export default function InvoiceDetailPage() {
                 {isFarsi ? "صورت‌حساب به نام:" : "Billed To:"}
               </span>
               <div>
-                <h3 className="text-sm font-bold text-[var(--t1)]">{invoice.student_full_name || invoice.student_username}</h3>
-                <p className="text-xs text-[var(--t3)]">@{invoice.student_username}</p>
+                <button
+                  onClick={() => {
+                    setInspectType("student");
+                    setInspectId(invoice.student);
+                  }}
+                  className="bg-transparent border-none p-0 text-left cursor-pointer group block"
+                >
+                  <h3 className="text-sm font-bold text-[var(--t1)] group-hover:text-[var(--brand)] group-hover:underline transition-colors">
+                    {invoice.student_full_name || invoice.student_username}
+                  </h3>
+                  <p className="text-xs text-[var(--t3)]">@{invoice.student_username}</p>
+                </button>
+                <div className="mt-2.5">
+                  <Link
+                    to={`/finance/ledger?student=${encodeURIComponent(invoice.student_username || "")}`}
+                    className="text-[10px] text-[var(--brand)] hover:underline no-underline font-semibold flex items-center gap-1"
+                  >
+                    📊 {isFarsi ? "مشاهده تاریخچه مالی دانشجو در دفتر کل" : "View student's full financial history in Ledger"} →
+                  </Link>
+                </div>
                 {invoice.class_name && (
+                  <p className="text-xs text-[var(--t2)] mt-2">
+                    {isFarsi ? "کلاس آموزشی: " : "Class: "}{" "}
+                    {invoice.academy_class ? (
+                      <Link to={`/academic/classes/${invoice.academy_class}`} className="text-[var(--brand-text)] hover:underline font-semibold no-underline">
+                        {invoice.class_name}
+                      </Link>
+                    ) : (
+                      <strong className="text-[var(--brand-text)]">{invoice.class_name}</strong>
+                    )}
+                  </p>
+                )}
+                {cls && cls.course && (
                   <p className="text-xs text-[var(--t2)] mt-1">
-                    {isFarsi ? "کلاس آموزشی: " : "Class: "}
-                    <strong className="text-[var(--brand-text)]">{invoice.class_name}</strong>
+                    {isFarsi ? "دوره مرتبط: " : "Parent Course: "}{" "}
+                    <Link to={`/academic/courses/${cls.course}`} className="text-[var(--brand-text)] hover:underline font-semibold no-underline">
+                      {cls.course_title || (isFarsi ? "مشاهده دوره" : "View Course")}
+                    </Link>
                   </p>
                 )}
               </div>
@@ -284,6 +330,17 @@ export default function InvoiceDetailPage() {
           )}
         </div>
       </div>
+      <InspectionDrawer
+        open={!!inspectType}
+        onOpenChange={(open) => {
+          if (!open) {
+            setInspectType(null);
+            setInspectId(null);
+          }
+        }}
+        entityType={inspectType}
+        entityId={inspectId}
+      />
     </AppShell>
   );
 }

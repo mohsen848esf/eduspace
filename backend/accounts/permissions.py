@@ -106,7 +106,9 @@ def resolve_organization(request, view_kwargs=None):
             if academy_class:
                 org = academy_class.course.organization
         except Room.DoesNotExist:
-            pass
+            if request is None:
+                from django.http import Http404
+                raise Http404("Room not found")
         except Exception as e:
             logger.warning(f"Database error during resolve_organization: {e}")
             
@@ -119,7 +121,9 @@ def resolve_organization(request, view_kwargs=None):
             if academy_class:
                 org = academy_class.course.organization
         except Recording.DoesNotExist:
-            pass
+            if request is None:
+                from django.http import Http404
+                raise Http404("Recording not found")
         except Exception as e:
             logger.warning(f"Database error during resolve_organization: {e}")
 

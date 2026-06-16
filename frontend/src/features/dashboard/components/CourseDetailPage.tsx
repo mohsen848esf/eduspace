@@ -10,6 +10,7 @@ import { Modal, ModalHeader, ModalTitle, ModalBody } from "../../../components/u
 import Spinner from "../../../components/ui/Spinner";
 import AppShell from "../../../components/layout/AppShell";
 import { useLocale } from "../../../i18n/useLocale";
+import InspectionDrawer from "../../../components/ui/InspectionDrawer";
 
 export default function CourseDetailPage() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -20,6 +21,23 @@ export default function CourseDetailPage() {
   const isFarsi = language === "fa";
   const isAdmin = hasPermission("can_manage_members");
   const id = parseInt(courseId || "0");
+
+  // ── Smart Inspection Drawer ─────────────────────────────────────
+  const [inspectType, setInspectType] = useState<"student" | "teacher" | "mentor" | "course" | "class" | "session" | "invoice" | "assignment" | null>(null);
+  const [inspectId, setInspectId] = useState<string | number | null>(null);
+
+  // ── Invoice Queries for Revenue Metrics ──────────────────────────
+  const { data: courseInvoicesResponse } = useQuery({
+    queryKey: ["course-invoices", id],
+    queryFn: () => crmApi.getInvoices({ course_id: id }),
+  });
+  const courseInvoices = courseInvoicesResponse?.results || [];
+
+  const totalBilled = courseInvoices.reduce((sum, inv) => sum + parseFloat(inv.amount || "0"), 0);
+  const totalPaid = courseInvoices
+    .filter((inv) => inv.status === "paid")
+    .reduce((sum, inv) => sum + parseFloat(inv.amount || "0"), 0);
+  const collectionRate = totalBilled > 0 ? (totalPaid / totalBilled) * 100 : 100;
 
   // ── Queries ──────────────────────────────────────────
   const { data: courses = [], isLoading: loadingCourses } = useQuery({
@@ -210,6 +228,33 @@ export default function CourseDetailPage() {
           </div>
         </div>
 
+        {/* ── Financial Summary Block ── */}
+        {hasPermission("can_view_financials") && (
+          <div className="bg-[var(--s2)] border border-[var(--b)] rounded-2xl p-4">
+            <h3 className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide mb-2">
+              {isFarsi ? "خلاصه مالی دوره" : "Course Financial Summary"}
+            </h3>
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              <div className="p-3 bg-[var(--s3)] rounded-xl border border-[var(--b)]">
+                <div className="text-[10px] text-[var(--t3)] uppercase font-semibold mb-1">
+                  {isFarsi ? "کل شهریه صادر شده" : "Total Billed"}
+                </div>
+                <div className="text-xl font-bold text-[var(--t1)]">
+                  ${totalBilled.toFixed(2)}
+                </div>
+              </div>
+              <div className="p-3 bg-[var(--s3)] rounded-xl border border-[var(--b)]">
+                <div className="text-[10px] text-[var(--t3)] uppercase font-semibold mb-1">
+                  {isFarsi ? "نرخ وصول شهریه" : "Collection Rate"}
+                </div>
+                <div className="text-xl font-bold text-[var(--green)]">
+                  {collectionRate.toFixed(1)}%
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Class Sections ── */}
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -254,7 +299,44 @@ export default function CourseDetailPage() {
                         </div>
                         <div>
                           <div className="font-semibold text-[var(--t1)] text-sm group-hover:text-[var(--brand)] transition-colors">{cls.name}</div>
-                          <div className="text-[10px] text-[var(--t3)]">{cls.teacher_name || (isFarsi ? "بدون مدرس" : "No Teacher")}</div>
+                          <div className="text-[10px] text-[var(--t3)] flex flex-col gap-0.5 mt-0.5">
+                            <span>
+                              👤{" "}
+                              {cls.teacher ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setInspectType("teacher");
+                                    setInspectId(cls.teacher!);
+                                  }}
+                                  className="bg-transparent border-none p-0 text-[var(--t3)] hover:text-[var(--brand)] hover:underline cursor-pointer text-[10px] font-medium align-baseline text-left"
+                                >
+                                  {cls.teacher_name || (isFarsi ? "بدون مدرس" : "No Teacher")}
+                                </button>
+                              ) : (
+                                <span>{cls.teacher_name || (isFarsi ? "بدون مدرس" : "No Teacher")}</span>
+                              )}
+                            </span>
+                            <span>
+                              🤝{" "}
+                              {cls.mentor ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setInspectType("mentor");
+                                    setInspectId(cls.mentor!);
+                                  }}
+                                  className="bg-transparent border-none p-0 text-[var(--t3)] hover:text-[var(--brand)] hover:underline cursor-pointer text-[10px] font-medium align-baseline text-left"
+                                >
+                                  {cls.mentor_name || (isFarsi ? "بدون منتور" : "No Mentor")}
+                                </button>
+                              ) : (
+                                <span>{cls.mentor_name || (isFarsi ? "بدون منتور" : "No Mentor")}</span>
+                              )}
+                            </span>
+                          </div>
                         </div>
                       </div>
                       {statusBadge(cls)}
@@ -400,6 +482,17 @@ export default function CourseDetailPage() {
           </form>
         </ModalBody>
       </Modal>
+      <InspectionDrawer
+        open={!!inspectType}
+        onOpenChange={(open) => {
+          if (!open) {
+            setInspectType(null);
+            setInspectId(null);
+          }
+        }}
+        entityType={inspectType}
+        entityId={inspectId}
+      />
     </AppShell>
   );
 }
