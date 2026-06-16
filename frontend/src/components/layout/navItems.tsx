@@ -24,6 +24,7 @@ export const mainNavItems: NavItem[] = [
   { id: "courses", icon: Icons.exam, labelKey: "nav.courses", to: "/academic/courses", permissions: ["can_manage_members", "can_teach_class"] },
   { id: "classes", icon: Icons.people, labelKey: "nav.classes", to: "/academic/classes", permissions: ["can_manage_members", "can_teach_class"] },
   { id: "sessions", icon: Icons.camera, labelKey: "nav.sessions", to: "/academic/sessions", permissions: ["can_view_sessions"] },
+  { id: "attendance", icon: Icons.people, labelKey: "nav.attendance", to: "/academic/attendance", permissions: ["can_view_sessions"] },
   { id: "assessments", icon: Icons.tools, labelKey: "nav.assessments", to: "/academic/assessments", permissions: ["can_view_dashboard"] },
   { id: "leaderboard", icon: Icons.barChart, labelKey: "nav.leaderboard", to: "/leaderboard", permissions: ["can_view_dashboard"] },
 ];
@@ -55,6 +56,7 @@ export const bottomNavPrimary: NavItem[] = [
  */
 export const drawerNavItems: NavItem[] = [
   { id: "classes", icon: Icons.people, labelKey: "nav.classes", to: "/academic/classes", permissions: ["can_manage_members", "can_teach_class"] },
+  { id: "attendance", icon: Icons.people, labelKey: "nav.attendance", to: "/academic/attendance", permissions: ["can_view_sessions"] },
   { id: "assessments", icon: Icons.tools, labelKey: "nav.assessments", to: "/academic/assessments", permissions: ["can_view_dashboard"] },
   { id: "leaderboard", icon: Icons.barChart, labelKey: "nav.leaderboard", to: "/leaderboard", permissions: ["can_view_dashboard"] },
   { id: "members", icon: Icons.people, labelKey: "nav.members", to: "/crm/members", permissions: ["can_manage_members", "can_teach_class"] },

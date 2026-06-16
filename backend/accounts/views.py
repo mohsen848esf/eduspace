@@ -922,13 +922,14 @@ class SessionViewSet(viewsets.ModelViewSet):
         serializer = AttendanceSerializer(queryset, many=True)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['PATCH'], url_path='attendance/(?P<student_id>[^/.]+)')
+    @action(detail=True, methods=['PATCH', 'POST'], url_path='attendance/(?P<student_id>[^/.]+)')
     def update_student_attendance(self, request, pk=None, student_id=None):
         session = self.get_object()
-        try:
-            att = Attendance.objects.get(session=session, student_id=student_id)
-        except Attendance.DoesNotExist:
-            return Response({'error': 'Attendance record not found'}, status=status.HTTP_404_NOT_FOUND)
+        att, created = Attendance.objects.get_or_create(
+            session=session,
+            student_id=student_id,
+            defaults={'status': 'absent'}
+        )
 
         serializer = AttendanceSerializer(att, data=request.data, partial=True)
         if serializer.is_valid():
@@ -940,7 +941,7 @@ class SessionViewSet(viewsets.ModelViewSet):
                 actor=request.user,
                 action='attendance.override',
                 entity=att.session,
-                before={'status': att.status, 'note': att.note},
+                before={'status': att.status, 'note': att.note} if not created else None,
                 after={'status': serializer.validated_data.get('status', att.status), 'note': serializer.validated_data.get('note', att.note)},
                 organization=org
             )
@@ -963,10 +964,13 @@ class SessionViewSet(viewsets.ModelViewSet):
             }
             
             to_update = []
+            to_create = []
             before_states = {}
             after_states = {}
             for item in records_data:
                 sid = item.get('student_id')
+                if not sid:
+                    continue
                 if sid in attendances:
                     att = attendances[sid]
                     before_states[sid] = {'status': att.status, 'note': att.note}
@@ -976,10 +980,27 @@ class SessionViewSet(viewsets.ModelViewSet):
                         att.note = item.get('note', '')
                     to_update.append(att)
                     after_states[sid] = {'status': att.status, 'note': att.note}
+                else:
+                    from accounts.models import User
+                    try:
+                        student = User.objects.get(id=sid)
+                        att = Attendance(
+                            session=session,
+                            student=student,
+                            status=item.get('status', 'absent'),
+                            note=item.get('note', '')
+                        )
+                        to_create.append(att)
+                        after_states[sid] = {'status': att.status, 'note': att.note}
+                    except User.DoesNotExist:
+                        continue
 
+            if to_create:
+                Attendance.objects.bulk_create(to_create)
             if to_update:
                 Attendance.objects.bulk_update(to_update, fields=['status', 'note'])
-                updated_count = len(to_update)
+            
+            updated_count = len(to_update) + len(to_create)
 
             # Log audit bulk override event
             org = getattr(request, 'organization', None)
@@ -1011,7 +1032,7 @@ class AttendanceViewSet(viewsets.ReadOnlyModelViewSet):
         if not org:
             return Attendance.objects.none()
 
-        queryset = Attendance.objects.filter(session__organization=org).select_related('session', 'student')
+        queryset = Attendance.objects.filter(session__organization=org).select_related('session', 'student', 'session__academy_class')
 
         # Isolation: Students only see their own attendance logs
         if not has_org_permission(self.request.user, org, 'can_view_attendance'):
@@ -1021,7 +1042,27 @@ class AttendanceViewSet(viewsets.ReadOnlyModelViewSet):
         if session_id:
             queryset = queryset.filter(session_id=session_id)
 
-        return queryset
+        class_id = self.request.query_params.get('class_id')
+        if class_id:
+            queryset = queryset.filter(session__academy_class_id=class_id)
+
+        student_id = self.request.query_params.get('student')
+        if student_id:
+            queryset = queryset.filter(student_id=student_id)
+
+        status = self.request.query_params.get('status')
+        if status:
+            queryset = queryset.filter(status=status)
+
+        q = self.request.query_params.get('q')
+        if q:
+            from django.db import models
+            queryset = queryset.filter(
+                models.Q(student__username__icontains=q) |
+                models.Q(student__full_name__icontains=q)
+            )
+
+        return queryset.order_by('-id')
 
 
 class OrganizationViewSet(viewsets.ModelViewSet):

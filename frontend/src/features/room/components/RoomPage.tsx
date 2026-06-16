@@ -182,6 +182,12 @@ export default function RoomPage() {
     }
   }, [roomCode, preJoinDone]);
 
+  useEffect(() => {
+    return () => {
+      leaveRoom({ redirectTo: null });
+    };
+  }, [leaveRoom]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--s0)] gap-4">

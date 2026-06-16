@@ -60,7 +60,7 @@ export function useRoom() {
   );
 
   const leaveRoom = useCallback(
-    async ({ redirectTo }: { redirectTo?: string } = {}) => {
+    async ({ redirectTo }: { redirectTo?: string | null } = {}) => {
       const { roomCode } = useRoomStore.getState();
 
       // Stop all media devices
@@ -94,7 +94,9 @@ export function useRoom() {
       }
 
       clearRoom();
-      navigate(redirectTo ?? "/dashboard");
+      if (redirectTo !== null) {
+        navigate(redirectTo ?? "/dashboard");
+      }
     },
     [navigate, clearRoom],
   );

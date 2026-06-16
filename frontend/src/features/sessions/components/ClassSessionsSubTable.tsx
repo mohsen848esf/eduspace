@@ -197,7 +197,11 @@ export default function ClassSessionsSubTable({
                 return (
                   <tr key={s.id} className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors text-left">
                     <td className="p-3 text-[var(--t3)]">{idx + 1}</td>
-                    <td className="p-3 font-semibold text-[var(--t1)]">{s.title}</td>
+                    <td className="p-3 font-semibold text-[var(--t1)]">
+                      <Link to={`/academic/sessions/${s.id}`} className="hover:underline text-[var(--t1)] no-underline">
+                        {s.title}
+                      </Link>
+                    </td>
                     <td className="p-3 text-[var(--t2)]">
                       {s.scheduled_start ? new Date(s.scheduled_start).toLocaleString() : "—"}
                     </td>
