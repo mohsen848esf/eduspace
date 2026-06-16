@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 from . import notifications as notifications_views
+from . import privacy_views
 
 router = DefaultRouter()
 router.register('courses', views.CourseViewSet, basename='course')
@@ -51,6 +52,10 @@ urlpatterns = [
     path('org-context/', views.org_context, name='org_context'),
     path('audit-logs/', views.audit_logs, name='audit_logs'),
     path('finance/summary/', views.FinanceSummaryView.as_view(), name='finance_summary'),
+
+    # Privacy and GDPR Compliance routes
+    path('privacy/request-export/', privacy_views.PrivacyExportView.as_view(), name='privacy_request_export'),
+    path('privacy/delete-account/', privacy_views.AccountPurgeView.as_view(), name='privacy_delete_account'),
 
     # CRM and Financial API ViewSets
     path('', include(router.urls)),

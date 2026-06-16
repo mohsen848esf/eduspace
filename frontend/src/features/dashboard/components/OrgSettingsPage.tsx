@@ -9,6 +9,7 @@ import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
 import { Modal, ModalHeader, ModalTitle, ModalBody, ModalFooter } from "../../../components/ui/Modal";
 import Spinner from "../../../components/ui/Spinner";
+import ReportsExportWidget from "./ReportsExportWidget";
 
 const parseUA = (ua: string) => {
   if (!ua) return "Unknown Device";
@@ -73,7 +74,7 @@ export default function OrgSettingsPage() {
 
   const canManageMembers = hasPermission("can_manage_members");
 
-  const [activeTab, setActiveTab] = useState<"details" | "members" | "connections" | "roles" | "audit_logs">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "members" | "connections" | "roles" | "audit_logs" | "reports">("details");
 
   // Edit organization details state
   const [orgName, setOrgName] = useState("");
@@ -509,6 +510,16 @@ export default function OrgSettingsPage() {
             }`}
           >
             {isFarsi ? "سوابق فعالیت‌ها" : "Audit Logs"}
+          </button>
+          <button
+            onClick={() => setActiveTab("reports")}
+            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${
+              activeTab === "reports"
+                ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
+                : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
+            }`}
+          >
+            {isFarsi ? "گزارشات و خروجی‌ها" : "Reports & Exports"}
           </button>
         </div>
 
@@ -1055,6 +1066,13 @@ export default function OrgSettingsPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Tab content 6: Reports & Exports */}
+        {activeTab === "reports" && (
+          <div className="bg-[var(--s2)] rounded-2xl border border-[var(--b)] p-6 shadow-sm flex flex-col gap-6 animate-in fade-in duration-150">
+            <ReportsExportWidget />
           </div>
         )}
 

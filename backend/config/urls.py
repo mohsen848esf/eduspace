@@ -15,6 +15,7 @@ urlpatterns = [
     path('api/notifications/', include('notifications.urls')),
     path('api/sys-admin/', include('sys_admin.urls')),
     path('api/billing/', include('billing.urls')),
+    path('api/analytics/', include('analytics.urls')),
     path('api/accounts/preferences/notifications/', notifications_views.notifications_preferences),
     path('api/classes/<int:class_id>/broadcast/', notifications_views.class_broadcast),
 ]
