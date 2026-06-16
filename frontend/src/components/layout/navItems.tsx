@@ -36,6 +36,7 @@ export const manageNavItems: NavItem[] = [
   { id: "notificationsSettings", icon: Icons.settings, labelKey: "nav.notificationSettings", to: "/settings/notifications", permissions: ["can_view_dashboard"] },
   { id: "templates", icon: Icons.settings, labelKey: "nav.templates", to: "/settings/templates", permissions: ["can_manage_members"] },
   { id: "organization", icon: Icons.settings, labelKey: "nav.orgSettings", to: "/settings/organization", permissions: ["can_manage_members"] },
+  { id: "billing", icon: Icons.settings, labelKey: "nav.billing", to: "/settings/billing", permissions: ["can_manage_members"] },
 ];
 
 /**
@@ -61,5 +62,6 @@ export const drawerNavItems: NavItem[] = [
   { id: "notificationsSettings", icon: Icons.settings, labelKey: "nav.notificationSettings", to: "/settings/notifications", permissions: ["can_view_dashboard"] },
   { id: "templates", icon: Icons.settings, labelKey: "nav.templates", to: "/settings/templates", permissions: ["can_manage_members"] },
   { id: "organization", icon: Icons.settings, labelKey: "nav.orgSettings", to: "/settings/organization", permissions: ["can_manage_members"] },
+  { id: "billing", icon: Icons.settings, labelKey: "nav.billing", to: "/settings/billing", permissions: ["can_manage_members"] },
 ];
 

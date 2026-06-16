@@ -63,8 +63,29 @@ class OrganizationSubscriptionView(APIView):
             defaults={'plan': free_plan, 'status': OrganizationSubscription.Status.TRIALING}
         )
         
+        from sys_admin.services import QuotaService
+        quota = QuotaService.get_quota(org)
+        usage = QuotaService.recalculate_usage(org)
+        
         serializer = OrganizationSubscriptionSerializer(sub)
-        return Response(serializer.data)
+        data = serializer.data
+        data['quota'] = {
+            'max_students': quota.max_students,
+            'max_teachers': quota.max_teachers,
+            'max_courses': quota.max_courses,
+            'max_storage_gb': quota.max_storage_gb,
+            'max_recording_minutes': quota.max_recording_minutes,
+            'max_active_sessions': quota.max_active_sessions,
+        }
+        data['usage'] = {
+            'students_count': usage.students_count,
+            'teachers_count': usage.teachers_count,
+            'courses_count': usage.courses_count,
+            'storage_used_gb': usage.storage_used_gb,
+            'recording_minutes_used': usage.recording_minutes_used,
+            'active_sessions_count': usage.active_sessions_count,
+        }
+        return Response(data)
 
 
 class CheckoutSessionView(APIView):
