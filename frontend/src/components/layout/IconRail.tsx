@@ -8,6 +8,8 @@ import {
 } from "./navItems";
 
 import { useOrgPermission } from "../../hooks/useOrgPermission";
+import { useAuthStore } from "../../features/auth/store/authStore";
+import { Icons } from "../../lib/constants/icons";
 
 interface IconRailProps {
   activeId: string;
@@ -23,6 +25,7 @@ interface IconRailProps {
  */
 export default function IconRail({ activeId, onNavigate }: IconRailProps) {
   const { t } = useTranslation("dashboard");
+  const { user } = useAuthStore();
 
   const renderItem = (item: NavItem) => {
     const isActive = activeId === item.id;
@@ -80,6 +83,12 @@ export default function IconRail({ activeId, onNavigate }: IconRailProps) {
             {manageNavItems
               .filter((item) => !item.permissions || hasAnyPermission(item.permissions))
               .map(renderItem)}
+            {user?.is_superuser && renderItem({
+              id: "sysAdmin",
+              icon: Icons.tools,
+              labelKey: "nav.sysAdmin",
+              to: "/sys-admin"
+            })}
           </nav>
         );
       })()}

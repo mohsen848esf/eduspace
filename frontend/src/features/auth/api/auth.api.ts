@@ -15,6 +15,7 @@ export interface User {
   full_name: string;
   avatar: string | null;
   is_online: boolean;
+  is_superuser?: boolean;
   organizations?: UserOrg[];
 }
 

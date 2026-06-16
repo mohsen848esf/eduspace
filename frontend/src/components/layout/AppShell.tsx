@@ -31,6 +31,7 @@ const NAV_ROUTES: Record<string, string> = {
   organization: "/settings/organization",
   recordings: "/recordings",
   miniapps: "/miniapps",
+  sysAdmin: "/sys-admin",
 };
 
 /**

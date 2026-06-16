@@ -64,12 +64,16 @@ const NotificationSettingsPage = lazy(
 const TemplateManagerPage = lazy(
   () => import("../features/dashboard/components/TemplateManager"),
 );
+const SysAdminPage = lazy(
+  () => import("../features/sysadmin/components/SysAdminPage"),
+);
 
 export interface RouteConfig {
   path: string;
   component: React.LazyExoticComponent<any>;
   isPrivate: boolean;
   requiredPermissions?: string[];
+  isSuperUserOnly?: boolean;
 }
 
 export const routes: RouteConfig[] = [
@@ -77,6 +81,12 @@ export const routes: RouteConfig[] = [
     path: "/login",
     component: LoginPage,
     isPrivate: false,
+  },
+  {
+    path: "/sys-admin",
+    component: SysAdminPage,
+    isPrivate: true,
+    isSuperUserOnly: true,
   },
   {
     path: "/register",

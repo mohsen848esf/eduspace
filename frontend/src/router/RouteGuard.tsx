@@ -9,14 +9,16 @@ interface RouteGuardProps {
   children: React.ReactNode;
   isPrivate?: boolean;
   requiredPermissions?: string[];
+  isSuperUserOnly?: boolean;
 }
 
 export default function RouteGuard({
   children,
   isPrivate = true,
   requiredPermissions = [],
+  isSuperUserOnly = false,
 }: RouteGuardProps) {
-  const { isAuthenticated, isInitialized } = useAuthStore();
+  const { isAuthenticated, isInitialized, user } = useAuthStore();
   const { hasAnyPermission, isLoading: isPermissionLoading } = useOrgPermission();
   const { isInitialized: isOrgContextInitialized } = useOrgContextStore();
   const location = useLocation();
@@ -52,7 +54,12 @@ export default function RouteGuard({
     );
   }
 
-  // 5. Enforce Permissions boundaries
+  // 5. Enforce Superuser Boundary
+  if (isSuperUserOnly && !user?.is_superuser) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  // 6. Enforce Permissions boundaries
   if (requiredPermissions && requiredPermissions.length > 0) {
     if (!hasAnyPermission(requiredPermissions)) {
       return <Navigate to="/unauthorized" replace />;

@@ -5,6 +5,7 @@ import { Tooltip } from "../ui/Tooltip";
 import { useOrgPermission } from "../../hooks/useOrgPermission";
 import { mainNavItems, manageNavItems, type NavItem } from "./navItems";
 import { useAuthStore } from "../../features/auth/store/authStore";
+import { Icons } from "../../lib/constants/icons";
 
 interface SidebarProps {
   activeId?: string;
@@ -136,6 +137,17 @@ export default function Sidebar({
           .map((item) => (
             <NavButton key={item.id} item={item} />
           ))}
+        {user?.is_superuser && (
+          <NavButton
+            key="sysAdmin"
+            item={{
+              id: "sysAdmin",
+              icon: Icons.tools,
+              labelKey: "nav.sysAdmin",
+              to: "/sys-admin",
+            }}
+          />
+        )}
       </nav>
 
       {/* User */}
