@@ -13,6 +13,7 @@ import Spinner from "../../../components/ui/Spinner";
 import AppShell from "../../../components/layout/AppShell";
 import { useLocale } from "../../../i18n/useLocale";
 import { FileText, Calendar, Download, CheckCircle, Clock, Award, ShieldAlert, ArrowLeft } from "lucide-react";
+import InspectionDrawer from "../../../components/ui/InspectionDrawer";
 
 export default function AssignmentDetailPage() {
   const { assignmentId } = useParams<{ assignmentId: string }>();
@@ -25,6 +26,10 @@ export default function AssignmentDetailPage() {
 
   const isAdmin = hasPermission("can_manage_members");
   const isTeacher = hasPermission("can_teach_class");
+
+  // ── Smart Inspection Drawer ─────────────────────────────────────
+  const [inspectType, setInspectType] = useState<"student" | "teacher" | "mentor" | "course" | "class" | "session" | "invoice" | "assignment" | null>(null);
+  const [inspectId, setInspectId] = useState<string | number | null>(null);
 
   // ── Queries ─────────────────────────────────────────────────────
   const { data: assignment, isLoading: loadingAssignment } = useQuery({
@@ -42,6 +47,21 @@ export default function AssignmentDetailPage() {
     queryFn: crmApi.getEnrollments,
     enabled: !!assignment,
   });
+
+  const { data: classes = [] } = useQuery({
+    queryKey: ["classes"],
+    queryFn: crmApi.getClasses,
+    enabled: !!assignment,
+  });
+
+  const { data: courses = [] } = useQuery({
+    queryKey: ["courses"],
+    queryFn: crmApi.getCourses,
+    enabled: !!assignment,
+  });
+
+  const cls = classes.find((c) => c.id === assignment?.academy_class);
+  const course = cls ? courses.find((co) => co.id === cls.course) : null;
 
   const isInstructor = isAdmin || isTeacher;
 
@@ -146,7 +166,12 @@ export default function AssignmentDetailPage() {
   // Statistics
   const totalEnrolled = classEnrollments.length;
   const totalSubmitted = submissions.length;
-  const totalGraded = submissions.filter((s) => s.status === "graded").count || submissions.filter((s) => s.status === "graded").length;
+  const totalGraded = submissions.filter((s) => s.status === "graded").length;
+
+  const gradedSubmissions = submissions.filter((s) => s.status === "graded" && s.grade !== null);
+  const classAverage = gradedSubmissions.length > 0
+    ? gradedSubmissions.reduce((sum, s) => sum + parseFloat(s.grade!), 0) / gradedSubmissions.length
+    : 0;
 
   return (
     <AppShell title={assignment.title}>
@@ -175,6 +200,22 @@ export default function AssignmentDetailPage() {
                 <h1 className="text-xl font-bold text-[var(--t1)] mb-1">{assignment.title}</h1>
                 <p className="text-sm text-[var(--t2)] leading-relaxed">{assignment.description}</p>
                 <div className="flex flex-wrap gap-4 mt-3 text-[11px] text-[var(--t3)] items-center">
+                  {cls && (
+                    <span className="flex items-center gap-1">
+                      🏫 {isFarsi ? "کلاس:" : "Class:"}{" "}
+                      <Link to={`/academic/classes/${cls.id}`} className="text-[var(--brand-text)] font-semibold hover:underline no-underline">
+                        {cls.name}
+                      </Link>
+                    </span>
+                  )}
+                  {course && (
+                    <span className="flex items-center gap-1">
+                      📚 {isFarsi ? "دوره:" : "Course:"}{" "}
+                      <Link to={`/academic/courses/${course.id}`} className="text-[var(--brand-text)] font-semibold hover:underline no-underline">
+                        {course.title}
+                      </Link>
+                    </span>
+                  )}
                   {assignment.due_date && (
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5" />
@@ -204,7 +245,7 @@ export default function AssignmentDetailPage() {
           <div className="flex flex-col gap-6">
 
             {/* KPI statistics widgets */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="p-5 rounded-2xl bg-[var(--s2)] border border-[var(--b)] flex flex-col gap-1">
                 <span className="text-xs text-[var(--t3)] uppercase font-semibold">{isFarsi ? "دانشجویان کلاس" : "Enrolled Students"}</span>
                 <span className="text-2xl font-bold text-[var(--t1)]">{totalEnrolled}</span>
@@ -216,6 +257,12 @@ export default function AssignmentDetailPage() {
               <div className="p-5 rounded-2xl bg-[var(--s2)] border border-[var(--b)] flex flex-col gap-1">
                 <span className="text-xs text-[var(--t3)] uppercase font-semibold">{isFarsi ? "نمره‌دهی شده" : "Graded Submissions"}</span>
                 <span className="text-2xl font-bold text-[var(--green)]">{totalGraded} / {totalSubmitted}</span>
+              </div>
+              <div className="p-5 rounded-2xl bg-[var(--s2)] border border-[var(--b)] flex flex-col gap-1">
+                <span className="text-xs text-[var(--t3)] uppercase font-semibold">{isFarsi ? "میانگین نمرات کلاس" : "Class Average Grade"}</span>
+                <span className="text-2xl font-bold text-[var(--amber)]">
+                  {gradedSubmissions.length > 0 ? `${classAverage.toFixed(1)} / 100` : "—"}
+                </span>
               </div>
             </div>
 
@@ -252,15 +299,21 @@ export default function AssignmentDetailPage() {
                         return (
                           <tr key={sub.id} className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors text-left">
                             <td className="p-4">
-                              <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-full bg-[var(--s3)] border border-[var(--b)] flex items-center justify-center text-[10px] font-bold">
+                              <button
+                                onClick={() => {
+                                  setInspectType("student");
+                                  setInspectId(sub.student);
+                                }}
+                                className="flex items-center gap-2 bg-transparent border-none p-0 cursor-pointer text-left group"
+                              >
+                                <div className="w-7 h-7 rounded-full bg-[var(--s3)] border border-[var(--b)] flex items-center justify-center text-[10px] font-bold group-hover:border-[var(--brand)] transition-colors">
                                   {(sub.student_full_name || sub.student_username || "?").charAt(0).toUpperCase()}
                                 </div>
                                 <div>
-                                  <div className="font-semibold text-[var(--t1)]">{sub.student_full_name || sub.student_username}</div>
+                                  <div className="font-semibold text-[var(--t1)] group-hover:text-[var(--brand)] group-hover:underline transition-colors">{sub.student_full_name || sub.student_username}</div>
                                   <div className="text-[10px] text-[var(--t3)]">@{sub.student_username}</div>
                                 </div>
-                              </div>
+                              </button>
                             </td>
                             <td className="p-4 text-xs text-[var(--t2)]">
                               {new Date(sub.submitted_at).toLocaleString(isFarsi ? "fa-IR" : "en-US")}
@@ -510,6 +563,17 @@ export default function AssignmentDetailPage() {
         </Modal>
 
       </div>
+      <InspectionDrawer
+        open={!!inspectType}
+        onOpenChange={(open) => {
+          if (!open) {
+            setInspectType(null);
+            setInspectId(null);
+          }
+        }}
+        entityType={inspectType}
+        entityId={inspectId}
+      />
     </AppShell>
   );
 }
