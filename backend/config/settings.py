@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'notifications',
     'analytics',
     'sys_admin',
+    'billing',
 ]
 
 MIDDLEWARE = [
@@ -140,6 +141,7 @@ CELERY_TASK_ROUTES = {
     'accounts.tasks.monthly_generate_billing_and_usage_reports': {'queue': 'finance'},
     'accounts.tasks.weekly_recalculate_reports_and_storage': {'queue': 'finance'},
     'sys_admin.tasks.daily_usage_recalculation': {'queue': 'finance'},
+    'billing.tasks.payment_recovery_task': {'queue': 'finance'},
 }
 
 AUTH_USER_MODEL = 'accounts.User'
@@ -328,4 +330,12 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
+
+
+# ---------------------------------------------------------------------------
+# Stripe SaaS Integration
+# ---------------------------------------------------------------------------
+STRIPE_PUBLIC_KEY = os.getenv('STRIPE_PUBLIC_KEY', '')
+STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', '')
 
