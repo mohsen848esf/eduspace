@@ -315,10 +315,13 @@ class SessionSerializer(serializers.ModelSerializer):
 class AttendanceSerializer(serializers.ModelSerializer):
     student_username = serializers.CharField(source='student.username', read_only=True)
     student_full_name = serializers.CharField(source='student.full_name', read_only=True)
+    session_title = serializers.CharField(source='session.title', read_only=True)
+    academy_class_name = serializers.CharField(source='session.academy_class.name', read_only=True)
+    academy_class = serializers.IntegerField(source='session.academy_class.id', read_only=True)
 
     class Meta:
         model = Attendance
-        fields = ('id', 'session', 'student', 'student_username', 'student_full_name', 'status', 'joined_at', 'left_at', 'note')
+        fields = ('id', 'session', 'session_title', 'academy_class', 'academy_class_name', 'student', 'student_username', 'student_full_name', 'status', 'joined_at', 'left_at', 'note')
         read_only_fields = ('id', 'session', 'student', 'joined_at', 'left_at')
 
 

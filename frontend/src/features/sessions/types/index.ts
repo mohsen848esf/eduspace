@@ -21,6 +21,9 @@ export interface Session {
 export interface Attendance {
   id: number;
   session: number;
+  session_title?: string;
+  academy_class?: number;
+  academy_class_name?: string;
   student: number;
   student_username: string;
   student_full_name: string;

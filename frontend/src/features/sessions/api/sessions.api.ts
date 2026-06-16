@@ -32,6 +32,18 @@ export const sessionsApi = {
     return res.data;
   },
 
+  getAllAttendance: async (params?: {
+    page?: number;
+    page_size?: number;
+    status?: string;
+    class_id?: number;
+    student?: number;
+    q?: string;
+  }): Promise<{ count: number; results: Attendance[] }> => {
+    const res = await client.get("/auth/attendance/", { params });
+    return res.data;
+  },
+
   getAttendance: async (sessionId: number): Promise<Attendance[]> => {
     const res = await client.get(`/auth/sessions/${sessionId}/attendance/`);
     return res.data;

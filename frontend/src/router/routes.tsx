@@ -82,6 +82,12 @@ const SubscriptionPage = lazy(
 const AssignmentDetailPage = lazy(
   () => import("../features/assessments/pages/AssignmentDetailPage"),
 );
+const AttendanceExplorer = lazy(
+  () => import("../features/dashboard/components/AttendanceExplorer"),
+);
+const SessionDetailPage = lazy(
+  () => import("../features/dashboard/components/SessionDetailPage"),
+);
 
 export interface RouteConfig {
   path: string;
@@ -147,6 +153,18 @@ export const routes: RouteConfig[] = [
   {
     path: "/academic/sessions",
     component: SessionsPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_sessions"],
+  },
+  {
+    path: "/academic/attendance",
+    component: AttendanceExplorer,
+    isPrivate: true,
+    requiredPermissions: ["can_view_sessions"],
+  },
+  {
+    path: "/academic/sessions/:sessionId",
+    component: SessionDetailPage,
     isPrivate: true,
     requiredPermissions: ["can_view_sessions"],
   },
