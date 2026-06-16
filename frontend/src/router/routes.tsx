@@ -67,6 +67,9 @@ const TemplateManagerPage = lazy(
 const SysAdminPage = lazy(
   () => import("../features/sysadmin/components/SysAdminPage"),
 );
+const SubscriptionPage = lazy(
+  () => import("../features/billing/components/SubscriptionPage"),
+);
 
 export interface RouteConfig {
   path: string;
@@ -138,6 +141,12 @@ export const routes: RouteConfig[] = [
   {
     path: "/settings/organization",
     component: OrgSettingsPage,
+    isPrivate: true,
+    requiredPermissions: ["can_manage_members"],
+  },
+  {
+    path: "/settings/billing",
+    component: SubscriptionPage,
     isPrivate: true,
     requiredPermissions: ["can_manage_members"],
   },
