@@ -34,8 +34,14 @@ const ReviewSubmissionPage = lazy(
 const CoursesPage = lazy(
   () => import("../features/dashboard/components/CoursesPage"),
 );
+const CourseDetailPage = lazy(
+  () => import("../features/dashboard/components/CourseDetailPage"),
+);
 const ClassesPage = lazy(
   () => import("../features/dashboard/components/ClassesPage"),
+);
+const ClassDetailPage = lazy(
+  () => import("../features/dashboard/components/ClassDetailPage"),
 );
 const SessionsPage = lazy(
   () => import("../features/dashboard/components/SessionsPage"),
@@ -109,8 +115,20 @@ export const routes: RouteConfig[] = [
     requiredPermissions: ["can_view_dashboard"],
   },
   {
+    path: "/academic/courses/:courseId",
+    component: CourseDetailPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
     path: "/academic/classes",
     component: ClassesPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/academic/classes/:classId",
+    component: ClassDetailPage,
     isPrivate: true,
     requiredPermissions: ["can_view_dashboard"],
   },

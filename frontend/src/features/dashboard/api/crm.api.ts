@@ -18,6 +18,8 @@ export interface AcademyClass {
   course_code?: string;
   teacher?: number | null;
   teacher_name?: string;
+  mentor?: number | null;
+  mentor_name?: string;
   name: string;
   start_date: string | null;
   end_date: string | null;
@@ -102,7 +104,7 @@ export interface SimpleUser {
   username: string;
   email: string;
   full_name: string;
-  role: "student" | "teacher" | "admin";
+  role: string;
 }
 
 export const crmApi = {

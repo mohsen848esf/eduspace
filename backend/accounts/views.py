@@ -169,6 +169,8 @@ def search_users(request):
                 members = members.filter(role__name='Student')
             elif role_filter == 'admin':
                 members = members.filter(role__name='Admin')
+            elif role_filter == 'mentor':
+                members = members.filter(role__name='Mentor')
                 
         results = []
         for m in members[:10]:

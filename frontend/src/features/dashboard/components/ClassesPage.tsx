@@ -1,4 +1,5 @@
 import { useState, useEffect, Fragment } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import { crmApi, type AcademyClass } from "../api/crm.api";
@@ -86,7 +87,9 @@ export default function ClassesPage() {
   // Modal & Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const [classForm, setClassForm] = useState({ name: "", course: "", teacher: "", start_date: "", end_date: "", room: "" });
+  const [classForm, setClassForm] = useState({ name: "", course: "", teacher: "", mentor: "", start_date: "", end_date: "", room: "" });
+  const [mentorSearchQuery, setMentorSearchQuery] = useState("");
+  const [mentorSearchResults, setMentorSearchResults] = useState<any[]>([]);
 
   useEffect(() => {
     if (userSearchQuery.length >= 2) {
@@ -96,14 +99,25 @@ export default function ClassesPage() {
     }
   }, [userSearchQuery]);
 
+  useEffect(() => {
+    if (mentorSearchQuery.length >= 2) {
+      crmApi.searchUsers(mentorSearchQuery, "mentor").then(setMentorSearchResults);
+    } else {
+      setMentorSearchResults([]);
+    }
+  }, [mentorSearchQuery]);
+
   const openCreateModal = () => {
     setEditId(null);
     setUserSearchQuery("");
     setSearchResults([]);
+    setMentorSearchQuery("");
+    setMentorSearchResults([]);
     setClassForm({
       name: "",
       course: courses[0]?.id.toString() || "",
       teacher: "",
+      mentor: "",
       start_date: "",
       end_date: "",
       room: ""
@@ -115,16 +129,22 @@ export default function ClassesPage() {
     setEditId(item.id);
     setUserSearchQuery("");
     setSearchResults([]);
+    setMentorSearchQuery("");
+    setMentorSearchResults([]);
     setClassForm({
       name: item.name,
       course: item.course.toString(),
       teacher: item.teacher?.toString() || "",
+      mentor: item.mentor?.toString() || "",
       start_date: item.start_date || "",
       end_date: item.end_date || "",
       room: item.room || ""
     });
     if (item.teacher_name) {
       setUserSearchQuery(item.teacher_name);
+    }
+    if (item.mentor_name) {
+      setMentorSearchQuery(item.mentor_name);
     }
     setIsModalOpen(true);
   };
@@ -135,6 +155,7 @@ export default function ClassesPage() {
       name: classForm.name,
       course: parseInt(classForm.course),
       teacher: classForm.teacher ? parseInt(classForm.teacher) : null,
+      mentor: classForm.mentor ? parseInt(classForm.mentor) : null,
       start_date: classForm.start_date || null,
       end_date: classForm.end_date || null,
       room: classForm.room || null
@@ -175,6 +196,7 @@ export default function ClassesPage() {
                   <th className="p-4">{isFarsi ? "نام کلاس" : "Class Name"}</th>
                   <th className="p-4">{isFarsi ? "دوره" : "Course"}</th>
                   <th className="p-4">{isFarsi ? "مدرس" : "Teacher"}</th>
+                  <th className="p-4">{isFarsi ? "منتور" : "Mentor"}</th>
                   <th className="p-4">{isFarsi ? "اتاق" : "Room"}</th>
                   <th className="p-4">{isFarsi ? "تاریخ شروع" : "Start Date"}</th>
                   <th className="p-4 text-right">{isFarsi ? "عملیات" : "Actions"}</th>
@@ -186,7 +208,12 @@ export default function ClassesPage() {
                     <tr className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors text-left">
                       <td className="p-4 font-semibold text-[var(--t1)]">
                         <div className="flex items-center gap-1.5">
-                          {cls.name}
+                          <Link
+                            to={`/academic/classes/${cls.id}`}
+                            className="font-semibold text-[var(--t1)] hover:text-[var(--brand)] transition-colors no-underline"
+                          >
+                            {cls.name}
+                          </Link>
                           {cls.latest_session?.status === "live" && (
                             <span
                               className="inline-block w-2.5 h-2.5 rounded-full bg-[var(--green)] animate-pulse"
@@ -197,6 +224,7 @@ export default function ClassesPage() {
                       </td>
                       <td className="p-4 text-[var(--t2)]">{cls.course_title} ({cls.course_code})</td>
                       <td className="p-4 text-[var(--t1)]">{cls.teacher_name || "—"}</td>
+                      <td className="p-4 text-[var(--t1)]">{cls.mentor_name || "—"}</td>
                       <td className="p-4 text-[var(--t2)]">{cls.room || "—"}</td>
                       <td className="p-4 text-[var(--t3)]">{cls.start_date || "—"}</td>
                       <td className="p-4 text-right flex justify-end gap-2 flex-wrap max-w-xs">
@@ -250,7 +278,7 @@ export default function ClassesPage() {
                     </tr>
                     {expandedClassId === cls.id && (
                       <tr>
-                        <td colSpan={6} className="p-0">
+                        <td colSpan={7} className="p-0">
                           <ClassSessionsSubTable
                             cls={cls}
                             language={language}
@@ -321,6 +349,37 @@ export default function ClassesPage() {
                         setClassForm({ ...classForm, teacher: u.id.toString() });
                         setUserSearchQuery(u.full_name || u.username);
                         setSearchResults([]);
+                      }}
+                      className="w-full text-start p-1.5 hover:bg-[var(--brand-soft)] rounded text-xs text-[var(--t1)] border-none bg-transparent cursor-pointer"
+                    >
+                      {u.full_name} ({u.username})
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col gap-1.5 w-full">
+              <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                {isFarsi ? "جستجوی منتور" : "Search Mentor"}
+              </label>
+              <Input
+                value={mentorSearchQuery}
+                onChange={(e) => {
+                  setMentorSearchQuery(e.target.value);
+                  if (!e.target.value) setClassForm({ ...classForm, mentor: "" });
+                }}
+                placeholder={isFarsi ? "نام منتور را بنویسید (حداقل ۲ کاراکتر)" : "Type mentor name..."}
+              />
+              {mentorSearchResults.length > 0 && (
+                <div className="bg-[var(--s3)] border border-[var(--b)] rounded-lg p-1 max-h-[120px] overflow-y-auto mt-1 flex flex-col gap-1">
+                  {mentorSearchResults.map((u) => (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => {
+                        setClassForm({ ...classForm, mentor: u.id.toString() });
+                        setMentorSearchQuery(u.full_name || u.username);
+                        setMentorSearchResults([]);
                       }}
                       className="w-full text-start p-1.5 hover:bg-[var(--brand-soft)] rounded text-xs text-[var(--t1)] border-none bg-transparent cursor-pointer"
                     >
