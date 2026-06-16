@@ -404,6 +404,12 @@ class RoleSerializer(serializers.ModelSerializer):
         model = Role
         fields = ('id', 'name', 'description', 'permissions')
 
+    def validate_name(self, value):
+        default_role_names = ["admin", "teacher", "student", "mentor"]
+        if value.strip().lower() in default_role_names:
+            raise serializers.ValidationError("Cannot create or modify a role with a system default name (Admin, Teacher, Student, Mentor).")
+        return value
+
 
 class CertificateSerializer(serializers.ModelSerializer):
     student_username = serializers.CharField(source='student.username', read_only=True)
