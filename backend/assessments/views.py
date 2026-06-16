@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from accounts.throttling import TenantScopedRateThrottle
 
-from assessments.models import QuestionBank, Question, Assessment, Submission, StudentAnswer
+from assessments.models import QuestionBank, Question, Assessment, Submission, StudentAnswer, Assignment, AssignmentSubmission
 from assessments.serializers import (
     QuestionBankSerializer,
     QuestionSerializer,
@@ -15,6 +15,8 @@ from assessments.serializers import (
     StudentAnswerTeacherSerializer,
     SubmissionStudentSerializer,
     SubmissionTeacherSerializer,
+    AssignmentSerializer,
+    AssignmentSubmissionSerializer,
 )
 from assessments.permissions import (
     IsAssessmentManagerOrAdmin,
@@ -24,7 +26,7 @@ from assessments.permissions import (
 from assessments.services.assessment_service import AssessmentService
 from assessments.services.anti_cheat_service import AntiCheatService
 from accounts.services.audit_service import AuditService
-from accounts.permissions import has_org_permission
+from accounts.permissions import has_org_permission, HasOrgPermission
 
 
 class QuestionBankViewSet(viewsets.ModelViewSet):
@@ -158,6 +160,15 @@ class AssessmentViewSet(viewsets.ModelViewSet):
         )
         if not is_manager:
             qs = qs.filter(is_published=True)
+
+        class_id = self.request.query_params.get('class_id')
+        if class_id:
+            qs = qs.filter(session__academy_class_id=class_id)
+
+        session_id = self.request.query_params.get('session_id')
+        if session_id:
+            qs = qs.filter(session_id=session_id)
+
         return qs
 
     def get_serializer_class(self):
@@ -282,6 +293,15 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
         )
         if not is_manager:
             qs = qs.filter(student=self.request.user)
+
+        assessment_id = self.request.query_params.get('assessment_id')
+        if assessment_id:
+            qs = qs.filter(assessment_id=assessment_id)
+
+        class_id = self.request.query_params.get('class_id')
+        if class_id:
+            qs = qs.filter(assessment__session__academy_class_id=class_id)
+
         return qs
 
     def get_serializer_class(self):
@@ -402,3 +422,140 @@ class StudentAnswerViewSet(mixins.RetrieveModelMixin, mixins.UpdateModelMixin, v
             if locked_submission.status != Submission.Status.STARTED:
                 raise ValidationError("Cannot modify answers of a submitted or graded assessment.")
             serializer.save()
+
+
+class AssignmentViewSet(viewsets.ModelViewSet):
+    serializer_class = AssignmentSerializer
+    permission_classes = [HasOrgPermission]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            self.required_org_permission = 'can_view_dashboard'
+        else:
+            self.required_org_permission = 'can_teach_class'
+        return super().get_permissions()
+
+    def get_queryset(self):
+        org = getattr(self.request, 'organization', None)
+        if not org:
+            return Assignment.objects.none()
+        
+        queryset = Assignment.objects.filter(organization=org)
+        
+        # Isolation: Students only see assignments for classes they are enrolled in
+        if not self.request.user.is_superuser and not has_org_permission(self.request.user, org, 'can_manage_members') and not has_org_permission(self.request.user, org, 'can_teach_class'):
+            queryset = queryset.filter(academy_class__enrollments__student=self.request.user, academy_class__enrollments__is_active=True)
+            
+        class_id = self.request.query_params.get('class_id')
+        if class_id:
+            queryset = queryset.filter(academy_class_id=class_id)
+            
+        return queryset
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        AuditService.log(
+            actor=self.request.user,
+            action="assignment.created",
+            entity=instance,
+            after=serializer.data,
+            request=self.request
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        old_db_instance = self.get_queryset().get(pk=instance.pk)
+        before_state = self.get_serializer(old_db_instance).data
+
+        instance = serializer.save()
+        after_state = self.get_serializer(instance).data
+
+        AuditService.log(
+            actor=self.request.user,
+            action="assignment.updated",
+            entity=instance,
+            before=before_state,
+            after=after_state,
+            request=self.request
+        )
+
+    def perform_destroy(self, instance):
+        before_state = self.get_serializer(instance).data
+        AuditService.log(
+            actor=self.request.user,
+            action="assignment.deleted",
+            entity=instance,
+            before=before_state,
+            request=self.request
+        )
+        instance.delete()
+
+
+class AssignmentSubmissionViewSet(viewsets.ModelViewSet):
+    serializer_class = AssignmentSubmissionSerializer
+    permission_classes = [HasOrgPermission]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'create']:
+            self.required_org_permission = 'can_view_dashboard'
+        else:
+            self.required_org_permission = 'can_teach_class'
+        return super().get_permissions()
+
+    def get_queryset(self):
+        org = getattr(self.request, 'organization', None)
+        if not org:
+            return AssignmentSubmission.objects.none()
+            
+        queryset = AssignmentSubmission.objects.filter(assignment__organization=org)
+        
+        # If user is not manager/teacher, they only see their own submissions
+        is_manager = (
+            has_org_permission(self.request.user, org, 'can_teach_class') or
+            has_org_permission(self.request.user, org, 'can_manage_members')
+        )
+        if not is_manager:
+            queryset = queryset.filter(student=self.request.user)
+            
+        assignment_id = self.request.query_params.get('assignment_id')
+        if assignment_id:
+            queryset = queryset.filter(assignment_id=assignment_id)
+            
+        class_id = self.request.query_params.get('class_id')
+        if class_id:
+            queryset = queryset.filter(assignment__academy_class_id=class_id)
+            
+        return queryset
+
+    def perform_create(self, serializer):
+        # Prevent duplicate submissions by same student for same assignment
+        assignment = serializer.validated_data.get('assignment')
+        student = self.request.user
+        if AssignmentSubmission.objects.filter(assignment=assignment, student=student).exists():
+            raise ValidationError("You have already submitted this assignment.")
+        
+        instance = serializer.save(student=student)
+        AuditService.log(
+            actor=self.request.user,
+            action="assignment_submission.created",
+            entity=instance,
+            after=serializer.data,
+            request=self.request
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        old_db_instance = self.get_queryset().get(pk=instance.pk)
+        before_state = self.get_serializer(old_db_instance).data
+
+        instance = serializer.save()
+        after_state = self.get_serializer(instance).data
+
+        AuditService.log(
+            actor=self.request.user,
+            action="assignment_submission.updated",
+            entity=instance,
+            before=before_state,
+            after=after_state,
+            request=self.request
+        )

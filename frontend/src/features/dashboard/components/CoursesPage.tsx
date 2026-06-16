@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import { crmApi, type Course } from "../api/crm.api";
@@ -167,7 +168,12 @@ export default function CoursesPage() {
                           </div>
                         )}
                         <div>
-                          <div className="font-semibold text-[var(--t1)]">{c.title}</div>
+                          <Link
+                            to={`/academic/courses/${c.id}`}
+                            className="font-semibold text-[var(--t1)] hover:text-[var(--brand)] transition-colors no-underline"
+                          >
+                            {c.title}
+                          </Link>
                           <div className="text-xs text-[var(--t3)] font-mono">{c.code}</div>
                         </div>
                       </div>

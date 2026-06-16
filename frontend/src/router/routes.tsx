@@ -34,8 +34,14 @@ const ReviewSubmissionPage = lazy(
 const CoursesPage = lazy(
   () => import("../features/dashboard/components/CoursesPage"),
 );
+const CourseDetailPage = lazy(
+  () => import("../features/dashboard/components/CourseDetailPage"),
+);
 const ClassesPage = lazy(
   () => import("../features/dashboard/components/ClassesPage"),
+);
+const ClassDetailPage = lazy(
+  () => import("../features/dashboard/components/ClassDetailPage"),
 );
 const SessionsPage = lazy(
   () => import("../features/dashboard/components/SessionsPage"),
@@ -48,6 +54,9 @@ const MembersPage = lazy(
 );
 const LedgerPage = lazy(
   () => import("../features/dashboard/components/LedgerPage"),
+);
+const InvoiceDetailPage = lazy(
+  () => import("../features/dashboard/components/InvoiceDetailPage"),
 );
 const OrgSettingsPage = lazy(
   () => import("../features/dashboard/components/OrgSettingsPage"),
@@ -69,6 +78,9 @@ const SysAdminPage = lazy(
 );
 const SubscriptionPage = lazy(
   () => import("../features/billing/components/SubscriptionPage"),
+);
+const AssignmentDetailPage = lazy(
+  () => import("../features/assessments/pages/AssignmentDetailPage"),
 );
 
 export interface RouteConfig {
@@ -109,8 +121,26 @@ export const routes: RouteConfig[] = [
     requiredPermissions: ["can_view_dashboard"],
   },
   {
+    path: "/academic/courses/:courseId",
+    component: CourseDetailPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
     path: "/academic/classes",
     component: ClassesPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/academic/classes/:classId",
+    component: ClassDetailPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/academic/assignments/:assignmentId",
+    component: AssignmentDetailPage,
     isPrivate: true,
     requiredPermissions: ["can_view_dashboard"],
   },
@@ -137,6 +167,12 @@ export const routes: RouteConfig[] = [
     component: LedgerPage,
     isPrivate: true,
     requiredPermissions: ["can_view_financials"],
+  },
+  {
+    path: "/finance/invoices/:invoiceId",
+    component: InvoiceDetailPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
   },
   {
     path: "/settings/organization",

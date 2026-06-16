@@ -18,6 +18,8 @@ export interface AcademyClass {
   course_code?: string;
   teacher?: number | null;
   teacher_name?: string;
+  mentor?: number | null;
+  mentor_name?: string;
   name: string;
   start_date: string | null;
   end_date: string | null;
@@ -102,7 +104,7 @@ export interface SimpleUser {
   username: string;
   email: string;
   full_name: string;
-  role: "student" | "teacher" | "admin";
+  role: string;
 }
 
 export const crmApi = {
@@ -167,8 +169,14 @@ export const crmApi = {
     status?: string;
     start_date?: string;
     end_date?: string;
+    class_id?: number;
+    course_id?: number;
   }): Promise<PaginatedResponse<TuitionInvoice>> => {
     const res = await client.get("/auth/invoices/", { params });
+    return res.data;
+  },
+  getInvoice: async (id: number): Promise<TuitionInvoice> => {
+    const res = await client.get(`/auth/invoices/${id}/`);
     return res.data;
   },
   createInvoice: async (data: Partial<TuitionInvoice>): Promise<TuitionInvoice> => {
@@ -225,4 +233,85 @@ export const crmApi = {
     const res = await client.get(url);
     return res.data;
   },
+
+  // Members CRUD
+  getMembers: async (): Promise<OrgMember[]> => {
+    const res = await client.get("/auth/org-members/");
+    return res.data;
+  },
+  getMember: async (id: number): Promise<OrgMember> => {
+    const res = await client.get(`/auth/org-members/${id}/`);
+    return res.data;
+  },
+  createMember: async (data: {
+    username?: string;
+    email?: string;
+    role: number | null;
+    contract_type?: string;
+    expires_at?: string | null;
+  }): Promise<OrgMember> => {
+    const res = await client.post("/auth/org-members/", data);
+    return res.data;
+  },
+  updateMember: async (id: number, data: Partial<OrgMember>): Promise<OrgMember> => {
+    const res = await client.patch(`/auth/org-members/${id}/`, data);
+    return res.data;
+  },
+  deleteMember: async (id: number): Promise<void> => {
+    await client.delete(`/auth/org-members/${id}/`);
+  },
+
+  // Roles CRUD
+  getRoles: async (): Promise<Role[]> => {
+    const res = await client.get("/auth/roles/");
+    return res.data;
+  },
+  createRole: async (data: { name: string; description: string; permissions: string[] }): Promise<Role> => {
+    const res = await client.post("/auth/roles/", data);
+    return res.data;
+  },
+  updateRole: async (id: number, data: { name?: string; description?: string; permissions?: string[] }): Promise<Role> => {
+    const res = await client.patch(`/auth/roles/${id}/`, data);
+    return res.data;
+  },
+  deleteRole: async (id: number): Promise<void> => {
+    await client.delete(`/auth/roles/${id}/`);
+  },
+  getAvailablePermissions: async (): Promise<Permission[]> => {
+    const res = await client.get("/auth/roles/permissions/");
+    return res.data;
+  },
 };
+
+export interface OrgMember {
+  id: number;
+  user: number;
+  user_details: {
+    id: number;
+    username: string;
+    email: string;
+    full_name: string;
+    avatar?: string | null;
+    is_online: boolean;
+    is_superuser: boolean;
+  };
+  role: number | null;
+  role_name?: string;
+  is_active: boolean;
+  contract_type: "full_time" | "part_time" | "contractor" | "guest";
+  joined_at: string;
+  expires_at: string | null;
+}
+
+export interface Role {
+  id: number;
+  name: string;
+  description: string;
+  permissions: string[];
+}
+
+export interface Permission {
+  codename: string;
+  name: string;
+  description: string;
+}

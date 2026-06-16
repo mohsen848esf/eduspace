@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import { crmApi, type TuitionInvoice, type ExpenseItem, type SimpleUser, type TuitionInvoiceItem } from "../api/crm.api";
@@ -39,6 +40,7 @@ export default function LedgerPage() {
 
   // Invoices Filter & Pagination States
   const [invoiceSearch, setInvoiceSearch] = useQueryParamState("student", "");
+  const [classIdParam, setClassIdParam] = useQueryParamState("class_id", "");
   const [invoiceStatus, setInvoiceStatus] = useState("");
   const [invoiceStartDate, setInvoiceStartDate] = useState("");
   const [invoiceEndDate, setInvoiceEndDate] = useState("");
@@ -55,14 +57,15 @@ export default function LedgerPage() {
 
   // Queries
   const { data: invoicesData, isLoading: loadingInvoices } = useQuery({
-    queryKey: ["invoices", invoicePage, invoiceSearch, invoiceStatus, invoiceStartDate, invoiceEndDate],
+    queryKey: ["invoices", invoicePage, invoiceSearch, invoiceStatus, invoiceStartDate, invoiceEndDate, classIdParam],
     queryFn: () => crmApi.getInvoices({
       page: invoicePage,
       page_size: 10,
       q: invoiceSearch,
       status: invoiceStatus,
       start_date: invoiceStartDate,
-      end_date: invoiceEndDate
+      end_date: invoiceEndDate,
+      class_id: classIdParam ? parseInt(classIdParam) : undefined
     }),
   });
 
@@ -94,6 +97,7 @@ export default function LedgerPage() {
 
   const invoices = invoicesData?.results || [];
   const expenses = expensesData?.results || [];
+  const selectedClassFilter = classes.find((c: any) => c.id === parseInt(classIdParam || "0"));
 
   // Mutations
   const createInvoiceMutation = useMutation({
@@ -632,7 +636,23 @@ export default function LedgerPage() {
                     {isFarsi ? "+ صدور فاکتور" : "+ Issue Invoice"}
                   </Button>
                 )}
-              </div>
+              {classIdParam && (
+                <div className="flex items-center justify-between mx-4 my-2 p-2 bg-[var(--brand-soft)] border border-[var(--b)] rounded-xl text-xs text-[var(--brand-text)]">
+                  <span>
+                    {isFarsi ? "فیلتر بر اساس کلاس: " : "Filtered by class: "}
+                    <strong>{selectedClassFilter?.name || classIdParam}</strong>
+                  </span>
+                  <button
+                    onClick={() => {
+                      setClassIdParam(null);
+                      setInvoicePage(1);
+                    }}
+                    className="bg-transparent border-none text-[var(--red)] font-bold cursor-pointer hover:underline text-[10px]"
+                  >
+                    {isFarsi ? "حذف فیلتر" : "Clear Filter"}
+                  </button>
+                </div>
+              )}
 
               {loadingInvoices ? (
                 <div className="p-12 flex justify-center"><Spinner /></div>
@@ -657,14 +677,13 @@ export default function LedgerPage() {
                     <tbody>
                       {invoices.map((inv) => (
                         <tr key={inv.id} className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors text-left">
-                          <td 
-                            className="p-4 font-semibold text-[var(--brand-text)] cursor-pointer hover:underline"
-                            onClick={() => {
-                              setInspectType("invoice");
-                              setInspectId(inv.id.toString());
-                            }}
-                          >
-                            {inv.invoice_number || `#${inv.id}`}
+                          <td className="p-4 font-semibold">
+                            <Link 
+                              to={`/finance/invoices/${inv.id}`} 
+                              className="text-[var(--brand-text)] hover:underline no-underline"
+                            >
+                              {inv.invoice_number || `#${inv.id}`}
+                            </Link>
                           </td>
                           <td className="p-4 text-[var(--t1)]">{inv.student_full_name || inv.student_username}</td>
                           <td className="p-4 text-[var(--t2)]">{inv.class_name || "—"}</td>

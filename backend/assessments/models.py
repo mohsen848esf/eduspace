@@ -3,7 +3,7 @@ from django.db import models
 from django.db.models import ProtectedError, Q
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from accounts.models import Organization, Session
+from accounts.models import Organization, Session, AcademyClass
 
 
 class QuestionBank(models.Model):
@@ -216,3 +216,78 @@ class StudentAnswer(models.Model):
 
     def __str__(self):
         return f"Answer to {self.question.id} for Submission {self.submission.id}"
+
+
+class Assignment(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="assignments"
+    )
+    academy_class = models.ForeignKey(
+        AcademyClass,
+        on_delete=models.CASCADE,
+        related_name="assignments"
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default="")
+    due_date = models.DateTimeField(null=True, blank=True)
+    attachment = models.FileField(upload_to='assignments/', null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_assignments"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.title} ({self.academy_class.name})"
+
+
+class AssignmentSubmission(models.Model):
+    class Status(models.TextChoices):
+        SUBMITTED = 'submitted', 'Submitted'
+        GRADED = 'graded', 'Graded'
+
+    assignment = models.ForeignKey(
+        Assignment,
+        on_delete=models.CASCADE,
+        related_name="submissions"
+    )
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="assignment_submissions"
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.SUBMITTED
+    )
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    submission_file = models.FileField(upload_to='submissions/', null=True, blank=True)
+    submission_text = models.TextField(blank=True, default="")
+    grade = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    feedback = models.TextField(blank=True, default="")
+    graded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="graded_assignment_submissions"
+    )
+    graded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["assignment", "student"],
+                name="unique_submission_per_student_assignment"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.student.username} - {self.assignment.title} ({self.status})"

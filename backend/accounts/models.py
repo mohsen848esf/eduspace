@@ -208,6 +208,7 @@ class Course(models.Model):
 class AcademyClass(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='classes')
     teacher = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='teaching_classes')
+    mentor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='mentored_classes')
     name = models.CharField(max_length=255)  # e.g. "Summer 2026 Section A"
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)

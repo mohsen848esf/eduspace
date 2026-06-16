@@ -74,6 +74,7 @@ class AcademyClassSerializer(serializers.ModelSerializer):
     course_title = serializers.CharField(source='course.title', read_only=True)
     course_code = serializers.CharField(source='course.code', read_only=True)
     teacher_name = serializers.CharField(source='teacher.full_name', read_only=True)
+    mentor_name = serializers.CharField(source='mentor.full_name', read_only=True)
     session_count = serializers.IntegerField(read_only=True)
     latest_session = CompactSessionSerializer(read_only=True)
 
@@ -81,6 +82,7 @@ class AcademyClassSerializer(serializers.ModelSerializer):
         model = AcademyClass
         fields = (
             'id', 'course', 'course_title', 'course_code', 'teacher', 'teacher_name',
+            'mentor', 'mentor_name',
             'name', 'start_date', 'end_date', 'room', 'is_active', 'max_students',
             'session_count', 'latest_session', 'created_by', 'created_at'
         )
@@ -332,6 +334,8 @@ class OrgContextSerializer(serializers.Serializer):
                 'id': org.id,
                 'name': org.name,
                 'slug': org.slug,
+                'is_suspended': org.is_suspended,
+                'suspension_reason': org.suspension_reason,
             }
         return None
 
@@ -403,6 +407,12 @@ class RoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Role
         fields = ('id', 'name', 'description', 'permissions')
+
+    def validate_name(self, value):
+        default_role_names = ["admin", "teacher", "student", "mentor"]
+        if value.strip().lower() in default_role_names:
+            raise serializers.ValidationError("Cannot create or modify a role with a system default name (Admin, Teacher, Student, Mentor).")
+        return value
 
 
 class CertificateSerializer(serializers.ModelSerializer):

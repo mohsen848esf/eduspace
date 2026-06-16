@@ -169,6 +169,8 @@ def search_users(request):
                 members = members.filter(role__name='Student')
             elif role_filter == 'admin':
                 members = members.filter(role__name='Admin')
+            elif role_filter == 'mentor':
+                members = members.filter(role__name='Mentor')
                 
         results = []
         for m in members[:10]:
@@ -656,6 +658,14 @@ class TuitionInvoiceViewSet(viewsets.ModelViewSet):
         end_date = self.request.query_params.get('end_date')
         if end_date:
             queryset = queryset.filter(due_date__lte=end_date)
+
+        class_id = self.request.query_params.get('class_id')
+        if class_id:
+            queryset = queryset.filter(academy_class_id=class_id)
+
+        course_id = self.request.query_params.get('course_id')
+        if course_id:
+            queryset = queryset.filter(academy_class__course_id=course_id)
             
         return queryset.order_by('-id')
 

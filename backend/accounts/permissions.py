@@ -87,11 +87,15 @@ def resolve_organization(request, view_kwargs=None):
                 org = Organization.objects.get(slug=slug_or_id)
             except Organization.DoesNotExist:
                 pass
+            except Exception as e:
+                logger.warning(f"Database error during resolve_organization: {e}")
         elif key_type == 'id':
             try:
                 org = Organization.objects.get(id=int(slug_or_id))
             except (Organization.DoesNotExist, ValueError):
                 pass
+            except Exception as e:
+                logger.warning(f"Database error during resolve_organization: {e}")
                 
     # Fallback: check if room_code is in view_kwargs
     if not org and view_kwargs and 'room_code' in view_kwargs:
@@ -104,6 +108,8 @@ def resolve_organization(request, view_kwargs=None):
                 org = academy_class.course.organization
         except Room.DoesNotExist:
             raise Http404("Room not found")
+        except Exception as e:
+            logger.warning(f"Database error during resolve_organization: {e}")
             
     # Fallback: check if recording token is in view_kwargs
     if not org and view_kwargs and 'token' in view_kwargs:
@@ -116,10 +122,15 @@ def resolve_organization(request, view_kwargs=None):
                 org = academy_class.course.organization
         except Recording.DoesNotExist:
             raise Http404("Recording not found")
+        except Exception as e:
+            logger.warning(f"Database error during resolve_organization: {e}")
 
     if org and request:
         request._resolved_organization_cache = org
     return org
+
+
+
 
 
 
