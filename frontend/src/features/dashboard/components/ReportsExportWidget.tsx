@@ -2,9 +2,12 @@ import { useState } from "react";
 import { reportsApi } from "../api/reports.api";
 import { Download, Award, Receipt, CalendarRange } from "lucide-react";
 import toast from "react-hot-toast";
+import { useOrgPermission } from "../../../hooks/useOrgPermission";
 
 export default function ReportsExportWidget() {
   const [activeExport, setActiveExport] = useState<string | null>(null);
+  const { hasPermission } = useOrgPermission();
+  const canViewFinancials = hasPermission("can_view_financials");
 
   const handleExport = async (type: "grades" | "financials" | "attendance") => {
     try {
@@ -35,13 +38,17 @@ export default function ReportsExportWidget() {
       icon: <CalendarRange className="w-6 h-6 text-emerald-400" />,
       colorClass: "hover:border-emerald-500/25",
     },
-    {
-      id: "financials" as const,
-      title: "Financial Statements Ledger",
-      description: "Generates cash flow lists combining student tuition invoices, settlement statuses, and approved organizational expense items.",
-      icon: <Receipt className="w-6 h-6 text-amber-400" />,
-      colorClass: "hover:border-amber-500/25",
-    },
+    ...(canViewFinancials
+      ? [
+          {
+            id: "financials" as const,
+            title: "Financial Statements Ledger",
+            description: "Generates cash flow lists combining student tuition invoices, settlement statuses, and approved organizational expense items.",
+            icon: <Receipt className="w-6 h-6 text-amber-400" />,
+            colorClass: "hover:border-amber-500/25",
+          },
+        ]
+      : []),
   ];
 
   return (

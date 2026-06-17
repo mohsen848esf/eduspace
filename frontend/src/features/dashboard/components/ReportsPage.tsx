@@ -11,43 +11,49 @@ import {
   Clock,
   RefreshCcw,
   ArrowLeft,
+  Mail,
+  DollarSign,
+  AlertCircle,
+  CheckCircle2,
+  Activity,
+  ShieldAlert,
+  Percent,
 } from "lucide-react";
 import AppShell from "../../../components/layout/AppShell";
 import Spinner from "../../../components/ui/Spinner";
 import ReportsExportWidget from "./ReportsExportWidget";
 import { reportsApi } from "../api/reports.api";
-import type {
-  CourseAverage,
-  StaffSessionCount,
-  ClassProgressRate,
-} from "../api/reports.api";
+import { crmApi } from "../api/crm.api";
 import { useLocale } from "../../../i18n/useLocale";
+import { useOrgPermission } from "../../../hooks/useOrgPermission";
+import type {
+  AtRiskStudent,
+  TeacherAnalytic,
+  MentorAnalytic,
+  CourseAnalytic,
+  ClassAnalytic,
+} from "../api/reports.api";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────── //
 
-const CHART_PALETTE = [
-  "#6366f1", // indigo
-  "#8b5cf6", // violet
-  "#06b6d4", // cyan
-  "#10b981", // emerald
-  "#f59e0b", // amber
-  "#ef4444", // red
-  "#ec4899", // pink
-  "#14b8a6", // teal
-];
-
-function gradeColor(grade: number): string {
-  if (grade >= 85) return "#10b981";
-  if (grade >= 70) return "#6366f1";
-  if (grade >= 55) return "#f59e0b";
-  return "#ef4444";
+function riskBadgeColor(flag: string): { bg: string; text: string } {
+  switch (flag) {
+    case "low_attendance":
+      return { bg: "rgba(239, 68, 68, 0.1)", text: "var(--red)" };
+    case "missing_assignments":
+      return { bg: "rgba(245, 158, 11, 0.1)", text: "var(--amber)" };
+    case "poor_grades":
+      return { bg: "rgba(139, 92, 246, 0.1)", text: "var(--brand)" };
+    default:
+      return { bg: "var(--s3)", text: "var(--t2)" };
+  }
 }
 
-function progressColor(rate: number): string {
-  if (rate >= 75) return "#10b981";
-  if (rate >= 50) return "#6366f1";
-  if (rate >= 25) return "#f59e0b";
-  return "#ef4444";
+function getAttendanceTrendColor(rate: number): string {
+  if (rate >= 85) return "#10b981"; // green
+  if (rate >= 70) return "#6366f1"; // indigo
+  if (rate >= 55) return "#f59e0b"; // amber
+  return "#ef4444"; // red
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────── //
@@ -63,7 +69,7 @@ interface KpiCardProps {
 function KpiCard({ icon, label, value, sub, accent }: KpiCardProps) {
   return (
     <div
-      className="relative overflow-hidden rounded-2xl bg-[var(--s1)] border border-[var(--b)] p-5 flex flex-col gap-3"
+      className="relative overflow-hidden rounded-2xl bg-[var(--s1)] border border-[var(--b)] p-5 flex flex-col gap-3 transition-all duration-300 hover:shadow-md"
       style={{ borderTop: `3px solid ${accent}` }}
     >
       <div
@@ -81,84 +87,17 @@ function KpiCard({ icon, label, value, sub, accent }: KpiCardProps) {
   );
 }
 
-// ─── Bar Chart (pure CSS/SVG) ─────────────────────────────────────────────── //
-
-interface BarItem {
-  label: string;
-  value: number;
-  color: string;
-}
-
-function HorizontalBarChart({ items, maxValue, unit = "" }: { items: BarItem[]; maxValue: number; unit?: string }) {
-  if (items.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-[var(--t3)]">
-        <BarChart2 className="w-10 h-10 mb-2 opacity-30" />
-        <p className="text-sm">No data available yet</p>
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-3">
-      {items.map((item, i) => {
-        const pct = maxValue > 0 ? Math.round((item.value / maxValue) * 100) : 0;
-        return (
-          <div key={i} className="group">
-            <div className="flex items-center justify-between mb-1">
-              <span
-                className="text-xs font-medium text-[var(--t1)] truncate max-w-[60%]"
-                title={item.label}
-              >
-                {item.label}
-              </span>
-              <span className="text-xs font-bold tabular-nums" style={{ color: item.color }}>
-                {item.value}{unit}
-              </span>
-            </div>
-            <div className="h-2 rounded-full bg-[var(--s3)] overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{
-                  width: `${pct}%`,
-                  background: `linear-gradient(90deg, ${item.color}cc, ${item.color})`,
-                }}
-              />
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── Progress Circle ─────────────────────────────────────────────────────── //
-
-function ProgressCircle({ rate, color, size = 64 }: { rate: number; color: string; size?: number }) {
-  const r = (size - 8) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ - (rate / 100) * circ;
-  return (
-    <svg width={size} height={size} className="rotate-[-90deg]">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--s3)" strokeWidth="6" />
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        fill="none"
-        stroke={color}
-        strokeWidth="6"
-        strokeDasharray={circ}
-        strokeDashoffset={offset}
-        strokeLinecap="round"
-        className="transition-all duration-700"
-      />
-    </svg>
-  );
-}
-
-// ─── Section Wrapper ─────────────────────────────────────────────────────── //
-
-function SectionCard({ title, subtitle, icon, children }: { title: string; subtitle?: string; icon: React.ReactNode; children: React.ReactNode }) {
+function SectionCard({
+  title,
+  subtitle,
+  icon,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div className="rounded-2xl bg-[var(--s1)] border border-[var(--b)] overflow-hidden">
       <div className="flex items-center gap-3 px-6 py-4 border-b border-[var(--b)]">
@@ -168,7 +107,7 @@ function SectionCard({ title, subtitle, icon, children }: { title: string; subti
           {subtitle && <p className="text-xs text-[var(--t2)] mt-0.5">{subtitle}</p>}
         </div>
       </div>
-      <div className="p-6">{children}</div>
+      <div className="p-6 overflow-x-auto">{children}</div>
     </div>
   );
 }
@@ -180,8 +119,13 @@ export default function ReportsPage() {
   const { language } = useLocale();
   const navigate = useNavigate();
   const [activeNav, setActiveNav] = useState("reports");
+  const [activeTab, setActiveTab] = useState<"overview" | "atRisk" | "staff" | "coursesClasses">("overview");
   const isFarsi = language === "fa";
 
+  const { hasPermission } = useOrgPermission();
+  const canViewFinancials = hasPermission("can_view_financials");
+
+  // Fetch H.7 Complete Metrics
   const {
     data: analytics,
     isLoading,
@@ -191,7 +135,15 @@ export default function ReportsPage() {
   } = useQuery({
     queryKey: ["analyticsSummary"],
     queryFn: reportsApi.getAnalyticsSummary,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // Fetch Finance Summary (Gated)
+  const { data: financeSummary, isLoading: isFinanceLoading } = useQuery({
+    queryKey: ["financeSummary"],
+    queryFn: crmApi.getFinanceSummary,
+    enabled: canViewFinancials,
+    staleTime: 1000 * 60 * 5,
   });
 
   const handleNavigate = (id: string) => {
@@ -209,32 +161,6 @@ export default function ReportsPage() {
     if (routes[id]) navigate(routes[id]);
   };
 
-  // ── derived chart data ──────────────────────────────────────────────────── //
-
-  const courseBarItems: BarItem[] = (analytics?.course_averages ?? [])
-    .sort((a, b) => b.avg_grade - a.avg_grade)
-    .slice(0, 8)
-    .map((c: CourseAverage, i: number) => ({
-      label: `${c.code} — ${c.title}`,
-      value: c.avg_grade,
-      color: gradeColor(c.avg_grade),
-    }));
-
-  const staffBarItems: BarItem[] = (analytics?.staff_session_counts ?? [])
-    .sort((a, b) => b.session_count - a.session_count)
-    .slice(0, 8)
-    .map((s: StaffSessionCount, i: number) => ({
-      label: `${s.full_name} (${s.role})`,
-      value: s.session_count,
-      color: CHART_PALETTE[i % CHART_PALETTE.length],
-    }));
-
-  const maxStaffSessions = staffBarItems.reduce((m, s) => Math.max(m, s.value), 1);
-
-  const classProgressItems = (analytics?.class_progress_rates ?? [])
-    .sort((a, b) => b.completion_rate - a.completion_rate)
-    .slice(0, 6) as ClassProgressRate[];
-
   // ── loading / error ─────────────────────────────────────────────────────── //
 
   if (isLoading) {
@@ -247,7 +173,7 @@ export default function ReportsPage() {
     );
   }
 
-  if (isError) {
+  if (isError || !analytics) {
     return (
       <AppShell activeId={activeNav} onNavigate={handleNavigate}>
         <div className="flex flex-col items-center justify-center h-64 gap-4">
@@ -263,7 +189,12 @@ export default function ReportsPage() {
     );
   }
 
-  const summary = analytics!;
+  const maxFinanceVal = canViewFinancials && financeSummary?.monthly_trends
+    ? Math.max(
+        ...financeSummary.monthly_trends.map((t) => Math.max(t.revenue, t.expense)),
+        1
+      )
+    : 1;
 
   return (
     <AppShell activeId={activeNav} onNavigate={handleNavigate}>
@@ -271,8 +202,8 @@ export default function ReportsPage() {
         className="p-6 max-w-7xl mx-auto space-y-8 fade-in"
         dir={isFarsi ? "rtl" : "ltr"}
       >
-        {/* ── Page header ── */}
-        <div className="flex items-start justify-between gap-4">
+        {/* ── Page Header ── */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate(-1)}
@@ -284,10 +215,10 @@ export default function ReportsPage() {
             <div>
               <h1 className="text-2xl font-bold text-[var(--t1)] flex items-center gap-2">
                 <BarChart2 className="w-6 h-6 text-[var(--brand)]" />
-                Analytics &amp; Reports
+                {t("nav.reports")}
               </h1>
               <p className="text-sm text-[var(--t2)] mt-1">
-                Multi-dimensional performance view · Last updated {new Date(summary.timestamp).toLocaleTimeString()}
+                Last updated {new Date(analytics.timestamp).toLocaleTimeString()}
               </p>
             </div>
           </div>
@@ -301,178 +232,521 @@ export default function ReportsPage() {
           </button>
         </div>
 
-        {/* ── KPI Row ── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KpiCard
-            icon={<Users className="w-5 h-5" />}
-            label="Active Students"
-            value={summary.active_students}
-            sub={`${summary.usage.students_count} total enrolled`}
-            accent="#6366f1"
-          />
-          <KpiCard
-            icon={<BookOpen className="w-5 h-5" />}
-            label="Live Sessions"
-            value={summary.active_sessions}
-            sub="Currently in progress"
-            accent="#10b981"
-          />
-          <KpiCard
-            icon={<Award className="w-5 h-5" />}
-            label="Avg. Exam Grade"
-            value={`${summary.average_grade}%`}
-            sub={`${summary.total_submissions} submissions total`}
-            accent="#f59e0b"
-          />
-          <KpiCard
-            icon={<TrendingUp className="w-5 h-5" />}
-            label="Storage Used"
-            value={`${summary.usage.storage_used_gb.toFixed(1)} GB`}
-            sub={`of ${summary.quota.max_storage_gb} GB quota`}
-            accent="#8b5cf6"
-          />
+        {/* ── Tab Switcher ── */}
+        <div className="flex border-b border-[var(--b)] gap-6 overflow-x-auto no-scrollbar">
+          {(["overview", "atRisk", "staff", "coursesClasses"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`pb-3 text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === tab
+                  ? "border-[var(--brand)] text-[var(--t1)]"
+                  : "border-transparent text-[var(--t3)] hover:text-[var(--t2)]"
+              }`}
+            >
+              {t(`reports.tabs.${tab}`)}
+            </button>
+          ))}
         </div>
 
-        {/* ── Charts grid ── */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* ── Tab Contents ── */}
 
-          {/* Course grade averages */}
-          <SectionCard
-            title="Course Grade Averages"
-            subtitle="Average homework submission grade per active course"
-            icon={<Award className="w-4 h-4" />}
-          >
-            <HorizontalBarChart
-              items={courseBarItems}
-              maxValue={100}
-              unit="%"
-            />
-          </SectionCard>
-
-          {/* Staff session activity */}
-          <SectionCard
-            title="Staff Session Activity"
-            subtitle="Total completed + live sessions hosted by each staff member"
-            icon={<Clock className="w-4 h-4" />}
-          >
-            <HorizontalBarChart
-              items={staffBarItems}
-              maxValue={maxStaffSessions}
-              unit=" sessions"
-            />
-          </SectionCard>
-        </div>
-
-        {/* ── Class completion rates ── */}
-        <SectionCard
-          title="Class Homework Completion"
-          subtitle="Percentage of submitted assignments vs total expected across active classes"
-          icon={<TrendingUp className="w-4 h-4" />}
-        >
-          {classProgressItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-[var(--t3)]">
-              <BarChart2 className="w-10 h-10 mb-2 opacity-30" />
-              <p className="text-sm">No class assignment data yet</p>
+        {/* 1. Overview Tab */}
+        {activeTab === "overview" && (
+          <div className="space-y-8">
+            {/* Organization KPIs */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-[var(--t2)] uppercase tracking-wider flex items-center gap-2">
+                <Activity className="w-4 h-4 text-[var(--brand)]" />
+                Organizational Indicators
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <KpiCard
+                  icon={<Users className="w-5 h-5" />}
+                  label={t("reports.org.students")}
+                  value={analytics.org_kpis.total_students || 0}
+                  accent="#6366f1"
+                />
+                <KpiCard
+                  icon={<Users className="w-5 h-5" />}
+                  label={t("reports.org.teachers")}
+                  value={analytics.org_kpis.total_teachers || 0}
+                  accent="#8b5cf6"
+                />
+                <KpiCard
+                  icon={<Users className="w-5 h-5" />}
+                  label={t("reports.org.mentors")}
+                  value={analytics.org_kpis.total_mentors || 0}
+                  accent="#06b6d4"
+                />
+                <KpiCard
+                  icon={<BookOpen className="w-5 h-5" />}
+                  label={t("reports.org.courses")}
+                  value={analytics.org_kpis.total_courses || 0}
+                  accent="#10b981"
+                />
+                <KpiCard
+                  icon={<BookOpen className="w-5 h-5" />}
+                  label={t("reports.org.classes")}
+                  value={analytics.org_kpis.total_classes || 0}
+                  accent="#f59e0b"
+                />
+                <KpiCard
+                  icon={<Clock className="w-5 h-5" />}
+                  label={t("reports.org.sessions")}
+                  value={analytics.org_kpis.total_sessions || 0}
+                  accent="#ef4444"
+                />
+              </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-              {classProgressItems.map((cls: ClassProgressRate) => {
-                const color = progressColor(cls.completion_rate);
-                return (
-                  <div
-                    key={cls.id}
-                    className="flex flex-col items-center gap-2 p-3 rounded-xl bg-[var(--s2)] hover:bg-[var(--s3)] transition-colors cursor-pointer group"
-                    onClick={() => navigate(`/academic/classes/${cls.id}`)}
-                    title={`${cls.name} — ${cls.completion_rate}% complete`}
-                  >
-                    <div className="relative">
-                      <ProgressCircle rate={cls.completion_rate} color={color} size={64} />
-                      <span
-                        className="absolute inset-0 flex items-center justify-center text-xs font-bold rotate-90"
-                        style={{ color }}
-                      >
-                        {cls.completion_rate}%
-                      </span>
-                    </div>
-                    <div className="text-center">
-                      <p
-                        className="text-xs font-semibold text-[var(--t1)] truncate max-w-[80px] group-hover:text-[var(--brand)] transition-colors"
-                        title={cls.name}
-                      >
-                        {cls.name}
-                      </p>
-                      <p className="text-[10px] text-[var(--t2)]">{cls.course_code}</p>
-                      <p className="text-[10px] text-[var(--t3)] mt-0.5">
-                        {cls.total_submitted}/{cls.total_assignments * cls.enrolled_count} submitted
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </SectionCard>
 
-        {/* ── Quota usage bar ── */}
-        <SectionCard
-          title="Organization Quota Usage"
-          subtitle="Current resource consumption vs. plan limits"
-          icon={<Users className="w-4 h-4" />}
-        >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              {
-                label: "Students",
-                used: summary.usage.students_count,
-                max: summary.quota.max_students,
-                unit: "",
-                color: "#6366f1",
-              },
-              {
-                label: "Storage",
-                used: summary.usage.storage_used_gb,
-                max: summary.quota.max_storage_gb,
-                unit: " GB",
-                color: "#8b5cf6",
-              },
-              {
-                label: "Recording Minutes",
-                used: summary.usage.recording_minutes_used,
-                max: summary.quota.max_recording_minutes,
-                unit: " min",
-                color: "#06b6d4",
-              },
-            ].map((q) => {
-              const pct = q.max > 0 ? Math.min(Math.round((q.used / q.max) * 100), 100) : 0;
-              const warningColor = pct >= 90 ? "#ef4444" : pct >= 70 ? "#f59e0b" : q.color;
-              return (
-                <div key={q.label}>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-[var(--t1)]">{q.label}</span>
-                    <span className="text-sm font-bold tabular-nums" style={{ color: warningColor }}>
-                      {typeof q.used === "number" && !Number.isInteger(q.used)
-                        ? q.used.toFixed(1)
-                        : q.used}{q.unit}
-                      <span className="text-[var(--t3)] font-normal"> / {q.max}{q.unit}</span>
-                    </span>
+            {/* Academic KPIs */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-[var(--t2)] uppercase tracking-wider flex items-center gap-2">
+                <Award className="w-4 h-4 text-[var(--brand)]" />
+                Academic Health Metrics
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <KpiCard
+                  icon={<Clock className="w-5 h-5" />}
+                  label={t("reports.academic.attendance")}
+                  value={`${analytics.academic_kpis.attendance_rate || 0}%`}
+                  accent="#10b981"
+                />
+                <KpiCard
+                  icon={<Percent className="w-5 h-5" />}
+                  label={t("reports.academic.completion")}
+                  value={`${analytics.academic_kpis.assignment_completion_rate || 0}%`}
+                  accent="#6366f1"
+                />
+                <KpiCard
+                  icon={<Award className="w-5 h-5" />}
+                  label={t("reports.academic.examGrade")}
+                  value={`${analytics.academic_kpis.average_grade || 0}%`}
+                  accent="#f59e0b"
+                />
+                <KpiCard
+                  icon={<Award className="w-5 h-5" />}
+                  label={t("reports.academic.assignGrade")}
+                  value={`${analytics.academic_kpis.average_assignment_grade || 0}%`}
+                  accent="#8b5cf6"
+                />
+                <KpiCard
+                  icon={<AlertCircle className="w-5 h-5" />}
+                  label={t("reports.academic.atRiskCount")}
+                  value={analytics.academic_kpis.at_risk_students_count || 0}
+                  accent="#ef4444"
+                />
+              </div>
+            </div>
+
+            {/* Finance KPIs (Gated) */}
+            {canViewFinancials && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-[var(--t2)] uppercase tracking-wider flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-emerald-500" />
+                  {t("reports.finance.title")}
+                </h3>
+                {isFinanceLoading ? (
+                  <div className="flex items-center justify-center p-8 bg-[var(--s1)] border border-[var(--b)] rounded-2xl">
+                    <Spinner />
                   </div>
-                  <div className="h-3 rounded-full bg-[var(--s3)] overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{
-                        width: `${pct}%`,
-                        background: `linear-gradient(90deg, ${warningColor}99, ${warningColor})`,
-                      }}
-                    />
+                ) : financeSummary ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-1 flex flex-col gap-4">
+                      <KpiCard
+                        icon={<DollarSign className="w-5 h-5" />}
+                        label={t("reports.finance.revenue")}
+                        value={`$${financeSummary.revenue.toLocaleString()}`}
+                        accent="#10b981"
+                      />
+                      <KpiCard
+                        icon={<DollarSign className="w-5 h-5" />}
+                        label={t("reports.finance.collected")}
+                        value={`$${(financeSummary.revenue - financeSummary.outstanding).toLocaleString()}`}
+                        accent="#06b6d4"
+                      />
+                      <KpiCard
+                        icon={<DollarSign className="w-5 h-5" />}
+                        label={t("reports.finance.outstanding")}
+                        value={`$${financeSummary.outstanding.toLocaleString()}`}
+                        accent="#f59e0b"
+                      />
+                      <KpiCard
+                        icon={<Percent className="w-5 h-5" />}
+                        label={t("reports.finance.collectionRate")}
+                        value={`${financeSummary.collection_rate || 0}%`}
+                        accent="#8b5cf6"
+                      />
+                    </div>
+                    {/* Visual Trend Chart */}
+                    <div className="lg:col-span-2 p-6 rounded-2xl bg-[var(--s1)] border border-[var(--b)] flex flex-col justify-between min-h-[300px]">
+                      <div>
+                        <h4 className="font-bold text-[var(--t1)] text-sm">{t("reports.finance.trend")}</h4>
+                        <p className="text-xs text-[var(--t2)] mt-0.5">Revenue vs Expenses (last 6 months)</p>
+                      </div>
+                      <div className="flex items-end justify-between gap-2 h-48 mt-4 border-b border-[var(--b)] pb-2 pt-4 px-2">
+                        {financeSummary.monthly_trends?.map((month, idx) => {
+                          const revPct = Math.round((month.revenue / maxFinanceVal) * 100);
+                          const expPct = Math.round((month.expense / maxFinanceVal) * 100);
+                          return (
+                            <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
+                              <div className="flex gap-1.5 items-end justify-center w-full h-full">
+                                {/* Revenue bar */}
+                                <div
+                                  style={{ height: `${revPct}%` }}
+                                  className="w-3 sm:w-5 bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-t transition-all duration-500 hover:opacity-85 cursor-pointer relative"
+                                  title={`Revenue: $${month.revenue}`}
+                                >
+                                  <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-[var(--s3)] text-[var(--t1)] text-[10px] py-0.5 px-1 rounded shadow opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                                    ${month.revenue.toLocaleString()}
+                                  </div>
+                                </div>
+                                {/* Expense bar */}
+                                <div
+                                  style={{ height: `${expPct}%` }}
+                                  className="w-3 sm:w-5 bg-gradient-to-t from-rose-600 to-rose-400 rounded-t transition-all duration-500 hover:opacity-85 cursor-pointer relative"
+                                  title={`Expense: $${month.expense}`}
+                                >
+                                  <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-[var(--s3)] text-[var(--t1)] text-[10px] py-0.5 px-1 rounded shadow opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                                    ${month.expense.toLocaleString()}
+                                  </div>
+                                </div>
+                              </div>
+                              <span className="text-xs font-semibold text-[var(--t2)] mt-1">{month.label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-xs text-[var(--t3)] mt-1">{pct}% used</p>
-                </div>
-              );
-            })}
+                ) : (
+                  <div className="p-6 rounded-2xl bg-[var(--s1)] border border-[var(--b)] text-center text-xs text-[var(--t3)]">
+                    No finance summary data available.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        </SectionCard>
+        )}
 
-        {/* ── CSV Exports ── */}
+        {/* 2. At-Risk Students Tab */}
+        {activeTab === "atRisk" && (
+          <SectionCard
+            title={t("reports.tabs.atRisk")}
+            subtitle="Students displaying low performance indicators according to H.7 definitions"
+            icon={<ShieldAlert className="w-5 h-5" />}
+          >
+            {!analytics.at_risk_students || analytics.at_risk_students.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+                <CheckCircle2 className="w-12 h-12 text-emerald-500" />
+                <div>
+                  <h4 className="font-bold text-[var(--t1)] text-md">Excellent Academic State!</h4>
+                  <p className="text-xs text-[var(--t2)] mt-1">{t("reports.atRisk.noStudents")}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs md:text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--b)] text-[var(--t3)] font-semibold uppercase tracking-wider text-[10px] md:text-xs">
+                      <th className="py-3 px-4">{t("reports.atRisk.student")}</th>
+                      <th className="py-3 px-4">{t("reports.academic.attendance")}</th>
+                      <th className="py-3 px-4">{t("reports.coursesClasses.submitted")}</th>
+                      <th className="py-3 px-4">{t("reports.coursesClasses.completion")}</th>
+                      <th className="py-3 px-4">{t("reports.atRisk.riskFlags")}</th>
+                      <th className="py-3 px-4 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--b)]/50 text-[var(--t1)]">
+                    {analytics.at_risk_students.map((student: AtRiskStudent) => (
+                      <tr key={student.user_id} className="hover:bg-[var(--s2)] transition-colors">
+                        <td className="py-4 px-4 font-semibold">
+                          <div>
+                            <p className="text-sm font-bold">{student.full_name}</p>
+                            <p className="text-xs text-[var(--t2)]">@{student.username}</p>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <span
+                            className={`font-bold tabular-nums ${
+                              student.attendance_rate < 75 ? "text-red-500" : "text-[var(--t1)]"
+                            }`}
+                          >
+                            {student.attendance_rate}%
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 tabular-nums">
+                          {student.missing_assignments_count > 0 ? (
+                            <span className="text-red-500 font-bold">
+                              {student.missing_assignments_count} missing
+                            </span>
+                          ) : (
+                            <span className="text-emerald-500">0</span>
+                          )}
+                        </td>
+                        <td className="py-4 px-4 font-bold tabular-nums">
+                          {student.avg_grade !== null ? (
+                            <span className={student.avg_grade < 60 ? "text-red-500" : ""}>
+                              {student.avg_grade}%
+                            </span>
+                          ) : (
+                            <span className="text-[var(--t3)]">N/A</span>
+                          )}
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex flex-wrap gap-1.5">
+                            {student.risk_flags.map((flag) => {
+                              const style = riskBadgeColor(flag);
+                              return (
+                                <span
+                                  key={flag}
+                                  style={{ background: style.bg, color: style.text }}
+                                  className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full"
+                                >
+                                  {t(`reports.atRisk.${flag === "low_attendance" ? "lowAttendance" : flag === "missing_assignments" ? "missingAssignments" : "poorGrades"}`)}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <a
+                            href={`mailto:${student.username}@acme.edu`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--b)] bg-[var(--s2)] text-xs font-semibold text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)] transition-all"
+                          >
+                            <Mail className="w-3.5 h-3.5" />
+                            Email
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+        )}
+
+        {/* 3. Staff Performance Tab */}
+        {activeTab === "staff" && (
+          <div className="space-y-6">
+            {/* Teacher Table */}
+            <SectionCard
+              title={t("reports.staff.teachersTitle")}
+              subtitle="Overview of assigned classes, sessions conducted, and active homework reviews pending feedback"
+              icon={<Users className="w-5 h-5" />}
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs md:text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--b)] text-[var(--t3)] font-semibold uppercase tracking-wider text-[10px] md:text-xs">
+                      <th className="py-3 px-4">{t("reports.staff.name")}</th>
+                      <th className="py-3 px-4">{t("reports.staff.classes")}</th>
+                      <th className="py-3 px-4">{t("reports.staff.students")}</th>
+                      <th className="py-3 px-4">{t("reports.staff.sessions")}</th>
+                      <th className="py-3 px-4">{t("reports.staff.pendingReviews")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--b)]/50 text-[var(--t1)]">
+                    {analytics.teacher_analytics?.map((teacher: TeacherAnalytic) => (
+                      <tr key={teacher.user_id} className="hover:bg-[var(--s2)] transition-colors">
+                        <td className="py-4 px-4 font-bold">{teacher.full_name}</td>
+                        <td className="py-4 px-4 tabular-nums">{teacher.classes_count}</td>
+                        <td className="py-4 px-4 tabular-nums">{teacher.students_count}</td>
+                        <td className="py-4 px-4 tabular-nums">{teacher.sessions_count}</td>
+                        <td className="py-4 px-4">
+                          <span
+                            className={`font-bold tabular-nums px-2.5 py-0.5 rounded-full ${
+                              teacher.pending_reviews > 0
+                                ? "bg-red-500/10 text-red-500"
+                                : "bg-emerald-500/10 text-emerald-500"
+                            }`}
+                          >
+                            {teacher.pending_reviews} pending
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </SectionCard>
+
+            {/* Mentor Table */}
+            <SectionCard
+              title={t("reports.staff.mentorsTitle")}
+              subtitle="Overview of mentored classes, active mentorship relationships, and follow-up work thresholds"
+              icon={<Users className="w-5 h-5" />}
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs md:text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--b)] text-[var(--t3)] font-semibold uppercase tracking-wider text-[10px] md:text-xs">
+                      <th className="py-3 px-4">{t("reports.staff.name")}</th>
+                      <th className="py-3 px-4">{t("reports.staff.students")}</th>
+                      <th className="py-3 px-4">{t("reports.staff.relationships")}</th>
+                      <th className="py-3 px-4">{t("reports.staff.atRisk")}</th>
+                      <th className="py-3 px-4">{t("reports.staff.workload")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--b)]/50 text-[var(--t1)]">
+                    {analytics.mentor_analytics?.map((mentor: MentorAnalytic) => (
+                      <tr key={mentor.user_id} className="hover:bg-[var(--s2)] transition-colors">
+                        <td className="py-4 px-4 font-bold">{mentor.full_name}</td>
+                        <td className="py-4 px-4 tabular-nums">{mentor.students_count}</td>
+                        <td className="py-4 px-4 tabular-nums">{mentor.active_relationships} classes</td>
+                        <td className="py-4 px-4">
+                          {mentor.at_risk_count > 0 ? (
+                            <span className="font-bold text-red-500 tabular-nums">
+                              {mentor.at_risk_count} students
+                            </span>
+                          ) : (
+                            <span className="text-emerald-500">0</span>
+                          )}
+                        </td>
+                        <td className="py-4 px-4">
+                          {mentor.follow_up_workload > 0 ? (
+                            <span className="font-bold text-amber-500 tabular-nums">
+                              {mentor.follow_up_workload} actions
+                            </span>
+                          ) : (
+                            <span className="text-emerald-500">None</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </SectionCard>
+          </div>
+        )}
+
+        {/* 4. Courses & Classes Tab */}
+        {activeTab === "coursesClasses" && (
+          <div className="space-y-6">
+            {/* Courses Table */}
+            <SectionCard
+              title={t("reports.coursesClasses.coursesTitle")}
+              subtitle="Consolidated stats per course code, enrollments, completion rates, and average grades"
+              icon={<BookOpen className="w-5 h-5" />}
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs md:text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--b)] text-[var(--t3)] font-semibold uppercase tracking-wider text-[10px] md:text-xs">
+                      <th className="py-3 px-4">{t("reports.coursesClasses.course")}</th>
+                      <th className="py-3 px-4">{t("reports.coursesClasses.enrollment")}</th>
+                      <th className="py-3 px-4">{t("reports.coursesClasses.completion")}</th>
+                      <th className="py-3 px-4">{t("reports.academic.attendance")}</th>
+                      <th className="py-3 px-4">{t("reports.academic.assignGrade")}</th>
+                      {canViewFinancials && <th className="py-3 px-4">{t("reports.coursesClasses.revenue")}</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--b)]/50 text-[var(--t1)]">
+                    {analytics.course_analytics?.map((course: CourseAnalytic) => (
+                      <tr
+                        key={course.id}
+                        className="hover:bg-[var(--s2)] transition-colors cursor-pointer"
+                        onClick={() => navigate(`/academic/courses/${course.id}`)}
+                      >
+                        <td className="py-4 px-4 font-bold">
+                          {course.code} — {course.title}
+                        </td>
+                        <td className="py-4 px-4 tabular-nums">{course.enrollment_count}</td>
+                        <td className="py-4 px-4 font-semibold tabular-nums">{course.completion_rate}%</td>
+                        <td className="py-4 px-4 tabular-nums">{course.attendance_average}%</td>
+                        <td className="py-4 px-4 font-bold tabular-nums">{course.avg_grade}%</td>
+                        {canViewFinancials && (
+                          <td className="py-4 px-4 text-emerald-500 font-bold tabular-nums">
+                            ${course.revenue_generated.toLocaleString()}
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </SectionCard>
+
+            {/* Classes Table */}
+            <SectionCard
+              title={t("reports.coursesClasses.classesTitle")}
+              subtitle="Enrolled students, assignment completion rates, attendance tracking, and revenue ledger summaries"
+              icon={<BookOpen className="w-5 h-5" />}
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs md:text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--b)] text-[var(--t3)] font-semibold uppercase tracking-wider text-[10px] md:text-xs">
+                      <th className="py-3 px-4">{t("reports.coursesClasses.class")}</th>
+                      <th className="py-3 px-4">{t("reports.coursesClasses.enrollment")}</th>
+                      <th className="py-3 px-4">{t("reports.coursesClasses.completion")}</th>
+                      <th className="py-3 px-4">{t("reports.coursesClasses.attendanceTrend")}</th>
+                      {canViewFinancials && <th className="py-3 px-4">{t("reports.coursesClasses.revenue")}</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--b)]/50 text-[var(--t1)]">
+                    {analytics.class_analytics?.map((cls: ClassAnalytic) => (
+                      <tr
+                        key={cls.id}
+                        className="hover:bg-[var(--s2)] transition-colors cursor-pointer"
+                        onClick={() => navigate(`/academic/classes/${cls.id}`)}
+                      >
+                        <td className="py-4 px-4 font-bold">
+                          <div>
+                            <p className="font-bold">{cls.name}</p>
+                            <p className="text-xs text-[var(--t2)] font-semibold">{cls.course_code}</p>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 tabular-nums">{cls.student_count} students</td>
+                        <td className="py-4 px-4 font-semibold tabular-nums">{cls.assignment_completion}%</td>
+                        <td className="py-4 px-4">
+                          {cls.attendance_trend && cls.attendance_trend.length > 0 ? (
+                            <div className="flex gap-1.5 items-center">
+                              {cls.attendance_trend.map((trend, tidx) => {
+                                const color = getAttendanceTrendColor(trend.rate);
+                                return (
+                                  <div
+                                    key={tidx}
+                                    style={{ background: color }}
+                                    className="w-3 h-3 rounded-full hover:scale-110 transition-transform relative group/dot"
+                                    title={`${trend.title}: ${trend.rate}%`}
+                                  >
+                                    <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-[var(--s3)] text-[var(--t1)] text-[10px] py-0.5 px-1.5 rounded shadow opacity-0 group-hover/dot:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+                                      {trend.title}: {trend.rate}%
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-[var(--t3)]">No sessions conducted</span>
+                          )}
+                        </td>
+                        {canViewFinancials && (
+                          <td className="py-4 px-4">
+                            <div>
+                              <p className="font-bold text-emerald-500 tabular-nums">
+                                Paid: ${cls.revenue_summary.paid.toLocaleString()}
+                              </p>
+                              <p className="text-xs text-amber-500 tabular-nums">
+                                O/S: ${cls.revenue_summary.outstanding.toLocaleString()}
+                              </p>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </SectionCard>
+          </div>
+        )}
+
+        {/* ── CSV Exporter Component ── */}
         <ReportsExportWidget />
       </div>
     </AppShell>

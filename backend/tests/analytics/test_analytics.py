@@ -221,3 +221,102 @@ class AnalyticsTestCase(APITestCase):
         self.assertIsNotNone(cls_rate, "Class rate entry not found")
         self.assertEqual(float(cls_rate['completion_rate']), 100.0)
         self.assertEqual(cls_rate['total_submitted'], 1)
+
+    def test_analytics_summary_kpis_completeness(self):
+        """
+        Verify that AnalyticsSummaryView returns the extended H.7 complete KPIs:
+        org_kpis, academic_kpis, at_risk_students, teacher_analytics,
+        mentor_analytics, course_analytics, class_analytics.
+        """
+        from assessments.models import Assignment, AssignmentSubmission
+        
+        # Add another student
+        student2 = User.objects.create_user(
+            username='student2',
+            email='student2@acme.edu',
+            password='securepassword123',
+            full_name='Second Student'
+        )
+        student_role = Role.objects.get(name='Student', organization=self.org)
+        OrgMember.objects.create(
+            organization=self.org,
+            user=student2,
+            role=student_role,
+            is_active=True
+        )
+        Enrollment.objects.create(
+            academy_class=self.class_instance,
+            student=student2
+        )
+        
+        # Create teacher member
+        teacher_role = Role.objects.create(
+            name='Teacher',
+            description='Teacher role',
+            organization=self.org
+        )
+        teacher_user = User.objects.create_user(
+            username='teacher_u',
+            email='teacher@acme.edu',
+            password='securepassword123',
+            full_name='Teacher Name'
+        )
+        OrgMember.objects.create(
+            organization=self.org,
+            user=teacher_user,
+            role=teacher_role,
+            is_active=True
+        )
+        # Assign to class
+        self.class_instance.teacher = teacher_user
+        self.class_instance.save()
+        
+        # Create assignment
+        assignment = Assignment.objects.create(
+            organization=self.org,
+            academy_class=self.class_instance,
+            title='H7 Assignment Completeness',
+            description='Test description'
+        )
+        
+        # Student 1 submits (grade 55.0 - poor grade)
+        AssignmentSubmission.objects.create(
+            assignment=assignment,
+            student=self.student,
+            grade=55.0
+        )
+        # Student 2 does not submit (missing assignment)
+
+        self.client.force_authenticate(user=self.owner)
+        url = reverse('analytics-summary')
+        response = self.client.get(url, HTTP_X_ORGANIZATION_SLUG='acme-academy')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Assert keys exist
+        self.assertIn('org_kpis', response.data)
+        self.assertIn('academic_kpis', response.data)
+        self.assertIn('at_risk_students', response.data)
+        self.assertIn('teacher_analytics', response.data)
+        self.assertIn('mentor_analytics', response.data)
+        self.assertIn('course_analytics', response.data)
+        self.assertIn('class_analytics', response.data)
+        
+        # Org KPIs assertions
+        self.assertEqual(response.data['org_kpis']['total_students'], 2)
+        self.assertEqual(response.data['org_kpis']['total_teachers'], 1)
+        self.assertEqual(response.data['org_kpis']['total_courses'], 1)
+        
+        # At-Risk Students assertions:
+        # Student 1 is at-risk (poor_grades = 55.0)
+        # Student 2 is at-risk (missing_assignments)
+        at_risk = response.data['at_risk_students']
+        self.assertEqual(len(at_risk), 2)
+        
+        # Teacher Analytics assertions: teacher_u has 1 class, 2 students
+        teachers = response.data['teacher_analytics']
+        teacher_u_data = next((t for t in teachers if t['user_id'] == teacher_user.id), None)
+        self.assertIsNotNone(teacher_u_data)
+        self.assertEqual(teacher_u_data['classes_count'], 1)
+        self.assertEqual(teacher_u_data['students_count'], 2)
+
