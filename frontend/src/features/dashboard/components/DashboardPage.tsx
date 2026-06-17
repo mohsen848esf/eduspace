@@ -14,6 +14,7 @@ import Spinner from "../../../components/ui/Spinner";
 import { Play, Calendar, Video, Clock, User, BookOpen, CreditCard, ChevronRight, Award } from "lucide-react";
 import { useNotificationsStore } from "../../auth/store/notificationsStore";
 import { assessmentsApi } from "../../assessments/api/assessments.api";
+import recordingsApi from "../../recordings/api/recordings.api";
 
 export default function DashboardPage() {
   const { t } = useTranslation(["dashboard"]);
@@ -66,6 +67,36 @@ export default function DashboardPage() {
     enabled: activeRole === "teacher" || activeRole === "admin",
   });
 
+  const { data: allAssessments = [], isLoading: loadingAssessments } = useQuery({
+    queryKey: ["all-assessments-student"],
+    queryFn: () => assessmentsApi.getAssessments(),
+    enabled: activeRole === "student",
+  });
+
+  const { data: studentSubmissions = [], isLoading: loadingStudentSubmissions } = useQuery({
+    queryKey: ["student-submissions"],
+    queryFn: () => assessmentsApi.getSubmissions(),
+    enabled: activeRole === "student",
+  });
+
+  const { data: allAssignments = [], isLoading: loadingAssignments } = useQuery({
+    queryKey: ["all-assignments-student"],
+    queryFn: () => assessmentsApi.getAssignments(),
+    enabled: activeRole === "student",
+  });
+
+  const { data: myAssignmentSubmissions = [], isLoading: loadingMyAssignmentSubmissions } = useQuery({
+    queryKey: ["my-assignment-submissions"],
+    queryFn: () => assessmentsApi.getAssignmentSubmissions(),
+    enabled: activeRole === "student",
+  });
+
+  const { data: recordingsData, isLoading: loadingRecordings } = useQuery({
+    queryKey: ["recordings-student"],
+    queryFn: () => recordingsApi.list({ published: true }),
+    enabled: activeRole === "student",
+  });
+
   const greeting = () => {
     const h = new Date().getHours();
     if (h < 12) return t("greeting.morning");
@@ -86,7 +117,7 @@ export default function DashboardPage() {
   const totalPendingRevenue = summaryData?.outstanding || 0;
   const totalExpense = summaryData?.expenses || 0;
 
-  const isDataLoading = loadingCourses || loadingClasses || loadingEnrollments || loadingSummary || loadingSessions || loadingAllSessions || ((activeRole === "teacher" || activeRole === "admin") && loadingSubmissions);
+  const isDataLoading = loadingCourses || loadingClasses || loadingEnrollments || loadingSummary || loadingSessions || loadingAllSessions || ((activeRole === "teacher" || activeRole === "admin") && loadingSubmissions) || (activeRole === "student" && (loadingAssessments || loadingStudentSubmissions || loadingAssignments || loadingMyAssignmentSubmissions || loadingRecordings));
 
   // Aggregated data for past 6 months
   const chartData = summaryData?.monthly_trends || [
@@ -184,6 +215,26 @@ export default function DashboardPage() {
   const myTaughtClasses = classes.filter((c) => c.teacher === user?.id);
 
   const recentActivity = notifications.slice(0, 5);
+
+  const enrolledClassIds = enrollments
+    .filter((e) => e.student === user?.id && e.is_active)
+    .map((e) => e.academy_class);
+
+  const studentSessions = allSessions.filter((s) => enrolledClassIds.includes(s.academy_class));
+
+  const upcomingExams = allAssessments.filter(
+    (a) => a.is_published && a.session && studentSessions.some((s) => s.id === a.session)
+  );
+
+  const pendingAssignments = allAssignments.filter(
+    (a) => !myAssignmentSubmissions.some((sub) => sub.assignment === a.id)
+  );
+
+  const gradedAssignmentSubmissions = myAssignmentSubmissions
+    .filter((sub) => sub.status === "graded" && sub.grade !== null)
+    .sort((a, b) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime());
+
+  const studentRecordings = recordingsData?.results || [];
 
   const formatRelativeTime = (ms: number) => {
     const diff = Math.max(0, Date.now() - ms);
@@ -401,6 +452,34 @@ export default function DashboardPage() {
             >
               <Award className="w-3.5 h-3.5" />
               {isFarsi ? "تصحیح تکالیف" : "Grade Now"}
+            </Link>
+          </div>
+        )}
+
+        {/* Pending Homework Widget (Student only) */}
+        {activeRole === "student" && pendingAssignments.length > 0 && (
+          <div className="relative overflow-hidden bg-gradient-to-r from-amber-500/10 to-amber-600/10 border border-amber-500/20 rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 group">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center flex-shrink-0 animate-pulse text-lg">
+                📝
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest flex items-center gap-1.5">
+                  {isFarsi ? "تکالیف انجام نشده" : "Pending Homework"}
+                </span>
+                <h3 className="text-md font-extrabold text-[var(--t1)] mt-1">
+                  {isFarsi
+                    ? `شما ${pendingAssignments.length} تکلیف انجام نشده دارید که باید تحویل دهید.`
+                    : `You have ${pendingAssignments.length} assignment${pendingAssignments.length > 1 ? "s" : ""} pending submission.`}
+                </h3>
+              </div>
+            </div>
+            <Link
+              to={`/academic/assignments/${pendingAssignments[0].id}`}
+              className="px-4 py-2 text-xs font-bold rounded-xl bg-amber-500 hover:bg-amber-600 text-white shadow-md transition-all active:scale-95 no-underline flex items-center gap-1.5"
+            >
+              <Award className="w-3.5 h-3.5" />
+              {isFarsi ? "ارسال پاسخ" : "Submit Now"}
             </Link>
           </div>
         )}
@@ -781,6 +860,152 @@ export default function DashboardPage() {
               </>
             )}
 
+            {/* Student Grade Tracker Chart */}
+            {activeRole === "student" && (
+              <div className="bg-[var(--s2)] rounded-xl p-5 border border-[var(--b)] col-span-full">
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h3 className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                      {isFarsi ? "روند نمرات و پیشرفت تحصیلی" : "Academic Progress (Grades)"}
+                    </h3>
+                    <p className="text-[10px] text-[var(--t3)] mt-0.5">
+                      {isFarsi ? "نمرات تکالیف نمره‌دهی شده" : "Grades of your graded assignments"}
+                    </p>
+                  </div>
+                </div>
+
+                {gradedAssignmentSubmissions.length === 0 ? (
+                  <div className="h-[200px] flex flex-col items-center justify-center gap-2 text-[var(--t3)] text-xs">
+                    <span className="text-2xl">📈</span>
+                    <span>{isFarsi ? "هنوز نمره‌ای برای تکالیف شما ثبت نشده است." : "No grades have been recorded yet."}</span>
+                  </div>
+                ) : (
+                  <div className="relative w-full overflow-x-auto scrollbar-none">
+                    <div className="min-w-[580px] h-[220px]">
+                      <svg className="w-full h-full" viewBox="0 0 600 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                          <linearGradient id="gradeGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="var(--brand)" stopOpacity="0.25" />
+                            <stop offset="100%" stopColor="var(--brand)" stopOpacity="0" />
+                          </linearGradient>
+                        </defs>
+
+                        {/* Horizontal Gridlines */}
+                        {[0, 25, 50, 75, 100].map((ratio) => {
+                          const y = 160 - (ratio * 130) / 100;
+                          return (
+                            <g key={ratio}>
+                              <line
+                                x1="50"
+                                y1={y}
+                                x2="550"
+                                y2={y}
+                                stroke="var(--b)"
+                                strokeWidth="1"
+                                strokeDasharray="4 4"
+                              />
+                              <text
+                                x="42"
+                                y={y + 3.5}
+                                fill="var(--t3)"
+                                fontSize="9"
+                                textAnchor="end"
+                                fontFamily="monospace"
+                              >
+                                {ratio}
+                              </text>
+                            </g>
+                          );
+                        })}
+
+                        {/* X Axis labels */}
+                        {gradedAssignmentSubmissions.map((sub, idx) => {
+                          const x = 50 + (idx * 500) / Math.max(1, gradedAssignmentSubmissions.length - 1);
+                          return (
+                            <text
+                              key={idx}
+                              x={x}
+                              y="185"
+                              fill="var(--t2)"
+                              fontSize="9"
+                              textAnchor="middle"
+                            >
+                              {sub.assignment_title && sub.assignment_title.length > 10
+                                ? sub.assignment_title.slice(0, 10) + "..."
+                                : sub.assignment_title || `HW ${idx + 1}`}
+                            </text>
+                          );
+                        })}
+
+                        {/* Line Path */}
+                        {gradedAssignmentSubmissions.length > 1 && (
+                          <>
+                            <path
+                              d={`M ${gradedAssignmentSubmissions
+                                .map((sub, idx) => {
+                                  const x = 50 + (idx * 500) / Math.max(1, gradedAssignmentSubmissions.length - 1);
+                                  const y = 160 - (parseFloat(sub.grade || "0") * 130) / 100;
+                                  return `${x} ${y}`;
+                                })
+                                .join(" L ")}`}
+                              fill="none"
+                              stroke="var(--brand)"
+                              strokeWidth="3"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d={`M ${gradedAssignmentSubmissions
+                                .map((sub, idx) => {
+                                  const x = 50 + (idx * 500) / Math.max(1, gradedAssignmentSubmissions.length - 1);
+                                  const y = 160 - (parseFloat(sub.grade || "0") * 130) / 100;
+                                  return `${x} ${y}`;
+                                })
+                                .join(" L ")} L ${
+                                50 +
+                                ((gradedAssignmentSubmissions.length - 1) * 500) /
+                                  Math.max(1, gradedAssignmentSubmissions.length - 1)
+                              } 160 L 50 160 Z`}
+                              fill="url(#gradeGrad)"
+                            />
+                          </>
+                        )}
+
+                        {/* Data Points */}
+                        {gradedAssignmentSubmissions.map((sub, idx) => {
+                          const x = 50 + (idx * 500) / Math.max(1, gradedAssignmentSubmissions.length - 1);
+                          const val = parseFloat(sub.grade || "0");
+                          const y = 160 - (val * 130) / 100;
+                          return (
+                            <g key={idx}>
+                              <circle
+                                cx={x}
+                                cy={y}
+                                r="4.5"
+                                fill="var(--s2)"
+                                stroke="var(--brand)"
+                                strokeWidth="2.5"
+                              />
+                              <text
+                                x={x}
+                                y={y - 8}
+                                fill="var(--brand-text)"
+                                fontSize="9"
+                                fontWeight="bold"
+                                textAnchor="middle"
+                              >
+                                {val}
+                              </text>
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Active Live Classes List */}
             {liveSessions.length > 0 && (
               <div className="bg-[var(--s2)] rounded-xl p-4 border border-[var(--b)] col-span-full">
@@ -857,6 +1082,131 @@ export default function DashboardPage() {
                         </div>
                       );
                     })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Upcoming Exams Card (Student Only) */}
+            {activeRole === "student" && (
+              <div className="bg-[var(--s2)] border border-[var(--b)] rounded-2xl overflow-hidden shadow-sm col-span-full">
+                <div className="p-4 border-b border-[var(--b)] flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-[var(--t3)] uppercase tracking-wide">
+                    {isFarsi ? "آزمون‌های پیش‌رو" : "Upcoming Exams"}
+                  </h3>
+                  <Link to="/academic/assessments" className="text-[10px] text-[var(--brand)] hover:underline no-underline font-semibold">
+                    {isFarsi ? "مشاهده همه" : "See All"} →
+                  </Link>
+                </div>
+
+                {upcomingExams.length === 0 ? (
+                  <div className="p-10 text-center flex flex-col items-center justify-center gap-2">
+                    <span className="text-3xl">📝</span>
+                    <h4 className="text-xs font-bold text-[var(--t1)]">{isFarsi ? "هیچ آزمونی برنامه‌ریزی نشده است" : "No upcoming exams"}</h4>
+                    <p className="text-[10px] text-[var(--t3)]">{isFarsi ? "آزمون‌های کلاسی فعال شما در این بخش نمایش داده می‌شوند." : "Class assessments will appear here."}</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-[var(--b)]">
+                    {upcomingExams.map((exam) => {
+                      const submission = studentSubmissions.find(s => s.assessment.id === exam.id);
+                      const isGraded = submission?.status === "graded";
+                      const isSubmitted = submission?.status === "submitted";
+                      const isStarted = submission?.status === "started";
+                      
+                      return (
+                        <div key={exam.id} className="p-4 hover:bg-[var(--s3)] transition-colors flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-[var(--brand)]/10 text-[var(--brand)] flex items-center justify-center flex-shrink-0 text-xl font-bold">
+                              📝
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-bold text-[var(--t1)]">{exam.title}</h4>
+                              <p className="text-[10px] text-[var(--t3)] mt-0.5">
+                                {exam.session_title} • {exam.duration_minutes} {isFarsi ? "دقیقه" : "mins"}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {isGraded ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--green)]/10 text-[var(--green)]">
+                                {isFarsi ? `نمره: ${submission.score}` : `Grade: ${submission.score}`}
+                              </span>
+                            ) : isSubmitted ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--amber)]/10 text-[var(--amber)]">
+                                {isFarsi ? "تحویل داده شده" : "Submitted"}
+                              </span>
+                            ) : isStarted ? (
+                              <Link
+                                to={`/assessments/take/${submission.id}`}
+                                className="px-3 py-1.5 text-[10px] font-semibold rounded-lg bg-[var(--brand)] text-white hover:brightness-110 transition-all cursor-pointer no-underline text-center"
+                              >
+                                {isFarsi ? "ادامه آزمون" : "Resume"}
+                              </Link>
+                            ) : (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const sub = await assessmentsApi.startAssessment(exam.id);
+                                    navigate(`/assessments/take/${sub.id}`);
+                                  } catch (err) {
+                                    console.error(err);
+                                  }
+                                }}
+                                className="px-3 py-1.5 text-[10px] font-semibold rounded-lg bg-[var(--brand)] text-white hover:brightness-110 transition-all cursor-pointer no-underline text-center border-none"
+                              >
+                                {isFarsi ? "شروع آزمون" : "Start"}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Class Recordings Shelf (Student Only) */}
+            {activeRole === "student" && (
+              <div className="bg-[var(--s2)] rounded-xl p-5 border border-[var(--b)] col-span-full flex flex-col gap-4">
+                <h3 className="text-xs font-bold text-[var(--t3)] uppercase tracking-wide">
+                  {isFarsi ? "ویدیوهای ضبط‌شده کلاس‌های من" : "Class Recordings"}
+                </h3>
+                {studentRecordings.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-[var(--t3)]">
+                    {isFarsi ? "هیچ فایل ضبط‌شده‌ای برای شما در دسترس نیست." : "No recordings available currently."}
+                  </div>
+                ) : (
+                  <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3 scrollbar-thin scrollbar-thumb-[var(--b)]">
+                    {studentRecordings.map((rec) => (
+                      <div
+                        key={rec.public_token}
+                        className="min-w-[280px] md:min-w-[320px] snap-start bg-[var(--s3)] border border-[var(--b)] hover:border-[var(--brand)] transition-all rounded-2xl p-5 flex flex-col justify-between gap-4"
+                      >
+                        <div>
+                          <div className="flex justify-between items-start">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--cyan)]/10 text-[var(--cyan)] uppercase tracking-wider">
+                              {rec.quality}
+                            </span>
+                            <span className="text-[10px] font-semibold text-[var(--t3)]">
+                              ⏱️ {Math.round(rec.duration_seconds / 60)} {isFarsi ? "دقیقه" : "mins"}
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-extrabold text-[var(--t1)] mt-2">{rec.room_name || rec.room_code}</h4>
+                          <p className="text-[10px] text-[var(--t3)] mt-0.5">
+                            {isFarsi ? "توسط " : "By "} {rec.owner_full_name}
+                          </p>
+                        </div>
+                        <div className="flex justify-end border-t border-[var(--b)] pt-3 mt-2">
+                          <Link
+                            to={`/recordings/${rec.public_token}`}
+                            className="text-[11px] font-semibold text-[var(--brand)] hover:underline no-underline"
+                          >
+                            {isFarsi ? "مشاهده فیلم ضبط‌شده" : "Watch Recording"} →
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
