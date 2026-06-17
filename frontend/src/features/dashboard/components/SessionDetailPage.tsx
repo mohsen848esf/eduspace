@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import { sessionsApi } from "../../sessions/api/sessions.api";
+import recordingsApi from "../../recordings/api/recordings.api";
 import {
   useSession,
   useSessionAttendance,
@@ -59,6 +60,13 @@ export default function SessionDetailPage() {
     queryKey: ["enrollments"],
     queryFn: crmApi.getEnrollments,
   });
+
+  const { data: recordingsData } = useQuery({
+    queryKey: ["session-recordings", session?.active_room_code],
+    queryFn: () => recordingsApi.list({ room_code: session?.active_room_code || undefined }),
+    enabled: !!session?.active_room_code,
+  });
+  const sessionRecording = recordingsData?.results?.find(r => r.room_code === session?.active_room_code);
 
   // Mutations & hooks
   const { updateSingle, updateBulk } = useUpdateAttendance(id);
@@ -379,6 +387,18 @@ export default function SessionDetailPage() {
                   <Video className="w-4 h-4" />
                   <span>{isFarsi ? "ورود به کلاس زنده" : "Join Room"}</span>
                 </Link>
+              )}
+
+              {session.status === "completed" && sessionRecording && (
+                <div className="flex flex-col gap-2 mt-2">
+                  <Link
+                    to={`/recordings/${sessionRecording.public_token}`}
+                    className="inline-flex items-center justify-center gap-2 px-4 h-10 font-bold text-sm rounded-xl bg-[var(--brand)] text-[var(--brand-text)] hover:brightness-110 transition-all cursor-pointer no-underline w-full"
+                  >
+                    <Video className="w-4 h-4" />
+                    <span>{isFarsi ? "تماشای فیلم ضبط‌شده جلسه" : "Watch Session Recording"}</span>
+                  </Link>
+                </div>
               )}
             </div>
 

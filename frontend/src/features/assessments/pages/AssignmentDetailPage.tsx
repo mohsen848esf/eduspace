@@ -12,7 +12,7 @@ import { Modal, ModalHeader, ModalTitle, ModalBody } from "../../../components/u
 import Spinner from "../../../components/ui/Spinner";
 import AppShell from "../../../components/layout/AppShell";
 import { useLocale } from "../../../i18n/useLocale";
-import { FileText, Calendar, Download, CheckCircle, Clock, Award, ShieldAlert, ArrowLeft } from "lucide-react";
+import { FileText, Calendar, Download, CheckCircle, Clock, Award, ShieldAlert, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import InspectionDrawer from "../../../components/ui/InspectionDrawer";
 
 export default function AssignmentDetailPage() {
@@ -112,11 +112,13 @@ export default function AssignmentDetailPage() {
   const gradeMutation = useMutation({
     mutationFn: ({ subId, data }: { subId: number; data: { grade: number; feedback: string } }) =>
       assessmentsApi.gradeAssignmentSubmission(subId, data),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["assignment-submissions-all", id] });
       toast.success(isFarsi ? "نمره با موفقیت ثبت شد" : "Submission graded successfully!");
-      setIsGradingOpen(false);
-      setSelectedSubmission(null);
+      setSelectedSubmission((prev: any) => ({
+        ...prev,
+        ...data,
+      }));
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ثبت نمره" : "Failed to save grade"));
@@ -140,6 +142,18 @@ export default function AssignmentDetailPage() {
     setGrade(sub.grade || "100");
     setFeedback(sub.feedback || "");
     setIsGradingOpen(true);
+  };
+
+  const currentIndex = submissions.findIndex((s) => s.id === selectedSubmission?.id);
+  const prevIndex = currentIndex > 0 ? currentIndex - 1 : -1;
+  const nextIndex = currentIndex !== -1 && currentIndex < submissions.length - 1 ? currentIndex + 1 : -1;
+
+  const navigateToSubmission = (index: number) => {
+    if (index < 0 || index >= submissions.length) return;
+    const nextSub = submissions[index];
+    setSelectedSubmission(nextSub);
+    setGrade(nextSub.grade || "100");
+    setFeedback(nextSub.feedback || "");
   };
 
   // ── Loading state ───────────────────────────────────────────────
@@ -451,6 +465,35 @@ export default function AssignmentDetailPage() {
             </ModalTitle>
           </ModalHeader>
           <ModalBody>
+            {currentIndex !== -1 && (
+              <div className="flex justify-between items-center pb-3 border-b border-[var(--b)] mb-4">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="xs"
+                  disabled={prevIndex === -1}
+                  onClick={() => navigateToSubmission(prevIndex)}
+                  className="flex items-center gap-1.5"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>{isFarsi ? "قبلی" : "Previous"}</span>
+                </Button>
+                <span className="text-xs text-[var(--t3)] font-semibold">
+                  {isFarsi ? `پاسخ ${currentIndex + 1} از ${submissions.length}` : `Submission ${currentIndex + 1} of ${submissions.length}`}
+                </span>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="xs"
+                  disabled={nextIndex === -1}
+                  onClick={() => navigateToSubmission(nextIndex)}
+                  className="flex items-center gap-1.5"
+                >
+                  <span>{isFarsi ? "بعدی" : "Next"}</span>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
             <form onSubmit={handleGradeSubmit} className="flex flex-col gap-4">
               
               {selectedSubmission?.submission_file && (
