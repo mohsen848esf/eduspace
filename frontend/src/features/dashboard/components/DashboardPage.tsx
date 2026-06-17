@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
@@ -8,8 +8,10 @@ import { useRoom } from "../../room/hooks/useRoom";
 import { useLocale } from "../../../i18n/useLocale";
 import { useOrgPermission } from "../../../hooks/useOrgPermission";
 import { useSessions } from "../../sessions/hooks/useSessions";
+import { sessionsApi } from "../../sessions/api/sessions.api";
 import { crmApi } from "../api/crm.api";
 import Spinner from "../../../components/ui/Spinner";
+import { Play, Calendar, Video, Clock, User, BookOpen, CreditCard, ChevronRight } from "lucide-react";
 
 export default function DashboardPage() {
   const { t } = useTranslation(["dashboard"]);
@@ -51,6 +53,11 @@ export default function DashboardPage() {
 
   const { data: liveSessions = [], isLoading: loadingSessions } = useSessions(undefined, "live");
 
+  const { data: allSessions = [], isLoading: loadingAllSessions } = useQuery({
+    queryKey: ["sessions-all"],
+    queryFn: () => sessionsApi.getSessions(),
+  });
+
   const greeting = () => {
     const h = new Date().getHours();
     if (h < 12) return t("greeting.morning");
@@ -71,7 +78,7 @@ export default function DashboardPage() {
   const totalPendingRevenue = summaryData?.outstanding || 0;
   const totalExpense = summaryData?.expenses || 0;
 
-  const isDataLoading = loadingCourses || loadingClasses || loadingEnrollments || loadingSummary || loadingSessions;
+  const isDataLoading = loadingCourses || loadingClasses || loadingEnrollments || loadingSummary || loadingSessions || loadingAllSessions;
 
   // Aggregated data for past 6 months
   const chartData = summaryData?.monthly_trends || [
@@ -98,6 +105,67 @@ export default function DashboardPage() {
   const revenueArea = `${revenuePath} L ${getX(5)} 210 L ${getX(0)} 210 Z`;
   const expenseArea = `${expensePath} L ${getX(5)} 210 L ${getX(0)} 210 Z`;
 
+  // Next Up Session Logic
+  const scheduledSessions = allSessions
+    .filter((s) => s.status === "scheduled" && s.scheduled_start && new Date(s.scheduled_start) > new Date())
+    .sort((a, b) => new Date(a.scheduled_start!).getTime() - new Date(b.scheduled_start!).getTime());
+
+  const nextSession = scheduledSessions[0] || null;
+
+  const [countdownText, setCountdownText] = useState("");
+
+  const updateCountdown = () => {
+    if (!nextSession || !nextSession.scheduled_start) {
+      setCountdownText("");
+      return;
+    }
+    const diff = new Date(nextSession.scheduled_start).getTime() - new Date().getTime();
+    if (diff <= 0) {
+      setCountdownText(isFarsi ? "هم‌اکنون شروع شده" : "Starts now");
+    } else if (diff < 300000) {
+      setCountdownText(isFarsi ? "به‌زودی شروع می‌شود" : "Starting soon");
+    } else if (diff < 3600000) {
+      const mins = Math.floor(diff / 60000);
+      setCountdownText(isFarsi ? `شروع در ${mins} دقیقه` : `Starts in ${mins} minutes`);
+    } else if (diff < 86400000) {
+      const hrs = Math.floor(diff / 3600000);
+      const mins = Math.floor((diff % 3600000) / 60000);
+      setCountdownText(
+        isFarsi
+          ? `شروع در ${hrs} ساعت و ${mins} دقیقه`
+          : `Starts in ${hrs} hours, ${mins} minutes`
+      );
+    } else {
+      const dateVal = new Date(nextSession.scheduled_start);
+      setCountdownText(
+        dateVal.toLocaleDateString(localeTag, {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+        }) +
+          " " +
+          dateVal.toLocaleTimeString(localeTag, {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+      );
+    }
+  };
+
+  useEffect(() => {
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 60000);
+    return () => clearInterval(interval);
+  }, [nextSession, language]);
+
+  const liveSession = liveSessions[0] || null;
+
+  // Upcoming Agenda logic
+  const upcomingSessions = allSessions
+    .filter((s) => s.status === "scheduled" && s.scheduled_start && new Date(s.scheduled_start) > new Date())
+    .sort((a, b) => new Date(a.scheduled_start!).getTime() - new Date(b.scheduled_start!).getTime())
+    .slice(0, 5);
+
   return (
     <AppShell
       title={t("title")}
@@ -106,8 +174,36 @@ export default function DashboardPage() {
       onNavigate={setActiveNav}
     >
       <div className="flex flex-col gap-5 md:gap-6 fade-in">
-        {/* Greeting */}
-        <div>
+        {/* Live Now Banner */}
+        {liveSession && (
+          <div className="relative overflow-hidden bg-gradient-to-r from-red-500/10 to-[var(--brand)]/10 border border-red-500/20 rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 group">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center flex-shrink-0 animate-pulse text-lg">
+                🔴
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest flex items-center gap-1.5">
+                  {isFarsi ? "کلاس زنده در حال برگزاری است" : "Active Class Live Now"}
+                </span>
+                <h3 className="text-md font-extrabold text-[var(--t1)] mt-1">{liveSession.title}</h3>
+                <p className="text-xs text-[var(--t2)] mt-0.5">
+                  {liveSession.academy_class_name} • {isFarsi ? "مدرس:" : "Host:"} {liveSession.host_name}
+                </p>
+              </div>
+            </div>
+            <Link
+              to={`/room/${liveSession.active_room_code}`}
+              className="px-4 py-2 text-xs font-bold rounded-xl bg-red-500 hover:bg-red-600 text-white shadow-md transition-all active:scale-95 no-underline flex items-center gap-1.5"
+            >
+              <Video className="w-3.5 h-3.5" />
+              {isFarsi ? "ورود به کلاس" : "Join Class"}
+            </Link>
+          </div>
+        )}
+
+        {/* Greeting & Info card */}
+        <div className="bg-[var(--s2)] border border-[var(--b)] rounded-2xl p-6 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-[var(--brand)]/5 rounded-full blur-3xl pointer-events-none" />
           <h2 className="text-xl md:text-2xl font-bold text-[var(--t1)]">
             {greeting()}, {user?.full_name || user?.username} 👋
           </h2>
@@ -119,37 +215,161 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Quick actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[
-            {
-              icon: "📹",
-              labelKey: "actions.startCall",
-              nav: "calls",
-              action: () =>
-                createRoom({
-                  name: t("roomDefault", {
-                    name: user?.full_name || user?.username || "",
-                  }),
-                  max_participants: 20,
-                  is_recorded: false,
-                }),
-            },
-            { icon: "📝", labelKey: "actions.newExam", nav: "exams", action: () => navigate("/academic/assessments") },
-            { icon: "🎬", labelKey: "actions.recordings", nav: "recordings", action: () => navigate("/recordings") },
-          ].map((item) => (
-            <button
-              key={item.nav}
-              onClick={item.action || (() => setActiveNav(item.nav))}
-              disabled={roomLoading}
-              className="flex flex-col items-center gap-2 p-4 md:p-5 min-h-[88px] bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none disabled:opacity-50"
-            >
-              <span className="text-2xl md:text-3xl">{item.icon}</span>
-              <span className="text-xs md:text-sm font-medium text-[var(--t2)] text-center">
-                {t(item.labelKey)}
+        {/* Next Up Session Hero */}
+        {nextSession && (
+          <div className="bg-[var(--s2)] border border-[var(--b)] rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--brand)]/10 rounded-full blur-3xl pointer-events-none group-hover:bg-[var(--brand)]/15 transition-all duration-300" />
+            <div className="flex items-start gap-4 z-10">
+              <div className="w-12 h-12 rounded-xl bg-[var(--brand)]/10 text-[var(--brand)] flex items-center justify-center flex-shrink-0 text-xl font-bold">
+                📅
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-[var(--brand-text)] uppercase tracking-wider">
+                  {isFarsi ? "جلسه بعدی شما" : "Your Next Session"}
+                </span>
+                <h3 className="text-base font-extrabold text-[var(--t1)] mt-1">{nextSession.title}</h3>
+                <p className="text-xs text-[var(--t2)] mt-0.5">
+                  {nextSession.academy_class_name} • {isFarsi ? "مدرس:" : "Host:"} {nextSession.host_name}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col md:items-end gap-1.5 z-10 self-stretch md:self-auto border-t md:border-none border-[var(--b)] pt-3 md:pt-0 mt-1 md:mt-0">
+              <span className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider">
+                {isFarsi ? "زمان باقی‌مانده" : "Time Remaining"}
               </span>
-            </button>
-          ))}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-black text-amber-500 px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  {countdownText}
+                </span>
+                <Link to={`/academic/sessions/${nextSession.id}`}>
+                  <button className="p-2 rounded-lg bg-[var(--s3)] border border-[var(--b)] hover:border-[var(--brand)] text-[var(--t1)] transition-all cursor-pointer">
+                    <ChevronRight className="w-4 h-4 transform rtl:rotate-180" />
+                  </button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Quick actions (Role-Aware) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {canManageCRM ? (
+            /* Admin / Teacher Actions */
+            <>
+              <button
+                onClick={() =>
+                  createRoom({
+                    name: t("roomDefault", {
+                      name: user?.full_name || user?.username || "",
+                    }),
+                    max_participants: 20,
+                    is_recorded: false,
+                  })
+                }
+                disabled={roomLoading}
+                className="flex flex-col items-center gap-2 p-4 bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none disabled:opacity-50 group hover:ring-1 hover:ring-[var(--brand)]/30"
+              >
+                <div className="w-10 h-10 rounded-full bg-[var(--brand)]/10 text-[var(--brand)] flex items-center justify-center text-lg transition-transform group-hover:scale-110">
+                  <Video className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-semibold text-[var(--t2)] text-center">
+                  {isFarsi ? "شروع کلاس زنده" : "Start Live Class"}
+                </span>
+              </button>
+
+              <button
+                onClick={() => navigate("/academic/sessions")}
+                className="flex flex-col items-center gap-2 p-4 bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none group hover:ring-1 hover:ring-[var(--brand)]/30"
+              >
+                <div className="w-10 h-10 rounded-full bg-[var(--cyan)]/10 text-[var(--cyan)] flex items-center justify-center text-lg transition-transform group-hover:scale-110">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-semibold text-[var(--t2)] text-center">
+                  {isFarsi ? "برنامه‌ریزی جلسه" : "Schedule Session"}
+                </span>
+              </button>
+
+              <button
+                onClick={() => navigate("/academic/classes")}
+                className="flex flex-col items-center gap-2 p-4 bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none group hover:ring-1 hover:ring-[var(--brand)]/30"
+              >
+                <div className="w-10 h-10 rounded-full bg-[var(--green)]/10 text-[var(--green)] flex items-center justify-center text-lg transition-transform group-hover:scale-110">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-semibold text-[var(--t2)] text-center">
+                  {isFarsi ? "ایجاد تکلیف جدید" : "Create Homework"}
+                </span>
+              </button>
+
+              <button
+                onClick={() => navigate("/finance/ledger")}
+                className="flex flex-col items-center gap-2 p-4 bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none group hover:ring-1 hover:ring-[var(--brand)]/30"
+              >
+                <div className="w-10 h-10 rounded-full bg-[var(--amber)]/10 text-[var(--amber)] flex items-center justify-center text-lg transition-transform group-hover:scale-110">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-semibold text-[var(--t2)] text-center">
+                  {isFarsi ? "دفتر مالی" : "Financial Ledger"}
+                </span>
+              </button>
+            </>
+          ) : (
+            /* Student Actions */
+            <>
+              <button
+                onClick={() => {
+                  if (liveSession) navigate(`/room/${liveSession.active_room_code}`);
+                }}
+                disabled={!liveSession}
+                className="flex flex-col items-center gap-2 p-4 bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none disabled:opacity-50 disabled:cursor-not-allowed group hover:ring-1 hover:ring-[var(--brand)]/30"
+              >
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg transition-transform group-hover:scale-110 ${
+                  liveSession ? "bg-red-500/10 text-red-500 animate-pulse" : "bg-[var(--t3)]/10 text-[var(--t3)]"
+                }`}>
+                  <Video className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-semibold text-[var(--t2)] text-center">
+                  {isFarsi ? "ورود به کلاس فعال" : "Join Active Room"}
+                </span>
+              </button>
+
+              <button
+                onClick={() => navigate("/academic/classes")}
+                className="flex flex-col items-center gap-2 p-4 bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none group hover:ring-1 hover:ring-[var(--brand)]/30"
+              >
+                <div className="w-10 h-10 rounded-full bg-[var(--green)]/10 text-[var(--green)] flex items-center justify-center text-lg transition-transform group-hover:scale-110">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-semibold text-[var(--t2)] text-center">
+                  {isFarsi ? "تکالیف من" : "My Homework"}
+                </span>
+              </button>
+
+              <button
+                onClick={() => navigate("/recordings")}
+                className="flex flex-col items-center gap-2 p-4 bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none group hover:ring-1 hover:ring-[var(--brand)]/30"
+              >
+                <div className="w-10 h-10 rounded-full bg-[var(--cyan)]/10 text-[var(--cyan)] flex items-center justify-center text-lg transition-transform group-hover:scale-110">
+                  <Play className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-semibold text-[var(--t2)] text-center">
+                  {isFarsi ? "ضبط کلاس‌ها" : "Class Recordings"}
+                </span>
+              </button>
+
+              <button
+                onClick={() => navigate("/finance/ledger")}
+                className="flex flex-col items-center gap-2 p-4 bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none group hover:ring-1 hover:ring-[var(--brand)]/30"
+              >
+                <div className="w-10 h-10 rounded-full bg-[var(--amber)]/10 text-[var(--amber)] flex items-center justify-center text-lg transition-transform group-hover:scale-110">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-semibold text-[var(--t2)] text-center">
+                  {isFarsi ? "فاکتورهای من" : "My Invoices"}
+                </span>
+              </button>
+            </>
+          )}
         </div>
 
         {/* Overview Stats Dashboard */}
@@ -406,6 +626,60 @@ export default function DashboardPage() {
                 </div>
               </div>
             )}
+
+            {/* Upcoming Sessions Agenda */}
+            <div className="bg-[var(--s2)] border border-[var(--b)] rounded-2xl overflow-hidden shadow-sm col-span-full">
+              <div className="p-4 border-b border-[var(--b)] flex items-center justify-between">
+                <h3 className="text-xs font-bold text-[var(--t3)] uppercase tracking-wide">
+                  {isFarsi ? "برنامه جلسات پیش‌رو" : "Upcoming Sessions"}
+                </h3>
+                <Link to="/academic/sessions" className="text-[10px] text-[var(--brand)] hover:underline no-underline font-semibold">
+                  {isFarsi ? "مشاهده همه" : "See All"} →
+                </Link>
+              </div>
+
+              {upcomingSessions.length === 0 ? (
+                <div className="p-10 text-center flex flex-col items-center justify-center gap-2">
+                  <span className="text-3xl">📭</span>
+                  <h4 className="text-xs font-bold text-[var(--t1)]">{isFarsi ? "هیچ جلسه‌ای برنامه‌ریزی نشده است" : "No upcoming sessions"}</h4>
+                  <p className="text-[10px] text-[var(--t3)]">{isFarsi ? "لیست جلسات برنامه‌ریزی شده در این بخش نمایش داده می‌شود." : "Scheduled sessions will appear here."}</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-[var(--b)]">
+                  {upcomingSessions.map((s) => {
+                    const dateVal = new Date(s.scheduled_start!);
+                    return (
+                      <div key={s.id} className="p-4 hover:bg-[var(--s3)] transition-colors flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="px-2.5 py-1.5 rounded-lg bg-[var(--s3)] border border-[var(--b)] flex flex-col items-center justify-center min-w-[50px]">
+                            <span className="text-[10px] font-bold text-[var(--brand-text)]">
+                              {dateVal.toLocaleDateString(localeTag, { weekday: "short" })}
+                            </span>
+                            <span className="text-sm font-black text-[var(--t1)]">
+                              {dateVal.getDate()}
+                            </span>
+                          </div>
+                          <div>
+                            <Link to={`/academic/sessions/${s.id}`} className="text-xs font-bold text-[var(--t1)] hover:text-[var(--brand)] transition-colors no-underline">
+                              {s.title}
+                            </Link>
+                            <p className="text-[10px] text-[var(--t3)] mt-0.5">
+                              {s.academy_class_name} • {isFarsi ? "مدرس:" : "Host:"} {s.host_name}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-semibold text-[var(--t2)] flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-[var(--t3)]" />
+                            {dateVal.toLocaleTimeString(localeTag, { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
             {/* Academy General context info */}
             <div className="bg-[var(--s2)] rounded-xl p-4 border border-[var(--b)] col-span-full">
