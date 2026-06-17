@@ -685,8 +685,32 @@ export default function LedgerPage() {
                               {inv.invoice_number || `#${inv.id}`}
                             </Link>
                           </td>
-                          <td className="p-4 text-[var(--t1)]">{inv.student_full_name || inv.student_username}</td>
-                          <td className="p-4 text-[var(--t2)]">{inv.class_name || "—"}</td>
+                          <td className="p-4">
+                            <button
+                              onClick={() => {
+                                setInspectType("student");
+                                setInspectId(inv.student.toString());
+                              }}
+                              className="bg-transparent border-none p-0 text-[var(--t1)] hover:text-[var(--brand)] hover:underline cursor-pointer font-medium text-left"
+                            >
+                              {inv.student_full_name || inv.student_username}
+                            </button>
+                          </td>
+                          <td className="p-4">
+                            {inv.academy_class ? (
+                              <button
+                                onClick={() => {
+                                  setInspectType("class");
+                                  setInspectId(inv.academy_class.toString());
+                                }}
+                                className="bg-transparent border-none p-0 text-[var(--t2)] hover:text-[var(--brand)] hover:underline cursor-pointer font-medium text-left"
+                              >
+                                {inv.class_name}
+                              </button>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
                           <td className="p-4 font-semibold text-[var(--t1)]">${parseFloat(inv.amount).toFixed(2)}</td>
                           <td className="p-4 text-[var(--t3)]">{inv.due_date || "—"}</td>
                           <td className="p-4">
@@ -869,7 +893,21 @@ export default function LedgerPage() {
                               </button>
                             )}
                           </td>
-                          <td className="p-4 text-[var(--t1)]">{exp.recipient_full_name || exp.recipient_username || "—"}</td>
+                          <td className="p-4">
+                            {exp.recipient ? (
+                              <button
+                                onClick={() => {
+                                  setInspectType("teacher");
+                                  setInspectId(exp.recipient!.toString());
+                                }}
+                                className="bg-transparent border-none p-0 text-[var(--t1)] hover:text-[var(--brand)] hover:underline cursor-pointer font-medium text-left"
+                              >
+                                {exp.recipient_full_name || exp.recipient_username}
+                              </button>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
                           <td className="p-4 text-[var(--t3)]">{exp.incurred_at ? exp.incurred_at.split("T")[0] : "—"}</td>
                           <td className="p-4 font-semibold text-[var(--red)]">${parseFloat(exp.amount).toFixed(2)}</td>
                           <td className="p-4">

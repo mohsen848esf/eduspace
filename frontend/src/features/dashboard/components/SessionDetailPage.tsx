@@ -288,7 +288,20 @@ export default function SessionDetailPage() {
                 <div className="flex items-center gap-3 text-xs text-[var(--t2)]">
                   <User className="w-4 h-4 text-[var(--t3)]" />
                   <span>
-                    {isFarsi ? "مدرس:" : "Host:"} <strong className="text-[var(--t1)]">{session.host_name || "—"}</strong>
+                    {isFarsi ? "مدرس:" : "Host:"}{" "}
+                    {session.host ? (
+                      <button
+                        onClick={() => {
+                          setInspectType("teacher");
+                          setInspectId(session.host);
+                        }}
+                        className="bg-transparent border-none p-0 text-[var(--t1)] hover:text-[var(--brand)] hover:underline cursor-pointer font-bold align-baseline"
+                      >
+                        {session.host_name || "—"}
+                      </button>
+                    ) : (
+                      <strong className="text-[var(--t1)]">{session.host_name || "—"}</strong>
+                    )}
                   </span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-[var(--t2)]">

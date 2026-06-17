@@ -13,6 +13,7 @@ import AppShell from "../../../components/layout/AppShell";
 import { useLocale } from "../../../i18n/useLocale";
 import { useAuthStore } from "../../auth/store/authStore";
 import BroadcastComposer from "./BroadcastComposer";
+import InspectionDrawer from "../../../components/ui/InspectionDrawer";
 
 export default function ClassesPage() {
   const { language } = useLocale();
@@ -24,6 +25,10 @@ export default function ClassesPage() {
   const isOrisAdmin = hasPermission("can_manage_members");
 
   const [expandedClassId, setExpandedClassId] = useState<number | null>(null);
+  
+  // Smart Inspection Drawer states
+  const [inspectType, setInspectType] = useState<"student" | "teacher" | "mentor" | "course" | "class" | "session" | "invoice" | "assignment" | null>(null);
+  const [inspectId, setInspectId] = useState<string | number | null>(null);
 
   // Broadcast modal states
   const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
@@ -223,8 +228,36 @@ export default function ClassesPage() {
                         </div>
                       </td>
                       <td className="p-4 text-[var(--t2)]">{cls.course_title} ({cls.course_code})</td>
-                      <td className="p-4 text-[var(--t1)]">{cls.teacher_name || "—"}</td>
-                      <td className="p-4 text-[var(--t1)]">{cls.mentor_name || "—"}</td>
+                      <td className="p-4">
+                        {cls.teacher ? (
+                          <button
+                            onClick={() => {
+                              setInspectType("teacher");
+                              setInspectId(cls.teacher!);
+                            }}
+                            className="bg-transparent border-none p-0 text-[var(--t1)] hover:text-[var(--brand)] hover:underline cursor-pointer font-medium text-left"
+                          >
+                            {cls.teacher_name}
+                          </button>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="p-4">
+                        {cls.mentor ? (
+                          <button
+                            onClick={() => {
+                              setInspectType("mentor");
+                              setInspectId(cls.mentor!);
+                            }}
+                            className="bg-transparent border-none p-0 text-[var(--t1)] hover:text-[var(--brand)] hover:underline cursor-pointer font-medium text-left"
+                          >
+                            {cls.mentor_name}
+                          </button>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
                       <td className="p-4 text-[var(--t2)]">{cls.room || "—"}</td>
                       <td className="p-4 text-[var(--t3)]">{cls.start_date || "—"}</td>
                       <td className="p-4 text-right flex justify-end gap-2 flex-wrap max-w-xs">
@@ -498,6 +531,17 @@ export default function ClassesPage() {
           }}
         />
       )}
+      <InspectionDrawer
+        open={!!inspectType}
+        onOpenChange={(open) => {
+          if (!open) {
+            setInspectType(null);
+            setInspectId(null);
+          }
+        }}
+        entityType={inspectType}
+        entityId={inspectId}
+      />
     </AppShell>
   );
 }
