@@ -310,8 +310,14 @@ export default function AssignmentDetailPage() {
                     <tbody>
                       {submissions.map((sub) => {
                         const isSubGraded = sub.status === "graded";
+                        const isActiveInModal = selectedSubmission?.id === sub.id && isGradingOpen;
                         return (
-                          <tr key={sub.id} className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors text-left">
+                          <tr
+                            key={sub.id}
+                            className={`border-b border-[var(--b)] transition-colors text-left ${
+                              isActiveInModal ? "bg-[var(--brand-soft)]/20 font-medium" : "hover:bg-[var(--s3)]"
+                            }`}
+                          >
                             <td className="p-4">
                               <button
                                 onClick={() => {
@@ -324,7 +330,7 @@ export default function AssignmentDetailPage() {
                                   {(sub.student_full_name || sub.student_username || "?").charAt(0).toUpperCase()}
                                 </div>
                                 <div>
-                                  <div className="font-semibold text-[var(--t1)] group-hover:text-[var(--brand)] group-hover:underline transition-colors">{sub.student_full_name || sub.student_username}</div>
+                                  <div className={`font-semibold transition-colors group-hover:text-[var(--brand)] group-hover:underline ${isActiveInModal ? "text-[var(--brand-text)]" : "text-[var(--t1)]"}`}>{sub.student_full_name || sub.student_username}</div>
                                   <div className="text-[10px] text-[var(--t3)]">@{sub.student_username}</div>
                                 </div>
                               </button>
@@ -494,7 +500,11 @@ export default function AssignmentDetailPage() {
                 </Button>
               </div>
             )}
-            <form onSubmit={handleGradeSubmit} className="flex flex-col gap-4">
+            <form
+              key={selectedSubmission?.id}
+              onSubmit={handleGradeSubmit}
+              className="flex flex-col gap-4 slide-up"
+            >
               
               {selectedSubmission?.submission_file && (
                 <div className="bg-[var(--s3)] p-3 border border-[var(--b)] rounded-xl flex items-center justify-between text-xs text-left">
