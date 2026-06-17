@@ -266,20 +266,29 @@ class AnalyticsSummaryView(APIView):
         course_averages = []
         try:
             from assessments.models import AssignmentSubmission
+            course_aggs = AssignmentSubmission.objects.filter(
+                assignment__academy_class__course__organization=org,
+                assignment__academy_class__course__is_active=True,
+                grade__isnull=False
+            ).values('assignment__academy_class__course_id').annotate(
+                avg_grade=Avg('grade'),
+                total=Count('id')
+            )
+            course_agg_map = {
+                item['assignment__academy_class__course_id']: (item['avg_grade'], item['total'])
+                for item in course_aggs
+            }
             for course in Course.objects.filter(organization=org, is_active=True):
-                agg = AssignmentSubmission.objects.filter(
-                    assignment__academy_class__course=course,
-                    grade__isnull=False,
-                ).aggregate(avg_grade=Avg('grade'), total=Count('id'))
+                avg_grade, total = course_agg_map.get(course.id, (0.0, 0))
                 course_averages.append({
                     'id': course.id,
                     'code': course.code,
                     'title': course.title,
-                    'avg_grade': round(float(agg['avg_grade']), 1) if agg['avg_grade'] else 0.0,
-                    'graded_count': agg['total'] or 0,
+                    'avg_grade': round(float(avg_grade), 1) if avg_grade else 0.0,
+                    'graded_count': total or 0,
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error("Error computing Course Averages: %s", str(e))
 
         # ── 6. Staff hosted session counts ────────────────────────────────── #
         staff_session_counts = []
@@ -289,41 +298,57 @@ class AnalyticsSummaryView(APIView):
                 is_active=True,
                 role__name__in=['Teacher', 'Mentor', 'Admin'],
             ).select_related('user', 'role')
+            session_counts = Session.objects.filter(
+                organization=org,
+                host__in=[member.user for member in staff_members],
+                status__in=[Session.Status.COMPLETED, Session.Status.LIVE]
+            ).values('host_id').annotate(total=Count('id'))
+            session_count_map = {item['host_id']: item['total'] for item in session_counts}
             for member in staff_members:
-                count = Session.objects.filter(
-                    organization=org,
-                    host=member.user,
-                    status__in=[Session.Status.COMPLETED, Session.Status.LIVE],
-                ).count()
+                count = session_count_map.get(member.user.id, 0)
                 staff_session_counts.append({
                     'user_id': member.user.id,
                     'full_name': member.user.full_name or member.user.username,
                     'role': member.role.name if member.role else 'Staff',
                     'session_count': count,
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error("Error computing Staff Session Counts: %s", str(e))
 
         # ── 7. Per-class homework completion rates ────────────────────────── #
         class_progress_rates = []
         try:
             from assessments.models import Assignment, AssignmentSubmission
+            
+            # Bulk aggregate active enrollments per class
+            enrollment_counts = Enrollment.objects.filter(
+                academy_class__course__organization=org,
+                is_active=True
+            ).values('academy_class_id').annotate(total=Count('id'))
+            enrollment_map = {item['academy_class_id']: item['total'] for item in enrollment_counts}
+
+            # Bulk aggregate total assignments per class
+            assignment_counts = Assignment.objects.filter(
+                academy_class__course__organization=org
+            ).values('academy_class_id').annotate(total=Count('id'))
+            assignment_map = {item['academy_class_id']: item['total'] for item in assignment_counts}
+
+            # Bulk aggregate submitted assignments per class
+            submission_counts = AssignmentSubmission.objects.filter(
+                assignment__academy_class__course__organization=org
+            ).values('assignment__academy_class_id').annotate(total=Count('id'))
+            submission_map = {item['assignment__academy_class_id']: item['total'] for item in submission_counts}
+
             for cls in AcademyClass.objects.filter(
                 course__organization=org, is_active=True
             ).select_related('course'):
-                enrolled_count = Enrollment.objects.filter(
-                    academy_class=cls, is_active=True
-                ).count()
-                total_assignments = Assignment.objects.filter(academy_class=cls).count()
+                enrolled_count = enrollment_map.get(cls.id, 0)
+                total_assignments = assignment_map.get(cls.id, 0)
+                total_submitted = submission_map.get(cls.id, 0)
                 if total_assignments > 0 and enrolled_count > 0:
                     total_expected = total_assignments * enrolled_count
-                    total_submitted = AssignmentSubmission.objects.filter(
-                        assignment__academy_class=cls
-                    ).count()
                     completion_rate = round((total_submitted / total_expected) * 100, 1)
                 else:
-                    total_expected = 0
-                    total_submitted = 0
                     completion_rate = 0.0
                 class_progress_rates.append({
                     'id': cls.id,
@@ -334,8 +359,8 @@ class AnalyticsSummaryView(APIView):
                     'total_submitted': total_submitted,
                     'completion_rate': completion_rate,
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error("Error computing Class Progress Rates: %s", str(e))
 
         # ── 8. Extended H.7 Metrics & KPIs ────────────────────────────────── #
         org_kpis = {}
@@ -571,10 +596,78 @@ class AnalyticsSummaryView(APIView):
                     'follow_up_workload': follow_up_workload,
                 })
 
+            # Pre-fetched aggregates for Course & Class Analytics optimization
+            all_active_classes = AcademyClass.objects.filter(course__organization=org, is_active=True).select_related('course')
+            course_classes_map = defaultdict(list)
+            for cls in all_active_classes:
+                course_classes_map[cls.course_id].append(cls)
+
+            # Bulk aggregate TuitionInvoice sums
+            invoice_class_aggs = TuitionInvoice.objects.filter(
+                organization=org
+            ).values('academy_class_id', 'status').annotate(total=Sum('amount'))
+            class_paid_rev = defaultdict(float)
+            class_outstanding_rev = defaultdict(float)
+            for item in invoice_class_aggs:
+                cid = item['academy_class_id']
+                if not cid:
+                    continue
+                status_val = item['status']
+                amount = float(item['total'] or 0.0)
+                if status_val == 'paid':
+                    class_paid_rev[cid] += amount
+                elif status_val in ['unpaid', 'partial', 'overdue']:
+                    class_outstanding_rev[cid] += amount
+
+            # Bulk aggregate Attendance stats grouped by class
+            attendance_class_stats = Attendance.objects.filter(
+                session__organization=org
+            ).values('session__academy_class_id', 'status').annotate(total=Count('id'))
+            class_att_total = defaultdict(int)
+            class_att_present = defaultdict(int)
+            for item in attendance_class_stats:
+                cid = item['session__academy_class_id']
+                status_val = item['status']
+                total = item['total']
+                class_att_total[cid] += total
+                if status_val in ['present', 'late', 'excused']:
+                    class_att_present[cid] += total
+
+            # Bulk aggregate assignment grades grouped by class
+            class_grade_aggs = AssignmentSubmission.objects.filter(
+                assignment__academy_class__course__organization=org,
+                grade__isnull=False
+            ).values('assignment__academy_class_id').annotate(total_grade=Sum('grade'), count=Count('id'))
+            class_grade_sum_map = {item['assignment__academy_class_id']: item['total_grade'] for item in class_grade_aggs}
+            class_grade_count_map = {item['assignment__academy_class_id']: item['count'] for item in class_grade_aggs}
+
+            # Bulk aggregate Sessions (top 5 per class)
+            all_sessions = Session.objects.filter(
+                organization=org
+            ).order_by('academy_class_id', '-scheduled_start', '-created_at')
+            class_sessions_map = defaultdict(list)
+            for sess in all_sessions:
+                if len(class_sessions_map[sess.academy_class_id]) < 5:
+                    class_sessions_map[sess.academy_class_id].append(sess)
+
+            # Bulk aggregate Attendance statistics per session
+            session_att_stats = Attendance.objects.filter(
+                session__organization=org
+            ).values('session_id', 'status').annotate(total=Count('id'))
+            session_att_total_map = defaultdict(int)
+            session_att_present_map = defaultdict(int)
+            for item in session_att_stats:
+                sid = item['session_id']
+                status_val = item['status']
+                total = item['total']
+                session_att_total_map[sid] += total
+                if status_val in ['present', 'late', 'excused']:
+                    session_att_present_map[sid] += total
+
             # Course Analytics
             courses = Course.objects.filter(organization=org, is_active=True)
             for course in courses:
-                course_classes = AcademyClass.objects.filter(course=course, is_active=True)
+                course_classes = course_classes_map.get(course.id, [])
                 c_class_ids = [c.id for c in course_classes]
                 
                 c_student_ids = set()
@@ -588,29 +681,24 @@ class AnalyticsSummaryView(APIView):
                     total_a = len(class_assignments.get(cid, []))
                     if total_a > 0 and enrolled_cnt > 0:
                         total_expected = total_a * enrolled_cnt
-                        total_submitted = AssignmentSubmission.objects.filter(assignment__academy_class_id=cid).count()
+                        total_submitted = submission_map.get(cid, 0)
                         c_rates.append((total_submitted / total_expected) * 100)
                     else:
                         c_rates.append(100.0 if enrolled_cnt > 0 else 0.0)
                 completion_rate = round(sum(c_rates) / len(c_rates), 1) if c_rates else 100.0
 
                 # Revenue generated
-                rev_agg = TuitionInvoice.objects.filter(
-                    academy_class__in=course_classes, status='paid'
-                ).aggregate(total=Sum('amount'))['total'] or 0.0
+                rev_agg = sum(class_paid_rev.get(cid, 0.0) for cid in c_class_ids)
 
                 # Attendance average
-                c_att_total = Attendance.objects.filter(session__academy_class__in=course_classes).count()
-                c_att_present = Attendance.objects.filter(
-                    session__academy_class__in=course_classes, status__in=['present', 'late', 'excused']
-                ).count()
+                c_att_total = sum(class_att_total.get(cid, 0) for cid in c_class_ids)
+                c_att_present = sum(class_att_present.get(cid, 0) for cid in c_class_ids)
                 attendance_average = round((c_att_present / c_att_total) * 100, 1) if c_att_total > 0 else 100.0
 
                 # Average assignment grade
-                c_grade_agg = AssignmentSubmission.objects.filter(
-                    assignment__academy_class__in=course_classes, grade__isnull=False
-                ).aggregate(avg=Avg('grade'))['avg']
-                avg_grade = round(float(c_grade_agg), 1) if c_grade_agg is not None else 0.0
+                course_grade_sum = sum(float(class_grade_sum_map.get(cid, 0.0)) for cid in c_class_ids)
+                course_grade_count = sum(class_grade_count_map.get(cid, 0) for cid in c_class_ids)
+                avg_grade = round(course_grade_sum / course_grade_count, 1) if course_grade_count > 0 else 0.0
 
                 course_analytics.append({
                     'id': course.id,
@@ -618,24 +706,21 @@ class AnalyticsSummaryView(APIView):
                     'title': course.title,
                     'enrollment_count': len(c_student_ids),
                     'completion_rate': completion_rate,
-                    'revenue_generated': float(rev_agg),
+                    'revenue_generated': rev_agg,
                     'attendance_average': attendance_average,
                     'avg_grade': avg_grade,
                 })
 
             # Class Analytics
-            all_active_classes = AcademyClass.objects.filter(course__organization=org, is_active=True).select_related('course')
             for cls in all_active_classes:
                 student_ids = class_students_map.get(cls.id, set())
                 student_count = len(student_ids)
 
-                recent_sessions = Session.objects.filter(academy_class=cls).order_by('-scheduled_start', '-created_at')[:5]
+                recent_sessions = class_sessions_map.get(cls.id, [])
                 attendance_trend = []
                 for sess in reversed(recent_sessions):
-                    sess_att_total = Attendance.objects.filter(session=sess).count()
-                    sess_att_present = Attendance.objects.filter(
-                        session=sess, status__in=['present', 'late', 'excused']
-                    ).count()
+                    sess_att_total = session_att_total_map.get(sess.id, 0)
+                    sess_att_present = session_att_present_map.get(sess.id, 0)
                     rate = round((sess_att_present / sess_att_total) * 100, 1) if sess_att_total > 0 else 100.0
                     attendance_trend.append({
                         'session_id': sess.id,
@@ -647,15 +732,13 @@ class AnalyticsSummaryView(APIView):
                 total_a = len(class_assignments.get(cls.id, []))
                 if total_a > 0 and student_count > 0:
                     total_expected = total_a * student_count
-                    total_submitted = AssignmentSubmission.objects.filter(assignment__academy_class=cls).count()
+                    total_submitted = submission_map.get(cls.id, 0)
                     cls_completion_rate = round((total_submitted / total_expected) * 100, 1)
                 else:
                     cls_completion_rate = 0.0
 
-                paid_rev = TuitionInvoice.objects.filter(academy_class=cls, status='paid').aggregate(total=Sum('amount'))['total'] or 0.0
-                outstanding_rev = TuitionInvoice.objects.filter(
-                    academy_class=cls, status__in=['unpaid', 'partial', 'overdue']
-                ).aggregate(total=Sum('amount'))['total'] or 0.0
+                paid_rev = class_paid_rev.get(cls.id, 0.0)
+                outstanding_rev = class_outstanding_rev.get(cls.id, 0.0)
 
                 class_analytics.append({
                     'id': cls.id,
@@ -665,8 +748,8 @@ class AnalyticsSummaryView(APIView):
                     'attendance_trend': attendance_trend,
                     'assignment_completion': cls_completion_rate,
                     'revenue_summary': {
-                        'paid': float(paid_rev),
-                        'outstanding': float(outstanding_rev),
+                        'paid': paid_rev,
+                        'outstanding': outstanding_rev,
                     }
                 })
 
