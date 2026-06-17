@@ -592,37 +592,52 @@ export default function ClassDetailPage() {
               </div>
             ) : (
               <div className="divide-y divide-[var(--b)] max-h-[360px] overflow-y-auto">
-                {classEnrollments.map((e) => (
-                  <div key={e.id} className="flex items-center justify-between px-4 py-2.5 hover:bg-[var(--s3)] transition-colors">
-                    <div
-                      className="flex items-center gap-2 min-w-0 cursor-pointer group"
-                      onClick={() => {
-                        setInspectType("student");
-                        setInspectId(e.student);
-                      }}
-                    >
-                      <div className="w-7 h-7 rounded-full bg-[var(--s3)] border border-[var(--b)] flex items-center justify-center text-[10px] font-bold flex-shrink-0 group-hover:border-[var(--brand)] transition-colors">
-                        {(e.student_full_name || e.student_username || "?").charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-medium text-[var(--t1)] truncate group-hover:text-[var(--brand)] transition-colors">{e.student_full_name || e.student_username}</div>
-                        <div className="text-[9px] text-[var(--t3)] truncate">@{e.student_username}</div>
-                      </div>
-                    </div>
-                    {isAdmin && (
-                      <button
+                {classEnrollments.map((e) => {
+                  const studentInvoices = classInvoices.filter((inv) => inv.student === e.student);
+                  const hasUnpaidOrOverdue = studentInvoices.some(
+                    (inv) => inv.status === "unpaid" || inv.status === "overdue" || inv.status === "partial"
+                  );
+
+                  return (
+                    <div key={e.id} className="flex items-center justify-between px-4 py-2.5 hover:bg-[var(--s3)] transition-colors">
+                      <div
+                        className="flex items-center gap-2 min-w-0 cursor-pointer group"
                         onClick={() => {
-                          if (confirm(isFarsi ? `لغو ثبت‌نام ${e.student_full_name}؟` : `Unenroll ${e.student_full_name}?`)) {
-                            unenrollMutation.mutate(e.id);
-                          }
+                          setInspectType("student");
+                          setInspectId(e.student);
                         }}
-                        className="text-[9px] bg-transparent text-[var(--red)] hover:underline border-none cursor-pointer flex-shrink-0 ml-2"
                       >
-                        {isFarsi ? "حذف" : "Remove"}
-                      </button>
-                    )}
-                  </div>
-                ))}
+                        <div className="w-7 h-7 rounded-full bg-[var(--s3)] border border-[var(--b)] flex items-center justify-center text-[10px] font-bold flex-shrink-0 group-hover:border-[var(--brand)] transition-colors">
+                          {(e.student_full_name || e.student_username || "?").charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-medium text-[var(--t1)] truncate group-hover:text-[var(--brand)] transition-colors flex items-center gap-1.5">
+                            <span>{e.student_full_name || e.student_username}</span>
+                            {hasUnpaidOrOverdue && (
+                              <span
+                                className="w-1.5 h-1.5 rounded-full bg-[var(--red)] flex-shrink-0"
+                                title={isFarsi ? "فاکتور پرداخت نشده یا معوق" : "Unpaid or Overdue Invoice"}
+                              />
+                            )}
+                          </div>
+                          <div className="text-[9px] text-[var(--t3)] truncate">@{e.student_username}</div>
+                        </div>
+                      </div>
+                      {isAdmin && (
+                        <button
+                          onClick={() => {
+                            if (confirm(isFarsi ? `لغو ثبت‌نام ${e.student_full_name}؟` : `Unenroll ${e.student_full_name}?`)) {
+                              unenrollMutation.mutate(e.id);
+                            }
+                          }}
+                          className="text-[9px] bg-transparent text-[var(--red)] hover:underline border-none cursor-pointer flex-shrink-0 ml-2"
+                        >
+                          {isFarsi ? "حذف" : "Remove"}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

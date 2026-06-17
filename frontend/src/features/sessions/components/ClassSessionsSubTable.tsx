@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import { sessionsApi } from "../api/sessions.api";
+import recordingsApi from "../../recordings/api/recordings.api";
+import { Play } from "lucide-react";
 import {
   useSessions,
   useStartSession,
@@ -44,6 +46,12 @@ export default function ClassSessionsSubTable({
 
   // Queries & Mutations
   const { data: sessions = [], isLoading: loadingSessions } = useSessions(cls.id);
+  const { data: recordingsData } = useQuery({
+    queryKey: ["recordings-list"],
+    queryFn: () => recordingsApi.list(),
+  });
+  const recordings = recordingsData?.results || [];
+
   const startSessionMutation = useStartSession();
   const completeSessionMutation = useCompleteSession();
   const cancelSessionMutation = useCancelSession();
@@ -193,14 +201,24 @@ export default function ClassSessionsSubTable({
                 const isLive = s.status === "live";
                 const isScheduled = s.status === "scheduled";
                 const isCompleted = s.status === "completed";
+                const recording = recordings.find((r) => r.room_code === s.active_room_code);
 
                 return (
                   <tr key={s.id} className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors text-left">
                     <td className="p-3 text-[var(--t3)]">{idx + 1}</td>
-                    <td className="p-3 font-semibold text-[var(--t1)]">
+                    <td className="p-3 font-semibold text-[var(--t1)] flex items-center gap-2">
                       <Link to={`/academic/sessions/${s.id}`} className="hover:underline text-[var(--t1)] no-underline">
                         {s.title}
                       </Link>
+                      {isCompleted && recording && (
+                        <Link
+                          to={`/recordings/${recording.public_token}`}
+                          title={isFarsi ? "تماشای ضبط کلاس" : "Watch Recording"}
+                          className="text-[var(--brand-text)] bg-[var(--brand)] hover:brightness-110 transition-all flex items-center justify-center p-1 rounded-full shadow-sm flex-shrink-0"
+                        >
+                          <Play className="w-2.5 h-2.5 fill-current" />
+                        </Link>
+                      )}
                     </td>
                     <td className="p-3 text-[var(--t2)]">
                       {s.scheduled_start ? new Date(s.scheduled_start).toLocaleString() : "—"}
