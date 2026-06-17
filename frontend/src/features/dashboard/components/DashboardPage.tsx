@@ -11,7 +11,9 @@ import { useSessions } from "../../sessions/hooks/useSessions";
 import { sessionsApi } from "../../sessions/api/sessions.api";
 import { crmApi } from "../api/crm.api";
 import Spinner from "../../../components/ui/Spinner";
-import { Play, Calendar, Video, Clock, User, BookOpen, CreditCard, ChevronRight } from "lucide-react";
+import { Play, Calendar, Video, Clock, User, BookOpen, CreditCard, ChevronRight, Award } from "lucide-react";
+import { useNotificationsStore } from "../../auth/store/notificationsStore";
+import { assessmentsApi } from "../../assessments/api/assessments.api";
 
 export default function DashboardPage() {
   const { t } = useTranslation(["dashboard"]);
@@ -58,6 +60,12 @@ export default function DashboardPage() {
     queryFn: () => sessionsApi.getSessions(),
   });
 
+  const { data: allSubmissions = [], isLoading: loadingSubmissions } = useQuery({
+    queryKey: ["all-submissions-teacher"],
+    queryFn: () => assessmentsApi.getAssignmentSubmissions(),
+    enabled: activeRole === "teacher" || activeRole === "admin",
+  });
+
   const greeting = () => {
     const h = new Date().getHours();
     if (h < 12) return t("greeting.morning");
@@ -78,7 +86,7 @@ export default function DashboardPage() {
   const totalPendingRevenue = summaryData?.outstanding || 0;
   const totalExpense = summaryData?.expenses || 0;
 
-  const isDataLoading = loadingCourses || loadingClasses || loadingEnrollments || loadingSummary || loadingSessions || loadingAllSessions;
+  const isDataLoading = loadingCourses || loadingClasses || loadingEnrollments || loadingSummary || loadingSessions || loadingAllSessions || ((activeRole === "teacher" || activeRole === "admin") && loadingSubmissions);
 
   // Aggregated data for past 6 months
   const chartData = summaryData?.monthly_trends || [
@@ -157,6 +165,124 @@ export default function DashboardPage() {
     const interval = setInterval(updateCountdown, 60000);
     return () => clearInterval(interval);
   }, [nextSession, language]);
+
+  // Notifications for Activity Feed
+  const notifications = useNotificationsStore((s) => s.items);
+  const hydrateNotifications = useNotificationsStore((s) => s.hydrate);
+
+  useEffect(() => {
+    hydrateNotifications();
+  }, []);
+
+  const pendingSubmissions = allSubmissions.filter((sub) => sub.status === "submitted");
+
+  const teacherCompletedSessions = allSessions.filter(
+    (s) => s.host === user?.id && s.status === "completed"
+  );
+  const taughtHours = teacherCompletedSessions.length * 1.5;
+
+  const myTaughtClasses = classes.filter((c) => c.teacher === user?.id);
+
+  const recentActivity = notifications.slice(0, 5);
+
+  const formatRelativeTime = (ms: number) => {
+    const diff = Math.max(0, Date.now() - ms);
+    const min = Math.floor(diff / 60_000);
+    if (min < 1) return isFarsi ? "هم‌اکنون" : "just now";
+    if (min < 60) return isFarsi ? `${min} دقیقه پیش` : `${min}m ago`;
+    const h = Math.floor(min / 60);
+    if (h < 24) return isFarsi ? `${h} ساعت پیش` : `${h}h ago`;
+    const d = Math.floor(h / 24);
+    if (d < 30) return isFarsi ? `${d} روز پیش` : `${d}d ago`;
+    return new Date(ms).toLocaleDateString(isFarsi ? "fa-IR" : "en-US");
+  };
+
+  const getNotificationText = (item: any) => {
+    const data = item.data || {};
+    const kind = item.kind;
+    if (kind === "ROOM_INVITE") {
+      return {
+        title: isFarsi
+          ? `دعوت به کلاس زنده از طرف ${data.from || ""}`
+          : `Live Room Invite from ${data.from || ""}`,
+        desc: (data.room_name as string) || (data.room_code as string) || "",
+        icon: "📹",
+        link: data.room_code ? `/room/${data.room_code}` : "/dashboard",
+      };
+    }
+    if (kind === "RECORDING_PUBLISHED") {
+      return {
+        title: isFarsi
+          ? `ضبط کلاس منتشر شد توسط ${data.from || ""}`
+          : `Class Recording Published by ${data.from || ""}`,
+        desc: (data.room_name as string) || (data.room_code as string) || "",
+        icon: "🎥",
+        link: data.recording_token ? `/recordings/${data.recording_token}` : "/recordings",
+      };
+    }
+    if (kind === "RECORDING_PERMISSION_GRANTED") {
+      return {
+        title: isFarsi ? "دسترسی به ضبط کلاس تایید شد" : "Recording Access Granted",
+        desc: (data.room_name as string) || (data.room_code as string) || "",
+        icon: "🔓",
+        link: data.room_code ? `/room/${data.room_code}` : "/dashboard",
+      };
+    }
+    if (kind === "RECORDING_PERMISSION_REVOKED") {
+      return {
+        title: isFarsi ? "دسترسی به ضبط کلاس لغو شد" : "Recording Access Revoked",
+        desc: (data.room_name as string) || (data.room_code as string) || "",
+        icon: "🔒",
+        link: data.room_code ? `/room/${data.room_code}` : "/dashboard",
+      };
+    }
+    if (kind === "ASSESSMENT_GRADED") {
+      return {
+        title: isFarsi ? "آزمون نمره‌دهی شد" : "Exam Graded",
+        desc: isFarsi
+          ? `آزمون: ${data.assessment_title || ""} • نمره: ${data.score || ""}/${data.total_points || ""}`
+          : `Exam: ${data.assessment_title || ""} • Grade: ${data.score || ""}/${data.total_points || ""}`,
+        icon: "🏆",
+        link: "/academic/assessments",
+      };
+    }
+    if (kind === "INVOICE_CREATED") {
+      return {
+        title: isFarsi ? "فاکتور مالی جدید صادر شد" : "New Invoice Created",
+        desc: isFarsi
+          ? `شماره فاکتور: ${data.invoice_number || ""} • مبلغ: ${data.amount || ""}`
+          : `Invoice: ${data.invoice_number || ""} • Amount: ${data.amount || ""}`,
+        icon: "🧾",
+        link: "/finance/ledger",
+      };
+    }
+    if (kind === "INVOICE_UPDATED") {
+      return {
+        title: isFarsi ? "فاکتور مالی بروزرسانی شد" : "Invoice Updated",
+        desc: isFarsi
+          ? `شماره فاکتور: ${data.invoice_number || ""} • وضعیت: ${data.status || ""}`
+          : `Invoice: ${data.invoice_number || ""} • Status: ${data.status || ""}`,
+        icon: "💵",
+        link: "/finance/ledger",
+      };
+    }
+    if (kind === "SESSION_STARTED") {
+      return {
+        title: isFarsi ? "جلسه جدید شروع شد" : "New Session Started",
+        desc: isFarsi
+          ? `کلاس: ${data.class_name || ""} • مدرس: ${data.host_name || ""}`
+          : `Class: ${data.class_name || ""} • Host: ${data.host_name || ""}`,
+        icon: "🔴",
+        link: data.room_code ? `/room/${data.room_code}` : "/academic/sessions",
+      };
+    }
+    return {
+      title: (data.title as string) || (isFarsi ? "اعلان جدید" : "New Notification"),
+      desc: (data.message as string) || "",
+      icon: "🔔",
+      link: "/dashboard",
+    };
+  };
 
   const liveSession = liveSessions[0] || null;
 
@@ -248,6 +374,34 @@ export default function DashboardPage() {
                 </Link>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Needs Attention Widget (Teacher/Admin only) */}
+        {(activeRole === "teacher" || activeRole === "admin") && pendingSubmissions.length > 0 && (
+          <div className="relative overflow-hidden bg-gradient-to-r from-amber-500/10 to-amber-600/10 border border-amber-500/20 rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 group">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center flex-shrink-0 animate-pulse text-lg">
+                ⚠️
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest flex items-center gap-1.5">
+                  {isFarsi ? "اقدام لازم" : "Needs Attention"}
+                </span>
+                <h3 className="text-md font-extrabold text-[var(--t1)] mt-1">
+                  {isFarsi
+                    ? `${pendingSubmissions.length} پاسخ تکلیف در انتظار بررسی و نمره‌دهی است.`
+                    : `You have ${pendingSubmissions.length} homework submission${pendingSubmissions.length > 1 ? "s" : ""} pending review.`}
+                </h3>
+              </div>
+            </div>
+            <Link
+              to={`/academic/assignments/${pendingSubmissions[0].assignment}`}
+              className="px-4 py-2 text-xs font-bold rounded-xl bg-amber-500 hover:bg-amber-600 text-white shadow-md transition-all active:scale-95 no-underline flex items-center gap-1.5"
+            >
+              <Award className="w-3.5 h-3.5" />
+              {isFarsi ? "تصحیح تکالیف" : "Grade Now"}
+            </Link>
           </div>
         )}
 
@@ -598,6 +752,35 @@ export default function DashboardPage() {
               </div>
             )}
 
+            {/* Teacher-specific Stats */}
+            {(activeRole === "teacher" || activeRole === "admin") && (
+              <>
+                <div className="bg-[var(--s2)] rounded-xl p-4 border border-[var(--b)]">
+                  <h3 className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide mb-2">
+                    {isFarsi ? "ساعات تدریس" : "Taught Hours"}
+                  </h3>
+                  <div className="flex items-baseline gap-2 mt-3">
+                    <div className="text-3xl font-bold text-[var(--t1)]">{taughtHours.toFixed(1)}</div>
+                    <div className="text-xs text-[var(--brand-text)] font-semibold">
+                      {isFarsi ? "ساعت کلاس تکمیل‌شده" : "hrs completed sessions"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-[var(--s2)] rounded-xl p-4 border border-[var(--b)]">
+                  <h3 className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide mb-2">
+                    {isFarsi ? "کلاس‌های تحت تدریس" : "Classes Taught"}
+                  </h3>
+                  <div className="flex items-baseline gap-2 mt-3">
+                    <div className="text-3xl font-bold text-[var(--t1)]">{myTaughtClasses.length}</div>
+                    <div className="text-xs text-[var(--cyan)] font-semibold">
+                      {isFarsi ? "کلاس فعال" : "active classes"}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
             {/* Active Live Classes List */}
             {liveSessions.length > 0 && (
               <div className="bg-[var(--s2)] rounded-xl p-4 border border-[var(--b)] col-span-full">
@@ -624,6 +807,58 @@ export default function DashboardPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* My Classes Horizontal Scroll (Teacher Only) */}
+            {activeRole === "teacher" && (
+              <div className="bg-[var(--s2)] rounded-xl p-5 border border-[var(--b)] col-span-full flex flex-col gap-4">
+                <h3 className="text-xs font-bold text-[var(--t3)] uppercase tracking-wide">
+                  {isFarsi ? "کلاس‌های تحت تدریس من" : "My Classes"}
+                </h3>
+                {myTaughtClasses.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-[var(--t3)]">
+                    {isFarsi ? "شما در حال حاضر کلاسی را تدریس نمی‌کنید." : "You are not teaching any classes currently."}
+                  </div>
+                ) : (
+                  <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3 scrollbar-thin scrollbar-thumb-[var(--b)]">
+                    {myTaughtClasses.map((c) => {
+                      const enrollmentCount = enrollments.filter((e) => e.academy_class === c.id && e.is_active).length;
+                      return (
+                        <div
+                          key={c.id}
+                          className="min-w-[280px] md:min-w-[320px] snap-start bg-[var(--s3)] border border-[var(--b)] hover:border-[var(--brand)] transition-all rounded-2xl p-5 flex flex-col justify-between gap-4"
+                        >
+                          <div>
+                            <div className="flex justify-between items-start">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--brand)]/10 text-[var(--brand-text)] uppercase tracking-wider">
+                                {c.course_code || "CLASS"}
+                              </span>
+                              {c.room && (
+                                <span className="text-[10px] font-semibold text-[var(--t3)]">
+                                  🚪 {c.room}
+                                </span>
+                              )}
+                            </div>
+                            <h4 className="text-sm font-extrabold text-[var(--t1)] mt-2">{c.name}</h4>
+                            <p className="text-xs text-[var(--t3)] mt-1 truncate">{c.course_title}</p>
+                          </div>
+                          <div className="flex justify-between items-center border-t border-[var(--b)] pt-3 mt-2">
+                            <span className="text-xs text-[var(--t2)] font-medium">
+                              👥 {enrollmentCount} {isFarsi ? "دانشجو" : "Students"}
+                            </span>
+                            <Link
+                              to={`/academic/classes/${c.id}`}
+                              className="text-[11px] font-semibold text-[var(--brand)] hover:underline no-underline"
+                            >
+                              {isFarsi ? "مشاهده کلاس" : "View Class"} →
+                            </Link>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
@@ -672,6 +907,53 @@ export default function DashboardPage() {
                           <span className="text-[10px] font-semibold text-[var(--t2)] flex items-center gap-1">
                             <Clock className="w-3.5 h-3.5 text-[var(--t3)]" />
                             {dateVal.toLocaleTimeString(localeTag, { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Recent Activity Feed */}
+            <div className="bg-[var(--s2)] border border-[var(--b)] rounded-2xl overflow-hidden shadow-sm col-span-full">
+              <div className="p-4 border-b border-[var(--b)] flex items-center justify-between">
+                <h3 className="text-xs font-bold text-[var(--t3)] uppercase tracking-wide">
+                  {isFarsi ? "فعالیت‌های اخیر" : "Recent Activity"}
+                </h3>
+              </div>
+
+              {recentActivity.length === 0 ? (
+                <div className="p-10 text-center flex flex-col items-center justify-center gap-2">
+                  <span className="text-3xl">📭</span>
+                  <h4 className="text-xs font-bold text-[var(--t1)]">{isFarsi ? "هیچ فعالیتی ثبت نشده است" : "No recent activity"}</h4>
+                  <p className="text-[10px] text-[var(--t3)]">{isFarsi ? "رویدادها و اعلانات اخیر در این بخش نمایش داده می‌شوند." : "Your recent events and alerts will appear here."}</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-[var(--b)]">
+                  {recentActivity.map((item) => {
+                    const formatted = getNotificationText(item);
+                    return (
+                      <div key={item.id} className="p-4 hover:bg-[var(--s3)] transition-colors flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-[var(--s3)] border border-[var(--b)] flex items-center justify-center text-lg flex-shrink-0">
+                            {formatted.icon}
+                          </div>
+                          <div>
+                            <Link to={formatted.link} className="text-xs font-bold text-[var(--t1)] hover:text-[var(--brand)] transition-colors no-underline">
+                              {formatted.title}
+                            </Link>
+                            {formatted.desc && (
+                              <p className="text-[10px] text-[var(--t3)] mt-0.5">
+                                {formatted.desc}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="text-[10px] font-semibold text-[var(--t3)]">
+                            {formatRelativeTime(item.receivedAt)}
                           </span>
                         </div>
                       </div>
