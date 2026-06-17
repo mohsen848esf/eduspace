@@ -9,6 +9,7 @@ import Spinner from "../../../components/ui/Spinner";
 import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
 import { useLocale } from "../../../i18n/useLocale";
+import { useQueryParamState } from "../../../hooks/useQueryParamState";
 import InspectionDrawer from "../../../components/ui/InspectionDrawer";
 import { Calendar, User, Search, Clock, Award, ShieldAlert, ArrowRight, CheckCircle2 } from "lucide-react";
 
@@ -22,7 +23,7 @@ export default function AttendanceExplorer() {
   const [inspectId, setInspectId] = useState<string | number | null>(null);
 
   // Filter & Pagination States
-  const [selectedClass, setSelectedClass] = useState<string>("");
+  const [selectedClass, setSelectedClass] = useQueryParamState("class_id", "");
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [studentQuery, setStudentQuery] = useState<string>("");
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);

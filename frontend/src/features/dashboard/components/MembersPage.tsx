@@ -12,6 +12,7 @@ import Spinner from "../../../components/ui/Spinner";
 import AppShell from "../../../components/layout/AppShell";
 import { useLocale } from "../../../i18n/useLocale";
 import { useQueryParamState } from "../../../hooks/useQueryParamState";
+import { useAuthStore } from "../../auth/store/authStore";
 import InspectionDrawer from "../../../components/ui/InspectionDrawer";
 
 type SubTab = "enrollments" | "directory" | "roles";
@@ -30,6 +31,8 @@ export default function MembersPage() {
   const isDrawerOpen = !!inspectType && !!inspectId;
 
   const [activeSubTab, setActiveSubTab] = useState<SubTab>("enrollments");
+  const { user } = useAuthStore();
+  const [myMentoredOnly, setMyMentoredOnly] = useState(false);
 
 
 
@@ -132,6 +135,18 @@ export default function MembersPage() {
     }
     return result;
   }, [members, memberStatusFilter, memberSearchTerm]);
+
+  // ──────────────────────────────────────────────
+  // Filtered Enrollments
+  // ──────────────────────────────────────────────
+  const filteredEnrollments = useMemo(() => {
+    let result = enrollments;
+    if (myMentoredOnly && user) {
+      const mentoredClassIds = classes.filter((c: any) => c.mentor === user.id).map((c: any) => c.id);
+      result = result.filter((e: any) => mentoredClassIds.includes(e.academy_class));
+    }
+    return result;
+  }, [enrollments, myMentoredOnly, classes, user]);
 
 
 
@@ -420,9 +435,23 @@ export default function MembersPage() {
                 )}
               </div>
 
+              {classes.some((c: any) => c.mentor === user?.id) && (
+                <div className="flex items-center gap-2 p-4 bg-[var(--s1)]/40 border-b border-[var(--b)] text-xs text-[var(--t1)]">
+                  <label className="flex items-center gap-2 font-medium cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={myMentoredOnly}
+                      onChange={(e) => setMyMentoredOnly(e.target.checked)}
+                      className="rounded border-[var(--b)] text-[var(--brand)] focus:ring-[var(--brand)] bg-[var(--s2)] h-4 w-4"
+                    />
+                    <span>{isFarsi ? "فقط کلاس‌های تحت منتورینگ من" : "My Mentored Classes Only"}</span>
+                  </label>
+                </div>
+              )}
+
               {loadingEnrollments ? (
                 <div className="p-8 flex justify-center"><Spinner /></div>
-              ) : enrollments.length === 0 ? (
+              ) : filteredEnrollments.length === 0 ? (
                 <div className="p-8 text-center text-[var(--t3)]">
                   {isFarsi ? "ثبت‌نامی یافت نشد" : "No enrollments found."}
                 </div>
@@ -440,7 +469,7 @@ export default function MembersPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {enrollments.map((e) => (
+                      {filteredEnrollments.map((e) => (
                         <tr key={e.id} className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors text-left">
                           <td
                             className="p-4 font-semibold text-[var(--t1)] cursor-pointer hover:text-[var(--brand)] hover:underline"

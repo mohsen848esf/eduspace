@@ -629,13 +629,19 @@ export default function ClassDetailPage() {
         </div>
 
         {/* ── Quick Links ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           {[
             {
               label: isFarsi ? "فاکتورهای کلاس" : "Class Invoices",
               desc: isFarsi ? "مشاهده فاکتورهای این کلاس" : "Tuition invoices for this class",
               icon: "💰",
               to: `/finance/ledger?class_id=${id}`,
+            },
+            {
+              label: isFarsi ? "حضور و غیاب کلاس" : "Class Attendance",
+              desc: isFarsi ? "مشاهده لیست حضور و غیاب کلاس" : "Attendance matrix for this class",
+              icon: "📋",
+              to: `/academic/attendance?class_id=${id}`,
             },
             {
               label: isFarsi ? "اعضای سازمان" : "Org Members",

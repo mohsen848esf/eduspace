@@ -38,6 +38,35 @@ export default function LedgerPage() {
     }
   }, [invoiceIdParam]);
 
+  const [actionParam, setActionParam] = useQueryParamState("action", "");
+  const [studentIdParam, setStudentIdParam] = useQueryParamState("student_id", "");
+  const [studentNameParam, setStudentNameParam] = useQueryParamState("student_name", "");
+
+  useEffect(() => {
+    if (actionParam === "issue_invoice" && studentIdParam) {
+      setDrawerType("invoice");
+      setEditId(null);
+      setSelectedReceipt(null);
+      setInvoiceForm({
+        student: studentIdParam,
+        academy_class: classes[0]?.id.toString() || "",
+        amount: "0",
+        status: "unpaid",
+        due_date: ""
+      });
+      setLineItems([{ description: "", quantity: 1, unit_price: "" }]);
+      if (studentNameParam) {
+        setUserSearchQuery(studentNameParam);
+      }
+      setIsDrawerOpen(true);
+
+      // Clean query params to prevent auto-opening on refresh/navigation
+      setActionParam(null);
+      setStudentIdParam(null);
+      setStudentNameParam(null);
+    }
+  }, [actionParam, studentIdParam, studentNameParam, classes]);
+
   // Invoices Filter & Pagination States
   const [invoiceSearch, setInvoiceSearch] = useQueryParamState("student", "");
   const [classIdParam, setClassIdParam] = useQueryParamState("class_id", "");

@@ -44,6 +44,8 @@ export default function InspectionDrawer({
   const [mentorStudents, setMentorStudents] = useState<any[]>([]);
   const [mentorClasses, setMentorClasses] = useState<any[]>([]);
   const [loadingExtra, setLoadingExtra] = useState(false);
+  const [attendanceRate, setAttendanceRate] = useState<number | null>(null);
+  const [missingAssignments, setMissingAssignments] = useState<number | null>(null);
 
   useEffect(() => {
     setLocalType(entityType);
@@ -71,6 +73,8 @@ export default function InspectionDrawer({
     if (!open || !localType || !localId) {
       setData(null);
       setError(null);
+      setAttendanceRate(null);
+      setMissingAssignments(null);
       return;
     }
 
@@ -123,13 +127,33 @@ export default function InspectionDrawer({
           try {
             const userId = fetchedData.user_details?.id || fetchedData.user;
             if (userId) {
-              const [enrollRes, invoiceRes] = await Promise.all([
+              const [enrollRes, invoiceRes, attendanceRes, assignmentsRes, submissionsRes] = await Promise.all([
                 client.get("/auth/enrollments/?include_archived=true"),
-                client.get(`/auth/invoices/?student_id=${userId}`)
+                client.get(`/auth/invoices/?student_id=${userId}`),
+                client.get(`/auth/attendance/?student=${userId}`),
+                client.get("/assessments/assignments/"),
+                client.get("/assessments/assignment-submissions/")
               ]);
               const enrolls = (enrollRes.data || []).filter((e: any) => e.student === userId);
               setStudentEnrollments(enrolls);
               setStudentInvoices(invoiceRes.data?.results || invoiceRes.data || []);
+
+              // Calculate Attendance Rate
+              const attList = attendanceRes.data || [];
+              if (attList.length > 0) {
+                const attended = attList.filter((att: any) => ["present", "late", "excused"].includes(att.status)).length;
+                setAttendanceRate(Math.round((attended / attList.length) * 100));
+              } else {
+                setAttendanceRate(100);
+              }
+
+              // Calculate Missing Assignments
+              const classIds = enrolls.map((e: any) => e.academy_class);
+              const studentAssignments = (assignmentsRes.data || []).filter((a: any) => classIds.includes(a.academy_class));
+              const studentSubmissions = (submissionsRes.data || []).filter((s: any) => Number(s.student) === Number(userId));
+              const submittedIds = studentSubmissions.map((s: any) => s.assignment);
+              const missingCount = studentAssignments.filter((a: any) => !submittedIds.includes(a.id)).length;
+              setMissingAssignments(missingCount);
             }
           } catch (e) {
             console.error("Failed to load student extra info", e);
@@ -254,6 +278,7 @@ export default function InspectionDrawer({
       const email = user.email || "";
       const roleName = data.role_name || localType.toUpperCase();
       const statusLabel = data.is_active ? (isFarsi ? "فعال" : "Active") : (isFarsi ? "غیرفعال" : "Inactive");
+      const userId = user.id || data.user;
 
       return (
         <div className="space-y-6 p-4">
@@ -293,6 +318,31 @@ export default function InspectionDrawer({
               </div>
             </div>
           </div>
+
+          {/* Academic KPIs */}
+          {localType === "student" && (
+            <div className="space-y-4 pt-4 border-t border-[var(--b)]/60 text-left">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--t3)]">{isFarsi ? "وضعیت تحصیلی" : "Academic KPIs"}</h4>
+              {loadingExtra ? (
+                <div className="flex justify-center p-2"><Spinner size="sm" /></div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4 text-xs bg-[var(--s2)] p-4 rounded-xl border border-[var(--b)]">
+                  <div>
+                    <span className="block text-[var(--t3)] font-medium mb-1">{isFarsi ? "نرخ حضور و غیاب" : "Attendance Rate"}</span>
+                    <span className={`font-bold text-md ${attendanceRate !== null && attendanceRate < 75 ? "text-red-500" : "text-[var(--green)]"}`}>
+                      {attendanceRate !== null ? `${attendanceRate}%` : "—"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[var(--t3)] font-medium mb-1">{isFarsi ? "تکالیف تحویل‌نشده" : "Missing Assignments"}</span>
+                    <span className={`font-bold text-md ${missingAssignments !== null && missingAssignments > 0 ? "text-amber-500" : "text-[var(--green)]"}`}>
+                      {missingAssignments !== null ? missingAssignments : "—"}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Active Enrolled Classes */}
           {localType === "student" && (
@@ -431,6 +481,18 @@ export default function InspectionDrawer({
                   <div className="flex items-center gap-2">
                     <Receipt className="w-4 h-4 text-pink-400" />
                     <span>{isFarsi ? "مشاهده تراکنش‌ها و شهریه" : "View Payments & Invoices"}</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </Link>
+
+                <Link
+                  to={`/finance/ledger?action=issue_invoice&student_id=${userId}&student_name=${encodeURIComponent(name)}`}
+                  onClick={() => onOpenChange(false)}
+                  className="w-full flex items-center justify-between p-3 rounded-xl bg-[var(--s2)] hover:bg-[var(--s3)] border border-[var(--b)] hover:border-[var(--brand)]/35 text-xs text-[var(--t1)] no-underline font-semibold transition-all group"
+                >
+                  <div className="flex items-center gap-2">
+                    <Receipt className="w-4 h-4 text-emerald-400" />
+                    <span>{isFarsi ? "صدور فاکتور جدید" : "Issue New Invoice"}</span>
                   </div>
                   <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </Link>
