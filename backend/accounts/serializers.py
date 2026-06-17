@@ -138,6 +138,15 @@ class EnrollmentSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Class does not belong to your organization.")
         return value
 
+    def validate_student(self, value):
+        request = self.context.get('request')
+        if request and hasattr(request, 'organization'):
+            org = request.organization
+            from accounts.models import OrgMember
+            if not OrgMember.objects.filter(organization=org, user=value, is_active=True).exists():
+                raise serializers.ValidationError("Student is not an active member of this organization.")
+        return value
+
 
 class InvoiceLineItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -178,6 +187,21 @@ class TuitionInvoiceSerializer(serializers.ModelSerializer):
 
         if not self.instance and 'amount' not in attrs:
             raise serializers.ValidationError({"amount": "This field is required."})
+
+        request = self.context.get('request')
+        org = getattr(request, 'organization', None) if request else None
+
+        if org:
+            student = attrs.get('student', self.instance.student if self.instance else None)
+            if student:
+                from accounts.models import OrgMember
+                if not OrgMember.objects.filter(organization=org, user=student, is_active=True).exists():
+                    raise serializers.ValidationError({"student": "Student is not an active member of this organization."})
+
+            academy_class = attrs.get('academy_class', self.instance.academy_class if self.instance else None)
+            if academy_class:
+                if academy_class.course.organization != org:
+                    raise serializers.ValidationError({"academy_class": "Class does not belong to this organization."})
 
         return attrs
 

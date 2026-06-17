@@ -154,6 +154,8 @@ class CRMViewsIntegrationTest(APITestCase):
         ac = AcademyClass.objects.create(course=course, name='Class 1')
         student1 = User.objects.create_user(username='student1', password='password')
         student2 = User.objects.create_user(username='student2', password='password')
+        OrgMember.objects.create(organization=self.org, user=student1)
+        OrgMember.objects.create(organization=self.org, user=student2)
         
         e1 = Enrollment.objects.create(academy_class=ac, student=student1, is_active=True)
         e2 = Enrollment.objects.create(academy_class=ac, student=student2, is_active=False)
@@ -173,6 +175,7 @@ class CRMViewsIntegrationTest(APITestCase):
         
         # 3. Create via POST
         student3 = User.objects.create_user(username='student3', password='password')
+        OrgMember.objects.create(organization=self.org, user=student3)
         post_data = {
             'academy_class': ac.id,
             'student': student3.id,
@@ -185,6 +188,7 @@ class CRMViewsIntegrationTest(APITestCase):
 
     def test_tuition_invoice_viewset_and_sequential_number(self):
         student = User.objects.create_user(username='student_fin', password='password')
+        OrgMember.objects.create(organization=self.org, user=student)
         
         url = reverse('invoice-list')
         
@@ -352,6 +356,7 @@ class CRMViewsIntegrationTest(APITestCase):
 
     def test_nested_tuition_invoice_creation_and_update(self):
         student = User.objects.create_user(username='student_nested', password='password')
+        OrgMember.objects.create(organization=self.org, user=student)
         url = reverse('invoice-list')
         
         # 1. Create with nested items

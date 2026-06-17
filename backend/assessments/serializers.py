@@ -96,12 +96,17 @@ class AssessmentTeacherSerializer(serializers.ModelSerializer):
         for q_data in questions_data:
             q_id = q_data.get('question_id') or q_data.get('question', {}).get('id')
             if q_id:
-                AssessmentQuestion.objects.create(
-                    assessment=assessment,
-                    question_id=q_id,
-                    order=q_data.get('order', 0),
-                    points=q_data.get('points', '1.00')
-                )
+                # Security hardening: verify question bank belongs to the active organization
+                question = Question.objects.select_related('question_bank').filter(id=q_id).first()
+                if question and question.question_bank.organization == assessment.organization:
+                    AssessmentQuestion.objects.create(
+                        assessment=assessment,
+                        question_id=q_id,
+                        order=q_data.get('order', 0),
+                        points=q_data.get('points', '1.00')
+                    )
+                else:
+                    raise serializers.ValidationError({"questions": f"Question {q_id} does not belong to your organization."})
 
     def validate_session(self, value):
         request = self.context.get('request')
@@ -181,6 +186,13 @@ class AssignmentSerializer(serializers.ModelSerializer):
     def get_graded_count(self, obj):
         return obj.submissions.filter(status='graded').count()
 
+    def validate_academy_class(self, value):
+        request = self.context.get('request')
+        if request and hasattr(request, 'organization'):
+            if value.course.organization != request.organization:
+                raise serializers.ValidationError("Class does not belong to your organization.")
+        return value
+
     def create(self, validated_data):
         request = self.context.get('request')
         if request and hasattr(request, 'organization'):
@@ -199,6 +211,27 @@ class AssignmentSubmissionSerializer(serializers.ModelSerializer):
         model = AssignmentSubmission
         fields = ('id', 'assignment', 'assignment_title', 'student', 'student_username', 'student_full_name', 'status', 'submitted_at', 'submission_file', 'submission_text', 'grade', 'feedback', 'graded_by', 'graded_at')
         read_only_fields = ('id', 'student', 'status', 'submitted_at', 'graded_by', 'graded_at')
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        org = getattr(request, 'organization', None) if request else None
+
+        if org:
+            assignment = attrs.get('assignment', self.instance.assignment if self.instance else None)
+            if assignment:
+                if assignment.organization != org:
+                    raise serializers.ValidationError({"assignment": "Assignment does not belong to this organization."})
+
+                student = request.user if request else None
+                if student:
+                    from accounts.models import Enrollment
+                    if not Enrollment.objects.filter(
+                        academy_class=assignment.academy_class,
+                        student=student,
+                        is_active=True
+                    ).exists():
+                        raise serializers.ValidationError({"student": "You are not enrolled in the class for this assignment."})
+        return attrs
 
     def create(self, validated_data):
         request = self.context.get('request')
