@@ -27,6 +27,83 @@ export interface ClassProgressRate {
   completion_rate: number;
 }
 
+export interface OrgKPIs {
+  total_students: number;
+  total_teachers: number;
+  total_mentors: number;
+  total_courses: number;
+  total_classes: number;
+  total_sessions: number;
+}
+
+export interface AcademicKPIs {
+  assignment_completion_rate: number;
+  attendance_rate: number;
+  average_grade: number;
+  average_assignment_grade: number;
+  active_students: number;
+  at_risk_students_count: number;
+}
+
+export interface AtRiskStudent {
+  user_id: number;
+  username: string;
+  full_name: string;
+  attendance_rate: number;
+  missing_assignments_count: number;
+  avg_grade: number | null;
+  risk_flags: ("low_attendance" | "missing_assignments" | "poor_grades")[];
+}
+
+export interface TeacherAnalytic {
+  user_id: number;
+  full_name: string;
+  classes_count: number;
+  students_count: number;
+  sessions_count: number;
+  pending_reviews: number;
+}
+
+export interface MentorAnalytic {
+  user_id: number;
+  full_name: string;
+  students_count: number;
+  active_relationships: number;
+  at_risk_count: number;
+  follow_up_workload: number;
+}
+
+export interface CourseAnalytic {
+  id: number;
+  code: string;
+  title: string;
+  enrollment_count: number;
+  completion_rate: number;
+  revenue_generated: number;
+  attendance_average: number;
+  avg_grade: number;
+}
+
+export interface ClassAttendanceTrend {
+  session_id: number;
+  title: string;
+  rate: number;
+  scheduled_start: string | null;
+}
+
+export interface ClassAnalytic {
+  id: number;
+  name: string;
+  course_code: string;
+  student_count: number;
+  attendance_trend: ClassAttendanceTrend[];
+  assignment_completion: number;
+  revenue_summary: {
+    paid: number;
+    outstanding: number;
+  };
+}
+
 export interface AnalyticsSummary {
   active_sessions: number;
   active_students: number;
@@ -37,6 +114,14 @@ export interface AnalyticsSummary {
   course_averages: CourseAverage[];
   staff_session_counts: StaffSessionCount[];
   class_progress_rates: ClassProgressRate[];
+  // Extended H.7 complete metrics
+  org_kpis: OrgKPIs;
+  academic_kpis: AcademicKPIs;
+  at_risk_students: AtRiskStudent[];
+  teacher_analytics: TeacherAnalytic[];
+  mentor_analytics: MentorAnalytic[];
+  course_analytics: CourseAnalytic[];
+  class_analytics: ClassAnalytic[];
   timestamp: string;
 }
 

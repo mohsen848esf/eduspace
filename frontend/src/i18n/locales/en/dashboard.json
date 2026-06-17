@@ -69,5 +69,72 @@
     "notifications": "Notifications · {{count}} new",
     "settings": "Settings"
   },
-  "roomDefault": "{{name}}'s Room"
+  "roomDefault": "{{name}}'s Room",
+  "reports": {
+    "tabs": {
+      "overview": "Overview",
+      "atRisk": "At-Risk Students",
+      "staff": "Staff Performance",
+      "coursesClasses": "Courses & Classes"
+    },
+    "org": {
+      "students": "Total Students",
+      "teachers": "Total Teachers",
+      "mentors": "Total Mentors",
+      "courses": "Total Courses",
+      "classes": "Total Classes",
+      "sessions": "Total Sessions"
+    },
+    "academic": {
+      "attendance": "Attendance Rate",
+      "completion": "Assignment Completion",
+      "examGrade": "Avg. Exam Grade",
+      "assignGrade": "Avg. Assignment Grade",
+      "atRiskCount": "At-Risk Students"
+    },
+    "finance": {
+      "title": "Financial Insights",
+      "revenue": "Total Revenue",
+      "collected": "Collected Revenue",
+      "outstanding": "Outstanding Revenue",
+      "trend": "Monthly Revenue Trend",
+      "collectionRate": "Collection Rate"
+    },
+    "atRisk": {
+      "student": "Student",
+      "reasons": "Risk Reasons",
+      "lowAttendance": "Low Attendance",
+      "missingAssignments": "Missing Assignments",
+      "poorGrades": "Poor Grades",
+      "noStudents": "No at-risk students identified. Great job!",
+      "riskFlags": "Risk Flags"
+    },
+    "staff": {
+      "teachersTitle": "Teacher Performance Metrics",
+      "mentorsTitle": "Mentor Workloads & Tracking",
+      "name": "Full Name",
+      "classes": "Classes Assigned",
+      "students": "Students Assigned",
+      "sessions": "Sessions Hosted",
+      "pendingReviews": "Pending Reviews",
+      "relationships": "Active Mentoring",
+      "workload": "Follow-Up Workload",
+      "atRisk": "Students At Risk"
+    },
+    "coursesClasses": {
+      "coursesTitle": "Course-Level Aggregates",
+      "classesTitle": "Class-Level Aggregates",
+      "course": "Course",
+      "class": "Class",
+      "enrollment": "Enrollments",
+      "completion": "Completion Rate",
+      "revenue": "Revenue Generated",
+      "attendance": "Attendance Avg",
+      "attendanceTrend": "Attendance Trend",
+      "expected": "Expected",
+      "submitted": "Submitted",
+      "paid": "Paid",
+      "outstanding": "Outstanding"
+    }
+  }
 }
