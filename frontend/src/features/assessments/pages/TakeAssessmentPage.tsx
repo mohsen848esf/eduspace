@@ -34,6 +34,7 @@ export default function TakeAssessmentPage() {
   useAntiCheat({
     submissionId: parsedId,
     status: submission?.status,
+    antiCheatToken: submission?.anti_cheat_token,
     onTabLoss: handleTabLoss,
   });
 

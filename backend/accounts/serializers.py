@@ -153,6 +153,16 @@ class InvoiceLineItemSerializer(serializers.ModelSerializer):
         model = InvoiceLineItem
         fields = ('description', 'quantity', 'unit_price')
 
+    def validate_quantity(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Quantity must be greater than zero.")
+        return value
+
+    def validate_unit_price(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Unit price cannot be negative.")
+        return value
+
 
 class TuitionInvoiceSerializer(serializers.ModelSerializer):
     student_username = serializers.CharField(source='student.username', read_only=True)

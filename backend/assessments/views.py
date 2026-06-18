@@ -344,22 +344,60 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=['post'], url_path='record-tab-loss')
     def record_tab_loss(self, request, pk=None):
         from django.db import transaction
+        from django.core.signing import Signer, BadSignature
+
+        token = request.data.get('anti_cheat_token')
+        if not token:
+            return Response(
+                {"error": "Missing anti-cheat token."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        signer = Signer()
+        try:
+            unsigned_val = signer.unsign(token)
+            token_submission_id, token_losses = unsigned_val.split(':')
+            token_submission_id = int(token_submission_id)
+            token_losses = int(token_losses)
+        except (BadSignature, ValueError):
+            return Response(
+                {"error": "Invalid anti-cheat token signature."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         with transaction.atomic():
             submission = Submission.objects.select_for_update().get(pk=self.get_object().pk)
+
+            if submission.id != token_submission_id:
+                return Response(
+                    {"error": "Token is for a different submission."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if submission.tab_focus_losses != token_losses:
+                return Response(
+                    {"error": "Token is out of sync or has already been used."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             if submission.status != Submission.Status.STARTED:
                 return Response(
                     {"error": "Submission is already submitted or graded."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+
             current_losses = AntiCheatService.record_tab_loss(
                 submission=submission,
                 actor=request.user,
                 request=request
             )
             anomaly = AntiCheatService.check_anomalies(submission)
+            next_token = signer.sign(f"{submission.id}:{current_losses}")
+
             return Response({
                 "tab_focus_losses": current_losses,
-                "anomaly_detected": anomaly["is_flagged"]
+                "anomaly_detected": anomaly["is_flagged"],
+                "anti_cheat_token": next_token
             })
 
     @action(detail=True, methods=['post'], url_path='update-telemetry')

@@ -255,12 +255,68 @@ export default function InspectionDrawer({
     );
   };
 
+  const renderKpiSkeleton = () => (
+    <div className="grid grid-cols-2 gap-4 bg-[var(--s2)] p-4 rounded-xl border border-[var(--b)] animate-pulse w-full">
+      <div className="space-y-2">
+        <div className="h-3 bg-slate-800 rounded w-2/3" />
+        <div className="h-4 bg-slate-800 rounded w-1/3" />
+      </div>
+      <div className="space-y-2">
+        <div className="h-3 bg-slate-800 rounded w-2/3" />
+        <div className="h-4 bg-slate-800 rounded w-1/3" />
+      </div>
+    </div>
+  );
+
+  const renderListSkeleton = (count = 2) => (
+    <div className="space-y-2 animate-pulse w-full">
+      {Array.from({ length: count }).map((_, idx) => (
+        <div key={idx} className="h-12 bg-slate-800/50 rounded-xl border border-[var(--b)]" />
+      ))}
+    </div>
+  );
+
   const renderContent = () => {
     if (loading) {
       return (
-        <div className="flex flex-col items-center justify-center h-64 gap-2">
-          <Spinner size="md" />
-          <span className="text-xs text-[var(--t3)]">{isFarsi ? "در حال دریافت اطلاعات..." : "Fetching records..."}</span>
+        <div className="space-y-6 p-4 animate-pulse text-left">
+          <div className="flex items-center gap-4 border-b border-[var(--b)] pb-5">
+            <div className="w-16 h-16 rounded-full bg-slate-800 flex-shrink-0" />
+            <div className="flex-1 space-y-2 min-w-0">
+              <div className="h-4 bg-slate-800 rounded w-3/4" />
+              <div className="h-3 bg-slate-800 rounded w-1/2" />
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="h-3 bg-slate-800 rounded w-1/4" />
+            <div className="grid grid-cols-2 gap-4 bg-[var(--s2)] p-4 rounded-xl border border-[var(--b)]">
+              <div className="space-y-2">
+                <div className="h-3 bg-slate-800 rounded w-2/3" />
+                <div className="h-4 bg-slate-800 rounded w-1/2" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 bg-slate-800 rounded w-2/3" />
+                <div className="h-4 bg-slate-800 rounded w-1/2" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 bg-slate-800 rounded w-2/3" />
+                <div className="h-4 bg-slate-800 rounded w-1/2" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 bg-slate-800 rounded w-2/3" />
+                <div className="h-4 bg-slate-800 rounded w-1/2" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-4 pt-4 border-t border-[var(--b)]/60">
+            <div className="h-3 bg-slate-800 rounded w-1/3" />
+            <div className="space-y-2">
+              <div className="h-12 bg-slate-800/60 rounded-xl" />
+              <div className="h-12 bg-slate-800/60 rounded-xl" />
+            </div>
+          </div>
         </div>
       );
     }
@@ -327,7 +383,7 @@ export default function InspectionDrawer({
             <div className="space-y-4 pt-4 border-t border-[var(--b)]/60 text-left">
               <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--t3)]">{isFarsi ? "وضعیت تحصیلی" : "Academic KPIs"}</h4>
               {loadingExtra ? (
-                <div className="flex justify-center p-2"><Spinner size="sm" /></div>
+                renderKpiSkeleton()
               ) : (
                 <div className="grid grid-cols-2 gap-4 text-xs bg-[var(--s2)] p-4 rounded-xl border border-[var(--b)]">
                   <div>
@@ -352,7 +408,7 @@ export default function InspectionDrawer({
             <div className="space-y-4 pt-4 border-t border-[var(--b)]/60 text-left">
               <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--t3)]">{isFarsi ? "کلاس‌های فعال ثبت‌نامی" : "Active Enrolled Classes"}</h4>
               {loadingExtra ? (
-                <div className="flex justify-center p-2"><Spinner size="sm" /></div>
+                renderListSkeleton(2)
               ) : studentEnrollments.length === 0 ? (
                 <div className="text-xs text-[var(--t3)] italic bg-[var(--s2)] p-3 rounded-xl border border-[var(--b)]">{isFarsi ? "کلاس فعالی ثبت نشده است." : "No active classes enrolled."}</div>
               ) : (
@@ -389,7 +445,7 @@ export default function InspectionDrawer({
             <div className="space-y-4 pt-4 border-t border-[var(--b)]/60 text-left">
               <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--t3)]">{isFarsi ? "وضعیت مالی" : "Financial Balance"}</h4>
               {loadingExtra ? (
-                <div className="flex justify-center p-2"><Spinner size="sm" /></div>
+                renderListSkeleton(2)
               ) : (
                 (() => {
                   const outstandingInvoices = studentInvoices.filter(
@@ -444,7 +500,7 @@ export default function InspectionDrawer({
             <div className="space-y-4 pt-4 border-t border-[var(--b)]/60 text-left">
               <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--t3)]">{isFarsi ? "دانش‌آموزان تحت منتورینگ" : "Mentored Students"}</h4>
               {loadingExtra ? (
-                <div className="flex justify-center p-2"><Spinner size="sm" /></div>
+                renderListSkeleton(3)
               ) : mentorStudents.length === 0 ? (
                 <div className="text-xs text-[var(--t3)] italic bg-[var(--s2)] p-3 rounded-xl border border-[var(--b)]">{isFarsi ? "کلاس یا دانش‌آموزی تحت منتورینگ یافت نشد." : "No mentored students found."}</div>
               ) : (

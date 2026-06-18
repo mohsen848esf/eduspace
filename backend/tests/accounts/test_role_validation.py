@@ -53,7 +53,7 @@ class RoleValidationTest(APITestCase):
                 format='json'
             )
             self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST, f"Allowed creating role with name '{name}'")
-            self.assertIn('name', res.data)
+            self.assertIn('name', res.data['errors'])
 
     def test_can_create_role_with_non_default_name(self):
         self.client.force_authenticate(user=self.admin_user)
