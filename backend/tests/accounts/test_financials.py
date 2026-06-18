@@ -144,3 +144,48 @@ class FinancialsIntegrationTest(APITestCase):
         current_trend = res.data['monthly_trends'][-1]
         self.assertEqual(current_trend['revenue'], 500.0)
         self.assertEqual(current_trend['expense'], 400.0)
+
+    def test_invoice_balance_action(self):
+        # Create invoices: 1 paid, 1 unpaid, 1 overdue, 1 partial, 1 cancelled
+        TuitionInvoice.objects.create(
+            organization=self.org,
+            student=self.student,
+            amount=500.00,
+            status='paid'
+        )
+        TuitionInvoice.objects.create(
+            organization=self.org,
+            student=self.student,
+            amount=200.00,
+            status='unpaid'
+        )
+        TuitionInvoice.objects.create(
+            organization=self.org,
+            student=self.student,
+            amount=150.00,
+            status='partial'
+        )
+        TuitionInvoice.objects.create(
+            organization=self.org,
+            student=self.student,
+            amount=300.00,
+            status='overdue'
+        )
+        TuitionInvoice.objects.create(
+            organization=self.org,
+            student=self.student,
+            amount=100.00,
+            status='cancelled'
+        )
+
+        url = reverse('invoice-balance')
+        
+        # Test student balance aggregation
+        res = self.client.get(f"{url}?student_id={self.student.id}", HTTP_X_ORGANIZATION_SLUG='fin-org')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        # outstanding: unpaid (200) + partial (150) + overdue (300) = 650
+        self.assertEqual(res.data['outstanding'], 650.0)
+        self.assertEqual(res.data['pending_count'], 3)
+        # total_billed: all except cancelled: 500 + 200 + 150 + 300 = 1150
+        self.assertEqual(res.data['total_billed'], 1150.0)
+        self.assertEqual(res.data['total_paid'], 500.0)
