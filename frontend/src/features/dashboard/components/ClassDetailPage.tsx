@@ -54,14 +54,17 @@ export default function ClassDetailPage() {
 
   const { data: classInvoicesResponse } = useQuery({
     queryKey: ["class-invoices", id],
-    queryFn: () => crmApi.getInvoices({ class_id: id }),
+    queryFn: () => crmApi.getInvoices({ class_id: id, page_size: 100 }),
   });
   const classInvoices = classInvoicesResponse?.results || [];
 
-  const totalBilled = classInvoices.reduce((sum, inv) => sum + parseFloat(inv.amount || "0"), 0);
-  const outstandingBalance = classInvoices
-    .filter((inv) => inv.status !== "paid" && inv.status !== "cancelled")
-    .reduce((sum, inv) => sum + parseFloat(inv.amount || "0"), 0);
+  const { data: classBalance } = useQuery({
+    queryKey: ["class-balance", id],
+    queryFn: () => crmApi.getInvoiceBalance({ class_id: id }),
+  });
+
+  const totalBilled = classBalance?.total_billed || 0;
+  const outstandingBalance = classBalance?.outstanding || 0;
 
   const cls = classes.find((c) => c.id === id);
   const course = courses.find((c) => c.id === cls?.course);

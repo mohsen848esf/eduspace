@@ -26,17 +26,13 @@ export default function CourseDetailPage() {
   const [inspectType, setInspectType] = useState<"student" | "teacher" | "mentor" | "course" | "class" | "session" | "invoice" | "assignment" | null>(null);
   const [inspectId, setInspectId] = useState<string | number | null>(null);
 
-  // ── Invoice Queries for Revenue Metrics ──────────────────────────
-  const { data: courseInvoicesResponse } = useQuery({
-    queryKey: ["course-invoices", id],
-    queryFn: () => crmApi.getInvoices({ course_id: id }),
+  const { data: courseBalance } = useQuery({
+    queryKey: ["course-balance", id],
+    queryFn: () => crmApi.getInvoiceBalance({ course_id: id }),
   });
-  const courseInvoices = courseInvoicesResponse?.results || [];
 
-  const totalBilled = courseInvoices.reduce((sum, inv) => sum + parseFloat(inv.amount || "0"), 0);
-  const totalPaid = courseInvoices
-    .filter((inv) => inv.status === "paid")
-    .reduce((sum, inv) => sum + parseFloat(inv.amount || "0"), 0);
+  const totalBilled = courseBalance?.total_billed || 0;
+  const totalPaid = courseBalance?.total_paid || 0;
   const collectionRate = totalBilled > 0 ? (totalPaid / totalBilled) * 100 : 100;
 
   // ── Queries ──────────────────────────────────────────
