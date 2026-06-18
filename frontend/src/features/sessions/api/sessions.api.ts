@@ -4,6 +4,9 @@ import type { Session, Attendance } from "../types";
 export const sessionsApi = {
   getSessions: async (params?: { class_id?: number; status?: string }): Promise<Session[]> => {
     const res = await client.get("/auth/sessions/", { params });
+    if (res.data && typeof res.data === "object" && "results" in res.data) {
+      return (res.data as any).results;
+    }
     return res.data;
   },
 

@@ -92,17 +92,20 @@ class SessionAPITest(APITransactionTestCase):
         # List all sessions for Org One
         res = self.client.get(url, HTTP_X_ORGANIZATION_SLUG='org-one')
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(res.data), 1)
+        self.assertIn('results', res.data)
+        self.assertEqual(len(res.data['results']), 1)
 
         # Filter by class_id
         res = self.client.get(f"{url}?class_id={self.academy_class.id}", HTTP_X_ORGANIZATION_SLUG='org-one')
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(res.data), 1)
+        self.assertIn('results', res.data)
+        self.assertEqual(len(res.data['results']), 1)
 
         # Filter by status
         res = self.client.get(f"{url}?status=live", HTTP_X_ORGANIZATION_SLUG='org-one')
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(res.data), 0)
+        self.assertIn('results', res.data)
+        self.assertEqual(len(res.data['results']), 0)
 
     def test_lifecycle_action_start(self):
         """Action POST /sessions/{id}/start/ starts the session and creates Room."""
