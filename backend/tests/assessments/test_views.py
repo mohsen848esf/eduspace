@@ -200,7 +200,7 @@ class AssessmentViewsIntegrationTest(APITestCase):
             HTTP_X_ORGANIZATION_SLUG=self.org.slug
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("Cannot modify answers of a submitted or graded assessment.", response.data[0])
+        self.assertIn("Cannot modify answers of a submitted or graded assessment.", response.data["detail"])
 
     def test_unauthorized_cross_tenant_access_and_idor(self):
         """Verify IDOR protections scoping submissions and answers strictly to request user."""
@@ -283,7 +283,7 @@ class AssessmentViewsIntegrationTest(APITestCase):
             HTTP_X_ORGANIZATION_SLUG=self.org.slug
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("Cannot modify answers of a submitted or graded assessment.", response.data[0])
+        self.assertIn("Cannot modify answers of a submitted or graded assessment.", response.data["detail"])
 
     def test_unique_active_submission_constraint(self):
         """Verify database constraint unique_active_submission_per_student works."""
@@ -313,14 +313,24 @@ class AssessmentViewsIntegrationTest(APITestCase):
         start_url = reverse('assessments:assessment-start', kwargs={'pk': self.assessment.id})
         response = self.client.post(start_url, HTTP_X_ORGANIZATION_SLUG=self.org.slug)
         submission_id = response.data["id"]
+        anti_cheat_token = response.data["anti_cheat_token"]
         
-        # Call record-tab-loss action
+        # Test call record-tab-loss action without token
         url = reverse('assessments:submission-record-tab-loss', kwargs={'pk': submission_id})
+        response_no_token = self.client.post(url, HTTP_X_ORGANIZATION_SLUG=self.org.slug)
+        self.assertEqual(response_no_token.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Test call record-tab-loss action with bad token
+        response_bad_token = self.client.post(url, {"anti_cheat_token": "bad-token"}, HTTP_X_ORGANIZATION_SLUG=self.org.slug)
+        self.assertEqual(response_bad_token.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Test call record-tab-loss action with correct token
         with self.captureOnCommitCallbacks(execute=True):
-            response = self.client.post(url, HTTP_X_ORGANIZATION_SLUG=self.org.slug)
+            response = self.client.post(url, {"anti_cheat_token": anti_cheat_token}, HTTP_X_ORGANIZATION_SLUG=self.org.slug)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["tab_focus_losses"], 1)
         self.assertEqual(response.data["anomaly_detected"], False)
+        self.assertIn("anti_cheat_token", response.data)
         
         # Check audit log is created
         audit_log = AuditLog.objects.filter(

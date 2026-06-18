@@ -152,11 +152,17 @@ class SubmissionStudentSerializer(serializers.ModelSerializer):
     assessment = AssessmentStudentSerializer(read_only=True)
     answers = StudentAnswerSerializer(many=True, read_only=True)
     student_username = serializers.CharField(source='student.username', read_only=True)
+    anti_cheat_token = serializers.SerializerMethodField()
 
     class Meta:
         model = Submission
-        fields = ('id', 'assessment', 'student', 'student_username', 'status', 'started_at', 'submitted_at', 'score', 'tab_focus_losses', 'browser_info', 'ip_address', 'answers')
-        read_only_fields = ('id', 'assessment', 'student', 'student_username', 'status', 'started_at', 'submitted_at', 'score', 'tab_focus_losses', 'browser_info', 'ip_address', 'answers')
+        fields = ('id', 'assessment', 'student', 'student_username', 'status', 'started_at', 'submitted_at', 'score', 'tab_focus_losses', 'browser_info', 'ip_address', 'answers', 'anti_cheat_token')
+        read_only_fields = ('id', 'assessment', 'student', 'student_username', 'status', 'started_at', 'submitted_at', 'score', 'tab_focus_losses', 'browser_info', 'ip_address', 'answers', 'anti_cheat_token')
+
+    def get_anti_cheat_token(self, obj):
+        from django.core.signing import Signer
+        signer = Signer()
+        return signer.sign(f"{obj.id}:{obj.tab_focus_losses}")
 
 
 class SubmissionTeacherSerializer(serializers.ModelSerializer):
@@ -224,13 +230,20 @@ class AssignmentSubmissionSerializer(serializers.ModelSerializer):
 
                 student = request.user if request else None
                 if student:
-                    from accounts.models import Enrollment
-                    if not Enrollment.objects.filter(
-                        academy_class=assignment.academy_class,
-                        student=student,
-                        is_active=True
-                    ).exists():
-                        raise serializers.ValidationError({"student": "You are not enrolled in the class for this assignment."})
+                    from accounts.permissions import has_org_permission
+                    is_staff_or_teacher = (
+                        student.is_superuser or
+                        has_org_permission(student, org, 'can_teach_class') or
+                        has_org_permission(student, org, 'can_manage_members')
+                    )
+                    if not is_staff_or_teacher:
+                        from accounts.models import Enrollment
+                        if not Enrollment.objects.filter(
+                            academy_class=assignment.academy_class,
+                            student=student,
+                            is_active=True
+                        ).exists():
+                            raise serializers.ValidationError({"student": "You are not enrolled in the class for this assignment."})
         return attrs
 
     def create(self, validated_data):

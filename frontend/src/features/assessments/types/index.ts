@@ -77,6 +77,7 @@ export interface Submission {
   browser_info: string;
   ip_address: string | null;
   answers: StudentAnswer[];
+  anti_cheat_token?: string;
 }
 
 export interface Assignment {

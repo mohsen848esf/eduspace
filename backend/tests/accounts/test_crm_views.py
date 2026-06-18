@@ -342,7 +342,7 @@ class CRMViewsIntegrationTest(APITestCase):
         }
         res_class = self.client.post(class_url, post_class_data, format='json', HTTP_X_ORGANIZATION_SLUG='crm-org')
         self.assertEqual(res_class.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('course', res_class.data)
+        self.assertIn('course', res_class.data['errors'])
 
         # Scenario C: Cross-tenant enrollment is rejected (enrolling to class from other org)
         enroll_url = reverse('enrollment-list')
@@ -352,7 +352,7 @@ class CRMViewsIntegrationTest(APITestCase):
         }
         res_enroll = self.client.post(enroll_url, post_enroll_data, format='json', HTTP_X_ORGANIZATION_SLUG='crm-org')
         self.assertEqual(res_enroll.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('academy_class', res_enroll.data)
+        self.assertIn('academy_class', res_enroll.data['errors'])
 
     def test_nested_tuition_invoice_creation_and_update(self):
         student = User.objects.create_user(username='student_nested', password='password')

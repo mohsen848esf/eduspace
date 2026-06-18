@@ -162,7 +162,8 @@ REST_FRAMEWORK = {
         'authentication': '10/minute',
         'assessments': '120/minute',
         'public': '60/minute',
-    }
+    },
+    'EXCEPTION_HANDLER': 'accounts.exceptions.custom_exception_handler',
 }
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
