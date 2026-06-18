@@ -127,6 +127,9 @@ export const assessmentsApi = {
   // Assignment Submissions API
   getAssignmentSubmissions: async (params?: { assignment_id?: number; class_id?: number }): Promise<AssignmentSubmission[]> => {
     const res = await client.get("/assessments/assignment-submissions/", { params });
+    if (res.data && typeof res.data === "object" && "results" in res.data) {
+      return (res.data as any).results;
+    }
     return res.data;
   },
   getAssignmentSubmission: async (id: number): Promise<AssignmentSubmission> => {
