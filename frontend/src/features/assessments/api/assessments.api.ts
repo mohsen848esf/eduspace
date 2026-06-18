@@ -86,8 +86,13 @@ export const assessmentsApi = {
     const res = await client.post(`/assessments/submissions/${id}/grade/`, { grades_dict: gradesDict });
     return res.data;
   },
-  recordTabLoss: async (id: number): Promise<{ tab_focus_losses: number; anomaly_detected: boolean }> => {
-    const res = await client.post(`/assessments/submissions/${id}/record-tab-loss/`);
+  recordTabLoss: async (
+    id: number,
+    antiCheatToken: string
+  ): Promise<{ tab_focus_losses: number; anomaly_detected: boolean; anti_cheat_token: string }> => {
+    const res = await client.post(`/assessments/submissions/${id}/record-tab-loss/`, {
+      anti_cheat_token: antiCheatToken,
+    });
     return res.data;
   },
   updateTelemetry: async (id: number, data: { ip_address?: string; browser_info?: string }): Promise<Submission> => {

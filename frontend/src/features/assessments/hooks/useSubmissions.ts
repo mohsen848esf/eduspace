@@ -55,8 +55,9 @@ export function useGradeSubmission() {
 export function useRecordTabLoss() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => assessmentsApi.recordTabLoss(id),
-    onSuccess: (_, id) => {
+    mutationFn: ({ id, antiCheatToken }: { id: number; antiCheatToken: string }) =>
+      assessmentsApi.recordTabLoss(id, antiCheatToken),
+    onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["submission", id] });
       queryClient.invalidateQueries({ queryKey: ["submissions"] });
     },
