@@ -30,15 +30,12 @@ export function TableRowActions({ actions, align = "end", isFarsi = false }: Tab
   const dropdownActions = actions.filter((a) => a !== editAction && a !== deleteAction);
 
   const renderIcon = (action: TableAction, defaultIcon: LucideIcon) => {
-    if (!action.icon) {
-      const IconComponent = defaultIcon;
-      return <IconComponent className="w-3.5 h-3.5" />;
+    const icon = action.icon || defaultIcon;
+    if (!icon) return null;
+    if (React.isValidElement(icon)) {
+      return icon;
     }
-    if (typeof action.icon === "function") {
-      const IconComponent = action.icon as LucideIcon;
-      return <IconComponent className="w-3.5 h-3.5" />;
-    }
-    return action.icon as React.ReactNode;
+    return React.createElement(icon as any, { className: "w-3.5 h-3.5" });
   };
 
   return (
@@ -129,10 +126,12 @@ export function TableRowActions({ actions, align = "end", isFarsi = false }: Tab
                         : "text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[rgba(255,255,255,0.05)]"
                     )}
                   >
-                    {IconComp && typeof IconComp === "function" ? (
-                      React.createElement(IconComp as LucideIcon, { className: "w-3.5 h-3.5 flex-shrink-0" })
-                    ) : IconComp ? (
-                      <span className="w-3.5 h-3.5 flex items-center justify-center flex-shrink-0">{IconComp as React.ReactNode}</span>
+                    {IconComp ? (
+                      React.isValidElement(IconComp) ? (
+                        IconComp
+                      ) : (
+                        React.createElement(IconComp as any, { className: "w-3.5 h-3.5 flex-shrink-0" })
+                      )
                     ) : null}
                     <span className="truncate">{action.label}</span>
                   </DropdownMenu.Item>
