@@ -14,6 +14,7 @@ import { useLocale } from "../../../i18n/useLocale";
 import { useQueryParamState } from "../../../hooks/useQueryParamState";
 import { useAuthStore } from "../../auth/store/authStore";
 import InspectionDrawer from "../../../components/ui/InspectionDrawer";
+import { TableRowActions } from "../../../components/ui/TableRowActions";
 
 type SubTab = "enrollments" | "directory" | "roles";
 type StatusFilter = "all" | "active" | "inactive";
@@ -519,23 +520,26 @@ export default function MembersPage() {
                             </span>
                           </td>
                           {isOrisAdmin && (
-                            <td className="p-4 text-right flex justify-end gap-2">
-                              <button
-                                onClick={() => openEditModal(e)}
-                                className="text-xs bg-transparent text-[var(--cyan)] hover:underline border-none cursor-pointer"
-                              >
-                                {isFarsi ? "تغییر وضعیت" : "Toggle/Edit"}
-                              </button>
-                              <button
-                                onClick={() => {
-                                  if (confirm(isFarsi ? "لغو ثبت‌نام؟" : "Are you sure you want to cancel this enrollment?")) {
-                                    deleteEnrollmentMutation.mutate(e.id);
-                                  }
-                                }}
-                                className="text-xs bg-transparent text-[var(--red)] hover:underline border-none cursor-pointer"
-                              >
-                                {isFarsi ? "حذف" : "Remove"}
-                              </button>
+                            <td className="p-4 text-right">
+                              <TableRowActions
+                                isFarsi={isFarsi}
+                                actions={[
+                                  {
+                                    label: isFarsi ? "تغییر وضعیت" : "Toggle/Edit",
+                                    onClick: () => openEditModal(e),
+                                    isEdit: true,
+                                  },
+                                  {
+                                    label: isFarsi ? "حذف" : "Remove",
+                                    onClick: () => {
+                                      if (confirm(isFarsi ? "لغو ثبت‌نام؟" : "Are you sure you want to cancel this enrollment?")) {
+                                        deleteEnrollmentMutation.mutate(e.id);
+                                      }
+                                    },
+                                    isDelete: true,
+                                  },
+                                ]}
+                              />
                             </td>
                           )}
                         </tr>
@@ -665,29 +669,30 @@ export default function MembersPage() {
                             </td>
                             {isOrisAdmin && (
                               <td className="p-4 text-right">
-                                <div className="flex justify-end gap-2">
-                                  <button
-                                    onClick={() => {
-                                      updateMemberMutation.mutate({
-                                        id: m.id,
-                                        data: { is_active: !m.is_active } as any,
-                                      });
-                                    }}
-                                    className="text-[10px] bg-transparent text-[var(--cyan)] hover:underline border-none cursor-pointer"
-                                  >
-                                    {m.is_active ? (isFarsi ? "غیرفعال" : "Deactivate") : (isFarsi ? "فعال" : "Activate")}
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      if (confirm(isFarsi ? "حذف این عضو از سازمان؟" : "Remove this member from the organization?")) {
-                                        deleteMemberMutation.mutate(m.id);
-                                      }
-                                    }}
-                                    className="text-[10px] bg-transparent text-[var(--red)] hover:underline border-none cursor-pointer"
-                                  >
-                                    {isFarsi ? "حذف" : "Remove"}
-                                  </button>
-                                </div>
+                                <TableRowActions
+                                  isFarsi={isFarsi}
+                                  actions={[
+                                    {
+                                      label: m.is_active ? (isFarsi ? "غیرفعال" : "Deactivate") : (isFarsi ? "فعال" : "Activate"),
+                                      onClick: () => {
+                                        updateMemberMutation.mutate({
+                                          id: m.id,
+                                          data: { is_active: !m.is_active } as any,
+                                        });
+                                      },
+                                      isEdit: true,
+                                    },
+                                    {
+                                      label: isFarsi ? "حذف" : "Remove",
+                                      onClick: () => {
+                                        if (confirm(isFarsi ? "حذف این عضو از سازمان؟" : "Remove this member from the organization?")) {
+                                          deleteMemberMutation.mutate(m.id);
+                                        }
+                                      },
+                                      isDelete: true,
+                                    },
+                                  ]}
+                                />
                               </td>
                             )}
                           </tr>

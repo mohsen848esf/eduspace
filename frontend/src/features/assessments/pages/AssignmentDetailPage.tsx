@@ -12,7 +12,7 @@ import { Modal, ModalHeader, ModalTitle, ModalBody } from "../../../components/u
 import Spinner from "../../../components/ui/Spinner";
 import AppShell from "../../../components/layout/AppShell";
 import { useLocale } from "../../../i18n/useLocale";
-import { FileText, Calendar, Download, CheckCircle, Clock, Award, ShieldAlert, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, Download, CheckCircle, Clock, Award, ShieldAlert, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import InspectionDrawer from "../../../components/ui/InspectionDrawer";
 
 export default function AssignmentDetailPage() {
@@ -363,7 +363,7 @@ export default function AssignmentDetailPage() {
                               )}
                             </td>
                             <td className="p-4 text-right">
-                              <Button variant="secondary" size="xs" onClick={() => openGradingModal(sub)}>
+                              <Button variant="secondary" size="sm" onClick={() => openGradingModal(sub)}>
                                 {isSubGraded ? (isFarsi ? "ویرایش نمره" : "Edit Grade") : (isFarsi ? "ثبت نمره" : "Grade")}
                               </Button>
                             </td>
@@ -476,7 +476,7 @@ export default function AssignmentDetailPage() {
                 <Button
                   type="button"
                   variant="secondary"
-                  size="xs"
+                  size="sm"
                   disabled={prevIndex === -1}
                   onClick={() => navigateToSubmission(prevIndex)}
                   className="flex items-center gap-1.5"
@@ -490,7 +490,7 @@ export default function AssignmentDetailPage() {
                 <Button
                   type="button"
                   variant="secondary"
-                  size="xs"
+                  size="sm"
                   disabled={nextIndex === -1}
                   onClick={() => navigateToSubmission(nextIndex)}
                   className="flex items-center gap-1.5"

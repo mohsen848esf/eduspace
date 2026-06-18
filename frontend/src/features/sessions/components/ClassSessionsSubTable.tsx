@@ -16,6 +16,8 @@ import type { AcademyClass } from "../../dashboard/api/crm.api";
 import Button from "../../../components/ui/Button";
 import Spinner from "../../../components/ui/Spinner";
 import Input from "../../../components/ui/Input";
+import { DateTimePicker } from "../../../components/forms/DateTimePicker";
+
 import AttendanceModal from "../../dashboard/components/AttendanceModal";
 import { useOrgPermission } from "../../../hooks/useOrgPermission";
 
@@ -148,21 +150,20 @@ export default function ClassSessionsSubTable({
             placeholder="e.g. Session 1: Introduction"
             required
           />
-          <Input
+          <DateTimePicker
             label={isFarsi ? "زمان شروع" : "Start Time"}
-            type="datetime-local"
-            value={scheduleForm.scheduled_start}
-            onChange={(e) => setScheduleForm({ ...scheduleForm, scheduled_start: e.target.value })}
+            value={scheduleForm.scheduled_start || undefined}
+            onChange={(val) => setScheduleForm({ ...scheduleForm, scheduled_start: val })}
           />
           <div className="flex gap-2">
             <div className="flex-1">
-              <Input
+              <DateTimePicker
                 label={isFarsi ? "زمان پایان" : "End Time"}
-                type="datetime-local"
-                value={scheduleForm.scheduled_end}
-                onChange={(e) => setScheduleForm({ ...scheduleForm, scheduled_end: e.target.value })}
+                value={scheduleForm.scheduled_end || undefined}
+                onChange={(val) => setScheduleForm({ ...scheduleForm, scheduled_end: val })}
               />
             </div>
+
             <Button
               type="submit"
               size="sm"

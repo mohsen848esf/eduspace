@@ -6,7 +6,6 @@ import {
   BarChart2,
   Users,
   BookOpen,
-  TrendingUp,
   Award,
   Clock,
   RefreshCcw,
@@ -165,7 +164,7 @@ export default function ReportsPage() {
 
   if (isLoading) {
     return (
-      <AppShell activeId={activeNav} onNavigate={handleNavigate}>
+      <AppShell title={t("nav.reports")} activeNav={activeNav} onNavigate={handleNavigate}>
         <div className="flex items-center justify-center h-64">
           <Spinner />
         </div>
@@ -175,7 +174,7 @@ export default function ReportsPage() {
 
   if (isError || !analytics) {
     return (
-      <AppShell activeId={activeNav} onNavigate={handleNavigate}>
+      <AppShell title={t("nav.reports")} activeNav={activeNav} onNavigate={handleNavigate}>
         <div className="flex flex-col items-center justify-center h-64 gap-4">
           <p className="text-[var(--t2)]">Failed to load analytics data.</p>
           <button
@@ -197,7 +196,7 @@ export default function ReportsPage() {
     : 1;
 
   return (
-    <AppShell activeId={activeNav} onNavigate={handleNavigate}>
+    <AppShell title={t("nav.reports")} activeNav={activeNav} onNavigate={handleNavigate}>
       <div
         className="p-6 max-w-7xl mx-auto space-y-8 fade-in"
         dir={isFarsi ? "rtl" : "ltr"}

@@ -11,7 +11,7 @@ import { useSessions } from "../../sessions/hooks/useSessions";
 import { sessionsApi } from "../../sessions/api/sessions.api";
 import { crmApi } from "../api/crm.api";
 import Spinner from "../../../components/ui/Spinner";
-import { Play, Calendar, Video, Clock, User, BookOpen, CreditCard, ChevronRight, Award } from "lucide-react";
+import { Play, Calendar, Video, Clock, BookOpen, CreditCard, ChevronRight, Award } from "lucide-react";
 import { useNotificationsStore } from "../../auth/store/notificationsStore";
 import { assessmentsApi } from "../../assessments/api/assessments.api";
 import recordingsApi from "../../recordings/api/recordings.api";

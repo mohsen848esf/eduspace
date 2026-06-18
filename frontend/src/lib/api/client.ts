@@ -6,6 +6,11 @@ const getApiUrl = (): string => {
     return envUrl.endsWith("/") ? `${envUrl}api` : `${envUrl}/api`;
   }
   const origin = window.location.origin;
+  const hostname = window.location.hostname;
+  const protocol = window.location.protocol;
+  if (window.location.port === "5173") {
+    return `${protocol}//${hostname}:8000/api`;
+  }
   if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
     return "http://localhost:8000/api";
   }
@@ -30,13 +35,42 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
+let isRefreshing = false;
+let failedQueue: any[] = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 // Handle token expiry
 client.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config;
     if (error.response?.status === 401 && !original._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            original.headers.Authorization = `Bearer ${token}`;
+            return client(original);
+          })
+          .catch((err) => {
+            return Promise.reject(err);
+          });
+      }
+
       original._retry = true;
+      isRefreshing = true;
+
       const refresh = localStorage.getItem("refresh_token");
       if (refresh) {
         try {
@@ -45,12 +79,20 @@ client.interceptors.response.use(
             { refresh },
           );
           localStorage.setItem("access_token", data.access);
+          if (data.refresh) {
+            localStorage.setItem("refresh_token", data.refresh);
+          }
           original.headers.Authorization = `Bearer ${data.access}`;
+          processQueue(null, data.access);
           return client(original);
-        } catch {
+        } catch (err) {
+          processQueue(err, null);
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
           window.location.href = "/login";
+          return Promise.reject(err);
+        } finally {
+          isRefreshing = false;
         }
       }
     }

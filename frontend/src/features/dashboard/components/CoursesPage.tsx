@@ -10,6 +10,7 @@ import { Modal, ModalHeader, ModalTitle, ModalBody } from "../../../components/u
 import Spinner from "../../../components/ui/Spinner";
 import AppShell from "../../../components/layout/AppShell";
 import { useLocale } from "../../../i18n/useLocale";
+import { TableRowActions } from "../../../components/ui/TableRowActions";
 
 export default function CoursesPage() {
   const { language } = useLocale();
@@ -181,23 +182,26 @@ export default function CoursesPage() {
                     <td className="p-4 text-[var(--t2)] max-w-xs truncate">{c.description || "—"}</td>
                     <td className="p-4 text-[var(--t1)] font-mono">${parseFloat(c.price).toFixed(2)}</td>
                     {isOrisAdmin && (
-                      <td className="p-4 text-right flex justify-end gap-2">
-                        <button
-                          onClick={() => openEditModal(c)}
-                          className="text-xs bg-transparent text-[var(--cyan)] hover:underline border-none cursor-pointer"
-                        >
-                          {isFarsi ? "ویرایش" : "Edit"}
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (confirm(isFarsi ? "آیا از حذف این دوره مطمئن هستید؟" : "Are you sure you want to delete this course?")) {
-                              deleteCourseMutation.mutate(c.id);
-                            }
-                          }}
-                          className="text-xs bg-transparent text-[var(--red)] hover:underline border-none cursor-pointer"
-                        >
-                          {isFarsi ? "حذف" : "Delete"}
-                        </button>
+                      <td className="p-4 text-right">
+                        <TableRowActions
+                          isFarsi={isFarsi}
+                          actions={[
+                            {
+                              label: isFarsi ? "ویرایش" : "Edit",
+                              onClick: () => openEditModal(c),
+                              isEdit: true,
+                            },
+                            {
+                              label: isFarsi ? "حذف" : "Delete",
+                              onClick: () => {
+                                if (confirm(isFarsi ? "آیا از حذف این دوره مطمئن هستید؟" : "Are you sure you want to delete this course?")) {
+                                  deleteCourseMutation.mutate(c.id);
+                                }
+                              },
+                              isDelete: true,
+                            },
+                          ]}
+                        />
                       </td>
                     )}
                   </tr>

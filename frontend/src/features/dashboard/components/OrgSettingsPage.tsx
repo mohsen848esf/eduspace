@@ -7,6 +7,8 @@ import { authApi, type OrganizationDetail, type OrgMember, type Role, type UserS
 import AppShell from "../../../components/layout/AppShell";
 import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
+import { DatePicker } from "../../../components/forms/DatePicker";
+
 import { Modal, ModalHeader, ModalTitle, ModalBody, ModalFooter } from "../../../components/ui/Modal";
 import Spinner from "../../../components/ui/Spinner";
 import ReportsExportWidget from "./ReportsExportWidget";
@@ -1128,12 +1130,12 @@ export default function OrgSettingsPage() {
                   </select>
                 </div>
 
-                <Input
+                <DatePicker
                   label={isFarsi ? "تاریخ انقضای عضویت (اختیاری)" : "Expiration Date (Optional)"}
-                  type="date"
-                  value={inviteExpires}
-                  onChange={(e) => setInviteExpires(e.target.value)}
+                  value={inviteExpires || undefined}
+                  onChange={(val) => setInviteExpires(val)}
                 />
+
               </div>
             </ModalBody>
             <ModalFooter>

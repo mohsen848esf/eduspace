@@ -48,6 +48,7 @@ function Show-Menu {
         }
         $raw = Read-Host ("Enter choice (default {0})" -f ($DefaultIndex + 1))
         if ([string]::IsNullOrWhiteSpace($raw)) { return $DefaultIndex }
+        $val = 0
         if ([int]::TryParse($raw, [ref]$val)) {
             $idx = $val - 1
             if ($idx -ge 0 -and $idx -lt $Options.Count) { return $idx }

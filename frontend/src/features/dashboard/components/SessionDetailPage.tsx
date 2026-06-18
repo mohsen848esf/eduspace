@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
-import { sessionsApi } from "../../sessions/api/sessions.api";
 import recordingsApi from "../../recordings/api/recordings.api";
 import {
   useSession,
@@ -26,12 +25,9 @@ import {
   Clock,
   Video,
   ArrowLeft,
-  ArrowRight,
-  CheckCircle,
   AlertCircle,
   Search,
   Check,
-  FileText,
   Percent
 } from "lucide-react";
 

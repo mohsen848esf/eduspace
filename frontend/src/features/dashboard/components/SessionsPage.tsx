@@ -13,11 +13,15 @@ import { crmApi } from "../api/crm.api";
 import { useOrgPermission } from "../../../hooks/useOrgPermission";
 import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
+import { DateTimePicker } from "../../../components/forms/DateTimePicker";
+
 import Spinner from "../../../components/ui/Spinner";
 import { Modal, ModalHeader, ModalTitle, ModalBody } from "../../../components/ui/Modal";
 import AttendanceModal from "./AttendanceModal";
 import AppShell from "../../../components/layout/AppShell";
 import { useLocale } from "../../../i18n/useLocale";
+import { TableRowActions, type TableAction } from "../../../components/ui/TableRowActions";
+import { Play, Video, CheckCircle, ClipboardList } from "lucide-react";
 
 export default function SessionsPage() {
   const { language } = useLocale();
@@ -199,75 +203,67 @@ export default function SessionsPage() {
                           {s.status}
                         </span>
                       </td>
-                      <td className="p-4 text-right flex justify-end gap-1.5 items-center">
-                        {isScheduled && canStartCompleteCancel && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="success"
-                              onClick={() => handleStartSession(s.id)}
-                              loading={startSessionMutation.isPending && startSessionMutation.variables === s.id}
-                            >
-                              {isFarsi ? "شروع کلاس" : "Start"}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              onClick={() => handleCancelSession(s.id)}
-                              loading={cancelSessionMutation.isPending && cancelSessionMutation.variables === s.id}
-                            >
-                              {isFarsi ? "لغو" : "Cancel"}
-                            </Button>
-                          </>
-                        )}
+                      <td className="p-4 text-right">
+                        {(() => {
+                          const sessionActions: TableAction[] = [];
 
-                        {isLive && (
-                          <>
-                            {canStartCompleteCancel ? (
-                              <>
-                                <Link
-                                  to={`/room/${s.active_room_code}`}
-                                  className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--brand)] text-[var(--brand-text)] hover:brightness-110 transition-all cursor-pointer no-underline"
-                                >
-                                  {isFarsi ? "ورود" : "Join"}
-                                </Link>
-                                <Button
-                                  size="sm"
-                                  variant="success"
-                                  onClick={() => handleCompleteSession(s.id)}
-                                  loading={completeSessionMutation.isPending && completeSessionMutation.variables === s.id}
-                                >
-                                  {isFarsi ? "اتمام" : "Complete"}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="danger"
-                                  onClick={() => handleCancelSession(s.id)}
-                                  loading={cancelSessionMutation.isPending && cancelSessionMutation.variables === s.id}
-                                >
-                                  {isFarsi ? "لغو" : "Cancel"}
-                                </Button>
-                              </>
-                            ) : (
-                              <Link
-                                to={`/room/${s.active_room_code}`}
-                                className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--brand)] text-[var(--brand-text)] hover:brightness-110 transition-all cursor-pointer no-underline"
-                              >
-                                {isFarsi ? "ورود به کلاس" : "Join Room"}
-                              </Link>
-                            )}
-                          </>
-                        )}
+                          // Scheduled + Authed actions
+                          if (isScheduled && canStartCompleteCancel) {
+                            sessionActions.push({
+                              label: isFarsi ? "شروع کلاس" : "Start",
+                              onClick: () => handleStartSession(s.id),
+                              icon: Play,
+                            });
+                            sessionActions.push({
+                              label: isFarsi ? "لغو" : "Cancel",
+                              onClick: () => handleCancelSession(s.id),
+                              isDelete: true,
+                            });
+                          }
 
-                        {(isLive || isCompleted) && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => setActiveAttendanceSessionId(s.id)}
-                          >
-                            {isFarsi ? "حضور و غیاب" : "Attendance"}
-                          </Button>
-                        )}
+                          // Live actions
+                          if (isLive) {
+                            if (canStartCompleteCancel) {
+                              sessionActions.push({
+                                label: isFarsi ? "ورود" : "Join",
+                                onClick: () => navigate(`/room/${s.active_room_code}`),
+                                icon: Video,
+                              });
+                              sessionActions.push({
+                                label: isFarsi ? "اتمام" : "Complete",
+                                onClick: () => handleCompleteSession(s.id),
+                                icon: CheckCircle,
+                              });
+                              sessionActions.push({
+                                label: isFarsi ? "لغو" : "Cancel",
+                                onClick: () => handleCancelSession(s.id),
+                                isDelete: true,
+                              });
+                            } else {
+                              sessionActions.push({
+                                label: isFarsi ? "ورود به کلاس" : "Join Room",
+                                onClick: () => navigate(`/room/${s.active_room_code}`),
+                                icon: Video,
+                              });
+                            }
+                          }
+
+                          // Attendance action (live or completed)
+                          if (isLive || isCompleted) {
+                            sessionActions.push({
+                              label: isFarsi ? "حضور و غیاب" : "Attendance",
+                              onClick: () => setActiveAttendanceSessionId(s.id),
+                              icon: ClipboardList,
+                            });
+                          }
+
+                          return (
+                            <TableRowActions
+                              isFarsi={isFarsi}
+                              actions={sessionActions}
+                            />
+                          );
+                        })()}
                       </td>
                     </tr>
                   );
@@ -311,20 +307,19 @@ export default function SessionsPage() {
               placeholder="e.g. Session 1: Introduction"
               required
             />
-            <Input
+            <DateTimePicker
               label={isFarsi ? "زمان شروع" : "Start Time"}
-              type="datetime-local"
-              value={scheduleForm.scheduled_start}
-              onChange={(e) => setScheduleForm({ ...scheduleForm, scheduled_start: e.target.value })}
+              value={scheduleForm.scheduled_start || undefined}
+              onChange={(val) => setScheduleForm({ ...scheduleForm, scheduled_start: val })}
               required
             />
-            <Input
+            <DateTimePicker
               label={isFarsi ? "زمان پایان" : "End Time"}
-              type="datetime-local"
-              value={scheduleForm.scheduled_end}
-              onChange={(e) => setScheduleForm({ ...scheduleForm, scheduled_end: e.target.value })}
+              value={scheduleForm.scheduled_end || undefined}
+              onChange={(val) => setScheduleForm({ ...scheduleForm, scheduled_end: val })}
               required
             />
+
 
             {(() => {
               if (!scheduleForm.scheduled_start || !scheduleForm.scheduled_end || !scheduleForm.academy_class) return null;

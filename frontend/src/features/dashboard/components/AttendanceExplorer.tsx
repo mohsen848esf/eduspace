@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { sessionsApi } from "../../sessions/api/sessions.api";
 import { crmApi, type SimpleUser } from "../api/crm.api";
-import { useOrgPermission } from "../../../hooks/useOrgPermission";
 import AppShell from "../../../components/layout/AppShell";
 import Spinner from "../../../components/ui/Spinner";
 import Button from "../../../components/ui/Button";
@@ -11,13 +10,11 @@ import Input from "../../../components/ui/Input";
 import { useLocale } from "../../../i18n/useLocale";
 import { useQueryParamState } from "../../../hooks/useQueryParamState";
 import InspectionDrawer from "../../../components/ui/InspectionDrawer";
-import { Calendar, User, Search, Clock, Award, ShieldAlert, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Search } from "lucide-react";
 
 export default function AttendanceExplorer() {
   const { language } = useLocale();
   const isFarsi = language === "fa";
-  const { hasPermission } = useOrgPermission();
-  const isAdmin = hasPermission("can_manage_members");
 
   const [inspectType, setInspectType] = useState<"student" | "teacher" | "mentor" | "course" | "class" | "session" | "invoice" | null>(null);
   const [inspectId, setInspectId] = useState<string | number | null>(null);

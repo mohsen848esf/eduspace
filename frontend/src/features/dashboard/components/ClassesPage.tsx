@@ -6,6 +6,8 @@ import { crmApi, type AcademyClass } from "../api/crm.api";
 import { useOrgPermission } from "../../../hooks/useOrgPermission";
 import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
+import { DatePicker } from "../../../components/forms/DatePicker";
+
 import { Modal, ModalHeader, ModalTitle, ModalBody } from "../../../components/ui/Modal";
 import Spinner from "../../../components/ui/Spinner";
 import ClassSessionsSubTable from "../../sessions/components/ClassSessionsSubTable";
@@ -14,6 +16,8 @@ import { useLocale } from "../../../i18n/useLocale";
 import { useAuthStore } from "../../auth/store/authStore";
 import BroadcastComposer from "./BroadcastComposer";
 import InspectionDrawer from "../../../components/ui/InspectionDrawer";
+import { TableRowActions, type TableAction } from "../../../components/ui/TableRowActions";
+import { Calendar, Send, Users } from "lucide-react";
 
 export default function ClassesPage() {
   const { language } = useLocale();
@@ -260,53 +264,64 @@ export default function ClassesPage() {
                       </td>
                       <td className="p-4 text-[var(--t2)]">{cls.room || "—"}</td>
                       <td className="p-4 text-[var(--t3)]">{cls.start_date || "—"}</td>
-                      <td className="p-4 text-right flex justify-end gap-2 flex-wrap max-w-xs">
-                        <button
-                          onClick={() => setExpandedClassId(expandedClassId === cls.id ? null : cls.id)}
-                          className="text-xs bg-transparent text-[var(--brand-text)] hover:underline border-none cursor-pointer font-bold"
-                        >
-                          {isFarsi ? `جلسات (${cls.session_count || 0})` : `Sessions (${cls.session_count || 0})`}
-                        </button>
-                        {(isOrisAdmin || (hasPermission("can_teach_class") && cls.teacher === user?.id)) && (
-                          <button
-                            onClick={() => {
-                              setSelectedClassForBroadcast(cls);
-                              setIsBroadcastModalOpen(true);
-                            }}
-                            className="text-xs bg-transparent text-[var(--brand-text)] hover:underline border-none cursor-pointer font-bold"
-                          >
-                            {isFarsi ? "ارسال پیام" : "Broadcast"}
-                          </button>
-                        )}
-                        {isOrisAdmin && (
-                          <>
-                            <button
-                              onClick={() => {
+                      <td className="p-4 text-right">
+                        {(() => {
+                          const classActions: TableAction[] = [];
+                          
+                          // Sessions toggle action
+                          classActions.push({
+                            label: isFarsi 
+                              ? `جلسات (${cls.session_count || 0})` 
+                              : `Sessions (${cls.session_count || 0})`,
+                            onClick: () => setExpandedClassId(expandedClassId === cls.id ? null : cls.id),
+                            icon: Calendar
+                          });
+
+                          // Broadcast action
+                          if (isOrisAdmin || (hasPermission("can_teach_class") && cls.teacher === user?.id)) {
+                            classActions.push({
+                              label: isFarsi ? "ارسال پیام" : "Broadcast",
+                              onClick: () => {
+                                setSelectedClassForBroadcast(cls);
+                                setIsBroadcastModalOpen(true);
+                              },
+                              icon: Send
+                            });
+                          }
+
+                          // Admin-specific actions
+                          if (isOrisAdmin) {
+                            classActions.push({
+                              label: isFarsi ? "ثبت‌نام‌ها" : "Enrollments",
+                              onClick: () => {
                                 setSelectedClassForEnrollment(cls);
                                 setIsEnrollmentModalOpen(true);
-                              }}
-                              className="text-xs bg-transparent text-[var(--amber)] hover:underline border-none cursor-pointer"
-                            >
-                              {isFarsi ? "ثبت‌نام‌ها" : "Enrollments"}
-                            </button>
-                            <button
-                              onClick={() => openEditModal(cls)}
-                              className="text-xs bg-transparent text-[var(--cyan)] hover:underline border-none cursor-pointer"
-                            >
-                              {isFarsi ? "ویرایش" : "Edit"}
-                            </button>
-                            <button
-                              onClick={() => {
+                              },
+                              icon: Users
+                            });
+                            classActions.push({
+                              label: isFarsi ? "ویرایش" : "Edit",
+                              onClick: () => openEditModal(cls),
+                              isEdit: true
+                            });
+                            classActions.push({
+                              label: isFarsi ? "حذف" : "Delete",
+                              onClick: () => {
                                 if (confirm(isFarsi ? "آیا از حذف این کلاس مطمئن هستید؟" : "Are you sure you want to delete this class?")) {
                                   deleteClassMutation.mutate(cls.id);
                                 }
-                              }}
-                              className="text-xs bg-transparent text-[var(--red)] hover:underline border-none cursor-pointer"
-                            >
-                              {isFarsi ? "حذف" : "Delete"}
-                            </button>
-                          </>
-                        )}
+                              },
+                              isDelete: true
+                            });
+                          }
+
+                          return (
+                            <TableRowActions
+                              isFarsi={isFarsi}
+                              actions={classActions}
+                            />
+                          );
+                        })()}
                       </td>
                     </tr>
                     {expandedClassId === cls.id && (
@@ -424,19 +439,18 @@ export default function ClassesPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <Input
+              <DatePicker
                 label={isFarsi ? "تاریخ شروع" : "Start Date"}
-                type="date"
-                value={classForm.start_date}
-                onChange={(e) => setClassForm({ ...classForm, start_date: e.target.value })}
+                value={classForm.start_date || undefined}
+                onChange={(val) => setClassForm({ ...classForm, start_date: val })}
               />
-              <Input
+              <DatePicker
                 label={isFarsi ? "تاریخ پایان" : "End Date"}
-                type="date"
-                value={classForm.end_date}
-                onChange={(e) => setClassForm({ ...classForm, end_date: e.target.value })}
+                value={classForm.end_date || undefined}
+                onChange={(val) => setClassForm({ ...classForm, end_date: val })}
               />
             </div>
+
             <Input
               label={isFarsi ? "شماره اتاق / کلاس فیزیکی" : "Room"}
               value={classForm.room}

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Drawer, DrawerHeader, DrawerTitle, DrawerBody, DrawerClose } from "../layout/Drawer";
 import { useLocale } from "../../i18n/useLocale";
 import client from "../../lib/api/client";
-import Spinner from "./Spinner";
 import { Link } from "react-router-dom";
 import {
   X,
@@ -43,7 +42,6 @@ export default function InspectionDrawer({
   const [studentInvoices, setStudentInvoices] = useState<any[]>([]);
   const [studentBalance, setStudentBalance] = useState<{ outstanding: number; pending_count: number } | null>(null);
   const [mentorStudents, setMentorStudents] = useState<any[]>([]);
-  const [mentorClasses, setMentorClasses] = useState<any[]>([]);
   const [loadingExtra, setLoadingExtra] = useState(false);
   const [attendanceRate, setAttendanceRate] = useState<number | null>(null);
   const [missingAssignments, setMissingAssignments] = useState<number | null>(null);
@@ -175,7 +173,6 @@ export default function InspectionDrawer({
               const mClasses = (classesRes.data || []).filter((c: any) => c.mentor === userId);
               const classIds = mClasses.map((c: any) => c.id);
               const mStudents = (enrollRes.data || []).filter((e: any) => classIds.includes(e.academy_class));
-              setMentorClasses(mClasses);
               setMentorStudents(mStudents);
             }
           } catch (e) {

@@ -8,6 +8,9 @@ import { useOrgPermission } from "../../../hooks/useOrgPermission";
 import { useAuthStore } from "../../auth/store/authStore";
 import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
+import { DatePicker } from "../../../components/forms/DatePicker";
+import { DateTimePicker } from "../../../components/forms/DateTimePicker";
+
 import { Modal, ModalHeader, ModalTitle, ModalBody } from "../../../components/ui/Modal";
 import Spinner from "../../../components/ui/Spinner";
 import AppShell from "../../../components/layout/AppShell";
@@ -16,7 +19,7 @@ import BroadcastComposer from "./BroadcastComposer";
 import ClassSessionsSubTable from "../../sessions/components/ClassSessionsSubTable";
 import InspectionDrawer from "../../../components/ui/InspectionDrawer";
 import { assessmentsApi } from "../../assessments/api/assessments.api";
-import { FileText, CheckCircle, AlertCircle, Plus, Eye } from "lucide-react";
+import { FileText, CheckCircle, Plus, Eye } from "lucide-react";
 
 export default function ClassDetailPage() {
   const { classId } = useParams<{ classId: string }>();
@@ -339,7 +342,7 @@ export default function ClassDetailPage() {
                       <button
                         onClick={() => {
                           setInspectType("teacher");
-                          setInspectId(cls.teacher);
+                          setInspectId(cls.teacher ?? null);
                         }}
                         className="bg-transparent border-none p-0 text-[var(--t3)] hover:text-[var(--brand)] hover:underline cursor-pointer font-medium text-[11px] align-baseline"
                       >
@@ -355,7 +358,7 @@ export default function ClassDetailPage() {
                       <button
                         onClick={() => {
                           setInspectType("mentor");
-                          setInspectId(cls.mentor);
+                          setInspectId(cls.mentor ?? null);
                         }}
                         className="bg-transparent border-none p-0 text-[var(--t3)] hover:text-[var(--brand)] hover:underline cursor-pointer font-medium text-[11px] align-baseline"
                       >
@@ -533,7 +536,7 @@ export default function ClassDetailPage() {
                                 </span>
                               ) : (
                                 <Button
-                                  size="xs"
+                                  size="sm"
                                   onClick={() => {
                                     setSelectedAssignmentId(assignment.id);
                                     setIsSubmitHomeworkOpen(true);
@@ -545,7 +548,7 @@ export default function ClassDetailPage() {
                             </>
                           )}
                           <Link to={`/academic/assignments/${assignment.id}`}>
-                            <Button variant="secondary" size="xs" className="flex items-center gap-1">
+                            <Button variant="secondary" size="sm" className="flex items-center gap-1">
                               <Eye className="w-3 h-3" />
                               {isFarsi ? "مشاهده" : "View"}
                             </Button>
@@ -754,9 +757,10 @@ export default function ClassDetailPage() {
               )}
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <Input label={isFarsi ? "تاریخ شروع" : "Start Date"} type="date" value={classForm.start_date} onChange={(e) => setClassForm({ ...classForm, start_date: e.target.value })} />
-              <Input label={isFarsi ? "تاریخ پایان" : "End Date"} type="date" value={classForm.end_date} onChange={(e) => setClassForm({ ...classForm, end_date: e.target.value })} />
+              <DatePicker label={isFarsi ? "تاریخ شروع" : "Start Date"} value={classForm.start_date || undefined} onChange={(val) => setClassForm({ ...classForm, start_date: val })} />
+              <DatePicker label={isFarsi ? "تاریخ پایان" : "End Date"} value={classForm.end_date || undefined} onChange={(val) => setClassForm({ ...classForm, end_date: val })} />
             </div>
+
             <Input label={isFarsi ? "اتاق" : "Room"} value={classForm.room} onChange={(e) => setClassForm({ ...classForm, room: e.target.value })} placeholder="e.g. Room 302" />
             <div className="flex justify-end gap-2 mt-2">
               <Button type="button" variant="secondary" onClick={() => setIsEditOpen(false)}>{isFarsi ? "انصراف" : "Cancel"}</Button>
@@ -856,12 +860,12 @@ export default function ClassDetailPage() {
                 required
               />
             </div>
-            <Input
+            <DateTimePicker
               label={isFarsi ? "مهلت ارسال (دلاین)" : "Due Date & Time"}
-              type="datetime-local"
-              value={assignmentForm.due_date}
-              onChange={(e) => setAssignmentForm({ ...assignmentForm, due_date: e.target.value })}
+              value={assignmentForm.due_date || undefined}
+              onChange={(val) => setAssignmentForm({ ...assignmentForm, due_date: val })}
             />
+
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
                 {isFarsi ? "فایل پیوست" : "Attachment (File)"}

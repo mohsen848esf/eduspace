@@ -20,7 +20,10 @@ export function getWebSocketUrl(path: string): string {
     base = envUrl.endsWith("/") ? envUrl.slice(0, -1) : envUrl;
   } else {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = window.location.host || "localhost:8000";
+    let host = window.location.host || "localhost:8000";
+    if (window.location.port === "5173") {
+      host = `${window.location.hostname}:8000`;
+    }
     base = `${protocol}//${host}`;
   }
   const cleanPath = path.startsWith("/") ? path : `/${path}`;

@@ -10,6 +10,8 @@ import NotificationsPopover from "./NotificationsPopover";
 import { useQueryClient } from "@tanstack/react-query";
 import { useOrgContextStore } from "../../features/auth/store/orgContextStore";
 import GlobalSearchModal from "./GlobalSearchModal";
+import { usePageHelp } from "../help/PageHelpProvider";
+
 
 interface TopbarProps {
   title: string;
@@ -36,8 +38,10 @@ export default function Topbar({
   const { language, toggleLanguage } = useLocale();
   const { logout, user } = useAuthStore();
   const { orgContext, activeSlug, fetchOrgContext, setActiveSlug } = useOrgContextStore();
+  const { triggerHelp } = usePageHelp();
   
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
+
   const orgDropdownRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = useNotificationsStore((s) =>
@@ -208,6 +212,18 @@ export default function Topbar({
             🔍
           </button>
         </Tooltip>
+
+        <Tooltip content={t("common:help.title", "Help & Tours")}>
+          <button
+            id="help-tour-button"
+            onClick={triggerHelp}
+            className="w-8 h-8 rounded-lg bg-transparent border-none text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)] cursor-pointer flex items-center justify-center text-base transition-all duration-150"
+            aria-label={t("common:help.title", "Help & Tours")}
+          >
+            ❓
+          </button>
+        </Tooltip>
+
 
         <div className="relative">
           <Tooltip

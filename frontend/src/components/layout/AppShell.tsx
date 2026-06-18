@@ -12,6 +12,8 @@ import { useShellStore } from "../../store/shellStore";
 import { useOrgContextStore } from "../../features/auth/store/orgContextStore";
 import { useLocale } from "../../i18n/useLocale";
 import { AlertTriangle } from "lucide-react";
+import { PageHelpProvider } from "../help/PageHelpProvider";
+
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -28,12 +30,17 @@ const NAV_ROUTES: Record<string, string> = {
   courses: "/academic/courses",
   classes: "/academic/classes",
   sessions: "/academic/sessions",
+  attendance: "/academic/attendance",
   assessments: "/academic/assessments",
+  leaderboard: "/leaderboard",
+  reports: "/academic/reports",
   members: "/crm/members",
   ledger: "/finance/ledger",
+  recordings: "/recordings",
+  notificationsSettings: "/settings/notifications",
+  templates: "/settings/templates",
   organization: "/settings/organization",
   billing: "/settings/billing",
-  recordings: "/recordings",
   miniapps: "/miniapps",
   sysAdmin: "/sys-admin",
 };
@@ -92,13 +99,15 @@ export default function AppShell({
   const isSuspended = orgContext?.organization?.is_suspended;
 
   return (
-    <div
-      className={cn(
-        "flex w-full h-full",
-        "bg-[var(--s0)] text-[var(--t1)]",
-        "transition-colors duration-300",
-      )}
-    >
+    <PageHelpProvider>
+      <div
+        className={cn(
+          "flex w-full h-full",
+          "bg-[var(--s0)] text-[var(--t1)]",
+          "transition-colors duration-300",
+        )}
+      >
+
       {breakpoint === "desktop" && (
         <Sidebar activeId={resolvedActive} onNavigate={handleNavigate} />
       )}
@@ -184,7 +193,9 @@ export default function AppShell({
           onNavigate={handleNavigate}
           onClose={() => setDrawerOpen(false)}
         />
-      </Drawer>
-    </div>
+        </Drawer>
+      </div>
+    </PageHelpProvider>
   );
 }
+

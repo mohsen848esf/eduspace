@@ -25,18 +25,7 @@ def register(request):
     if serializer.is_valid():
         user = serializer.save()
         
-        # Onboarding: Automatically assign new users to the default organization
-        from .models import Organization, Role, OrgMember, UserSession
-        default_org = Organization.objects.filter(slug='default-academy').first()
-        if default_org:
-            student_role = Role.objects.filter(name='Student', organization__isnull=True).first()
-            if student_role:
-                OrgMember.objects.get_or_create(
-                    organization=default_org,
-                    user=user,
-                    defaults={'role': student_role}
-                )
-                
+        from .models import UserSession
         refresh = RefreshToken.for_user(user)
         session = UserSession.objects.create(
             user=user,

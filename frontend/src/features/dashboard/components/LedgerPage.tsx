@@ -6,6 +6,7 @@ import { crmApi, type TuitionInvoice, type ExpenseItem, type SimpleUser, type Tu
 import { useOrgPermission } from "../../../hooks/useOrgPermission";
 import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
+import DatePicker from "../../../components/forms/DatePicker/DatePicker";
 import { Modal, ModalHeader, ModalTitle, ModalBody } from "../../../components/ui/Modal";
 import { Drawer, DrawerHeader, DrawerTitle, DrawerBody, DrawerFooter } from "../../../components/layout/Drawer";
 import Spinner from "../../../components/ui/Spinner";
@@ -41,6 +42,11 @@ export default function LedgerPage() {
   const [actionParam, setActionParam] = useQueryParamState("action", "");
   const [studentIdParam, setStudentIdParam] = useQueryParamState("student_id", "");
   const [studentNameParam, setStudentNameParam] = useQueryParamState("student_name", "");
+
+  const { data: classes = [] } = useQuery({
+    queryKey: ["classes"],
+    queryFn: crmApi.getClasses,
+  });
 
   useEffect(() => {
     if (actionParam === "issue_invoice" && studentIdParam) {
@@ -119,10 +125,6 @@ export default function LedgerPage() {
     enabled: canViewFinancials,
   });
 
-  const { data: classes = [] } = useQuery({
-    queryKey: ["classes"],
-    queryFn: crmApi.getClasses,
-  });
 
   const invoices = invoicesData?.results || [];
   const expenses = expensesData?.results || [];
@@ -653,18 +655,25 @@ export default function LedgerPage() {
                   </select>
                 </div>
                 <div className="w-full md:w-44 flex flex-col gap-1">
-                  <span className="text-xs font-semibold text-[var(--t2)]">{isFarsi ? "از تاریخ سررسید" : "Due Date From"}</span>
-                  <Input type="date" value={invoiceStartDate} onChange={(e) => { setInvoiceStartDate(e.target.value); setInvoicePage(1); }} />
+                  <DatePicker
+                    label={isFarsi ? "از تاریخ سررسید" : "Due Date From"}
+                    value={invoiceStartDate}
+                    onChange={(val) => { setInvoiceStartDate(val); setInvoicePage(1); }}
+                  />
                 </div>
                 <div className="w-full md:w-44 flex flex-col gap-1">
-                  <span className="text-xs font-semibold text-[var(--t2)]">{isFarsi ? "تا تاریخ سررسید" : "Due Date To"}</span>
-                  <Input type="date" value={invoiceEndDate} onChange={(e) => { setInvoiceEndDate(e.target.value); setInvoicePage(1); }} />
+                  <DatePicker
+                    label={isFarsi ? "تا تاریخ سررسید" : "Due Date To"}
+                    value={invoiceEndDate}
+                    onChange={(val) => { setInvoiceEndDate(val); setInvoicePage(1); }}
+                  />
                 </div>
                 {canManageFinance && (
                   <Button size="sm" onClick={() => openCreateDrawer("invoice")} className="w-full md:w-auto h-11 whitespace-nowrap">
                     {isFarsi ? "+ صدور فاکتور" : "+ Issue Invoice"}
                   </Button>
                 )}
+              </div>
               {classIdParam && (
                 <div className="flex items-center justify-between mx-4 my-2 p-2 bg-[var(--brand-soft)] border border-[var(--b)] rounded-xl text-xs text-[var(--brand-text)]">
                   <span>
@@ -728,10 +737,10 @@ export default function LedgerPage() {
                           <td className="p-4">
                             {inv.academy_class ? (
                               <button
-                                onClick={() => {
-                                  setInspectType("class");
-                                  setInspectId(inv.academy_class.toString());
-                                }}
+                                  onClick={() => {
+                                    setInspectType("class");
+                                    setInspectId(inv.academy_class?.toString() || "");
+                                  }}
                                 className="bg-transparent border-none p-0 text-[var(--t2)] hover:text-[var(--brand)] hover:underline cursor-pointer font-medium text-left"
                               >
                                 {inv.class_name}
@@ -872,12 +881,18 @@ export default function LedgerPage() {
                   <Input type="number" placeholder="Max" value={expenseMaxAmount} onChange={(e) => { setExpenseMaxAmount(e.target.value); setExpensePage(1); }} />
                 </div>
                 <div className="w-full md:w-36 flex flex-col gap-1">
-                  <span className="text-xs font-semibold text-[var(--t2)]">{isFarsi ? "از تاریخ" : "From Date"}</span>
-                  <Input type="date" value={expenseStartDate} onChange={(e) => { setExpenseStartDate(e.target.value); setExpensePage(1); }} />
+                  <DatePicker
+                    label={isFarsi ? "از تاریخ" : "From Date"}
+                    value={expenseStartDate}
+                    onChange={(val) => { setExpenseStartDate(val); setExpensePage(1); }}
+                  />
                 </div>
                 <div className="w-full md:w-36 flex flex-col gap-1">
-                  <span className="text-xs font-semibold text-[var(--t2)]">{isFarsi ? "تا تاریخ" : "To Date"}</span>
-                  <Input type="date" value={expenseEndDate} onChange={(e) => { setExpenseEndDate(e.target.value); setExpensePage(1); }} />
+                  <DatePicker
+                    label={isFarsi ? "تا تاریخ" : "To Date"}
+                    value={expenseEndDate}
+                    onChange={(val) => { setExpenseEndDate(val); setExpensePage(1); }}
+                  />
                 </div>
                 {canManageFinance && (
                   <Button size="sm" onClick={() => openCreateDrawer("expense")} className="w-full md:w-auto h-11 whitespace-nowrap">
@@ -1180,11 +1195,10 @@ export default function LedgerPage() {
               </select>
             </div>
 
-            <Input
+            <DatePicker
               label={isFarsi ? "مهلت پرداخت" : "Due Date"}
-              type="date"
               value={invoiceForm.due_date}
-              onChange={(e) => setInvoiceForm({ ...invoiceForm, due_date: e.target.value })}
+              onChange={(val) => setInvoiceForm({ ...invoiceForm, due_date: val })}
             />
           </form>
         </DrawerBody>
@@ -1279,11 +1293,10 @@ export default function LedgerPage() {
               )}
             </div>
 
-            <Input
+            <DatePicker
               label={isFarsi ? "تاریخ هزینه" : "Date Incurred"}
-              type="date"
               value={expenseForm.incurred_at}
-              onChange={(e) => setExpenseForm({ ...expenseForm, incurred_at: e.target.value })}
+              onChange={(val) => setExpenseForm({ ...expenseForm, incurred_at: val })}
               required
             />
 
@@ -1421,11 +1434,10 @@ export default function LedgerPage() {
               </div>
             )}
 
-            <Input
+            <DatePicker
               label={isFarsi ? "تاریخ پرداخت" : "Payment Date"}
-              type="date"
               value={paymentDate}
-              onChange={(e) => setPaymentDate(e.target.value)}
+              onChange={setPaymentDate}
               required
             />
 
