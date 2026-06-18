@@ -43,6 +43,8 @@ const NAV_ROUTES: Record<string, string> = {
   billing: "/settings/billing",
   miniapps: "/miniapps",
   sysAdmin: "/sys-admin",
+  homework: "/academic/homework",
+  payments: "/academic/payments",
 };
 
 /**

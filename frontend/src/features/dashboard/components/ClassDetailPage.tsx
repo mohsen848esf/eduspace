@@ -607,10 +607,12 @@ export default function ClassDetailPage() {
                   return (
                     <div key={e.id} className="flex items-center justify-between px-4 py-2.5 hover:bg-[var(--s3)] transition-colors">
                       <div
-                        className="flex items-center gap-2 min-w-0 cursor-pointer group"
+                        className={`flex items-center gap-2 min-w-0 group ${(isAdmin || isTeacher || e.student === user?.id) ? "cursor-pointer" : ""}`}
                         onClick={() => {
-                          setInspectType("student");
-                          setInspectId(e.student);
+                          if (isAdmin || isTeacher || e.student === user?.id) {
+                            setInspectType("student");
+                            setInspectId(e.student);
+                          }
                         }}
                       >
                         <div className="w-7 h-7 rounded-full bg-[var(--s3)] border border-[var(--b)] flex items-center justify-center text-[10px] font-bold flex-shrink-0 group-hover:border-[var(--brand)] transition-colors">
@@ -657,26 +659,30 @@ export default function ClassDetailPage() {
               desc: isFarsi ? "مشاهده فاکتورهای این کلاس" : "Tuition invoices for this class",
               icon: "💰",
               to: `/finance/ledger?class_id=${id}`,
+              visible: hasPermission("can_view_financials"),
             },
             {
               label: isFarsi ? "حضور و غیاب کلاس" : "Class Attendance",
               desc: isFarsi ? "مشاهده لیست حضور و غیاب کلاس" : "Attendance matrix for this class",
               icon: "📋",
               to: `/academic/attendance?class_id=${id}`,
+              visible: hasPermission("can_view_attendance"),
             },
             {
               label: isFarsi ? "اعضای سازمان" : "Org Members",
               desc: isFarsi ? "مدیریت اعضا و نقش‌ها" : "Manage members & roles",
               icon: "👥",
               to: `/crm/members`,
+              visible: hasPermission("can_manage_members") || hasPermission("can_teach_class"),
             },
             {
               label: isFarsi ? "دوره مرتبط" : "Parent Course",
               desc: course ? course.title : (isFarsi ? "مشاهده دوره" : "View course"),
               icon: "📚",
               to: course ? `/academic/courses/${course.id}` : "/academic/courses",
+              visible: true,
             },
-          ].map((link) => (
+          ].filter(link => link.visible).map((link) => (
             <Link
               key={link.to}
               to={link.to}

@@ -16,15 +16,19 @@ export interface NavItem {
   badge?: number;
   /** Optional required permissions list to view this nav item (uses hasAnyPermission). */
   permissions?: string[];
+  /** Optional roles list to restrict visibility of this nav item. */
+  roles?: string[];
 }
 
 /** Items rendered in the desktop sidebar's MAIN section + tablet rail. */
 export const mainNavItems: NavItem[] = [
   { id: "dashboard", icon: Icons.home, labelKey: "nav.dashboard", to: "/dashboard" },
   { id: "courses", icon: Icons.exam, labelKey: "nav.courses", to: "/academic/courses", permissions: ["can_manage_members", "can_teach_class"] },
-  { id: "classes", icon: Icons.people, labelKey: "nav.classes", to: "/academic/classes", permissions: ["can_manage_members", "can_teach_class"] },
+  { id: "classes", icon: Icons.people, labelKey: "nav.classes", to: "/academic/classes", permissions: ["can_view_dashboard"] },
   { id: "sessions", icon: Icons.camera, labelKey: "nav.sessions", to: "/academic/sessions", permissions: ["can_view_sessions"] },
-  { id: "attendance", icon: Icons.people, labelKey: "nav.attendance", to: "/academic/attendance", permissions: ["can_view_sessions"] },
+  { id: "attendance", icon: Icons.people, labelKey: "nav.attendance", to: "/academic/attendance", permissions: ["can_view_attendance"] },
+  { id: "homework", icon: Icons.exam, labelKey: "nav.homework", to: "/academic/homework", permissions: ["can_view_dashboard"], roles: ["student"] },
+  { id: "payments", icon: Icons.barChart, labelKey: "nav.payments", to: "/academic/payments", permissions: ["can_view_dashboard"], roles: ["student"] },
   { id: "assessments", icon: Icons.tools, labelKey: "nav.assessments", to: "/academic/assessments", permissions: ["can_view_dashboard"] },
   { id: "leaderboard", icon: Icons.barChart, labelKey: "nav.leaderboard", to: "/leaderboard", permissions: ["can_view_dashboard"] },
   { id: "reports", icon: Icons.barChart, labelKey: "nav.reports", to: "/academic/reports", permissions: ["can_manage_members"] },
@@ -56,8 +60,10 @@ export const bottomNavPrimary: NavItem[] = [
  * Items shown inside the drawer.
  */
 export const drawerNavItems: NavItem[] = [
-  { id: "classes", icon: Icons.people, labelKey: "nav.classes", to: "/academic/classes", permissions: ["can_manage_members", "can_teach_class"] },
-  { id: "attendance", icon: Icons.people, labelKey: "nav.attendance", to: "/academic/attendance", permissions: ["can_view_sessions"] },
+  { id: "classes", icon: Icons.people, labelKey: "nav.classes", to: "/academic/classes", permissions: ["can_view_dashboard"] },
+  { id: "attendance", icon: Icons.people, labelKey: "nav.attendance", to: "/academic/attendance", permissions: ["can_view_attendance"] },
+  { id: "homework", icon: Icons.exam, labelKey: "nav.homework", to: "/academic/homework", permissions: ["can_view_dashboard"], roles: ["student"] },
+  { id: "payments", icon: Icons.barChart, labelKey: "nav.payments", to: "/academic/payments", permissions: ["can_view_dashboard"], roles: ["student"] },
   { id: "assessments", icon: Icons.tools, labelKey: "nav.assessments", to: "/academic/assessments", permissions: ["can_view_dashboard"] },
   { id: "leaderboard", icon: Icons.barChart, labelKey: "nav.leaderboard", to: "/leaderboard", permissions: ["can_view_dashboard"] },
   { id: "reports", icon: Icons.barChart, labelKey: "nav.reports", to: "/academic/reports", permissions: ["can_manage_members"] },

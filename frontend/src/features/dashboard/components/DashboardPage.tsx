@@ -20,12 +20,13 @@ export default function DashboardPage() {
   const { t } = useTranslation(["dashboard"]);
   const { language } = useLocale();
   const { user } = useAuthStore();
-  const { hasPermission, activeRole, activeOrg } = useOrgPermission();
+  const { hasPermission, activeRole: rawActiveRole, activeOrg } = useOrgPermission();
   const [activeNav, setActiveNav] = useState("dashboard");
   const { createRoom, isLoading: roomLoading } = useRoom();
   const navigate = useNavigate();
 
   const isFarsi = language === "fa";
+  const activeRole = (rawActiveRole || "").toLowerCase();
 
   const canManageCRM = hasPermission("can_manage_members") || hasPermission("can_teach_class");
   const canManageFinance = hasPermission("can_manage_financials") || hasPermission("can_view_financials");
@@ -97,6 +98,18 @@ export default function DashboardPage() {
     enabled: activeRole === "student",
   });
 
+  const { data: studentAttendance, isLoading: loadingStudentAttendance } = useQuery({
+    queryKey: ["student-attendance-kpi"],
+    queryFn: () => sessionsApi.getAllAttendance({ page_size: 100 }),
+    enabled: activeRole === "student",
+  });
+
+  const { data: studentInvoicesBalance, isLoading: loadingStudentInvoices } = useQuery({
+    queryKey: ["student-invoices-balance"],
+    queryFn: () => crmApi.getInvoiceBalance(),
+    enabled: activeRole === "student",
+  });
+
   const greeting = () => {
     const h = new Date().getHours();
     if (h < 12) return t("greeting.morning");
@@ -117,7 +130,11 @@ export default function DashboardPage() {
   const totalPendingRevenue = summaryData?.outstanding || 0;
   const totalExpense = summaryData?.expenses || 0;
 
-  const isDataLoading = loadingCourses || loadingClasses || loadingEnrollments || loadingSummary || loadingSessions || loadingAllSessions || ((activeRole === "teacher" || activeRole === "admin") && loadingSubmissions) || (activeRole === "student" && (loadingAssessments || loadingStudentSubmissions || loadingAssignments || loadingMyAssignmentSubmissions || loadingRecordings));
+  const totalAttendanceCount = studentAttendance?.results?.length || 0;
+  const presentCount = studentAttendance?.results?.filter((r: any) => r.status === "present").length || 0;
+  const attendanceRate = totalAttendanceCount > 0 ? Math.round((presentCount / totalAttendanceCount) * 100) : 100;
+
+  const isDataLoading = loadingCourses || loadingClasses || loadingEnrollments || loadingSummary || loadingSessions || loadingAllSessions || ((activeRole === "teacher" || activeRole === "admin") && loadingSubmissions) || (activeRole === "student" && (loadingAssessments || loadingStudentSubmissions || loadingAssignments || loadingMyAssignmentSubmissions || loadingRecordings || loadingStudentAttendance || loadingStudentInvoices));
 
   // Aggregated data for past 6 months
   const chartData = summaryData?.monthly_trends || [
@@ -567,7 +584,7 @@ export default function DashboardPage() {
               </button>
 
               <button
-                onClick={() => navigate("/academic/classes")}
+                onClick={() => navigate("/academic/homework")}
                 className="flex flex-col items-center gap-2 p-4 bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none group hover:ring-1 hover:ring-[var(--brand)]/30"
               >
                 <div className="w-10 h-10 rounded-full bg-[var(--green)]/10 text-[var(--green)] flex items-center justify-center text-lg transition-transform group-hover:scale-110">
@@ -591,14 +608,14 @@ export default function DashboardPage() {
               </button>
 
               <button
-                onClick={() => navigate("/finance/ledger")}
+                onClick={() => navigate("/academic/payments")}
                 className="flex flex-col items-center gap-2 p-4 bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none group hover:ring-1 hover:ring-[var(--brand)]/30"
               >
                 <div className="w-10 h-10 rounded-full bg-[var(--amber)]/10 text-[var(--amber)] flex items-center justify-center text-lg transition-transform group-hover:scale-110">
                   <CreditCard className="w-5 h-5" />
                 </div>
                 <span className="text-xs font-semibold text-[var(--t2)] text-center">
-                  {isFarsi ? "فاکتورهای من" : "My Invoices"}
+                  {isFarsi ? "پرداخت‌های من" : "My Payments"}
                 </span>
               </button>
             </>
@@ -796,17 +813,78 @@ export default function DashboardPage() {
             )}
 
             {/* Enrollments */}
-            <div className="bg-[var(--s2)] rounded-xl p-4 border border-[var(--b)]">
-              <h3 className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide mb-2">
-                {isFarsi ? "ثبت‌نام‌ها" : "Enrollments"}
-              </h3>
-              <div className="flex items-baseline gap-2 mt-3">
-                <div className="text-3xl font-bold text-[var(--t1)]">{enrollments.length}</div>
-                <div className="text-xs text-[var(--green)]">
-                  {isFarsi ? "ثبت‌نام فعال" : "Active student enrollments"}
+            {canManageCRM && (
+              <div className="bg-[var(--s2)] rounded-xl p-4 border border-[var(--b)]">
+                <h3 className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide mb-2">
+                  {isFarsi ? "ثبت‌نام‌ها" : "Enrollments"}
+                </h3>
+                <div className="flex items-baseline gap-2 mt-3">
+                  <div className="text-3xl font-bold text-[var(--t1)]">{enrollments.length}</div>
+                  <div className="text-xs text-[var(--green)]">
+                    {isFarsi ? "ثبت‌نام فعال" : "Active student enrollments"}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Student-specific Stats */}
+            {activeRole === "student" && (
+              <>
+                {/* Enrolled Classes */}
+                <div className="bg-[var(--s2)] rounded-xl p-4 border border-[var(--b)]">
+                  <h3 className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide mb-2">
+                    {isFarsi ? "کلاس‌های من" : "My Classes"}
+                  </h3>
+                  <div className="flex items-baseline gap-2 mt-3">
+                    <div className="text-3xl font-bold text-[var(--t1)]">{enrolledClassIds.length}</div>
+                    <div className="text-xs text-[var(--brand-text)] font-semibold">
+                      {isFarsi ? "کلاس فعال" : "active classes"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pending Homework */}
+                <div className="bg-[var(--s2)] rounded-xl p-4 border border-[var(--b)]">
+                  <h3 className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide mb-2">
+                    {isFarsi ? "تکالیف در انتظار" : "Pending Homework"}
+                  </h3>
+                  <div className="flex items-baseline gap-2 mt-3">
+                    <div className="text-3xl font-bold text-[var(--t1)]">{pendingAssignments.length}</div>
+                    <div className="text-xs text-amber-500 font-semibold">
+                      {isFarsi ? "نیاز به تحویل" : "requires submission"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Attendance Rate */}
+                <div className="bg-[var(--s2)] rounded-xl p-4 border border-[var(--b)]">
+                  <h3 className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide mb-2">
+                    {isFarsi ? "نرخ حضور" : "Attendance Rate"}
+                  </h3>
+                  <div className="flex items-baseline gap-2 mt-3">
+                    <div className="text-3xl font-bold text-[var(--t1)]">{attendanceRate}%</div>
+                    <div className="text-xs text-[var(--green)] font-semibold">
+                      {isFarsi ? "حضور در جلسات" : "session attendance"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Outstanding Balance */}
+                <div className="bg-[var(--s2)] rounded-xl p-4 border border-[var(--b)]">
+                  <h3 className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide mb-2">
+                    {isFarsi ? "بدهی معوقه" : "Outstanding Balance"}
+                  </h3>
+                  <div className="flex items-baseline gap-2 mt-3">
+                    <div className="text-3xl font-bold text-[var(--t1)]">
+                      ${studentInvoicesBalance?.outstanding?.toFixed(1) || "0.0"}
+                    </div>
+                    <div className="text-xs text-[var(--red)] font-semibold">
+                      {isFarsi ? "فاکتورهای پرداخت نشده" : "unpaid invoices"}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Financial Balance (Admins/Financial role) */}
             {canManageFinance && (

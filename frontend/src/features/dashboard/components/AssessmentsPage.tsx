@@ -5,10 +5,13 @@ import AssessmentList from "../../assessments/components/AssessmentList";
 import type { QuestionBank } from "../../assessments/types";
 import AppShell from "../../../components/layout/AppShell";
 import { useLocale } from "../../../i18n/useLocale";
+import { useOrgPermission } from "../../../hooks/useOrgPermission";
 
 export default function AssessmentsPage() {
   const { language } = useLocale();
   const isFarsi = language === "fa";
+  const { hasPermission } = useOrgPermission();
+  const canViewBanks = hasPermission("can_manage_members") || hasPermission("can_teach_class");
 
   const [activeSubTab, setActiveSubTab] = useState<"assessments" | "banks">("assessments");
   const [selectedBank, setSelectedBank] = useState<QuestionBank | null>(null);
@@ -28,19 +31,21 @@ export default function AssessmentsPage() {
           >
             {isFarsi ? "آزمون‌ها" : "Exams / Assessments"}
           </button>
-          <button
-            onClick={() => {
-              setActiveSubTab("banks");
-              setSelectedBank(null);
-            }}
-            className={`px-4 py-2 text-sm font-medium border-b-2 cursor-pointer transition-colors duration-150 whitespace-nowrap bg-transparent ${
-              activeSubTab === "banks"
-                ? "border-[var(--brand)] text-[var(--brand-text)]"
-                : "border-transparent text-[var(--t2)] hover:text-[var(--t1)]"
-            }`}
-          >
-            {isFarsi ? "بانک سوالات" : "Question Banks"}
-          </button>
+          {canViewBanks && (
+            <button
+              onClick={() => {
+                setActiveSubTab("banks");
+                setSelectedBank(null);
+              }}
+              className={`px-4 py-2 text-sm font-medium border-b-2 cursor-pointer transition-colors duration-150 whitespace-nowrap bg-transparent ${
+                activeSubTab === "banks"
+                  ? "border-[var(--brand)] text-[var(--brand-text)]"
+                  : "border-transparent text-[var(--t2)] hover:text-[var(--t1)]"
+              }`}
+            >
+              {isFarsi ? "بانک سوالات" : "Question Banks"}
+            </button>
+          )}
         </div>
 
         {/* Content Area */}
@@ -49,7 +54,7 @@ export default function AssessmentsPage() {
             <AssessmentList />
           )}
 
-          {activeSubTab === "banks" && (
+          {activeSubTab === "banks" && canViewBanks && (
             selectedBank ? (
               <QuestionList bank={selectedBank} onBack={() => setSelectedBank(null)} />
             ) : (

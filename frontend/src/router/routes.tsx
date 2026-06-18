@@ -91,6 +91,12 @@ const SessionDetailPage = lazy(
 const ReportsPage = lazy(
   () => import("../features/dashboard/components/ReportsPage"),
 );
+const HomeworkPage = lazy(
+  () => import("../features/dashboard/components/HomeworkPage"),
+);
+const StudentPaymentsPage = lazy(
+  () => import("../features/dashboard/components/StudentPaymentsPage"),
+);
 
 export interface RouteConfig {
   path: string;
@@ -154,6 +160,18 @@ export const routes: RouteConfig[] = [
     requiredPermissions: ["can_view_dashboard"],
   },
   {
+    path: "/academic/homework",
+    component: HomeworkPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/academic/payments",
+    component: StudentPaymentsPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
     path: "/academic/sessions",
     component: SessionsPage,
     isPrivate: true,
@@ -163,7 +181,7 @@ export const routes: RouteConfig[] = [
     path: "/academic/attendance",
     component: AttendanceExplorer,
     isPrivate: true,
-    requiredPermissions: ["can_view_sessions"],
+    requiredPermissions: ["can_view_attendance"],
   },
   {
     path: "/academic/sessions/:sessionId",

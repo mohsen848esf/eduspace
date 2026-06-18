@@ -47,7 +47,7 @@ export default function NotificationSettings() {
   };
 
   // Fetch preferences
-  const { data: preferences = [], isLoading } = useQuery<Preference[]>({
+  const { data: preferences, isLoading } = useQuery<Preference[]>({
     queryKey: ["notificationPreferences"],
     queryFn: async () => {
       const res = await client.get("/accounts/preferences/notifications/");

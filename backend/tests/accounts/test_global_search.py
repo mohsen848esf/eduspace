@@ -77,7 +77,7 @@ class GlobalSearchTestCase(APITestCase):
             u = User.objects.create_user(username=f"student_{i}", password='password')
             OrgMember.objects.create(organization=self.org_a, user=u, role=self.role_a)
 
-        self.client.force_authenticate(user=self.user_a)
+        self.client.force_authenticate(user=self.superuser)
         
         # page_size = 3, page = 1
         response = self.client.get(f"{self.url}?q=student&page_size=3&page=1", HTTP_X_ORGANIZATION_SLUG='org-a')
@@ -105,7 +105,7 @@ class GlobalSearchTestCase(APITestCase):
         for i in range(5):
             Course.objects.create(organization=self.org_a, title=f"student_x course {i}", code=f"SC-{i}")
             
-        self.client.force_authenticate(user=self.user_a)
+        self.client.force_authenticate(user=self.superuser)
         
         response = self.client.get(f"{self.url}?q=student_x&page_size=4&page=1", HTTP_X_ORGANIZATION_SLUG='org-a')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -117,3 +117,35 @@ class GlobalSearchTestCase(APITestCase):
         self.assertEqual(response_p2.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response_p2.data['results']['students']), 4)
         self.assertEqual(len(response_p2.data['results']['courses']), 1)
+
+    def test_student_search_isolation(self):
+        """Test that a student can only search classmate students, class staff, and themselves."""
+        # Create a class in Org A
+        from accounts.models import AcademyClass, Enrollment
+        from accounts.models import Course
+        course_a = Course.objects.create(organization=self.org_a, title="Course A", code="CA")
+        class_a = AcademyClass.objects.create(course=course_a, name="Class A")
+        
+        # Enroll user_a (student) in class_a
+        Enrollment.objects.create(academy_class=class_a, student=self.user_a, is_active=True)
+        
+        # Create classmate user_c (student) and enroll in class_a
+        user_c = User.objects.create_user(username='classmate_c', password='password')
+        OrgMember.objects.create(organization=self.org_a, user=user_c, role=self.role_a)
+        Enrollment.objects.create(academy_class=class_a, student=user_c, is_active=True)
+        
+        # Create non-classmate student user_d
+        user_d = User.objects.create_user(username='other_student_d', password='password')
+        OrgMember.objects.create(organization=self.org_a, user=user_d, role=self.role_a)
+        
+        self.client.force_authenticate(user=self.user_a)
+        
+        # Search for classmates should return classmate_c but not other_student_d
+        response = self.client.get(f"{self.url}?q=classmate_c", HTTP_X_ORGANIZATION_SLUG='org-a')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']['students']), 1)
+        self.assertEqual(response.data['results']['students'][0]['username'], 'classmate_c')
+        
+        response_other = self.client.get(f"{self.url}?q=other_student_d", HTTP_X_ORGANIZATION_SLUG='org-a')
+        self.assertEqual(response_other.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response_other.data['results']['students']), 0)

@@ -86,8 +86,15 @@ export default function DrawerNavList({
           {t("dashboard:nav.manage")}
         </div>
         {(() => {
-          const { hasAnyPermission } = useOrgPermission();
-          const items = [...drawerNavItems.filter((item) => !item.permissions || hasAnyPermission(item.permissions))];
+          const { hasAnyPermission, activeRole } = useOrgPermission();
+          const items = [...drawerNavItems.filter((item) => {
+            if (item.permissions && !hasAnyPermission(item.permissions)) return false;
+            if (item.roles) {
+              const normActiveRole = (activeRole || "").toLowerCase();
+              return item.roles.some((r) => r.toLowerCase() === normActiveRole);
+            }
+            return true;
+          })];
           if (user?.is_superuser) {
             items.push({
               id: "sysAdmin",

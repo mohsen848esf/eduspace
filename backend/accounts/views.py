@@ -144,6 +144,19 @@ def search_users(request):
             'user__org_memberships__organization',
             'user__org_memberships__role'
         )
+
+        from accounts.permissions import has_org_permission
+        from accounts.models import Enrollment, AcademyClass
+        if not request.user.is_superuser and not has_org_permission(request.user, org, 'can_manage_members') and not has_org_permission(request.user, org, 'can_teach_class'):
+            enrolled_class_ids = Enrollment.objects.filter(student=request.user, is_active=True).values_list('academy_class_id', flat=True)
+            mentored_class_ids = AcademyClass.objects.filter(mentor=request.user, is_active=True).values_list('id', flat=True)
+            class_ids = list(enrolled_class_ids) + list(mentored_class_ids)
+            classmate_student_ids = Enrollment.objects.filter(academy_class_id__in=class_ids, is_active=True).values_list('student_id', flat=True)
+            class_teacher_ids = AcademyClass.objects.filter(id__in=class_ids).values_list('teacher_id', flat=True)
+            class_mentor_ids = AcademyClass.objects.filter(id__in=class_ids).values_list('mentor_id', flat=True)
+            allowed_user_ids = set(classmate_student_ids) | set(class_teacher_ids) | set(class_mentor_ids) | {request.user.id}
+            allowed_user_ids.discard(None)
+            members = members.filter(user_id__in=allowed_user_ids)
         
         if q:
             members = members.filter(
@@ -232,19 +245,45 @@ def global_search(request):
     ).select_related('user', 'role').filter(
         models.Q(user__username__icontains=q) | models.Q(user__full_name__icontains=q)
     )
+
+    from accounts.models import Enrollment, AcademyClass
+    is_admin_or_teacher = (
+        request.user.is_superuser or
+        has_org_permission(request.user, org, 'can_manage_members') or
+        has_org_permission(request.user, org, 'can_teach_class')
+    )
+
+    if not is_admin_or_teacher:
+        enrolled_class_ids = Enrollment.objects.filter(student=request.user, is_active=True).values_list('academy_class_id', flat=True)
+        mentored_class_ids = AcademyClass.objects.filter(mentor=request.user, is_active=True).values_list('id', flat=True)
+        class_ids = list(enrolled_class_ids) + list(mentored_class_ids)
+        classmate_student_ids = Enrollment.objects.filter(academy_class_id__in=class_ids, is_active=True).values_list('student_id', flat=True)
+        class_teacher_ids = AcademyClass.objects.filter(id__in=class_ids).values_list('teacher_id', flat=True)
+        class_mentor_ids = AcademyClass.objects.filter(id__in=class_ids).values_list('mentor_id', flat=True)
+        allowed_user_ids = set(classmate_student_ids) | set(class_teacher_ids) | set(class_mentor_ids) | {request.user.id}
+        allowed_user_ids.discard(None)
+        members = members.filter(user_id__in=allowed_user_ids)
+
     students_query = members.filter(models.Q(role__isnull=True) | models.Q(role__name='Student'))
-    teachers_query = members.filter(role__name__in=['Teacher', 'Admin'])
+    teachers_query = members.filter(role__name__in=['Teacher', 'Admin', 'Mentor'])
 
     courses_query = Course.objects.filter(organization=org, is_active=True).filter(
         models.Q(title__icontains=q) | models.Q(code__icontains=q)
     )
+    if not is_admin_or_teacher:
+        enrolled_class_ids = Enrollment.objects.filter(student=request.user, is_active=True).values_list('academy_class_id', flat=True)
+        mentored_class_ids = AcademyClass.objects.filter(mentor=request.user, is_active=True).values_list('id', flat=True)
+        class_ids = list(enrolled_class_ids) + list(mentored_class_ids)
+        courses_query = courses_query.filter(classes__id__in=class_ids)
 
     classes_query = AcademyClass.objects.filter(course__organization=org, is_active=True).select_related('course')
     if not request.user.is_superuser and not has_org_permission(request.user, org, 'can_manage_members'):
         if has_org_permission(request.user, org, 'can_teach_class'):
             classes_query = classes_query.filter(teacher=request.user)
         else:
-            classes_query = classes_query.filter(enrollments__student=request.user)
+            classes_query = classes_query.filter(
+                models.Q(mentor=request.user) | models.Q(enrollments__student=request.user)
+            )
     classes_query = classes_query.filter(name__icontains=q)
 
     sessions_query = Session.objects.filter(organization=org).select_related('academy_class__course', 'active_room')
@@ -255,8 +294,9 @@ def global_search(request):
             )
         else:
             sessions_query = sessions_query.filter(
-                academy_class__enrollments__student=request.user,
-                academy_class__enrollments__is_active=True
+                models.Q(academy_class__enrollments__student=request.user, academy_class__enrollments__is_active=True) |
+                models.Q(academy_class__mentor=request.user) |
+                models.Q(host=request.user)
             )
     sessions_query = sessions_query.filter(title__icontains=q)
 
@@ -516,6 +556,14 @@ class CourseViewSet(viewsets.ModelViewSet):
         include_archived = self.request.query_params.get('include_archived', '').lower() == 'true'
         if not include_archived:
             queryset = queryset.filter(is_active=True)
+            
+        if not self.request.user.is_superuser and not has_org_permission(self.request.user, org, 'can_manage_members') and not has_org_permission(self.request.user, org, 'can_teach_class'):
+            from accounts.models import Enrollment, AcademyClass
+            enrolled_class_ids = Enrollment.objects.filter(student=self.request.user, is_active=True).values_list('academy_class_id', flat=True)
+            mentored_class_ids = AcademyClass.objects.filter(mentor=self.request.user, is_active=True).values_list('id', flat=True)
+            class_ids = list(enrolled_class_ids) + list(mentored_class_ids)
+            queryset = queryset.filter(classes__id__in=class_ids).distinct()
+            
         return queryset
 
     def perform_create(self, serializer):
@@ -552,13 +600,14 @@ class AcademyClassViewSet(viewsets.ModelViewSet):
             return AcademyClass.objects.none()
         queryset = AcademyClass.objects.select_related('course', 'teacher', 'created_by', 'room').prefetch_related('sessions').filter(course__organization=org)
         
-        # Security isolation: if user is not an admin, they should only see classes they teach or are enrolled in
+        # Security isolation: if user is not an admin, they should only see classes they teach, mentor, or are enrolled in
         if not self.request.user.is_superuser and not has_org_permission(self.request.user, org, 'can_manage_members'):
             if has_org_permission(self.request.user, org, 'can_teach_class'):
                 queryset = queryset.filter(teacher=self.request.user)
             else:
-                # Student view: they only see classes they are enrolled in
-                queryset = queryset.filter(enrollments__student=self.request.user)
+                queryset = queryset.filter(
+                    models.Q(mentor=self.request.user) | models.Q(enrollments__student=self.request.user)
+                )
                 
         include_archived = self.request.query_params.get('include_archived', '').lower() == 'true'
         if not include_archived:
@@ -903,7 +952,11 @@ class SessionViewSet(viewsets.ModelViewSet):
                 )
             # Otherwise (student or guest), show only sessions from their enrolled classes
             else:
-                queryset = queryset.filter(academy_class__enrollments__student=self.request.user, academy_class__enrollments__is_active=True)
+                queryset = queryset.filter(
+                    models.Q(academy_class__enrollments__student=self.request.user, academy_class__enrollments__is_active=True) |
+                    models.Q(academy_class__mentor=self.request.user) |
+                    models.Q(host=self.request.user)
+                )
 
         class_id = self.request.query_params.get('class_id')
         if class_id:
@@ -1058,7 +1111,7 @@ class AttendanceViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
-            self.required_org_permission = 'can_view_attendance'
+            self.required_org_permission = 'can_view_dashboard'
         else:
             self.required_org_permission = 'can_manage_attendance'
         return super().get_permissions()
@@ -1138,10 +1191,24 @@ class OrgMemberViewSet(viewsets.ModelViewSet):
         org = getattr(self.request, 'organization', None)
         if not org:
             return OrgMember.objects.none()
-        return OrgMember.objects.filter(organization=org).select_related('user', 'role').prefetch_related(
+        queryset = OrgMember.objects.filter(organization=org).select_related('user', 'role').prefetch_related(
             'user__org_memberships__organization',
             'user__org_memberships__role'
         )
+        
+        if not self.request.user.is_superuser and not has_org_permission(self.request.user, org, 'can_manage_members') and not has_org_permission(self.request.user, org, 'can_teach_class'):
+            from accounts.models import Enrollment, AcademyClass
+            enrolled_class_ids = Enrollment.objects.filter(student=self.request.user, is_active=True).values_list('academy_class_id', flat=True)
+            mentored_class_ids = AcademyClass.objects.filter(mentor=self.request.user, is_active=True).values_list('id', flat=True)
+            class_ids = list(enrolled_class_ids) + list(mentored_class_ids)
+            classmate_student_ids = Enrollment.objects.filter(academy_class_id__in=class_ids, is_active=True).values_list('student_id', flat=True)
+            class_teacher_ids = AcademyClass.objects.filter(id__in=class_ids).values_list('teacher_id', flat=True)
+            class_mentor_ids = AcademyClass.objects.filter(id__in=class_ids).values_list('mentor_id', flat=True)
+            allowed_user_ids = set(classmate_student_ids) | set(class_teacher_ids) | set(class_mentor_ids) | {self.request.user.id}
+            allowed_user_ids.discard(None)
+            queryset = queryset.filter(user_id__in=allowed_user_ids)
+            
+        return queryset
 
     def perform_create(self, serializer):
         org = getattr(self.request, 'organization', None)

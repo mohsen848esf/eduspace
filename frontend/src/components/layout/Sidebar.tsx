@@ -73,6 +73,15 @@ export default function Sidebar({
   const normalizedRole = (activeRole || "").toLowerCase();
   const userRoleTranslation = normalizedRole ? t(`auth:register.${normalizedRole}`, { ns: "auth" }) : "";
 
+  const filterNavItem = (item: NavItem) => {
+    if (item.permissions && !hasAnyPermission(item.permissions)) return false;
+    if (item.roles) {
+      const normActiveRole = (activeRole || "").toLowerCase();
+      return item.roles.some((r) => r.toLowerCase() === normActiveRole);
+    }
+    return true;
+  };
+
   return (
     <aside
       className={cn(
@@ -122,7 +131,7 @@ export default function Sidebar({
           </span>
         )}
         {mainNavItems
-          .filter((item) => !item.permissions || hasAnyPermission(item.permissions))
+          .filter(filterNavItem)
           .map((item) => (
             <NavButton key={item.id} item={item} />
           ))}
@@ -133,7 +142,7 @@ export default function Sidebar({
           </span>
         )}
         {manageNavItems
-          .filter((item) => !item.permissions || hasAnyPermission(item.permissions))
+          .filter(filterNavItem)
           .map((item) => (
             <NavButton key={item.id} item={item} />
           ))}

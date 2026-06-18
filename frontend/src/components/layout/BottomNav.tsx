@@ -31,13 +31,18 @@ export default function BottomNav({
   items = bottomNavPrimary,
 }: BottomNavProps) {
   const { t } = useTranslation("dashboard");
-  const { hasAnyPermission } = useOrgPermission();
+  const { hasAnyPermission, activeRole } = useOrgPermission();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const visibleItems = items.filter(
-    (item) => !item.permissions || hasAnyPermission(item.permissions)
-  );
+  const visibleItems = items.filter((item) => {
+    if (item.permissions && !hasAnyPermission(item.permissions)) return false;
+    if (item.roles) {
+      const normActiveRole = (activeRole || "").toLowerCase();
+      return item.roles.some((r) => r.toLowerCase() === normActiveRole);
+    }
+    return true;
+  });
 
   const resolvedActive =
     activeId ??
