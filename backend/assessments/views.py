@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from accounts.throttling import TenantScopedRateThrottle
+from accounts.views import StandardResultsSetPagination
 
 from assessments.models import QuestionBank, Question, Assessment, Submission, StudentAnswer, Assignment, AssignmentSubmission
 from assessments.serializers import (
@@ -494,6 +495,7 @@ class AssignmentViewSet(viewsets.ModelViewSet):
 class AssignmentSubmissionViewSet(viewsets.ModelViewSet):
     serializer_class = AssignmentSubmissionSerializer
     permission_classes = [HasOrgPermission]
+    pagination_class = StandardResultsSetPagination
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve', 'create']:
@@ -525,7 +527,7 @@ class AssignmentSubmissionViewSet(viewsets.ModelViewSet):
         if class_id:
             queryset = queryset.filter(assignment__academy_class_id=class_id)
             
-        return queryset
+        return queryset.order_by('-submitted_at', '-id')
 
     def perform_create(self, serializer):
         # Prevent duplicate submissions by same student for same assignment

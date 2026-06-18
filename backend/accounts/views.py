@@ -847,6 +847,7 @@ class FinanceSummaryView(APIView):
 class SessionViewSet(viewsets.ModelViewSet):
     serializer_class = SessionSerializer
     permission_classes = [HasOrgPermission]
+    pagination_class = StandardResultsSetPagination
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve', 'attendance', 'get_student_attendance']:
@@ -881,7 +882,7 @@ class SessionViewSet(viewsets.ModelViewSet):
         if status_param:
             queryset = queryset.filter(status=status_param)
 
-        return queryset.distinct()
+        return queryset.distinct().order_by('-scheduled_start', '-id')
 
     @action(detail=True, methods=['POST'])
     def start(self, request, pk=None):
