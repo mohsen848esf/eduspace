@@ -41,6 +41,7 @@ export default function InspectionDrawer({
 
   const [studentEnrollments, setStudentEnrollments] = useState<any[]>([]);
   const [studentInvoices, setStudentInvoices] = useState<any[]>([]);
+  const [studentBalance, setStudentBalance] = useState<{ outstanding: number; pending_count: number } | null>(null);
   const [mentorStudents, setMentorStudents] = useState<any[]>([]);
   const [mentorClasses, setMentorClasses] = useState<any[]>([]);
   const [loadingExtra, setLoadingExtra] = useState(false);
@@ -127,16 +128,18 @@ export default function InspectionDrawer({
           try {
             const userId = fetchedData.user_details?.id || fetchedData.user;
             if (userId) {
-              const [enrollRes, invoiceRes, attendanceRes, assignmentsRes, submissionsRes] = await Promise.all([
+              const [enrollRes, invoiceRes, attendanceRes, assignmentsRes, submissionsRes, balanceRes] = await Promise.all([
                 client.get("/auth/enrollments/?include_archived=true"),
                 client.get(`/auth/invoices/?student_id=${userId}`),
                 client.get(`/auth/attendance/?student=${userId}`),
                 client.get("/assessments/assignments/"),
-                client.get("/assessments/assignment-submissions/")
+                client.get("/assessments/assignment-submissions/"),
+                client.get(`/auth/invoices/balance/?student_id=${userId}`)
               ]);
               const enrolls = (enrollRes.data || []).filter((e: any) => e.student === userId);
               setStudentEnrollments(enrolls);
               setStudentInvoices(invoiceRes.data?.results || invoiceRes.data || []);
+              setStudentBalance(balanceRes.data);
 
               // Calculate Attendance Rate
               const attList = attendanceRes.data || [];
@@ -392,10 +395,8 @@ export default function InspectionDrawer({
                   const outstandingInvoices = studentInvoices.filter(
                     (inv: any) => inv.status !== "paid" && inv.status !== "cancelled"
                   );
-                  const totalOutstanding = outstandingInvoices.reduce(
-                    (sum: number, inv: any) => sum + parseFloat(inv.amount || "0"),
-                    0
-                  );
+                  const totalOutstanding = studentBalance?.outstanding ?? 0;
+                  const pendingCount = studentBalance?.pending_count ?? 0;
 
                   return (
                     <div className="space-y-3">
@@ -408,11 +409,11 @@ export default function InspectionDrawer({
                         </div>
                         <div>
                           <span className="block text-[var(--t3)] font-medium mb-1">{isFarsi ? "تعداد فاکتورهای معوق" : "Pending Invoices"}</span>
-                          <span className="font-bold text-[var(--t1)]">{outstandingInvoices.length}</span>
+                          <span className="font-bold text-[var(--t1)]">{pendingCount}</span>
                         </div>
                       </div>
 
-                      {outstandingInvoices.length > 0 && (
+                      {pendingCount > 0 && (
                         <div className="space-y-2">
                           <span className="text-[10px] font-bold text-[var(--t3)] uppercase tracking-wide block">{isFarsi ? "فاکتورهای پرداخت نشده" : "Unpaid Invoices"}</span>
                           {outstandingInvoices.slice(0, 3).map((inv: any) => (

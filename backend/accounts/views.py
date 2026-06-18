@@ -621,7 +621,7 @@ class TuitionInvoiceViewSet(viewsets.ModelViewSet):
     pagination_class = StandardResultsSetPagination
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
+        if self.action in ['list', 'retrieve', 'balance']:
             self.required_org_permission = 'can_view_dashboard'
         else:
             self.required_org_permission = 'can_manage_financials'
@@ -710,6 +710,48 @@ class TuitionInvoiceViewSet(viewsets.ModelViewSet):
                 )
         except Exception:
             pass
+
+    @action(detail=False, methods=['GET'])
+    def balance(self, request):
+        org = getattr(request, 'organization', None)
+        if not org:
+            return Response({"detail": "Organization context missing."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        queryset = TuitionInvoice.objects.filter(organization=org)
+        
+        # Enforce same permissions as get_queryset
+        if not has_org_permission(request.user, org, 'can_view_financials'):
+            queryset = queryset.filter(student=request.user)
+            
+        student_id = request.query_params.get('student_id')
+        if student_id:
+            queryset = queryset.filter(student_id=student_id)
+            
+        class_id = request.query_params.get('class_id')
+        if class_id:
+            queryset = queryset.filter(academy_class_id=class_id)
+
+        course_id = request.query_params.get('course_id')
+        if course_id:
+            queryset = queryset.filter(academy_class__course_id=course_id)
+            
+        # outstanding: Sum of amount for unpaid, partial, overdue invoices
+        outstanding_queryset = queryset.filter(status__in=['unpaid', 'partial', 'overdue'])
+        outstanding_sum = outstanding_queryset.aggregate(total=Sum('amount'))['total'] or 0.0
+        outstanding_count = outstanding_queryset.count()
+        
+        # total_billed: Sum of all invoices except cancelled
+        total_billed = queryset.exclude(status='cancelled').aggregate(total=Sum('amount'))['total'] or 0.0
+        
+        # total_paid: Sum of all paid invoices
+        total_paid = queryset.filter(status='paid').aggregate(total=Sum('amount'))['total'] or 0.0
+        
+        return Response({
+            "outstanding": float(outstanding_sum),
+            "pending_count": outstanding_count,
+            "total_billed": float(total_billed),
+            "total_paid": float(total_paid),
+        })
 
 
 class ExpenseItemViewSet(viewsets.ModelViewSet):
