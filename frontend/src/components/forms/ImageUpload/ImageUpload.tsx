@@ -36,7 +36,7 @@ export default function ImageUpload({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
+  const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null);
   const cropperRef = useRef<Cropper | null>(null);
 
   // Keep track of rotation/flips
@@ -53,10 +53,10 @@ export default function ImageUpload({
 
   // Safe initialization of Cropper inside useEffect once DOM image element is mounted
   useEffect(() => {
-    if (isModalOpen && imageSrc && imageRef.current) {
+    if (isModalOpen && imageSrc && imageElement) {
       destroyCropper();
       
-      const cropper = new Cropper(imageRef.current, {
+      const cropper = new Cropper(imageElement, {
         aspectRatio: preset === "profile" ? 1 : preset === "banner" ? 16 / 9 : NaN,
         viewMode: 1,
         background: false,
@@ -77,7 +77,7 @@ export default function ImageUpload({
         destroyCropper();
       };
     }
-  }, [isModalOpen, imageSrc]);
+  }, [isModalOpen, imageSrc, imageElement]);
 
   // Make sure we clean up imageSrc when modal is closed
   useEffect(() => {
@@ -91,17 +91,13 @@ export default function ImageUpload({
   const handleFile = async (file: File) => {
     if (disabled) return;
 
-    // Direct upload for SVG files
+    // Reject SVG files
     if (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg")) {
-      if (preset !== "logo") {
-        toast.error(
-          isFarsi
-            ? "فقط لوگوی آکادمی می‌تواند فایل SVG باشد"
-            : "Only academy logo can be an SVG file"
-        );
-        return;
-      }
-      onChange(file);
+      toast.error(
+        isFarsi
+          ? "فایل‌های SVG مجاز نیستند"
+          : "SVG files are not allowed"
+      );
       return;
     }
 
@@ -256,7 +252,7 @@ export default function ImageUpload({
           type="file"
           ref={fileInputRef}
           onChange={handleFileChange}
-          accept={preset === "logo" ? "image/*, .svg" : "image/*, .heic, .heif"}
+          accept="image/*, .heic, .heif"
           className="hidden"
           disabled={disabled}
         />
@@ -282,10 +278,10 @@ export default function ImageUpload({
                 )}
               >
                 <img
-                  ref={imageRef}
+                  ref={setImageElement}
                   src={imageSrc}
                   alt="Crop Target"
-                  className="max-w-full max-h-full block opacity-0" // starts hidden, cropper will position it
+                  className="max-w-full max-h-full block"
                 />
               </div>
             )}

@@ -3,6 +3,30 @@ from django.db import models
 from django.utils import timezone
 
 
+def validate_no_svg(value):
+    import os
+    from django.core.exceptions import ValidationError
+    ext = os.path.splitext(value.name)[1].lower()
+    content_type = getattr(value, 'content_type', '')
+    if ext == '.svg' or content_type == 'image/svg+xml':
+        raise ValidationError("SVG files are not allowed.")
+
+def validate_org_logo(value):
+    import os
+    from django.core.exceptions import ValidationError
+    ext = os.path.splitext(value.name)[1].lower()
+    valid_extensions = ['.png', '.jpg', '.jpeg', '.webp', '.heic', '.heif']
+    if ext not in valid_extensions:
+        raise ValidationError(f"Unsupported file extension. Allowed extensions are: {', '.join(valid_extensions)}")
+    content_type = getattr(value, 'content_type', None)
+    valid_content_types = [
+        'image/png', 'image/jpeg', 'image/jpg',
+        'image/webp', 'image/heic', 'image/heif', 'application/octet-stream'
+    ]
+    if content_type and content_type not in valid_content_types:
+        raise ValidationError(f"Unsupported file type: {content_type}")
+
+
 class User(AbstractUser):
     full_name = models.CharField(max_length=255, blank=True)
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True, validators=[validate_no_svg])
@@ -78,28 +102,7 @@ class Notification(models.Model):
 # Core Multi-Tenant RBAC Models
 # ---------------------------------------------------------------------------
 
-def validate_no_svg(value):
-    import os
-    from django.core.exceptions import ValidationError
-    ext = os.path.splitext(value.name)[1].lower()
-    content_type = getattr(value, 'content_type', '')
-    if ext == '.svg' or content_type == 'image/svg+xml':
-        raise ValidationError("SVG files are not allowed.")
 
-def validate_org_logo(value):
-    import os
-    from django.core.exceptions import ValidationError
-    ext = os.path.splitext(value.name)[1].lower()
-    valid_extensions = ['.png', '.jpg', '.jpeg', '.webp', '.heic', '.heif']
-    if ext not in valid_extensions:
-        raise ValidationError(f"Unsupported file extension. Allowed extensions are: {', '.join(valid_extensions)}")
-    content_type = getattr(value, 'content_type', None)
-    valid_content_types = [
-        'image/png', 'image/jpeg', 'image/jpg',
-        'image/webp', 'image/heic', 'image/heif', 'application/octet-stream'
-    ]
-    if content_type and content_type not in valid_content_types:
-        raise ValidationError(f"Unsupported file type: {content_type}")
 
 class Organization(models.Model):
     class OrgType(models.TextChoices):

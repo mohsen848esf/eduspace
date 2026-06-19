@@ -276,7 +276,16 @@ export default function HomeworkPage() {
               </label>
               <input
                 type="file"
-                onChange={(e) => setSubmissionFile(e.target.files?.[0] || null)}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  if (file && (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg"))) {
+                    toast.error(isFarsi ? "فایل‌های SVG مجاز نیستند" : "SVG files are not allowed");
+                    e.target.value = "";
+                    setSubmissionFile(null);
+                    return;
+                  }
+                  setSubmissionFile(file);
+                }}
                 className="w-full text-xs text-[var(--t2)] file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[var(--brand)]/15 file:text-[var(--brand-text)] hover:file:bg-[var(--brand)]/25 file:cursor-pointer"
               />
             </div>

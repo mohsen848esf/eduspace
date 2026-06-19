@@ -88,6 +88,11 @@ export default function CoursesPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg")) {
+        toast.error(isFarsi ? "فایل‌های SVG مجاز نیستند" : "SVG files are not allowed");
+        e.target.value = "";
+        return;
+      }
       setThumbnailFile(file);
       setThumbnailPreview(URL.createObjectURL(file));
       setThumbnailCleared(false);

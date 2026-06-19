@@ -160,10 +160,7 @@ export default function PreJoinScreen({
   const [isLoadingDevices, setIsLoadingDevices] = useState(true);
   const [activeTab, setActiveTab] = useState<"camera" | "audio">("camera");
 
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const animRef = useRef<number>(0);
+
   const {
     background: selectedBg,
     isLoading: bgLoading,
@@ -196,102 +193,7 @@ export default function PreJoinScreen({
     load();
   }, []);
 
-  // Camera preview with background
-  useEffect(() => {
-    let active = true;
-    let localStream: MediaStream | null = null;
 
-    if (!camEnabled || !selectedCam) {
-      cancelAnimationFrame(animRef.current);
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-      if (videoRef.current) videoRef.current.srcObject = null;
-      return;
-    }
-
-    const start = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { deviceId: selectedCam },
-          audio: false,
-        });
-        if (!active) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((t) => t.stop());
-        }
-        localStream = stream;
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
-      } catch {
-        /* swallow */
-      }
-    };
-
-    start();
-    return () => {
-      active = false;
-      cancelAnimationFrame(animRef.current);
-      if (localStream) {
-        localStream.getTracks().forEach((t) => t.stop());
-      }
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-    };
-  }, [camEnabled, selectedCam]);
-
-  // Apply background to canvas
-  useEffect(() => {
-    if (!camEnabled || selectedBg === "none") {
-      cancelAnimationFrame(animRef.current);
-      return;
-    }
-
-    const canvas = canvasRef.current;
-    const video = videoRef.current;
-    if (!canvas || !video) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const render = () => {
-      if (!video.videoWidth) {
-        animRef.current = requestAnimationFrame(render);
-        return;
-      }
-
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-
-      if (selectedBg === "blur") {
-        ctx.filter = "blur(12px)";
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        ctx.filter = "none";
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      } else {
-        const colors: Record<string, string> = {
-          office: "#7c3f1e",
-          nature: "#166534",
-          studio: "#3730a3",
-          minimal: "#334155",
-        };
-        ctx.fillStyle = colors[selectedBg] || "#000";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      }
-
-      animRef.current = requestAnimationFrame(render);
-    };
-
-    cancelAnimationFrame(animRef.current);
-    render();
-
-    return () => cancelAnimationFrame(animRef.current);
-  }, [selectedBg, camEnabled]);
 
   const mics = devices.filter((d) => d.kind === "audioinput");
   const cameras = devices.filter((d) => d.kind === "videoinput");

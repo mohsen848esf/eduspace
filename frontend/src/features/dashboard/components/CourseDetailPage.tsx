@@ -462,7 +462,16 @@ export default function CourseDetailPage() {
                   <input type="file" accept="image/*" id="edit-thumbnail" className="hidden"
                     onChange={(e) => {
                       const f = e.target.files?.[0];
-                      if (f) { setThumbnailFile(f); setThumbnailPreview(URL.createObjectURL(f)); setThumbnailCleared(false); }
+                      if (f) {
+                        if (f.type === "image/svg+xml" || f.name.toLowerCase().endsWith(".svg")) {
+                          toast.error(isFarsi ? "فایل‌های SVG مجاز نیستند" : "SVG files are not allowed");
+                          e.target.value = "";
+                          return;
+                        }
+                        setThumbnailFile(f);
+                        setThumbnailPreview(URL.createObjectURL(f));
+                        setThumbnailCleared(false);
+                      }
                     }}
                   />
                   <label htmlFor="edit-thumbnail" className="px-3 py-1.5 bg-[var(--s2)] text-[var(--t1)] text-xs font-semibold rounded-lg border border-[var(--b)] hover:bg-[var(--s1)] cursor-pointer transition-colors inline-block text-center">

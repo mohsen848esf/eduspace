@@ -63,23 +63,7 @@ export function useRoom() {
     async ({ redirectTo }: { redirectTo?: string | null } = {}) => {
       const { roomCode } = useRoomStore.getState();
 
-      // Stop all media devices
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter((d) => d.kind === "videoinput");
-        if (videoDevices.length > 0) {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true,
-          });
-          stream.getTracks().forEach((track) => {
-            track.stop();
-            track.enabled = false;
-          });
-        }
-      } catch {
-        /* swallow */
-      }
+
 
       // Reset background
       useBackgroundStore.getState().setBackground("none");

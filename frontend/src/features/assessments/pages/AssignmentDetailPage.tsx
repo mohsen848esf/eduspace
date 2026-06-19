@@ -599,7 +599,16 @@ export default function AssignmentDetailPage() {
                 <input
                   type="file"
                   className="text-xs text-[var(--t3)]"
-                  onChange={(e) => setSubmissionFile(e.target.files?.[0] || null)}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    if (file && (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg"))) {
+                      toast.error(isFarsi ? "فایل‌های SVG مجاز نیستند" : "SVG files are not allowed");
+                      e.target.value = "";
+                      setSubmissionFile(null);
+                      return;
+                    }
+                    setSubmissionFile(file);
+                  }}
                   required
                 />
               </div>

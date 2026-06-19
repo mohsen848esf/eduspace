@@ -3,7 +3,7 @@ from django.db import models
 from django.db.models import ProtectedError, Q
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from accounts.models import Organization, Session, AcademyClass
+from accounts.models import Organization, Session, AcademyClass, validate_no_svg
 
 
 class QuestionBank(models.Model):
@@ -232,7 +232,7 @@ class Assignment(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, default="")
     due_date = models.DateTimeField(null=True, blank=True)
-    attachment = models.FileField(upload_to='assignments/', null=True, blank=True)
+    attachment = models.FileField(upload_to='assignments/', null=True, blank=True, validators=[validate_no_svg])
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -268,7 +268,7 @@ class AssignmentSubmission(models.Model):
         default=Status.SUBMITTED
     )
     submitted_at = models.DateTimeField(auto_now_add=True)
-    submission_file = models.FileField(upload_to='submissions/', null=True, blank=True)
+    submission_file = models.FileField(upload_to='submissions/', null=True, blank=True, validators=[validate_no_svg])
     submission_text = models.TextField(blank=True, default="")
     grade = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     feedback = models.TextField(blank=True, default="")

@@ -1308,8 +1308,15 @@ export default function LedgerPage() {
                 type="file"
                 ref={receiptInputRef}
                 onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    setSelectedReceipt(e.target.files[0]);
+                  const file = e.target.files?.[0] || null;
+                  if (file) {
+                    if (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg")) {
+                      toast.error(isFarsi ? "فایل‌های SVG مجاز نیستند" : "SVG files are not allowed");
+                      e.target.value = "";
+                      setSelectedReceipt(null);
+                      return;
+                    }
+                    setSelectedReceipt(file);
                   }
                 }}
                 className="text-xs text-[var(--t2)] file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[var(--s3)] file:text-[var(--t1)] hover:file:bg-[var(--b)] cursor-pointer w-full bg-[var(--s2)] border border-[var(--b)] rounded-xl px-4 py-2"

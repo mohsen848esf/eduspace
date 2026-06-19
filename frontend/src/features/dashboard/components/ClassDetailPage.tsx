@@ -879,7 +879,16 @@ export default function ClassDetailPage() {
               <input
                 type="file"
                 className="text-xs text-[var(--t3)]"
-                onChange={(e) => setAssignmentAttachment(e.target.files?.[0] || null)}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  if (file && (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg"))) {
+                    toast.error(isFarsi ? "فایل‌های SVG مجاز نیستند" : "SVG files are not allowed");
+                    e.target.value = "";
+                    setAssignmentAttachment(null);
+                    return;
+                  }
+                  setAssignmentAttachment(file);
+                }}
               />
             </div>
             <div className="flex justify-end gap-2 mt-2">
@@ -919,7 +928,16 @@ export default function ClassDetailPage() {
               <input
                 type="file"
                 className="text-xs text-[var(--t3)]"
-                onChange={(e) => setSubmissionFile(e.target.files?.[0] || null)}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  if (file && (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg"))) {
+                    toast.error(isFarsi ? "فایل‌های SVG مجاز نیستند" : "SVG files are not allowed");
+                    e.target.value = "";
+                    setSubmissionFile(null);
+                    return;
+                  }
+                  setSubmissionFile(file);
+                }}
                 required
               />
             </div>

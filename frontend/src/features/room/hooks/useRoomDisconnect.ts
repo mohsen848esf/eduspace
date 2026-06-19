@@ -88,16 +88,7 @@ export function useRoomDisconnect() {
         // Small wait so the browser refreshes the recording indicator.
         await new Promise((r) => setTimeout(r, 500));
 
-        // Release any leftover device handles.
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true,
-          });
-          stream.getTracks().forEach((t) => t.stop());
-        } catch {
-          /* swallow */
-        }
+
       } catch (err) {
         console.error("Disconnect error:", err);
       } finally {

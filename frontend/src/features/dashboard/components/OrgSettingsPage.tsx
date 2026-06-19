@@ -9,6 +9,7 @@ import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
 import { DatePicker } from "../../../components/forms/DatePicker";
 import { ImageUpload } from "../../../components/forms/ImageUpload";
+import { useOrgContextStore } from "../../auth/store/orgContextStore";
 
 import { Modal, ModalHeader, ModalTitle, ModalBody, ModalFooter } from "../../../components/ui/Modal";
 import Spinner from "../../../components/ui/Spinner";
@@ -187,6 +188,9 @@ export default function OrgSettingsPage() {
       authApi.updateOrganization(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["activeOrganization"] });
+      if (activeOrg?.slug) {
+        useOrgContextStore.getState().fetchOrgContext(activeOrg.slug);
+      }
       toast.success(isFarsi ? "تغییرات سازمان با موفقیت ذخیره شد" : "Organization settings saved successfully");
     },
     onError: (err: any) => {
@@ -575,8 +579,8 @@ export default function OrgSettingsPage() {
                 </h3>
                 <p className="text-[11px] text-[var(--t3)] mt-1.5 leading-relaxed">
                   {isFarsi 
-                    ? "یک تصویر با پسوند PNG، JPG یا SVG انتخاب کنید." 
-                    : "Select a PNG, JPG, or SVG format image."}
+                    ? "یک تصویر با پسوند PNG یا JPG انتخاب کنید." 
+                    : "Select a PNG or JPG format image."}
                 </p>
               </div>
             </div>

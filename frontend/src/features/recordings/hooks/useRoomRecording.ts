@@ -193,11 +193,17 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
   const cleanupClientRecording = useCallback(() => {
     const stream = streamRef.current;
     if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
+      stream.getTracks().forEach((track) => {
+        track.onended = null;
+        track.stop();
+      });
     }
     const micStream = micStreamRef.current;
     if (micStream) {
-      micStream.getTracks().forEach((track) => track.stop());
+      micStream.getTracks().forEach((track) => {
+        track.onended = null;
+        track.stop();
+      });
       micStreamRef.current = null;
     }
     const audioCtx = audioCtxRef.current;

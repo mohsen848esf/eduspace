@@ -563,7 +563,14 @@ def complete_client_recording(request, token: str):
 
     from rooms.tasks import finalize_client_recording_task
     from django.db import transaction
-    transaction.on_commit(lambda: finalize_client_recording_task.delay(recording.pk))
+    if settings.DEBUG:
+        import threading
+        transaction.on_commit(lambda: threading.Thread(
+            target=finalize_client_recording_task,
+            args=(recording.pk,)
+        ).start())
+    else:
+        transaction.on_commit(lambda: finalize_client_recording_task.delay(recording.pk))
 
     logger.info('client_recording.complete token=%s triggered Celery background task', token)
     return Response(_serialize(recording))
@@ -893,10 +900,13 @@ def recording_detail_or_delete(request, token: str):
             status=http.HTTP_403_FORBIDDEN,
         )
     if rec.is_active:
-        return Response(
-            {'error': 'Cannot delete a recording that is still in progress'},
-            status=http.HTTP_409_CONFLICT,
-        )
+        # Stop any active egress segment
+        last_segment = rec.segments.order_by('-index').first()
+        if last_segment and last_segment.egress_id and rec.status != Recording.Status.PAUSED:
+            try:
+                service.stop_egress(last_segment.egress_id)
+            except Exception:
+                logger.warning('Failed to stop egress %s during delete', last_segment.egress_id)
 
     rec_dir: Path = settings.RECORDING_OUTPUT_DIR / rec.public_token
     if rec_dir.exists():
