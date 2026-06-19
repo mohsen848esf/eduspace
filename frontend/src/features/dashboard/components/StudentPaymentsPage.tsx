@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { crmApi } from "../api/crm.api";
 import AppShell from "../../../components/layout/AppShell";
@@ -9,19 +10,22 @@ import { CreditCard, Calendar, FileText, CheckCircle, AlertTriangle, ShieldCheck
 export default function StudentPaymentsPage() {
   const { language } = useLocale();
   const isFarsi = language === "fa";
+  const [searchParams] = useSearchParams();
+  const courseIdParam = searchParams.get("course");
+  const courseId = courseIdParam ? parseInt(courseIdParam) : undefined;
 
   const [activeTab, setActiveTab] = useState<"unpaid" | "paid" | "all">("unpaid");
 
   // Queries
   const { data: invoicesResponse, isLoading: loadingInvoices } = useQuery({
-    queryKey: ["student-invoices-list"],
-    queryFn: () => crmApi.getInvoices({ page_size: 100 }),
+    queryKey: ["student-invoices-list", courseId],
+    queryFn: () => crmApi.getInvoices({ page_size: 100, course_id: courseId }),
   });
   const invoices = invoicesResponse?.results || [];
 
   const { data: balance, isLoading: loadingBalance } = useQuery({
-    queryKey: ["student-invoices-balance"],
-    queryFn: () => crmApi.getInvoiceBalance(),
+    queryKey: ["student-invoices-balance", courseId],
+    queryFn: () => crmApi.getInvoiceBalance({ course_id: courseId }),
   });
 
   const unpaidInvoices = invoices.filter(inv => 

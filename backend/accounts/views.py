@@ -931,7 +931,7 @@ class SessionViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve', 'attendance', 'get_student_attendance']:
-            self.required_org_permission = 'can_view_sessions'
+            self.required_org_permission = ['can_view_sessions', 'can_view_dashboard']
         else:
             self.required_org_permission = 'can_manage_sessions'
         return super().get_permissions()
@@ -1264,10 +1264,7 @@ class RoleViewSet(viewsets.ModelViewSet):
     permission_classes = [HasOrgPermission]
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve', 'permissions']:
-            self.required_org_permission = 'can_view_dashboard'
-        else:
-            self.required_org_permission = 'can_manage_members'
+        self.required_org_permission = 'can_manage_members'
         return super().get_permissions()
 
     def get_queryset(self):

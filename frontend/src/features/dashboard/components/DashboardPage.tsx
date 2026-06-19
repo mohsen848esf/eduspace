@@ -35,79 +35,81 @@ export default function DashboardPage() {
   const { data: courses = [], isLoading: loadingCourses } = useQuery({
     queryKey: ["courses"],
     queryFn: crmApi.getCourses,
-    enabled: canManageCRM,
+    enabled: canManageCRM && !!activeOrg,
   });
 
   const { data: classes = [], isLoading: loadingClasses } = useQuery({
     queryKey: ["classes"],
     queryFn: crmApi.getClasses,
-    enabled: canManageCRM,
+    enabled: canManageCRM && !!activeOrg,
   });
 
   const { data: enrollments = [], isLoading: loadingEnrollments } = useQuery({
     queryKey: ["enrollments"],
     queryFn: crmApi.getEnrollments,
+    enabled: !!activeOrg,
   });
 
   const { data: summaryData, isLoading: loadingSummary } = useQuery({
     queryKey: ["financeSummary"],
     queryFn: crmApi.getFinanceSummary,
-    enabled: hasPermission("can_view_financials"),
+    enabled: hasPermission("can_view_financials") && !!activeOrg,
   });
 
-  const { data: liveSessions = [], isLoading: loadingSessions } = useSessions(undefined, "live");
+  const { data: liveSessions = [], isLoading: loadingSessions } = useSessions(undefined, "live", { enabled: !!activeOrg });
 
   const { data: allSessions = [], isLoading: loadingAllSessions } = useQuery({
     queryKey: ["sessions-all"],
     queryFn: () => sessionsApi.getSessions(),
+    enabled: !!activeOrg,
   });
 
   const { data: allSubmissions = [], isLoading: loadingSubmissions } = useQuery({
     queryKey: ["all-submissions-teacher"],
     queryFn: () => assessmentsApi.getAssignmentSubmissions(),
-    enabled: activeRole === "teacher" || activeRole === "admin",
+    enabled: (activeRole === "teacher" || activeRole === "admin") && !!activeOrg,
   });
 
   const { data: allAssessments = [], isLoading: loadingAssessments } = useQuery({
     queryKey: ["all-assessments-student"],
     queryFn: () => assessmentsApi.getAssessments(),
-    enabled: activeRole === "student",
+    enabled: activeRole === "student" && !!activeOrg,
   });
 
   const { data: studentSubmissions = [], isLoading: loadingStudentSubmissions } = useQuery({
     queryKey: ["student-submissions"],
     queryFn: () => assessmentsApi.getSubmissions(),
-    enabled: activeRole === "student",
+    enabled: activeRole === "student" && !!activeOrg,
   });
 
   const { data: allAssignments = [], isLoading: loadingAssignments } = useQuery({
     queryKey: ["all-assignments-student"],
     queryFn: () => assessmentsApi.getAssignments(),
-    enabled: activeRole === "student",
+    enabled: activeRole === "student" && !!activeOrg,
   });
 
   const { data: myAssignmentSubmissions = [], isLoading: loadingMyAssignmentSubmissions } = useQuery({
     queryKey: ["my-assignment-submissions"],
     queryFn: () => assessmentsApi.getAssignmentSubmissions(),
-    enabled: activeRole === "student",
+    enabled: activeRole === "student" && !!activeOrg,
   });
 
   const { data: recordingsData, isLoading: loadingRecordings } = useQuery({
     queryKey: ["recordings-student"],
     queryFn: () => recordingsApi.list({ published: true }),
-    enabled: activeRole === "student",
+    enabled: activeRole === "student" && !!activeOrg,
   });
 
   const { data: studentAttendance, isLoading: loadingStudentAttendance } = useQuery({
     queryKey: ["student-attendance-kpi"],
     queryFn: () => sessionsApi.getAllAttendance({ page_size: 100 }),
-    enabled: activeRole === "student",
+    enabled: activeRole === "student" && !!activeOrg,
   });
 
   const { data: studentInvoicesBalance, isLoading: loadingStudentInvoices } = useQuery({
     queryKey: ["student-invoices-balance"],
     queryFn: () => crmApi.getInvoiceBalance(),
-    enabled: activeRole === "student",
+    enabled: activeRole === "student" && !!activeOrg,
   });
 
   const greeting = () => {
@@ -564,36 +566,61 @@ export default function DashboardPage() {
               </button>
             </>
           ) : (
-            /* Student Actions */
+            /* Student / Personal Actions */
             <>
               <button
-                onClick={() => {
-                  if (liveSession) navigate(`/room/${liveSession.active_room_code}`);
-                }}
-                disabled={!liveSession}
-                className="flex flex-col items-center gap-2 p-4 bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none disabled:opacity-50 disabled:cursor-not-allowed group hover:ring-1 hover:ring-[var(--brand)]/30"
+                onClick={() =>
+                  createRoom({
+                    name: isFarsi
+                      ? `تماس ${user?.full_name || user?.username || ""}`
+                      : `Call by ${user?.full_name || user?.username || ""}`,
+                    max_participants: 20,
+                    is_recorded: false,
+                  })
+                }
+                disabled={roomLoading}
+                className="flex flex-col items-center gap-2 p-4 bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none disabled:opacity-50 group hover:ring-1 hover:ring-[var(--brand)]/30"
               >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg transition-transform group-hover:scale-110 ${
-                  liveSession ? "bg-red-500/10 text-red-500 animate-pulse" : "bg-[var(--t3)]/10 text-[var(--t3)]"
-                }`}>
+                <div className="w-10 h-10 rounded-full bg-[var(--brand)]/10 text-[var(--brand)] flex items-center justify-center text-lg transition-transform group-hover:scale-110">
                   <Video className="w-5 h-5" />
                 </div>
-                <span className="text-xs font-semibold text-[var(--t2)] text-center">
-                  {isFarsi ? "ورود به کلاس فعال" : "Join Active Room"}
+                <span className="text-xs font-semibold text-[var(--t2)] text-center font-medium">
+                  {isFarsi ? "شروع تماس" : "Start Call"}
                 </span>
               </button>
 
-              <button
-                onClick={() => navigate("/academic/homework")}
-                className="flex flex-col items-center gap-2 p-4 bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none group hover:ring-1 hover:ring-[var(--brand)]/30"
-              >
-                <div className="w-10 h-10 rounded-full bg-[var(--green)]/10 text-[var(--green)] flex items-center justify-center text-lg transition-transform group-hover:scale-110">
-                  <BookOpen className="w-5 h-5" />
-                </div>
-                <span className="text-xs font-semibold text-[var(--t2)] text-center">
-                  {isFarsi ? "تکالیف من" : "My Homework"}
-                </span>
-              </button>
+              {!!activeOrg && (
+                <button
+                  onClick={() => {
+                    if (liveSession) navigate(`/room/${liveSession.active_room_code}`);
+                  }}
+                  disabled={!liveSession}
+                  className="flex flex-col items-center gap-2 p-4 bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none disabled:opacity-50 disabled:cursor-not-allowed group hover:ring-1 hover:ring-[var(--brand)]/30"
+                >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg transition-transform group-hover:scale-110 ${
+                    liveSession ? "bg-red-500/10 text-red-500 animate-pulse" : "bg-[var(--t3)]/10 text-[var(--t3)]"
+                  }`}>
+                    <Video className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-semibold text-[var(--t2)] text-center font-medium">
+                    {isFarsi ? "ورود به کلاس فعال" : "Join Active Room"}
+                  </span>
+                </button>
+              )}
+
+              {!!activeOrg && (
+                <button
+                  onClick={() => navigate("/academic/homework")}
+                  className="flex flex-col items-center gap-2 p-4 bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none group hover:ring-1 hover:ring-[var(--brand)]/30"
+                >
+                  <div className="w-10 h-10 rounded-full bg-[var(--green)]/10 text-[var(--green)] flex items-center justify-center text-lg transition-transform group-hover:scale-110">
+                    <BookOpen className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-semibold text-[var(--t2)] text-center font-medium">
+                    {isFarsi ? "تکالیف من" : "My Homework"}
+                  </span>
+                </button>
+              )}
 
               <button
                 onClick={() => navigate("/recordings")}
@@ -602,22 +629,24 @@ export default function DashboardPage() {
                 <div className="w-10 h-10 rounded-full bg-[var(--cyan)]/10 text-[var(--cyan)] flex items-center justify-center text-lg transition-transform group-hover:scale-110">
                   <Play className="w-5 h-5" />
                 </div>
-                <span className="text-xs font-semibold text-[var(--t2)] text-center">
-                  {isFarsi ? "ضبط کلاس‌ها" : "Class Recordings"}
+                <span className="text-xs font-semibold text-[var(--t2)] text-center font-medium">
+                  {isFarsi ? "ضبط تماس‌ها" : "Recordings"}
                 </span>
               </button>
 
-              <button
-                onClick={() => navigate("/academic/payments")}
-                className="flex flex-col items-center gap-2 p-4 bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none group hover:ring-1 hover:ring-[var(--brand)]/30"
-              >
-                <div className="w-10 h-10 rounded-full bg-[var(--amber)]/10 text-[var(--amber)] flex items-center justify-center text-lg transition-transform group-hover:scale-110">
-                  <CreditCard className="w-5 h-5" />
-                </div>
-                <span className="text-xs font-semibold text-[var(--t2)] text-center">
-                  {isFarsi ? "پرداخت‌های من" : "My Payments"}
-                </span>
-              </button>
+              {!!activeOrg && (
+                <button
+                  onClick={() => navigate("/academic/payments")}
+                  className="flex flex-col items-center gap-2 p-4 bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none group hover:ring-1 hover:ring-[var(--brand)]/30"
+                >
+                  <div className="w-10 h-10 rounded-full bg-[var(--amber)]/10 text-[var(--amber)] flex items-center justify-center text-lg transition-transform group-hover:scale-110">
+                    <CreditCard className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-semibold text-[var(--t2)] text-center font-medium">
+                    {isFarsi ? "پرداخت‌های من" : "My Payments"}
+                  </span>
+                </button>
+              )}
             </>
           )}
         </div>

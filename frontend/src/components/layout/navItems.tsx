@@ -38,8 +38,8 @@ export const mainNavItems: NavItem[] = [
 export const manageNavItems: NavItem[] = [
   { id: "members", icon: Icons.people, labelKey: "nav.members", to: "/crm/members", permissions: ["can_manage_members", "can_teach_class"] },
   { id: "ledger", icon: Icons.barChart, labelKey: "nav.ledger", to: "/finance/ledger", permissions: ["can_view_financials"] },
-  { id: "recordings", icon: Icons.film, labelKey: "nav.recordings", to: "/recordings", permissions: ["can_view_dashboard"] },
-  { id: "notificationsSettings", icon: Icons.settings, labelKey: "nav.notificationSettings", to: "/settings/notifications", permissions: ["can_view_dashboard"] },
+  { id: "recordings", icon: Icons.film, labelKey: "nav.recordings", to: "/recordings" },
+  { id: "notificationsSettings", icon: Icons.settings, labelKey: "nav.notificationSettings", to: "/settings/notifications" },
   { id: "templates", icon: Icons.settings, labelKey: "nav.templates", to: "/settings/templates", permissions: ["can_manage_members"] },
   { id: "organization", icon: Icons.settings, labelKey: "nav.orgSettings", to: "/settings/organization", permissions: ["can_manage_members"] },
   { id: "billing", icon: Icons.settings, labelKey: "nav.billing", to: "/settings/billing", permissions: ["can_manage_members"] },
@@ -53,7 +53,7 @@ export const bottomNavPrimary: NavItem[] = [
   { id: "dashboard", icon: Icons.home, labelKey: "nav.dashboard", to: "/dashboard" },
   { id: "courses", icon: Icons.exam, labelKey: "nav.courses", to: "/academic/courses", permissions: ["can_manage_members", "can_teach_class"] },
   { id: "sessions", icon: Icons.camera, labelKey: "nav.sessions", to: "/academic/sessions", permissions: ["can_view_sessions"] },
-  { id: "recordings", icon: Icons.film, labelKey: "nav.recordings", to: "/recordings", permissions: ["can_view_dashboard"] },
+  { id: "recordings", icon: Icons.film, labelKey: "nav.recordings", to: "/recordings" },
 ];
 
 /**
@@ -69,7 +69,7 @@ export const drawerNavItems: NavItem[] = [
   { id: "reports", icon: Icons.barChart, labelKey: "nav.reports", to: "/academic/reports", permissions: ["can_manage_members"] },
   { id: "members", icon: Icons.people, labelKey: "nav.members", to: "/crm/members", permissions: ["can_manage_members", "can_teach_class"] },
   { id: "ledger", icon: Icons.barChart, labelKey: "nav.ledger", to: "/finance/ledger", permissions: ["can_view_financials"] },
-  { id: "notificationsSettings", icon: Icons.settings, labelKey: "nav.notificationSettings", to: "/settings/notifications", permissions: ["can_view_dashboard"] },
+  { id: "notificationsSettings", icon: Icons.settings, labelKey: "nav.notificationSettings", to: "/settings/notifications" },
   { id: "templates", icon: Icons.settings, labelKey: "nav.templates", to: "/settings/templates", permissions: ["can_manage_members"] },
   { id: "organization", icon: Icons.settings, labelKey: "nav.orgSettings", to: "/settings/organization", permissions: ["can_manage_members"] },
   { id: "billing", icon: Icons.settings, labelKey: "nav.billing", to: "/settings/billing", permissions: ["can_manage_members"] },

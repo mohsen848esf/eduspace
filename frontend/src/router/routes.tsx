@@ -205,7 +205,7 @@ export const routes: RouteConfig[] = [
     path: "/crm/members",
     component: MembersPage,
     isPrivate: true,
-    requiredPermissions: ["can_view_dashboard"],
+    requiredPermissions: ["can_manage_members", "can_teach_class", "can_view_attendance"],
   },
   {
     path: "/finance/ledger",
@@ -271,19 +271,16 @@ export const routes: RouteConfig[] = [
     path: "/recordings",
     component: RecordingsPage,
     isPrivate: true,
-    requiredPermissions: ["can_view_dashboard"],
   },
   {
     path: "/recordings/:token",
     component: RecordingViewPage,
     isPrivate: true,
-    requiredPermissions: ["can_view_dashboard"],
   },
   {
     path: "/recordings/:token/edit",
     component: RecordingEditPage,
     isPrivate: true,
-    requiredPermissions: ["can_view_dashboard"],
   },
   {
     path: "/assessments/take/:submissionId",

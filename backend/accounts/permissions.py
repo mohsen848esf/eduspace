@@ -239,4 +239,6 @@ class HasOrgPermission(BasePermission):
             )
             
         request.organization = org
+        if isinstance(perm_codename, (list, tuple)):
+            return any(has_org_permission(request.user, org, p) for p in perm_codename)
         return has_org_permission(request.user, org, perm_codename)

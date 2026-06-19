@@ -15,7 +15,8 @@ import InspectionDrawer from "../../../components/ui/InspectionDrawer";
 export default function CourseDetailPage() {
   const { courseId } = useParams<{ courseId: string }>();
   const { language } = useLocale();
-  const { hasPermission } = useOrgPermission();
+  const { hasPermission, activeRole } = useOrgPermission();
+  const isStudent = activeRole?.toLowerCase() === "student";
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const isFarsi = language === "fa";
@@ -212,10 +213,17 @@ export default function CourseDetailPage() {
                 <div className="text-2xl font-black text-[var(--brand)]">{linkedClasses.length}</div>
                 <div className="text-[10px] text-[var(--t3)] uppercase tracking-wide mt-0.5">{isFarsi ? "کلاس‌ها" : "Classes"}</div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-black text-emerald-400">{totalStudents}</div>
-                <div className="text-[10px] text-[var(--t3)] uppercase tracking-wide mt-0.5">{isFarsi ? "دانشجویان" : "Students"}</div>
-              </div>
+              {isStudent ? (
+                <div className="text-center">
+                  <div className="text-xl font-bold text-emerald-400 font-mono mt-1">{course.code}</div>
+                  <div className="text-[10px] text-[var(--t3)] uppercase tracking-wide mt-0.5">{isFarsi ? "کد دوره" : "Course Code"}</div>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <div className="text-2xl font-black text-emerald-400">{totalStudents}</div>
+                  <div className="text-[10px] text-[var(--t3)] uppercase tracking-wide mt-0.5">{isFarsi ? "دانشجویان" : "Students"}</div>
+                </div>
+              )}
               <div className="text-center">
                 <div className="text-2xl font-black text-[var(--amber)]">${parseFloat(course.price).toFixed(0)}</div>
                 <div className="text-[10px] text-[var(--t3)] uppercase tracking-wide mt-0.5">{isFarsi ? "شهریه" : "Tuition"}</div>
@@ -365,40 +373,49 @@ export default function CourseDetailPage() {
         </div>
 
         {/* ── Quick Links ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[
+        {(() => {
+          const links = [
             {
               label: isFarsi ? "مشاهده فاکتورها" : "View Invoices",
               desc: isFarsi ? "فاکتورهای مرتبط با این دوره" : "Tuition invoices for this course",
               icon: "💰",
-              to: `/finance/ledger?course=${id}`,
+              to: isStudent ? `/academic/payments?course=${id}` : `/finance/ledger?course=${id}`,
+              visible: true,
             },
             {
               label: isFarsi ? "مشاهده ثبت‌نام‌ها" : "View Enrollments",
               desc: isFarsi ? "دانشجویان ثبت‌نام شده" : "Enrolled students across all classes",
               icon: "📋",
               to: `/crm/members?tab=enrollments&course=${id}`,
+              visible: !isStudent,
             },
             {
               label: isFarsi ? "برنامه جلسات" : "Session Schedule",
               desc: isFarsi ? "تمام جلسات این دوره" : "All sessions for this course",
               icon: "📅",
               to: `/academic/sessions`,
+              visible: true,
             },
-          ].map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              className="flex items-center gap-3 bg-[var(--s2)] border border-[var(--b)] rounded-xl p-4 hover:border-[var(--brand)]/40 hover:bg-[var(--s3)] transition-all no-underline group"
-            >
-              <span className="text-2xl">{link.icon}</span>
-              <div>
-                <div className="text-sm font-semibold text-[var(--t1)] group-hover:text-[var(--brand)] transition-colors">{link.label}</div>
-                <div className="text-[10px] text-[var(--t3)]">{link.desc}</div>
-              </div>
-            </Link>
-          ))}
-        </div>
+          ].filter((l) => l.visible);
+
+          return (
+            <div className={`grid grid-cols-1 sm:grid-cols-${links.length} gap-3`}>
+              {links.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className="flex items-center gap-3 bg-[var(--s2)] border border-[var(--b)] rounded-xl p-4 hover:border-[var(--brand)]/40 hover:bg-[var(--s3)] transition-all no-underline group"
+                >
+                  <span className="text-2xl">{link.icon}</span>
+                  <div>
+                    <div className="text-sm font-semibold text-[var(--t1)] group-hover:text-[var(--brand)] transition-colors">{link.label}</div>
+                    <div className="text-[10px] text-[var(--t3)]">{link.desc}</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── Edit Modal ── */}

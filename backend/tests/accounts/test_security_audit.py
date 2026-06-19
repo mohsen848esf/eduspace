@@ -51,7 +51,7 @@ class SecurityAuditTest(TransactionTestCase):
         client = APIClient()
         client.force_authenticate(user=self.user_a)
         response = client.get(f'/api/auth/sessions/{self.session_b.id}/', HTTP_X_ORGANIZATION_SLUG=self.org_a.slug)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_cross_tenant_invoice_access_rejected(self):
         client = APIClient()
