@@ -106,6 +106,10 @@ export interface RouteConfig {
   isSuperUserOnly?: boolean;
 }
 
+const JoinOrgPage = lazy(
+  () => import("../features/dashboard/components/JoinOrgPage"),
+);
+
 export const routes: RouteConfig[] = [
   {
     path: "/login",
@@ -127,7 +131,11 @@ export const routes: RouteConfig[] = [
     path: "/dashboard",
     component: DashboardPage,
     isPrivate: true,
-    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/join/:orgSlug",
+    component: JoinOrgPage,
+    isPrivate: true,
   },
   {
     path: "/academic/courses",
@@ -235,13 +243,11 @@ export const routes: RouteConfig[] = [
     path: "/settings/profile",
     component: ProfileCompletionPage,
     isPrivate: true,
-    requiredPermissions: ["can_view_dashboard"],
   },
   {
     path: "/settings/notifications",
     component: NotificationSettingsPage,
     isPrivate: true,
-    requiredPermissions: ["can_view_dashboard"],
   },
   {
     path: "/settings/templates",
@@ -259,13 +265,11 @@ export const routes: RouteConfig[] = [
     path: "/room/:roomCode",
     component: RoomPage,
     isPrivate: true,
-    requiredPermissions: ["can_view_dashboard"],
   },
   {
     path: "/miniapps",
     component: MiniAppsPage,
     isPrivate: true,
-    requiredPermissions: ["can_view_dashboard"],
   },
   {
     path: "/recordings",

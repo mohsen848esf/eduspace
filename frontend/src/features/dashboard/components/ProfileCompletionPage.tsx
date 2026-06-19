@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import client from "../../../lib/api/client";
 import { toast } from "react-hot-toast";
@@ -10,6 +10,7 @@ import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
 import Spinner from "../../../components/ui/Spinner";
 import GDPRControl from "../../auth/components/GDPRControl";
+import { ImageUpload } from "../../../components/forms/ImageUpload";
 
 export default function ProfileCompletionPage() {
   const { language } = useLocale();
@@ -18,7 +19,6 @@ export default function ProfileCompletionPage() {
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: certificates = [], isLoading: loadingCerts } = useQuery({
     queryKey: ["certificates"],
@@ -60,18 +60,7 @@ export default function ProfileCompletionPage() {
     });
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const formData = new FormData();
-      formData.append("avatar", file);
-      updateProfileMutation.mutate(formData);
-    }
-  };
 
-  const triggerFileInput = () => {
-    fileInputRef.current?.click();
-  };
 
   if (!user) {
     return (
@@ -101,29 +90,15 @@ export default function ProfileCompletionPage() {
 
         {/* Avatar Section */}
         <div className="flex flex-col items-center sm:flex-row gap-5 border-b border-[var(--b)]/60 pb-6">
-          <div
-            onClick={triggerFileInput}
-            className="relative w-24 h-24 rounded-full border-2 border-[var(--b)] flex items-center justify-center bg-[var(--s3)] overflow-hidden group cursor-pointer hover:border-[var(--brand-text)] transition-all duration-200 shadow-md flex-shrink-0"
-          >
-            {user.avatar ? (
-              <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-4xl font-semibold">
-                {fullName.charAt(0).toUpperCase() || user.username.charAt(0).toUpperCase()}
-              </span>
-            )}
-            <div className="absolute inset-0 bg-black/45 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-              <span className="text-[10px] text-white font-bold tracking-wide uppercase">
-                {isFarsi ? "تغییر تصویر" : "Change Image"}
-              </span>
-            </div>
-          </div>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleAvatarChange}
-            className="hidden"
-            accept="image/*"
+          <ImageUpload
+            preset="profile"
+            value={user.avatar}
+            onChange={(file) => {
+              const formData = new FormData();
+              formData.append("avatar", file);
+              updateProfileMutation.mutate(formData);
+            }}
+            isFarsi={isFarsi}
           />
           <div className="text-center sm:text-start">
             <h3 className="text-sm font-semibold text-[var(--t1)]">

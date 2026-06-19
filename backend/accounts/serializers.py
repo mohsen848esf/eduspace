@@ -30,6 +30,14 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('id', 'username', 'email', 'full_name', 'avatar', 'is_online', 'is_superuser', 'organizations')
         read_only_fields = ('id',)
 
+    def validate_avatar(self, value):
+        if value:
+            name = value.name.lower()
+            content_type = getattr(value, 'content_type', '')
+            if name.endswith('.svg') or content_type == 'image/svg+xml':
+                raise serializers.ValidationError("Only academy logo can be an SVG file")
+        return value
+
     def get_organizations(self, obj):
         if hasattr(obj, '_prefetched_objects_cache') and 'org_memberships' in obj._prefetched_objects_cache:
             memberships = [
@@ -367,10 +375,19 @@ class OrgContextSerializer(serializers.Serializer):
     def get_organization(self, obj):
         org = obj.get('organization')
         if org:
+            request = self.context.get('request')
+            logo_url = None
+            if org.logo:
+                if request:
+                    logo_url = request.build_absolute_uri(org.logo.url)
+                else:
+                    logo_url = org.logo.url
             return {
                 'id': org.id,
                 'name': org.name,
                 'slug': org.slug,
+                'logo': logo_url,
+                'invite_code': org.invite_code,
                 'is_suspended': org.is_suspended,
                 'suspension_reason': org.suspension_reason,
             }
@@ -380,11 +397,12 @@ class OrgContextSerializer(serializers.Serializer):
 class OrganizationDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
-        fields = ('id', 'name', 'slug', 'type', 'is_active', 'logo', 'created_at')
-        read_only_fields = ('id', 'slug', 'type', 'is_active', 'created_at')
+        fields = ('id', 'name', 'slug', 'type', 'is_active', 'logo', 'created_at', 'approval_required_to_join', 'invite_code')
+        read_only_fields = ('id', 'slug', 'type', 'is_active', 'created_at', 'invite_code')
 
 
 class OrgMemberSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
     username = serializers.CharField(write_only=True, required=False)
     email = serializers.CharField(write_only=True, required=False)
     user_details = UserSerializer(source='user', read_only=True)
@@ -396,7 +414,7 @@ class OrgMemberSerializer(serializers.ModelSerializer):
             'id', 'user', 'user_details', 'role', 'role_name', 'username', 'email',
             'is_active', 'contract_type', 'joined_at', 'expires_at'
         )
-        read_only_fields = ('id', 'user', 'joined_at')
+        read_only_fields = ('id', 'joined_at')
 
     def validate_role(self, value):
         if value:
@@ -412,17 +430,21 @@ class OrgMemberSerializer(serializers.ModelSerializer):
         if not org:
             raise serializers.ValidationError("Organization context required.")
 
+        user = validated_data.get('user', None)
         username = validated_data.pop('username', None)
         email = validated_data.pop('email', None)
-        user = None
-
-        if username:
-            user = User.objects.filter(username=username).first()
-        elif email:
-            user = User.objects.filter(email=email).first()
 
         if not user:
-            raise serializers.ValidationError("User not found on the system. Please verify the username or email.")
+            if username:
+                if str(username).isdigit():
+                    user = User.objects.filter(id=int(username)).first()
+                if not user:
+                    user = User.objects.filter(username=username).first()
+            elif email:
+                user = User.objects.filter(email=email).first()
+
+            if not user:
+                raise serializers.ValidationError("User not found on the system. Please verify the user ID, username or email.")
 
         if OrgMember.objects.filter(organization=org, user=user).exists():
             raise serializers.ValidationError("This user is already a member of this organization.")

@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import { useLocale } from "../../../i18n/useLocale";
 import AppShell from "../../../components/layout/AppShell";
 import Spinner from "../../../components/ui/Spinner";
+import { useAuthStore } from "../store/authStore";
 
 interface Preference {
   category: string;
@@ -17,6 +18,8 @@ export default function NotificationSettings() {
   const { language } = useLocale();
   const isFarsi = language === "fa";
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const hasPhoneNumber = !!(user?.phone_number && user.phone_number.trim());
 
   // Categories metadata
   const categoriesMeta: Record<string, { titleEn: string; titleFa: string; descEn: string; descFa: string }> = {
@@ -123,6 +126,17 @@ export default function NotificationSettings() {
           </p>
         </div>
 
+        {!hasPhoneNumber && (
+          <div className="text-xs text-[var(--yellow)] bg-[var(--yellow)]/10 border border-[var(--yellow)]/20 p-3.5 rounded-xl flex items-center gap-2 animate-in fade-in duration-150">
+            <span>⚠️</span>
+            <span>
+              {isFarsi
+                ? "برای فعال‌سازی اعلان‌های پیامک، شماره تلفن خود را اضافه کنید."
+                : "Add a phone number to enable SMS notifications."}
+            </span>
+          </div>
+        )}
+
         <div className="border border-[var(--b)] rounded-xl overflow-hidden bg-[var(--s1)]">
           {/* Header Row */}
           <div className="grid grid-cols-12 bg-[var(--s3)] border-b border-[var(--b)] p-4 text-xs font-bold text-[var(--t2)] items-center">
@@ -178,12 +192,13 @@ export default function NotificationSettings() {
                   </div>
 
                   {/* SMS Channel */}
-                  <div className="col-span-4 md:col-span-2 flex justify-center">
-                    <label className="relative inline-flex items-center cursor-pointer">
+                  <div className={`col-span-4 md:col-span-2 flex justify-center ${!hasPhoneNumber ? "opacity-40 cursor-not-allowed" : ""}`}>
+                    <label className={`relative inline-flex items-center ${!hasPhoneNumber ? "pointer-events-none" : "cursor-pointer"}`}>
                       <input
                         type="checkbox"
-                        checked={pref.sms_enabled}
-                        onChange={() => handleToggle(pref.category, "sms_enabled")}
+                        checked={pref.sms_enabled && hasPhoneNumber}
+                        onChange={() => hasPhoneNumber && handleToggle(pref.category, "sms_enabled")}
+                        disabled={!hasPhoneNumber}
                         className="sr-only peer"
                       />
                       <div className="w-9 h-5 bg-[var(--s3)] rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--brand)]"></div>

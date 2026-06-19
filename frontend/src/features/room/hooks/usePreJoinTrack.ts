@@ -3,6 +3,8 @@ import { createLocalVideoTrack, LocalVideoTrack } from "livekit-client";
 import { supportsBackgroundProcessors } from "@livekit/track-processors";
 import type { BackgroundType } from "./useBackgroundBlur";
 import { useBackgroundStore } from "../store/backgroundStore";
+import { useLocale } from "../../../i18n/useLocale";
+import { toast } from "react-hot-toast";
 
 const BG_IMAGES: Partial<Record<BackgroundType, string>> = {
   office:
@@ -16,6 +18,7 @@ const BG_IMAGES: Partial<Record<BackgroundType, string>> = {
 };
 
 export function usePreJoinTrack() {
+  const { language } = useLocale();
   const [track, setTrack] = useState<LocalVideoTrack | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { background, setBackground } = useBackgroundStore();
@@ -24,12 +27,20 @@ export function usePreJoinTrack() {
 
   // Create track on mount
   useEffect(() => {
+    let cancelled = false;
     let localTrack: LocalVideoTrack | null = null;
 
     const init = async () => {
       try {
-        localTrack = await createLocalVideoTrack({ facingMode: "user" });
-        setTrack(localTrack);
+        const t = await createLocalVideoTrack({ facingMode: "user" });
+        if (cancelled) {
+          t.stopProcessor().catch(() => {});
+          t.mediaStreamTrack?.stop();
+          t.stop();
+          return;
+        }
+        localTrack = t;
+        setTrack(t);
       } catch (err) {
         console.error("Camera init error:", err);
       }
@@ -38,12 +49,10 @@ export function usePreJoinTrack() {
     init();
 
     return () => {
+      cancelled = true;
       if (localTrack) {
-        // Stop processor if one is attached.
         localTrack.stopProcessor().catch(() => {});
-        // Stop mediaStreamTrack
         localTrack.mediaStreamTrack?.stop();
-        // Stop LiveKit track
         localTrack.stop();
       }
     };
@@ -117,7 +126,7 @@ export function usePreJoinTrack() {
         await Promise.race([
           track.setProcessor(processor),
           new Promise<void>((_, reject) =>
-            setTimeout(() => reject(new Error("Processor timeout")), 8000),
+            setTimeout(() => reject(new Error("Processor timeout")), 20000),
           ),
         ]);
 
@@ -127,21 +136,35 @@ export function usePreJoinTrack() {
         processorRef.current = null;
         // Reset to "none" if the processor swap failed.
         setBackground("none");
+        
+        const isFarsi = language === "fa";
+        toast.error(
+          isFarsi
+            ? "بارگذاری فیلتر دوربین با خطا مواجه شد یا زمان زیادی برد. لطفاً مجدداً تلاش کنید."
+            : "Camera filter loading failed or timed out. Please try again."
+        );
       } finally {
         setIsLoading(false);
       }
     },
     [track, isSupported, setBackground],
   );
+  const trackRef = useRef<LocalVideoTrack | null>(null);
+  useEffect(() => {
+    trackRef.current = track;
+  }, [track]);
+
   // Cleanup processor on unmount
   useEffect(() => {
     return () => {
-      if (processorRef.current && track) {
-        track.stopProcessor().catch(() => {});
-        track.mediaStreamTrack?.stop();
+      const currentTrack = trackRef.current;
+      if (currentTrack) {
+        currentTrack.stopProcessor().catch(() => {});
+        currentTrack.mediaStreamTrack?.stop();
+        currentTrack.stop();
       }
     };
-  }, [track]);
+  }, []);
   return {
     track,
     background,

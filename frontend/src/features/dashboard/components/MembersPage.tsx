@@ -21,7 +21,7 @@ type StatusFilter = "all" | "active" | "inactive";
 
 export default function MembersPage() {
   const { language } = useLocale();
-  const { hasPermission } = useOrgPermission();
+  const { hasPermission, activeOrg } = useOrgPermission();
   const queryClient = useQueryClient();
   const isFarsi = language === "fa";
 
@@ -107,12 +107,14 @@ export default function MembersPage() {
   const { data: roles = [] } = useQuery({
     queryKey: ["roles"],
     queryFn: crmApi.getRoles,
+    enabled: isOrisAdmin,
   });
 
   const { data: availablePermissions = [] } = useQuery<Permission[]>({
     queryKey: ["available-permissions"],
     queryFn: crmApi.getAvailablePermissions,
     staleTime: Infinity,
+    enabled: isOrisAdmin,
   });
 
   // ──────────────────────────────────────────────
@@ -400,7 +402,7 @@ export default function MembersPage() {
       <div className="flex flex-col gap-4">
         {/* Navigation Tabs */}
         <div className="flex border-b border-[var(--b)] overflow-x-auto gap-2 scrollbar-none bg-[var(--s1)] p-2 rounded-t-xl border border-b-0 border-[var(--b)]">
-          {(["enrollments", "directory", "roles"] as SubTab[]).map((tab) => (
+          {(["enrollments", "directory", "roles"] as SubTab[]).filter(tab => tab !== "roles" || isOrisAdmin).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveSubTab(tab)}
@@ -956,6 +958,42 @@ export default function MembersPage() {
                 <option value="guest">{isFarsi ? "مهمان" : "Guest"}</option>
               </select>
             </div>
+
+            {/* Quick Share Link & Code */}
+            {activeOrg && (
+              <div className="border-t border-[var(--b)] pt-4 mt-2 flex flex-col gap-2.5">
+                <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                  {isFarsi ? "یا اشتراک‌گذاری لینک و کد دعوت مستقیم" : "Or share direct invite link / code"}
+                </label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1 text-[11px]"
+                    onClick={() => {
+                      const link = `${window.location.origin}/join/${activeOrg.invite_code || activeOrg.slug}`;
+                      navigator.clipboard.writeText(link);
+                      toast.success(isFarsi ? "لینک دعوت مستقیم کپی شد" : "Direct invite link copied!");
+                    }}
+                  >
+                    {isFarsi ? "کپی لینک دعوت" : "Copy Invite Link"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1 text-[11px]"
+                    onClick={() => {
+                      navigator.clipboard.writeText(activeOrg.invite_code || activeOrg.slug);
+                      toast.success(isFarsi ? "کد دعوت کپی شد" : "Invite code copied!");
+                    }}
+                  >
+                    {isFarsi ? "کپی کد دعوت" : "Copy Invite Code"}
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end gap-2 mt-4">
               <Button type="button" variant="secondary" onClick={() => setIsInviteModalOpen(false)}>

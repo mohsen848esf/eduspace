@@ -75,16 +75,26 @@ function AudioLevelMeter({
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
+    let active = true;
+    let localStream: MediaStream | null = null;
+
     if (!micEnabled) {
       setBars(Array(24).fill(4));
       return;
     }
     const start = async () => {
       try {
-        streamRef.current?.getTracks().forEach((t) => t.stop());
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: selectedMic ? { deviceId: selectedMic } : true,
         });
+        if (!active) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((t) => t.stop());
+        }
+        localStream = stream;
         streamRef.current = stream;
         const ctx = new AudioContext();
         const source = ctx.createMediaStreamSource(stream);
@@ -93,6 +103,7 @@ function AudioLevelMeter({
         source.connect(analyser);
         const data = new Uint8Array(analyser.frequencyBinCount);
         const tick = () => {
+          if (!active) return;
           analyser.getByteFrequencyData(data);
           setBars(
             Array.from(data.slice(0, 24)).map((v) =>
@@ -108,7 +119,11 @@ function AudioLevelMeter({
     };
     start();
     return () => {
+      active = false;
       cancelAnimationFrame(animRef.current);
+      if (localStream) {
+        localStream.getTracks().forEach((t) => t.stop());
+      }
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, [micEnabled, selectedMic]);
@@ -161,7 +176,9 @@ export default function PreJoinScreen({
   useEffect(() => {
     const load = async () => {
       try {
-        await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        const checkStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        checkStream.getTracks().forEach((t) => t.stop());
+
         const d = await navigator.mediaDevices.enumerateDevices();
         setDevices(d);
         const mic = d.find((x) => x.kind === "audioinput");
@@ -181,6 +198,9 @@ export default function PreJoinScreen({
 
   // Camera preview with background
   useEffect(() => {
+    let active = true;
+    let localStream: MediaStream | null = null;
+
     if (!camEnabled || !selectedCam) {
       cancelAnimationFrame(animRef.current);
       streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -191,11 +211,18 @@ export default function PreJoinScreen({
 
     const start = async () => {
       try {
-        streamRef.current?.getTracks().forEach((t) => t.stop());
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { deviceId: selectedCam },
           audio: false,
         });
+        if (!active) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((t) => t.stop());
+        }
+        localStream = stream;
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -208,7 +235,11 @@ export default function PreJoinScreen({
 
     start();
     return () => {
+      active = false;
       cancelAnimationFrame(animRef.current);
+      if (localStream) {
+        localStream.getTracks().forEach((t) => t.stop());
+      }
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, [camEnabled, selectedCam]);

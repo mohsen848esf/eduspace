@@ -176,6 +176,14 @@ export default function RoomPage() {
   const [preJoinSettings, setPreJoinSettings] =
     useState<PreJoinSettings | null>(null);
 
+  const joinedRef = useRef(false);
+
+  useEffect(() => {
+    if (preJoinDone) {
+      joinedRef.current = true;
+    }
+  }, [preJoinDone]);
+
   useEffect(() => {
     if (!token && roomCode && preJoinDone) {
       joinRoom(roomCode);
@@ -184,7 +192,9 @@ export default function RoomPage() {
 
   useEffect(() => {
     return () => {
-      leaveRoom({ redirectTo: null });
+      if (joinedRef.current) {
+        leaveRoom({ redirectTo: null });
+      }
     };
   }, [leaveRoom]);
 

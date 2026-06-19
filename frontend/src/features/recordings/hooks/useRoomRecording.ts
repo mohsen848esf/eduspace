@@ -252,7 +252,9 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
         const displayStream = await navigator.mediaDevices.getDisplayMedia({
           video: { displaySurface: "browser" } as any,
           audio: true,
-        });
+          preferCurrentTab: true,
+          selfBrowserSurface: "include",
+        } as any);
 
         let combinedStream = displayStream;
 

@@ -218,6 +218,9 @@ function AudioVisualizer({ isMicOn }: { isMicOn: boolean }) {
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
+    let active = true;
+    let localStream: MediaStream | null = null;
+
     if (!isMicOn) {
       setBars(Array(20).fill(4));
       return;
@@ -226,6 +229,11 @@ function AudioVisualizer({ isMicOn }: { isMicOn: boolean }) {
     navigator.mediaDevices
       .getUserMedia({ audio: true })
       .then((stream) => {
+        if (!active) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        localStream = stream;
         streamRef.current = stream;
         const ctx = new AudioContext();
         const source = ctx.createMediaStreamSource(stream);
@@ -236,6 +244,7 @@ function AudioVisualizer({ isMicOn }: { isMicOn: boolean }) {
 
         const data = new Uint8Array(analyser.frequencyBinCount);
         const tick = () => {
+          if (!active) return;
           analyser.getByteFrequencyData(data);
           const sliced = Array.from(data.slice(0, 20)).map((v) =>
             Math.max(4, (v / 255) * 100),
@@ -248,7 +257,11 @@ function AudioVisualizer({ isMicOn }: { isMicOn: boolean }) {
       .catch(() => {});
 
     return () => {
+      active = false;
       if (animRef.current) cancelAnimationFrame(animRef.current);
+      if (localStream) {
+        localStream.getTracks().forEach((t) => t.stop());
+      }
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, [isMicOn]);

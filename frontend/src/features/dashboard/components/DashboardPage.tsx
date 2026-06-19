@@ -15,6 +15,12 @@ import { Play, Calendar, Video, Clock, BookOpen, CreditCard, ChevronRight, Award
 import { useNotificationsStore } from "../../auth/store/notificationsStore";
 import { assessmentsApi } from "../../assessments/api/assessments.api";
 import recordingsApi from "../../recordings/api/recordings.api";
+import { authApi } from "../../auth/api/auth.api";
+import { useOrgContextStore } from "../../auth/store/orgContextStore";
+import Input from "../../../components/ui/Input";
+import Button from "../../../components/ui/Button";
+import { toast } from "react-hot-toast";
+
 
 export default function DashboardPage() {
   const { t } = useTranslation(["dashboard"]);
@@ -24,6 +30,77 @@ export default function DashboardPage() {
   const [activeNav, setActiveNav] = useState("dashboard");
   const { createRoom, isLoading: roomLoading } = useRoom();
   const navigate = useNavigate();
+
+  // Guest flow states
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [orgName, setOrgName] = useState("");
+  const [orgCodeOrSlug, setOrgCodeOrSlug] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const { data: invitations = [], refetch: refetchInvitations } = useQuery({
+    queryKey: ["invitations"],
+    queryFn: authApi.getInvitations,
+    enabled: !activeOrg,
+  });
+
+  const handleCreateOrg = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!orgName.trim()) return;
+    setIsSubmitting(true);
+    setErrorMsg("");
+    try {
+      const newOrg = await authApi.createOrganization(orgName);
+      toast.success(isFarsi ? "سازمان با موفقیت ایجاد شد." : "Organization created successfully!");
+      setOrgName("");
+      setShowCreateModal(false);
+      const { fetchOrgContext } = useOrgContextStore.getState();
+      await fetchOrgContext(newOrg.slug);
+    } catch (err: any) {
+      setErrorMsg(err.response?.data?.error || err.response?.data?.detail || "Failed to create organization");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleJoinOrg = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!orgCodeOrSlug.trim()) return;
+    setIsSubmitting(true);
+    setErrorMsg("");
+    try {
+      const res = await authApi.joinOrganization(orgCodeOrSlug);
+      toast.success(res.message || (isFarsi ? "درخواست عضویت ارسال شد." : "Join request submitted."));
+      setOrgCodeOrSlug("");
+      setShowJoinModal(false);
+      
+      if (res.auto_joined) {
+        await useAuthStore.getState().fetchMe();
+        const { fetchOrgContext } = useOrgContextStore.getState();
+        await fetchOrgContext(orgCodeOrSlug);
+      } else {
+        refetchInvitations();
+      }
+    } catch (err: any) {
+      setErrorMsg(err.response?.data?.error || err.response?.data?.detail || "Failed to join organization");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRespondInvite = async (orgSlug: string, action: "accept" | "decline") => {
+    try {
+      await authApi.respondInvitation(orgSlug, action);
+      refetchInvitations();
+      if (action === "accept") {
+        const { fetchOrgContext } = useOrgContextStore.getState();
+        await fetchOrgContext(orgSlug);
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.error || err.response?.data?.detail || "Failed to respond to invitation");
+    }
+  };
 
   const isFarsi = language === "fa";
   const activeRole = (rawActiveRole || "").toLowerCase();
@@ -201,11 +278,11 @@ export default function DashboardPage() {
           month: "short",
           day: "numeric",
         }) +
-          " " +
-          dateVal.toLocaleTimeString(localeTag, {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
+        " " +
+        dateVal.toLocaleTimeString(localeTag, {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
       );
     }
   };
@@ -525,7 +602,7 @@ export default function DashboardPage() {
                   <Video className="w-5 h-5" />
                 </div>
                 <span className="text-xs font-semibold text-[var(--t2)] text-center">
-                  {isFarsi ? "شروع کلاس زنده" : "Start Live Class"}
+                  {isFarsi ? "شروع تماس" : "Start Call"}
                 </span>
               </button>
 
@@ -589,24 +666,6 @@ export default function DashboardPage() {
                 </span>
               </button>
 
-              {!!activeOrg && (
-                <button
-                  onClick={() => {
-                    if (liveSession) navigate(`/room/${liveSession.active_room_code}`);
-                  }}
-                  disabled={!liveSession}
-                  className="flex flex-col items-center gap-2 p-4 bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none disabled:opacity-50 disabled:cursor-not-allowed group hover:ring-1 hover:ring-[var(--brand)]/30"
-                >
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg transition-transform group-hover:scale-110 ${
-                    liveSession ? "bg-red-500/10 text-red-500 animate-pulse" : "bg-[var(--t3)]/10 text-[var(--t3)]"
-                  }`}>
-                    <Video className="w-5 h-5" />
-                  </div>
-                  <span className="text-xs font-semibold text-[var(--t2)] text-center font-medium">
-                    {isFarsi ? "ورود به کلاس فعال" : "Join Active Room"}
-                  </span>
-                </button>
-              )}
 
               {!!activeOrg && (
                 <button
@@ -652,7 +711,107 @@ export default function DashboardPage() {
         </div>
 
         {/* Overview Stats Dashboard */}
-        {isDataLoading ? (
+        {!activeOrg ? (
+          /* Guest/No Organization Dashboard View */
+          <div className="grid grid-cols-1 gap-6 max-w-4xl mx-auto w-full pt-4">
+            <div className="bg-gradient-to-br from-[var(--s2)] to-[var(--s1)] border border-[var(--b)] rounded-3xl p-8 shadow-xl text-center space-y-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--brand)]/5 rounded-full blur-3xl pointer-events-none" />
+              <div className="w-20 h-20 bg-[var(--brand)]/10 text-[var(--brand)] rounded-2xl flex items-center justify-center mx-auto text-3xl font-bold shadow-md animate-bounce">
+                🏫
+              </div>
+              <div className="space-y-2 max-w-lg mx-auto">
+                <h3 className="text-xl md:text-2xl font-black text-[var(--t1)] tracking-tight">
+                  {isFarsi ? "به EduSpace خوش آمدید!" : "Welcome to EduSpace!"}
+                </h3>
+                <p className="text-sm text-[var(--t3)] leading-relaxed">
+                  {isFarsi
+                    ? "شما در حال حاضر عضو هیچ سازمانی نیستید. برای شروع می‌توانید یک سازمان جدید بسازید یا با استفاده از شناسه آکادمی به یک سازمان موجود بپیوندید."
+                    : "You are not a member of any organization yet. To get started, you can create a new organization or join an existing one using an academy slug/ID."}
+                </p>
+              </div>
+
+              {/* Call to Actions */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md mx-auto pt-4">
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="flex flex-col items-center gap-3 p-6 bg-[var(--s2)] hover:bg-[var(--s3)] border border-[var(--b)] hover:border-[var(--brand)]/50 rounded-2xl cursor-pointer transition-all duration-200 active:scale-[0.98] group"
+                >
+                  <span className="text-3xl">✨</span>
+                  <div className="text-center">
+                    <h4 className="text-xs font-bold text-[var(--t1)]">
+                      {isFarsi ? "ایجاد سازمان جدید" : "Create Organization"}
+                    </h4>
+                    <p className="text-[10px] text-[var(--t3)] mt-1">
+                      {isFarsi ? "آکادمی خود را راه اندازی کنید" : "Setup your own academy"}
+                    </p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setShowJoinModal(true)}
+                  className="flex flex-col items-center gap-3 p-6 bg-[var(--s2)] hover:bg-[var(--s3)] border border-[var(--b)] hover:border-[var(--brand)]/50 rounded-2xl cursor-pointer transition-all duration-200 active:scale-[0.98] group"
+                >
+                  <span className="text-3xl">🔑</span>
+                  <div className="text-center">
+                    <h4 className="text-xs font-bold text-[var(--t1)]">
+                      {isFarsi ? "پیوستن به سازمان" : "Join Organization"}
+                    </h4>
+                    <p className="text-[10px] text-[var(--t3)] mt-1">
+                      {isFarsi ? "با استفاده از کد به سازمان ملحق شوید" : "Join using academy ID/slug"}
+                    </p>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Pending Invitations list */}
+            {invitations.length > 0 && (
+              <div className="bg-[var(--s2)] border border-[var(--b)] rounded-2xl overflow-hidden shadow-md">
+                <div className="p-4 border-b border-[var(--b)]">
+                  <h3 className="text-xs font-bold text-[var(--t3)] uppercase tracking-wide">
+                    {isFarsi ? "دعوت‌نامه‌های در انتظار" : "Pending Invitations"}
+                  </h3>
+                </div>
+                <div className="divide-y divide-[var(--b)]">
+                  {invitations.map((invite: any) => (
+                    <div key={invite.id} className="p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-[var(--s3)] transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-[var(--brand)]/10 text-[var(--brand)] flex items-center justify-center text-xl font-bold">
+                          📩
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-extrabold text-[var(--t1)]">
+                            {invite.organization.name}
+                          </h4>
+                          <p className="text-xs text-[var(--t3)] mt-0.5">
+                            {isFarsi
+                              ? `نقش: ${invite.role || "دانشجو"} • دعوت شده توسط: ${invite.invited_by || "سیستم"}`
+                              : `Role: ${invite.role || "Student"} • Invited by: ${invite.invited_by || "System"}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
+                        <Button
+                          variant="secondary"
+                          onClick={() => handleRespondInvite(invite.organization.slug, "decline")}
+                          className="px-4 py-2 text-xs font-semibold text-[var(--red)] hover:bg-[var(--red)]/10 rounded-xl"
+                        >
+                          {isFarsi ? "رد کردن" : "Decline"}
+                        </Button>
+                        <Button
+                          onClick={() => handleRespondInvite(invite.organization.slug, "accept")}
+                          className="px-4 py-2 text-xs font-bold rounded-xl"
+                        >
+                          {isFarsi ? "پذیرفتن" : "Accept"}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : isDataLoading ? (
           <div className="p-12 flex justify-center"><Spinner size="lg" /></div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1068,11 +1227,10 @@ export default function DashboardPage() {
                                   const y = 160 - (parseFloat(sub.grade || "0") * 130) / 100;
                                   return `${x} ${y}`;
                                 })
-                                .join(" L ")} L ${
-                                50 +
+                                .join(" L ")} L ${50 +
                                 ((gradedAssignmentSubmissions.length - 1) * 500) /
-                                  Math.max(1, gradedAssignmentSubmissions.length - 1)
-                              } 160 L 50 160 Z`}
+                                Math.max(1, gradedAssignmentSubmissions.length - 1)
+                                } 160 L 50 160 Z`}
                               fill="url(#gradeGrad)"
                             />
                           </>
@@ -1219,7 +1377,7 @@ export default function DashboardPage() {
                       const isGraded = submission?.status === "graded";
                       const isSubmitted = submission?.status === "submitted";
                       const isStarted = submission?.status === "started";
-                      
+
                       return (
                         <div key={exam.id} className="p-4 hover:bg-[var(--s3)] transition-colors flex items-center justify-between gap-4">
                           <div className="flex items-center gap-3">
@@ -1441,6 +1599,91 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Modals for Create/Join Org */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-[var(--s1)] border border-[var(--b)] rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl relative">
+            <h3 className="text-lg font-bold text-[var(--t1)]">
+              {isFarsi ? "ایجاد سازمان جدید" : "Create New Organization"}
+            </h3>
+            {errorMsg && (
+              <div className="p-3 bg-[var(--red)]/10 border border-[var(--red)]/20 rounded-xl text-xs text-[var(--red)] flex items-center gap-1.5 animate-in fade-in">
+                <span>⚠️</span>
+                <span>{errorMsg}</span>
+              </div>
+            )}
+            <form onSubmit={handleCreateOrg} className="space-y-4">
+              <Input
+                label={isFarsi ? "نام سازمان" : "Organization Name"}
+                placeholder={isFarsi ? "آکادمی من" : "My Academy"}
+                value={orgName}
+                onChange={(e) => setOrgName(e.target.value)}
+                required
+                autoFocus
+              />
+              <div className="flex gap-2 justify-end">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setErrorMsg("");
+                  }}
+                  disabled={isSubmitting}
+                >
+                  {isFarsi ? "لغو" : "Cancel"}
+                </Button>
+                <Button type="submit" loading={isSubmitting}>
+                  {isFarsi ? "ایجاد" : "Create"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showJoinModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-[var(--s1)] border border-[var(--b)] rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl relative">
+            <h3 className="text-lg font-bold text-[var(--t1)]">
+              {isFarsi ? "پیوستن به سازمان" : "Join Organization"}
+            </h3>
+            {errorMsg && (
+              <div className="p-3 bg-[var(--red)]/10 border border-[var(--red)]/20 rounded-xl text-xs text-[var(--red)] flex items-center gap-1.5 animate-in fade-in">
+                <span>⚠️</span>
+                <span>{errorMsg}</span>
+              </div>
+            )}
+            <form onSubmit={handleJoinOrg} className="space-y-4">
+              <Input
+                label={isFarsi ? "شناسه یا اسلاگ سازمان" : "Organization ID or Slug"}
+                placeholder={isFarsi ? "مثال: my-academy" : "e.g., my-academy"}
+                value={orgCodeOrSlug}
+                onChange={(e) => setOrgCodeOrSlug(e.target.value)}
+                required
+                autoFocus
+              />
+              <div className="flex gap-2 justify-end">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setShowJoinModal(false);
+                    setErrorMsg("");
+                  }}
+                  disabled={isSubmitting}
+                >
+                  {isFarsi ? "لغو" : "Cancel"}
+                </Button>
+                <Button type="submit" loading={isSubmitting}>
+                  {isFarsi ? "پیوستن" : "Join"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }

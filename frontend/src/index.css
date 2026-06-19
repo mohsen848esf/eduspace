@@ -1,4 +1,5 @@
 @import "@livekit/components-styles";
+@import "cropperjs/dist/cropper.css";
 @import "tailwindcss";
 @import "./styles/design-system.css";
 
@@ -142,4 +143,18 @@ html[dir="rtl"] .eduspace-tour-popover.driver-popover {
   outline-offset: 4px !important;
   box-shadow: 0 0 20px rgba(99, 102, 241, 0.4) !important;
   transition: outline 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+/* Styled Date and Time Pickers */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(1);
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
 }

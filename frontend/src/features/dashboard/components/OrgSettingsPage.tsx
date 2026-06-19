@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import { useLocale } from "../../../i18n/useLocale";
@@ -8,6 +8,7 @@ import AppShell from "../../../components/layout/AppShell";
 import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
 import { DatePicker } from "../../../components/forms/DatePicker";
+import { ImageUpload } from "../../../components/forms/ImageUpload";
 
 import { Modal, ModalHeader, ModalTitle, ModalBody, ModalFooter } from "../../../components/ui/Modal";
 import Spinner from "../../../components/ui/Spinner";
@@ -80,7 +81,17 @@ export default function OrgSettingsPage() {
 
   // Edit organization details state
   const [orgName, setOrgName] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [approvalRequired, setApprovalRequired] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (logoPreview && logoPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(logoPreview);
+      }
+    };
+  }, [logoPreview]);
 
   // Invite member form state
   const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -156,6 +167,9 @@ export default function OrgSettingsPage() {
   useEffect(() => {
     if (activeOrg) {
       setOrgName(activeOrg.name);
+      setApprovalRequired(!!activeOrg.approval_required_to_join);
+      setLogoPreview(activeOrg.logo || null);
+      setLogoFile(null);
     }
   }, [activeOrg]);
 
@@ -272,23 +286,34 @@ export default function OrgSettingsPage() {
   const handleSaveDetails = (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeOrg || !orgName.trim()) return;
-    updateOrgMutation.mutate({ id: activeOrg.id, data: { name: orgName } });
+    
+    const formData = new FormData();
+    formData.append("name", orgName);
+    formData.append("approval_required_to_join", String(approvalRequired));
+    if (logoFile) {
+      formData.append("logo", logoFile);
+    }
+
+    updateOrgMutation.mutate({ 
+      id: activeOrg.id, 
+      data: formData
+    });
   };
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && activeOrg) {
-      const formData = new FormData();
-      formData.append("logo", file);
-      updateOrgMutation.mutate({ id: activeOrg.id, data: formData });
-    }
+  const handleCopyLink = () => {
+    if (!activeOrg) return;
+    const link = `${window.location.origin}/join/${activeOrg.invite_code || activeOrg.slug}`;
+    navigator.clipboard.writeText(link);
+    toast.success(isFarsi ? "لینک دعوت کپی شد" : "Invitation link copied!");
   };
 
-  const triggerFileInput = () => {
-    if (canManageMembers) {
-      fileInputRef.current?.click();
-    }
+  const handleCopyCode = () => {
+    if (!activeOrg) return;
+    navigator.clipboard.writeText(activeOrg.invite_code || activeOrg.slug);
+    toast.success(isFarsi ? "کد دعوت کپی شد" : "Invitation code copied!");
   };
+
+
 
   const handleInviteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -534,31 +559,15 @@ export default function OrgSettingsPage() {
 
             {/* Logo Section */}
             <div className="flex items-center gap-5">
-              <div
-                onClick={triggerFileInput}
-                className={`relative w-20 h-20 rounded-2xl border border-[var(--b)] flex items-center justify-center bg-[var(--s3)] overflow-hidden group transition-all duration-200 ${
-                  canManageMembers ? "cursor-pointer hover:border-[var(--brand-text)]" : ""
-                }`}
-              >
-                {activeOrg.logo ? (
-                  <img src={activeOrg.logo} alt="Org Logo" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-3xl">🏢</span>
-                )}
-                {canManageMembers && (
-                  <div className="absolute inset-0 bg-black/45 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                    <span className="text-[10px] text-white font-bold tracking-wide uppercase">
-                      {isFarsi ? "تغییر" : "Change"}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleLogoChange}
-                className="hidden"
-                accept="image/*"
+              <ImageUpload
+                preset="logo"
+                value={logoPreview}
+                onChange={(file) => {
+                  setLogoFile(file);
+                  setLogoPreview(URL.createObjectURL(file));
+                }}
+                disabled={!canManageMembers}
+                isFarsi={isFarsi}
               />
               <div>
                 <h3 className="text-xs font-semibold text-[var(--t1)]">
@@ -566,8 +575,8 @@ export default function OrgSettingsPage() {
                 </h3>
                 <p className="text-[11px] text-[var(--t3)] mt-1.5 leading-relaxed">
                   {isFarsi 
-                    ? "یک تصویر مربع با پسوند PNG یا JPG انتخاب کنید." 
-                    : "Select a square image in PNG or JPG format."}
+                    ? "یک تصویر با پسوند PNG، JPG یا SVG انتخاب کنید." 
+                    : "Select a PNG, JPG, or SVG format image."}
                 </p>
               </div>
             </div>
@@ -599,6 +608,22 @@ export default function OrgSettingsPage() {
                 </div>
               </div>
 
+              <div className="flex items-center gap-2.5 mt-1">
+                <input
+                  type="checkbox"
+                  id="approval_required"
+                  checked={approvalRequired}
+                  onChange={(e) => setApprovalRequired(e.target.checked)}
+                  disabled={!canManageMembers}
+                  className="rounded border-[var(--b)] text-[var(--brand)] focus:ring-[var(--brand)] bg-[var(--s3)] h-4 w-4 cursor-pointer disabled:opacity-50"
+                />
+                <label htmlFor="approval_required" className="text-xs font-semibold text-[var(--t2)] cursor-pointer select-none">
+                  {isFarsi 
+                    ? "تایید عضویت اعضای جدید توسط مدیر الزامی باشد (عدم عضویت خودکار)" 
+                    : "Require admin approval for new members to join (disable auto-join)"}
+                </label>
+              </div>
+
               {canManageMembers && (
                 <div className="mt-2 flex justify-end">
                   <Button type="submit" disabled={updateOrgMutation.isPending}>
@@ -607,6 +632,44 @@ export default function OrgSettingsPage() {
                 </div>
               )}
             </form>
+
+            {/* Invite Link & Code Section */}
+            <div className="border-t border-[var(--b)] pt-6 flex flex-col gap-4 max-w-lg">
+              <h3 className="text-xs font-bold text-[var(--t1)] uppercase tracking-wide">
+                {isFarsi ? "لینک و کد دعوت آکادمی" : "Academy Invite Link & Code"}
+              </h3>
+              <p className="text-[11px] text-[var(--t3)] leading-relaxed">
+                {isFarsi 
+                  ? "کاربران با استفاده از این لینک یا با وارد کردن کد دعوت در داشبورد خود می‌توانند به آکادمی بپیوندند." 
+                  : "Users can join the academy using this link or by entering the invitation code in their dashboard."}
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-[var(--s3)] border border-[var(--b)] rounded-xl p-3 flex flex-col gap-2 justify-between">
+                  <span className="text-[10px] font-bold text-[var(--t3)] uppercase">
+                    {isFarsi ? "لینک دعوت مستقیم" : "Direct Invite Link"}
+                  </span>
+                  <span className="text-xs font-mono text-[var(--t2)] truncate">
+                    {`${window.location.origin}/join/${activeOrg.invite_code || activeOrg.slug}`}
+                  </span>
+                  <Button type="button" size="sm" variant="secondary" onClick={handleCopyLink}>
+                    {isFarsi ? "کپی لینک" : "Copy Link"}
+                  </Button>
+                </div>
+
+                <div className="bg-[var(--s3)] border border-[var(--b)] rounded-xl p-3 flex flex-col gap-2 justify-between">
+                  <span className="text-[10px] font-bold text-[var(--t3)] uppercase">
+                    {isFarsi ? "کد دعوت" : "Invite Code"}
+                  </span>
+                  <span className="text-xs font-mono text-[var(--t2)] truncate">
+                    {activeOrg.invite_code || activeOrg.slug}
+                  </span>
+                  <Button type="button" size="sm" variant="secondary" onClick={handleCopyCode}>
+                    {isFarsi ? "کپی کد دعوت" : "Copy Invite Code"}
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

@@ -5,8 +5,9 @@ from django.utils import timezone
 
 class User(AbstractUser):
     full_name = models.CharField(max_length=255, blank=True)
-    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True, validators=[validate_no_svg])
     is_online = models.BooleanField(default=False)
+    phone_number = models.CharField(max_length=20, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -77,6 +78,29 @@ class Notification(models.Model):
 # Core Multi-Tenant RBAC Models
 # ---------------------------------------------------------------------------
 
+def validate_no_svg(value):
+    import os
+    from django.core.exceptions import ValidationError
+    ext = os.path.splitext(value.name)[1].lower()
+    content_type = getattr(value, 'content_type', '')
+    if ext == '.svg' or content_type == 'image/svg+xml':
+        raise ValidationError("SVG files are not allowed.")
+
+def validate_org_logo(value):
+    import os
+    from django.core.exceptions import ValidationError
+    ext = os.path.splitext(value.name)[1].lower()
+    valid_extensions = ['.png', '.jpg', '.jpeg', '.webp', '.heic', '.heif']
+    if ext not in valid_extensions:
+        raise ValidationError(f"Unsupported file extension. Allowed extensions are: {', '.join(valid_extensions)}")
+    content_type = getattr(value, 'content_type', None)
+    valid_content_types = [
+        'image/png', 'image/jpeg', 'image/jpg',
+        'image/webp', 'image/heic', 'image/heif', 'application/octet-stream'
+    ]
+    if content_type and content_type not in valid_content_types:
+        raise ValidationError(f"Unsupported file type: {content_type}")
+
 class Organization(models.Model):
     class OrgType(models.TextChoices):
         PERSONAL = 'personal', 'Personal'
@@ -90,9 +114,12 @@ class Organization(models.Model):
     is_suspended = models.BooleanField(default=False)
     suspended_at = models.DateTimeField(null=True, blank=True)
     suspension_reason = models.TextField(blank=True, default='')
-    logo = models.ImageField(upload_to='org_logos/', null=True, blank=True)
+    logo = models.FileField(upload_to='org_logos/', null=True, blank=True, validators=[validate_org_logo])
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    approval_required_to_join = models.BooleanField(default=False)
+    invite_code = models.CharField(max_length=6, unique=True, null=True, blank=True)
+
 
     def __str__(self):
         return self.name
@@ -191,7 +218,7 @@ class Course(models.Model):
     description = models.TextField(blank=True, default='')
     price = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
     is_active = models.BooleanField(default=True)
-    thumbnail = models.ImageField(upload_to='course_thumbnails/', null=True, blank=True)
+    thumbnail = models.ImageField(upload_to='course_thumbnails/', null=True, blank=True, validators=[validate_no_svg])
     created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='created_courses')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -343,7 +370,7 @@ class ExpenseItem(models.Model):
     description = models.TextField(blank=True, default='')
     recipient = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='received_payments')
     approved_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='approved_expenses')
-    attachment = models.FileField(upload_to='expense_attachments/', null=True, blank=True)
+    attachment = models.FileField(upload_to='expense_attachments/', null=True, blank=True, validators=[validate_no_svg])
     incurred_at = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
 

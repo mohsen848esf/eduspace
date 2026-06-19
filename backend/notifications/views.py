@@ -112,7 +112,10 @@ def notifications_preferences(request):
             if 'email_enabled' in item:
                 pref.email_enabled = bool(item['email_enabled'])
             if 'sms_enabled' in item:
-                pref.sms_enabled = bool(item['sms_enabled'])
+                val = bool(item['sms_enabled'])
+                if val and (not request.user.phone_number or not request.user.phone_number.strip()):
+                    return Response({'error': 'Add a phone number to enable SMS notifications.'}, status=status.HTTP_400_BAD_REQUEST)
+                pref.sms_enabled = val
             if 'in_app_enabled' in item:
                 pref.in_app_enabled = bool(item['in_app_enabled'])
 

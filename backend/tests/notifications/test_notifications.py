@@ -153,3 +153,25 @@ class NotificationsIntegrationTest(APITestCase):
         self.client.force_authenticate(user=self.admin)
         response = self.client.post(url, {'title': 'Alert', 'message': 'Hi'}, HTTP_X_ORGANIZATION_SLUG='org-one')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_sms_preference_validation_without_phone_number(self):
+        """Verify SMS notifications cannot be enabled if the user has no phone number."""
+        self.client.force_authenticate(user=self.student)
+        self.student.phone_number = ''
+        self.student.save()
+
+        # Try to enable SMS
+        url = reverse('notification-preferences')
+        payload = {
+            'category': NotificationPreference.Category.SESSION_REMINDERS.value,
+            'sms_enabled': True
+        }
+        response = self.client.patch(url, payload, HTTP_X_ORGANIZATION_SLUG='org-one')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Add a phone number', response.data['error'])
+
+        # Now set phone number and try again
+        self.student.phone_number = '+1234567890'
+        self.student.save()
+        response = self.client.patch(url, payload, HTTP_X_ORGANIZATION_SLUG='org-one')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)

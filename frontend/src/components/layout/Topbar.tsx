@@ -136,7 +136,15 @@ export default function Topbar({
             }`}
             disabled={!hasMultipleOrgs}
           >
-            <span className="opacity-70">🏢</span>
+            {orgContext?.organization?.logo ? (
+              <img
+                src={orgContext.organization.logo}
+                alt="Org Logo"
+                className="w-4 h-4 rounded-full object-cover"
+              />
+            ) : (
+              <span className="opacity-70">🏢</span>
+            )}
             <span>{activeOrgName}</span>
             {hasMultipleOrgs && (
               <span className="text-[var(--t3)] transition-colors">

@@ -5,7 +5,6 @@ import { assessmentsApi } from "../../assessments/api/assessments.api";
 import AppShell from "../../../components/layout/AppShell";
 import Spinner from "../../../components/ui/Spinner";
 import Button from "../../../components/ui/Button";
-import Input from "../../../components/ui/Input";
 import { Modal, ModalHeader, ModalTitle, ModalBody } from "../../../components/ui/Modal";
 import { useLocale } from "../../../i18n/useLocale";
 import { FileText, Calendar, Paperclip, CheckCircle, AlertTriangle, Send } from "lucide-react";

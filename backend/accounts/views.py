@@ -477,40 +477,60 @@ def org_context(request):
     from .serializers import OrgContextSerializer
 
     org = resolve_organization(request)
-    if not org:
-        slug_or_id, _ = get_organization_from_request(request)
-        if slug_or_id:
-            raise PermissionDenied("You are not an active member of this organization.")
-        raise ValidationError({'error': 'Organization context required. Include X-Organization-Slug header or org_slug query parameter.'})
+    member = None
+    is_valid_member = False
 
+    if org:
+        if request.user.is_superuser:
+            is_valid_member = True
+            try:
+                member = OrgMember.objects.select_related('role').get(organization=org, user=request.user)
+            except OrgMember.DoesNotExist:
+                pass
+        else:
+            try:
+                member = OrgMember.objects.select_related('role').get(
+                    organization=org,
+                    user=request.user,
+                    is_active=True
+                )
+                if not (member.expires_at and member.expires_at < timezone.now()):
+                    is_valid_member = True
+            except OrgMember.DoesNotExist:
+                pass
+
+    if not org or not is_valid_member:
+        # Fallback to first active, non-expired membership
+        active_memberships = OrgMember.objects.select_related('organization', 'role').filter(
+            user=request.user,
+            is_active=True
+        )
+        fallback_member = None
+        for m in active_memberships:
+            if not (m.expires_at and m.expires_at < timezone.now()):
+                fallback_member = m
+                break
+        
+        if fallback_member:
+            org = fallback_member.organization
+            member = fallback_member
+        else:
+            org = None
+            member = None
 
     role_name = None
     permissions = []
 
-    if request.user.is_superuser:
-        permissions = list(Permission.objects.values_list('codename', flat=True))
-        try:
-            member = OrgMember.objects.select_related('role').get(organization=org, user=request.user)
-            role_name = member.role.name if member.role else 'Superuser'
-        except OrgMember.DoesNotExist:
-            role_name = 'Superuser'
-    else:
-        try:
-            member = OrgMember.objects.select_related('role').get(
-                organization=org,
-                user=request.user,
-                is_active=True
-            )
-            if member.expires_at and member.expires_at < timezone.now():
-                raise PermissionDenied("Your membership in this organization has expired.")
-            
-            role_name = member.role.name if member.role else None
-            
-            # Force cache population and extract
-            has_org_permission(request.user, org, 'dummy')
-            permissions = list(request.user._org_permissions_cache[org.id])
-        except OrgMember.DoesNotExist:
-            raise PermissionDenied("You are not an active member of this organization.")
+    if org:
+        if request.user.is_superuser:
+            permissions = list(Permission.objects.values_list('codename', flat=True))
+            role_name = member.role.name if (member and member.role) else 'Superuser'
+        else:
+            if member:
+                role_name = member.role.name if member.role else None
+                # Force cache population and extract
+                has_org_permission(request.user, org, 'dummy')
+                permissions = list(getattr(request.user, '_org_permissions_cache', {}).get(org.id, []))
 
     serializer = OrgContextSerializer({
         'organization': org,
@@ -518,6 +538,7 @@ def org_context(request):
         'permissions': permissions
     })
     return Response(serializer.data)
+
 
 
 # ---------------------------------------------------------------------------
@@ -1159,6 +1180,9 @@ class OrganizationViewSet(viewsets.ModelViewSet):
     permission_classes = [HasOrgPermission]
 
     def get_permissions(self):
+        if self.action in ['create', 'join', 'invitations', 'respond_invitation']:
+            from rest_framework.permissions import IsAuthenticated
+            return [IsAuthenticated()]
         if self.action in ['partial_update', 'update']:
             self.required_org_permission = 'can_manage_members'
         else:
@@ -1166,10 +1190,218 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
     def get_queryset(self):
+        if self.action in ['join', 'create', 'invitations', 'respond_invitation']:
+            return Organization.objects.all()
         org = getattr(self.request, 'organization', None)
         if not org:
             return Organization.objects.none()
         return Organization.objects.filter(id=org.id)
+
+    def perform_create(self, serializer):
+        from accounts.models import Role, Permission, OrgMember
+        from django.utils.text import slugify
+        
+        name = serializer.validated_data.get('name')
+        base_slug = slugify(name)
+        if not base_slug:
+            base_slug = "org"
+        slug = base_slug
+        counter = 1
+        while Organization.objects.filter(slug=slug).exists():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+            
+        import random
+        import string
+        chars = string.ascii_uppercase + string.digits
+        invite_code = None
+        while not invite_code:
+            code = ''.join(random.choice(chars) for _ in range(6))
+            if not Organization.objects.filter(invite_code=code).exists():
+                invite_code = code
+
+        org = serializer.save(slug=slug, owner=self.request.user, invite_code=invite_code)
+        
+        # Create default roles for this organization
+        admin_role = Role.objects.create(
+            name='Admin',
+            description='Academy administrator with full access to settings, members, and financials',
+            organization=org
+        )
+        admin_role.permissions.set(Permission.objects.all())
+        
+        teacher_role = Role.objects.create(
+            name='Teacher',
+            description='Educator who hosts live classes and teaches courses',
+            organization=org
+        )
+        teacher_perms = Permission.objects.filter(codename__in=[
+            'can_view_dashboard', 'can_teach_class', 'can_control_recordings', 
+            'can_view_sessions', 'can_manage_sessions', 'can_view_attendance', 
+            'can_manage_attendance'
+        ])
+        teacher_role.permissions.set(teacher_perms)
+        
+        mentor_role = Role.objects.create(
+            name='Mentor',
+            description='Mentor who supports students and classes',
+            organization=org
+        )
+        mentor_perms = Permission.objects.filter(codename__in=[
+            'can_view_dashboard', 'can_view_sessions', 'can_view_attendance', 'can_attend_class'
+        ])
+        mentor_role.permissions.set(mentor_perms)
+        
+        student_role = Role.objects.create(
+            name='Student',
+            description='Learner who enrolls in courses and attends live classes',
+            organization=org
+        )
+        student_perms = Permission.objects.filter(codename__in=[
+            'can_view_dashboard', 'can_attend_class', 'can_view_sessions', 'can_view_attendance'
+        ])
+        student_role.permissions.set(student_perms)
+        
+        # Add the owner as an active member with Admin role
+        OrgMember.objects.create(
+            organization=org,
+            user=self.request.user,
+            role=admin_role,
+            is_active=True
+        )
+
+    @action(detail=True, methods=['POST'], url_path='join')
+    def join(self, request, pk=None):
+        from accounts.models import OrgMember, Role
+        from rest_framework.response import Response
+        from rest_framework import status
+        
+        try:
+            if str(pk).isdigit():
+                org = Organization.objects.get(id=int(pk))
+            else:
+                org = Organization.objects.filter(invite_code__iexact=pk).first()
+                if not org:
+                    org = Organization.objects.get(slug=pk)
+        except Organization.DoesNotExist:
+            return Response({'error': 'Organization not found.'}, status=status.HTTP_404_NOT_FOUND)
+            
+        member_exists = OrgMember.objects.filter(organization=org, user=request.user).exists()
+        if member_exists:
+            m = OrgMember.objects.get(organization=org, user=request.user)
+            if m.is_active:
+                return Response({'error': 'You are already a member of this organization.'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({'error': 'You have a pending request or invitation to this organization.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        student_role = Role.objects.filter(name='Student', organization=org).first()
+        if not student_role:
+            student_role = Role.objects.filter(name='Student', organization__isnull=True).first()
+            
+        is_active = not org.approval_required_to_join
+        
+        if is_active:
+            from sys_admin.services import QuotaService
+            try:
+                QuotaService.check_quota(org, 'students')
+            except Exception as e:
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            
+        OrgMember.objects.create(
+            organization=org,
+            user=request.user,
+            role=student_role,
+            is_active=is_active,
+            contract_type=OrgMember.ContractType.FULL_TIME
+        )
+        
+        if is_active:
+            from sys_admin.services import QuotaService
+            try:
+                QuotaService.recalculate_usage(org)
+            except Exception:
+                pass
+            return Response({
+                'message': f'Successfully joined organization {org.name}.',
+                'auto_joined': True
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                'message': f'Request to join {org.name} submitted and is pending admin approval.',
+                'auto_joined': False
+            }, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['GET'], url_path='invitations')
+    def invitations(self, request):
+        from accounts.models import OrgMember
+        from rest_framework.response import Response
+        
+        invites = OrgMember.objects.filter(user=request.user, is_active=False).select_related('organization', 'role', 'invited_by')
+        
+        results = []
+        for invite in invites:
+            results.append({
+                'id': invite.id,
+                'organization': {
+                    'id': invite.organization.id,
+                    'name': invite.organization.name,
+                    'slug': invite.organization.slug,
+                },
+                'role': invite.role.name if invite.role else None,
+                'invited_by': invite.invited_by.username if invite.invited_by else None,
+                'joined_at': invite.joined_at,
+            })
+        return Response(results)
+
+    @action(detail=True, methods=['POST'], url_path='respond-invitation')
+    def respond_invitation(self, request, pk=None):
+        from accounts.models import OrgMember
+        from rest_framework.response import Response
+        from rest_framework import status
+        
+        try:
+            if str(pk).isdigit():
+                org = Organization.objects.get(id=int(pk))
+            else:
+                org = Organization.objects.get(slug=pk)
+        except Organization.DoesNotExist:
+            return Response({'error': 'Organization not found.'}, status=status.HTTP_404_NOT_FOUND)
+            
+        try:
+            invite = OrgMember.objects.get(organization=org, user=request.user, is_active=False)
+        except OrgMember.DoesNotExist:
+            return Response({'error': 'Invitation not found.'}, status=status.HTTP_404_NOT_FOUND)
+            
+        action_val = request.data.get('action')
+        if action_val == 'accept':
+            role_name = invite.role.name if invite.role else 'Student'
+            from sys_admin.services import QuotaService
+            try:
+                if role_name in ['Teacher', 'Admin']:
+                    QuotaService.check_quota(org, 'teachers')
+                else:
+                    QuotaService.check_quota(org, 'students')
+            except Exception as e:
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                
+            invite.is_active = True
+            invite.save()
+            
+            try:
+                QuotaService.recalculate_usage(org)
+            except Exception:
+                pass
+                
+            from django.core.cache import cache
+            cache_key = f"user_org_perms:{request.user.id}:{org.id}"
+            cache.delete(cache_key)
+            
+            return Response({'message': 'Invitation accepted.'}, status=status.HTTP_200_OK)
+        elif action_val == 'decline':
+            invite.delete()
+            return Response({'message': 'Invitation declined.'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': "Invalid action. Must be 'accept' or 'decline'."}, status=status.HTTP_400_BAD_REQUEST)
 
     def destroy(self, request, *args, **kwargs):
         from rest_framework.exceptions import MethodNotAllowed
@@ -1233,12 +1465,40 @@ class OrgMemberViewSet(viewsets.ModelViewSet):
             QuotaService.recalculate_usage(org)
 
     def perform_update(self, serializer):
+        org = getattr(self.request, 'organization', None)
+        if org:
+            is_active = serializer.validated_data.get('is_active', None)
+            role = serializer.validated_data.get('role', None)
+            
+            old_instance = self.get_object()
+            was_active = old_instance.is_active
+            old_role = old_instance.role
+            
+            check_needed = False
+            target_role = role or old_role
+            target_role_name = target_role.name if target_role else 'Student'
+            
+            if is_active is True and not was_active:
+                check_needed = True
+            elif role and role != old_role and (is_active is True or (is_active is None and was_active)):
+                check_needed = True
+                
+            if check_needed:
+                from sys_admin.services import QuotaService
+                from rest_framework.exceptions import ValidationError as DRFValidationError
+                try:
+                    if target_role_name in ['Teacher', 'Admin']:
+                        QuotaService.check_quota(org, 'teachers')
+                    else:
+                        QuotaService.check_quota(org, 'students')
+                except Exception as e:
+                    raise DRFValidationError(detail=str(e))
+
         instance = serializer.save()
         from django.core.cache import cache
         cache_key = f"user_org_perms:{instance.user_id}:{instance.organization_id}"
         cache.delete(cache_key)
         
-        org = getattr(self.request, 'organization', None)
         if org:
             from sys_admin.services import QuotaService
             QuotaService.recalculate_usage(org)
@@ -1271,9 +1531,11 @@ class RoleViewSet(viewsets.ModelViewSet):
         org = getattr(self.request, 'organization', None)
         if not org:
             return Role.objects.none()
-        return Role.objects.filter(
-            models.Q(organization=org) | models.Q(organization__isnull=True)
-        )
+        org_roles = Role.objects.filter(organization=org)
+        org_role_names = set(org_roles.values_list('name', flat=True))
+        system_roles = Role.objects.filter(organization__isnull=True).exclude(name__in=org_role_names)
+        role_ids = list(org_roles.values_list('id', flat=True)) + list(system_roles.values_list('id', flat=True))
+        return Role.objects.filter(id__in=role_ids)
 
     def perform_create(self, serializer):
         from rest_framework.exceptions import ValidationError as DRFValidationError

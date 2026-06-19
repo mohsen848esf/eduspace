@@ -17,6 +17,7 @@ export interface User {
   is_online: boolean;
   is_superuser?: boolean;
   organizations?: UserOrg[];
+  phone_number?: string | null;
 }
 
 export interface AuthResponse {
@@ -30,6 +31,8 @@ export interface OrgContext {
     id: number;
     name: string;
     slug: string;
+    logo?: string | null;
+    invite_code?: string;
     is_suspended?: boolean;
     suspension_reason?: string | null;
   } | null;
@@ -45,6 +48,20 @@ export interface OrganizationDetail {
   is_active: boolean;
   logo: string | null;
   created_at: string;
+  approval_required_to_join?: boolean;
+  invite_code?: string;
+}
+
+export interface Invitation {
+  id: number;
+  organization: {
+    id: number;
+    name: string;
+    slug: string;
+  };
+  role: string | null;
+  invited_by: string | null;
+  joined_at: string;
 }
 
 export interface OrgMember {
@@ -122,6 +139,25 @@ export const authApi = {
   getOrganizations: async (): Promise<OrganizationDetail[]> => {
     const res = await client.get("/auth/organizations/");
     return res.data;
+  },
+
+  createOrganization: async (name: string): Promise<OrganizationDetail> => {
+    const res = await client.post("/auth/organizations/", { name });
+    return res.data;
+  },
+
+  joinOrganization: async (slugOrId: string): Promise<{ message: string; auto_joined: boolean }> => {
+    const res = await client.post(`/auth/organizations/${slugOrId}/join/`);
+    return res.data;
+  },
+
+  getInvitations: async (): Promise<Invitation[]> => {
+    const res = await client.get("/auth/organizations/invitations/");
+    return res.data;
+  },
+
+  respondInvitation: async (orgIdOrSlug: string, action: "accept" | "decline"): Promise<void> => {
+    await client.post(`/auth/organizations/${orgIdOrSlug}/respond-invitation/`, { action });
   },
 
   updateOrganization: async (id: number, data: FormData | Partial<OrganizationDetail>): Promise<OrganizationDetail> => {
