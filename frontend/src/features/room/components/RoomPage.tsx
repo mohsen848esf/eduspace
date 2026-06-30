@@ -82,6 +82,13 @@ function RoomContent({
     };
   }, [room, game.handleDataMessage, whiteboard.handleDataMessage]);
 
+  // Clean up and release media devices when the room page is unmounted (navigating away)
+  useEffect(() => {
+    return () => {
+      disconnect();
+    };
+  }, [disconnect]);
+
   // Camera + background setup once the local participant is ready.
   useEffect(() => {
     if (setupDone.current) return;

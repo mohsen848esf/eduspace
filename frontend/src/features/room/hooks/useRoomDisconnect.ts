@@ -64,6 +64,11 @@ export function useRoomDisconnect() {
         recordingStore.setInFlight(null);
       }
 
+      // Avoid double disconnection or running on null context/already disconnected rooms
+      if (!room || !room.localParticipant || (room.state as any) === "disconnected") {
+        return;
+      }
+
       try {
         const stopPromises: Promise<void>[] = [];
 
@@ -74,6 +79,14 @@ export function useRoomDisconnect() {
                 .stopProcessor()
                 .catch(() => {})
                 .then(() => {
+                  try {
+                    // Call LiveKit's SDK level stop method which handles hardware release
+                    if (typeof (pub.track as any).stop === "function") {
+                      (pub.track as any).stop();
+                    }
+                  } catch (e) {
+                    console.error("Failed to stop local track:", e);
+                  }
                   pub.track?.mediaStreamTrack?.stop();
                 }),
             );
@@ -82,12 +95,13 @@ export function useRoomDisconnect() {
 
         await Promise.all(stopPromises);
 
-        // Disconnect LiveKit.
-        await room.disconnect(true);
+        // Disconnect LiveKit if still connected.
+        if ((room.state as any) !== "disconnected") {
+          await room.disconnect(true);
+        }
 
         // Small wait so the browser refreshes the recording indicator.
         await new Promise((r) => setTimeout(r, 500));
-
 
       } catch (err) {
         console.error("Disconnect error:", err);

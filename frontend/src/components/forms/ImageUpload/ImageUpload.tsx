@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, memo } from "react";
 import Cropper from "cropperjs";
 import { Modal, ModalHeader, ModalTitle, ModalBody, ModalFooter } from "../../ui/Modal";
 import Button from "../../ui/Button";
@@ -24,6 +24,74 @@ export interface ImageUploadProps {
   isFarsi?: boolean;
 }
 
+const CropperWidget = memo(
+  ({
+    src,
+    preset,
+    cropperRef,
+  }: {
+    src: string;
+    preset: "profile" | "logo" | "banner";
+    cropperRef: React.MutableRefObject<Cropper | null>;
+  }) => {
+    const imageRef = useRef<HTMLImageElement>(null);
+
+    useEffect(() => {
+      if (!imageRef.current) return;
+      const el = imageRef.current;
+
+      let cropperInstance: Cropper | null = null;
+
+      const init = () => {
+        if (cropperInstance) return;
+        console.log("[CropperWidget] Initializing Cropper on image element:", el);
+        cropperInstance = new Cropper(el, {
+          aspectRatio: preset === "profile" ? 1 : preset === "banner" ? 16 / 9 : NaN,
+          viewMode: 1,
+          background: false,
+          zoomable: true,
+          scalable: true,
+          autoCropArea: 0.9,
+          responsive: true,
+        });
+        cropperRef.current = cropperInstance;
+        console.log("[CropperWidget] Cropper instance set on ref:", cropperRef.current);
+      };
+
+      if (el.complete) {
+        init();
+      } else {
+        el.addEventListener("load", init);
+      }
+
+      return () => {
+        el.removeEventListener("load", init);
+        if (cropperInstance) {
+          console.log("[CropperWidget] Component unmounting/changing, destroying Cropper:", cropperInstance);
+          cropperInstance.destroy();
+        }
+        cropperRef.current = null;
+      };
+    }, [src, preset, cropperRef]);
+
+    return (
+      <div
+        className={cn(
+          "w-full h-[400px] md:h-[450px] overflow-hidden relative flex items-center justify-center bg-black/60",
+          preset === "profile" && "cropper-circle-viewport"
+        )}
+      >
+        <img
+          ref={imageRef}
+          src={src}
+          alt="Crop Target"
+          className="max-w-full max-h-full block"
+        />
+      </div>
+    );
+  }
+);
+
 export default function ImageUpload({
   preset,
   value,
@@ -36,48 +104,11 @@ export default function ImageUpload({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null);
   const cropperRef = useRef<Cropper | null>(null);
 
   // Keep track of rotation/flips
   const [scaleX, setScaleX] = useState(1);
   const [scaleY, setScaleY] = useState(1);
-
-  // Clean up cropper instance on unmount or close
-  const destroyCropper = () => {
-    if (cropperRef.current) {
-      cropperRef.current.destroy();
-      cropperRef.current = null;
-    }
-  };
-
-  // Safe initialization of Cropper inside useEffect once DOM image element is mounted
-  useEffect(() => {
-    if (isModalOpen && imageSrc && imageElement) {
-      destroyCropper();
-      
-      const cropper = new Cropper(imageElement, {
-        aspectRatio: preset === "profile" ? 1 : preset === "banner" ? 16 / 9 : NaN,
-        viewMode: 1,
-        background: false,
-        zoomable: true,
-        scalable: true,
-        autoCropArea: 0.9,
-        responsive: true,
-        ready() {
-          // Reset internal flip states
-          setScaleX(1);
-          setScaleY(1);
-        }
-      });
-      
-      cropperRef.current = cropper;
-      
-      return () => {
-        destroyCropper();
-      };
-    }
-  }, [isModalOpen, imageSrc, imageElement]);
 
   // Make sure we clean up imageSrc when modal is closed
   useEffect(() => {
@@ -175,7 +206,11 @@ export default function ImageUpload({
   };
 
   const handleCropSave = () => {
-    if (!cropperRef.current) return;
+    console.log("[ImageUpload] handleCropSave clicked. cropperRef.current:", cropperRef.current);
+    if (!cropperRef.current) {
+      console.warn("[ImageUpload] cropperRef.current is null!");
+      return;
+    }
 
     const mimeType = preset === "logo" ? "image/png" : "image/jpeg";
     const extension = preset === "logo" ? "png" : "jpg";
@@ -271,19 +306,11 @@ export default function ImageUpload({
           
           <ModalBody className="p-0 bg-black/40 flex flex-col items-stretch">
             {imageSrc && (
-              <div
-                className={cn(
-                  "w-full h-[400px] md:h-[450px] overflow-hidden relative flex items-center justify-center bg-black/60",
-                  preset === "profile" && "cropper-circle-viewport"
-                )}
-              >
-                <img
-                  ref={setImageElement}
-                  src={imageSrc}
-                  alt="Crop Target"
-                  className="max-w-full max-h-full block"
-                />
-              </div>
+              <CropperWidget
+                src={imageSrc}
+                preset={preset}
+                cropperRef={cropperRef}
+              />
             )}
 
             {/* Premium Controls Row */}

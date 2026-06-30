@@ -18,7 +18,7 @@ export const useOrgContextStore = create<OrgContextState>((set, get) => ({
   isLoading: false,
   isInitialized: false,
   error: null,
-  activeSlug: localStorage.getItem("active_org_slug") || "default-academy",
+  activeSlug: localStorage.getItem("active_org_slug") || "no organization",
 
   fetchOrgContext: async (slug) => {
     const targetSlug = slug || get().activeSlug;

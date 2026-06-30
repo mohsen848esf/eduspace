@@ -18,14 +18,14 @@ import ReportsExportWidget from "./ReportsExportWidget";
 const parseUA = (ua: string) => {
   if (!ua) return "Unknown Device";
   const userAgent = ua.toLowerCase();
-  
+
   let browser = "Browser";
   if (userAgent.includes("firefox")) browser = "Firefox";
   else if (userAgent.includes("chrome") && !userAgent.includes("chromium")) browser = "Chrome";
   else if (userAgent.includes("safari") && !userAgent.includes("chrome")) browser = "Safari";
   else if (userAgent.includes("edge") || userAgent.includes("edg")) browser = "Edge";
   else if (userAgent.includes("opera") || userAgent.includes("opr")) browser = "Opera";
-  
+
   let os = "OS";
   if (userAgent.includes("windows")) os = "Windows";
   else if (userAgent.includes("macintosh") || userAgent.includes("mac os")) os = "macOS";
@@ -121,7 +121,7 @@ export default function OrgSettingsPage() {
   });
 
   const activeOrg = orgs?.[0];
-
+  console.log('activeOrg', activeOrg)
   const { data: members = [], isLoading: loadingMembers } = useQuery<OrgMember[]>({
     queryKey: ["orgMembers"],
     queryFn: authApi.getMembers,
@@ -184,7 +184,7 @@ export default function OrgSettingsPage() {
 
   // Mutations
   const updateOrgMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: FormData | Partial<OrganizationDetail> }) => 
+    mutationFn: ({ id, data }: { id: number; data: FormData | Partial<OrganizationDetail> }) =>
       authApi.updateOrganization(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["activeOrganization"] });
@@ -215,7 +215,7 @@ export default function OrgSettingsPage() {
   });
 
   const updateMemberMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<OrgMember> }) => 
+    mutationFn: ({ id, data }: { id: number; data: Partial<OrgMember> }) =>
       authApi.updateMember(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orgMembers"] });
@@ -264,7 +264,7 @@ export default function OrgSettingsPage() {
   });
 
   const updateRoleMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { name?: string; description?: string; permissions?: string[] } }) => 
+    mutationFn: ({ id, data }: { id: number; data: { name?: string; description?: string; permissions?: string[] } }) =>
       authApi.updateRole(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orgRoles"] });
@@ -290,7 +290,7 @@ export default function OrgSettingsPage() {
   const handleSaveDetails = (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeOrg || !orgName.trim()) return;
-    
+
     const formData = new FormData();
     formData.append("name", orgName);
     formData.append("approval_required_to_join", String(approvalRequired));
@@ -298,8 +298,8 @@ export default function OrgSettingsPage() {
       formData.append("logo", logoFile);
     }
 
-    updateOrgMutation.mutate({ 
-      id: activeOrg.id, 
+    updateOrgMutation.mutate({
+      id: activeOrg.id,
       data: formData
     });
   };
@@ -367,7 +367,7 @@ export default function OrgSettingsPage() {
     const confirmMessage = isCurrent
       ? (isFarsi ? "این اتصال، دستگاه فعلی شما است. آیا مطمئنید می‌خواهید خارج شوید؟" : "This is your current active connection. Are you sure you want to log out?")
       : (isFarsi ? "آیا از خاتمه دادن به این اتصال اطمینان دارید؟" : "Are you sure you want to revoke this session?");
-    
+
     if (window.confirm(confirmMessage)) {
       revokeSessionMutation.mutate(sessionId);
     }
@@ -378,7 +378,7 @@ export default function OrgSettingsPage() {
     const updatedPerms = checked
       ? [...role.permissions, permCodename]
       : role.permissions.filter(p => p !== permCodename);
-      
+
     updateRoleMutation.mutate({
       id: role.id,
       data: { permissions: updatedPerms }
@@ -419,7 +419,7 @@ export default function OrgSettingsPage() {
 
   const renderStateChanges = (before: Record<string, any> | null, after: Record<string, any> | null) => {
     if (!before && !after) return <div className="text-xs text-[var(--t3)]">{isFarsi ? "اطلاعاتی ثبت نشده است" : "No state recorded"}</div>;
-    
+
     if (!before && after) {
       return (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[11px] bg-[var(--s3)] p-4 rounded-xl border border-[var(--b)] font-mono text-[var(--t2)] max-h-60 overflow-y-auto">
@@ -432,7 +432,7 @@ export default function OrgSettingsPage() {
         </div>
       );
     }
-    
+
     if (before && !after) {
       return (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[11px] bg-[var(--s3)] p-4 rounded-xl border border-[var(--b)] font-mono text-[var(--t2)] max-h-60 overflow-y-auto">
@@ -445,14 +445,14 @@ export default function OrgSettingsPage() {
         </div>
       );
     }
-    
+
     const allKeys = Array.from(new Set([...Object.keys(before!), ...Object.keys(after!)]));
     const changedKeys = allKeys.filter(k => JSON.stringify(before![k]) !== JSON.stringify(after![k]));
-    
+
     if (changedKeys.length === 0) {
       return <div className="text-xs text-[var(--t3)]">{isFarsi ? "تغییراتی در فیلدها ثبت نشده است" : "No field differences recorded"}</div>;
     }
-    
+
     return (
       <div className="flex flex-col gap-2.5 bg-[var(--s3)] p-4 rounded-xl border border-[var(--b)] text-[11px] font-mono text-[var(--t2)] max-h-60 overflow-y-auto">
         {changedKeys.map(key => (
@@ -486,46 +486,42 @@ export default function OrgSettingsPage() {
   return (
     <AppShell title={isFarsi ? "تنظیمات سازمان" : "Organization Settings"}>
       <div className="flex flex-col gap-6 max-w-5xl mx-auto">
-        
+
         {/* Tabs navigation */}
         <div className="flex border-b border-[var(--b)] gap-6 overflow-x-auto">
           <button
             onClick={() => setActiveTab("details")}
-            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${
-              activeTab === "details"
+            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${activeTab === "details"
                 ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
                 : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
-            }`}
+              }`}
           >
             {isFarsi ? "جزئیات سازمان" : "Organization Details"}
           </button>
           <button
             onClick={() => setActiveTab("members")}
-            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${
-              activeTab === "members"
+            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${activeTab === "members"
                 ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
                 : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
-            }`}
+              }`}
           >
             {isFarsi ? "اعضا و پرسنل" : "Members & Staff"}
           </button>
           <button
             onClick={() => setActiveTab("connections")}
-            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${
-              activeTab === "connections"
+            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${activeTab === "connections"
                 ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
                 : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
-            }`}
+              }`}
           >
             {isFarsi ? "دستگاه‌ها و اتصالات" : "Devices & Connections"}
           </button>
           <button
             onClick={() => setActiveTab("roles")}
-            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${
-              activeTab === "roles"
+            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${activeTab === "roles"
                 ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
                 : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
-            }`}
+              }`}
           >
             {isFarsi ? "نقش‌ها و دسترسی‌ها" : "Roles & Permissions"}
           </button>
@@ -534,21 +530,19 @@ export default function OrgSettingsPage() {
               setActiveTab("audit_logs");
               setLogsPage(1);
             }}
-            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${
-              activeTab === "audit_logs"
+            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${activeTab === "audit_logs"
                 ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
                 : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
-            }`}
+              }`}
           >
             {isFarsi ? "سوابق فعالیت‌ها" : "Audit Logs"}
           </button>
           <button
             onClick={() => setActiveTab("reports")}
-            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${
-              activeTab === "reports"
+            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${activeTab === "reports"
                 ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
                 : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
-            }`}
+              }`}
           >
             {isFarsi ? "گزارشات و خروجی‌ها" : "Reports & Exports"}
           </button>
@@ -578,8 +572,8 @@ export default function OrgSettingsPage() {
                   {isFarsi ? "لوگوی سازمان" : "Organization Logo"}
                 </h3>
                 <p className="text-[11px] text-[var(--t3)] mt-1.5 leading-relaxed">
-                  {isFarsi 
-                    ? "یک تصویر با پسوند PNG یا JPG انتخاب کنید." 
+                  {isFarsi
+                    ? "یک تصویر با پسوند PNG یا JPG انتخاب کنید."
                     : "Select a PNG or JPG format image."}
                 </p>
               </div>
@@ -622,8 +616,8 @@ export default function OrgSettingsPage() {
                   className="rounded border-[var(--b)] text-[var(--brand)] focus:ring-[var(--brand)] bg-[var(--s3)] h-4 w-4 cursor-pointer disabled:opacity-50"
                 />
                 <label htmlFor="approval_required" className="text-xs font-semibold text-[var(--t2)] cursor-pointer select-none">
-                  {isFarsi 
-                    ? "تایید عضویت اعضای جدید توسط مدیر الزامی باشد (عدم عضویت خودکار)" 
+                  {isFarsi
+                    ? "تایید عضویت اعضای جدید توسط مدیر الزامی باشد (عدم عضویت خودکار)"
                     : "Require admin approval for new members to join (disable auto-join)"}
                 </label>
               </div>
@@ -643,8 +637,8 @@ export default function OrgSettingsPage() {
                 {isFarsi ? "لینک و کد دعوت آکادمی" : "Academy Invite Link & Code"}
               </h3>
               <p className="text-[11px] text-[var(--t3)] leading-relaxed">
-                {isFarsi 
-                  ? "کاربران با استفاده از این لینک یا با وارد کردن کد دعوت در داشبورد خود می‌توانند به آکادمی بپیوندند." 
+                {isFarsi
+                  ? "کاربران با استفاده از این لینک یا با وارد کردن کد دعوت در داشبورد خود می‌توانند به آکادمی بپیوندند."
                   : "Users can join the academy using this link or by entering the invitation code in their dashboard."}
               </p>
 
@@ -746,7 +740,7 @@ export default function OrgSettingsPage() {
                           </div>
                         </td>
                         <td className="py-3 px-2">
-                          <span 
+                          <span
                             className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
                             style={getRoleBadgeStyle(member.role_name || "")}
                           >
@@ -765,14 +759,12 @@ export default function OrgSettingsPage() {
                           <button
                             onClick={() => toggleMemberActive(member)}
                             disabled={!canManageMembers || updateMemberMutation.isPending}
-                            className={`w-10 h-5 rounded-full p-0.5 border-none cursor-pointer transition-colors relative flex items-center ${
-                              member.is_active ? "bg-[var(--brand-text)]" : "bg-[var(--s3)] border border-[var(--b)]"
-                            } ${!canManageMembers ? "cursor-not-allowed opacity-60" : ""}`}
+                            className={`w-10 h-5 rounded-full p-0.5 border-none cursor-pointer transition-colors relative flex items-center ${member.is_active ? "bg-[var(--brand-text)]" : "bg-[var(--s3)] border border-[var(--b)]"
+                              } ${!canManageMembers ? "cursor-not-allowed opacity-60" : ""}`}
                           >
-                            <span 
-                              className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-150 absolute ${
-                                member.is_active ? (isFarsi ? "translate-x-1" : "translate-x-5") : (isFarsi ? "translate-x-5" : "translate-x-0")
-                              }`}
+                            <span
+                              className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-150 absolute ${member.is_active ? (isFarsi ? "translate-x-1" : "translate-x-5") : (isFarsi ? "translate-x-5" : "translate-x-0")
+                                }`}
                             />
                           </button>
                         </td>
@@ -804,7 +796,7 @@ export default function OrgSettingsPage() {
                 {isFarsi ? "دستگاه‌ها و اتصالات فعال" : "Active Devices & Connections"}
               </h2>
               <p className="text-xs text-[var(--t3)] mt-1">
-                {isFarsi 
+                {isFarsi
                   ? "لیست دستگاه‌هایی که به حساب کاربری اعضای آکادمی متصل هستند. شما می‌توانید دسترسی هر کدام را لغو کنید."
                   : "List of devices connected to academy members. You can revoke connections to force logout."}
               </p>
@@ -889,7 +881,7 @@ export default function OrgSettingsPage() {
                   {isFarsi ? "نقش‌ها و ماتریس دسترسی‌ها" : "Roles & Permissions Builder"}
                 </h2>
                 <p className="text-xs text-[var(--t3)] mt-1">
-                  {isFarsi 
+                  {isFarsi
                     ? "مدیریت سطوح دسترسی و تعریف نقش‌های شخصی‌سازی شده برای اعضای سازمان."
                     : "Configure permission scopes for standard and custom roles in your organization."}
                 </p>
@@ -1239,7 +1231,7 @@ export default function OrgSettingsPage() {
                   value={newRoleDesc}
                   onChange={(e) => setNewRoleDesc(e.target.value)}
                 />
-                
+
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-semibold text-[var(--t2)]">
                     {isFarsi ? "مجوزها و دسترسی‌های اولیه" : "Initial Permissions"}

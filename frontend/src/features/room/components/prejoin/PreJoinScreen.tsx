@@ -162,6 +162,7 @@ export default function PreJoinScreen({
 
 
   const {
+    track,
     background: selectedBg,
     isLoading: bgLoading,
     isSupported: bgSupported,
@@ -173,9 +174,6 @@ export default function PreJoinScreen({
   useEffect(() => {
     const load = async () => {
       try {
-        const checkStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-        checkStream.getTracks().forEach((t) => t.stop());
-
         const d = await navigator.mediaDevices.enumerateDevices();
         setDevices(d);
         const mic = d.find((x) => x.kind === "audioinput");
@@ -191,7 +189,12 @@ export default function PreJoinScreen({
       }
     };
     load();
-  }, []);
+
+    navigator.mediaDevices?.addEventListener?.("devicechange", load);
+    return () => {
+      navigator.mediaDevices?.removeEventListener?.("devicechange", load);
+    };
+  }, [track]);
 
 
 

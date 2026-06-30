@@ -39,7 +39,7 @@ export default function Topbar({
   const { logout, user } = useAuthStore();
   const { orgContext, activeSlug, fetchOrgContext, setActiveSlug } = useOrgContextStore();
   const { triggerHelp } = usePageHelp();
-  
+
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
 
   const orgDropdownRef = useRef<HTMLDivElement>(null);
@@ -90,8 +90,8 @@ export default function Topbar({
   };
 
   const hasMultipleOrgs = (user?.organizations?.length ?? 0) > 1;
-  const activeOrgName = orgContext?.organization?.name || 
-    user?.organizations?.find(o => o.slug === activeSlug)?.name || 
+  const activeOrgName = orgContext?.organization?.name ||
+    user?.organizations?.find(o => o.slug === activeSlug)?.name ||
     activeSlug;
 
   const nextLanguageLabel =
@@ -129,22 +129,20 @@ export default function Topbar({
         <div className="relative flex-shrink-0" ref={orgDropdownRef}>
           <button
             onClick={() => setShowOrgDropdown((p) => !p)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[var(--b)] text-xs text-[var(--t1)] transition-all duration-150 font-medium ${
-              hasMultipleOrgs 
-                ? "bg-[var(--s2)] hover:bg-[var(--s3)] cursor-pointer" 
-                : "bg-[var(--s1)] cursor-default opacity-85"
-            }`}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[var(--b)] text-xs text-[var(--t1)] transition-all duration-150 font-medium ${hasMultipleOrgs
+              ? "bg-[var(--s2)] hover:bg-[var(--s3)] cursor-pointer"
+              : "bg-[var(--s1)] cursor-default opacity-85"
+              }`}
             disabled={!hasMultipleOrgs}
           >
             {orgContext?.organization?.logo ? (
               <img
-                src={orgContext.organization.logo}
+                src={"http://localhost:8000" + orgContext.organization.logo}
                 alt="Org Logo"
                 className="w-4 h-4 rounded-full object-cover"
               />
             ) : (
-              <span className="opacity-70">🏢</span>
-            )}
+              null)}
             <span>{activeOrgName}</span>
             {hasMultipleOrgs && (
               <span className="text-[var(--t3)] transition-colors">
@@ -163,11 +161,10 @@ export default function Topbar({
                   <button
                     key={org.id}
                     onClick={() => handleOrgSwitch(org.slug)}
-                    className={`w-full px-3 py-2 text-start text-xs border-none cursor-pointer flex items-center justify-between transition-colors ${
-                      org.slug === activeSlug
-                        ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-semibold"
-                        : "bg-transparent text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]"
-                    }`}
+                    className={`w-full px-3 py-2 text-start text-xs border-none cursor-pointer flex items-center justify-between transition-colors ${org.slug === activeSlug
+                      ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-semibold"
+                      : "bg-transparent text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]"
+                      }`}
                   >
                     <span>{org.name}</span>
                     {org.role && (
