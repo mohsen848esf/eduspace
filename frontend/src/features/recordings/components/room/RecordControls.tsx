@@ -106,8 +106,6 @@ export default function RecordControls({
   const [showModes, setShowModes] = useState(false);
   const [quality, setQuality] = useState<RecordingQuality>("720p");
 
-  if (!canControl || !roomCode) return null;
-
   const recording = status.recording;
   const isIdle =
     !recording ||
@@ -131,6 +129,8 @@ export default function RecordControls({
     isActive && recording ? recording.public_token : null,
     Boolean(isTicking),
   );
+
+  if (!canControl || !roomCode) return null;
 
   if (isIdle) {
     return (
