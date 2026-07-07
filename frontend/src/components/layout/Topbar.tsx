@@ -7,8 +7,6 @@ import { useNotificationsStore } from "../../features/auth/store/notificationsSt
 import { Icons } from "../../lib/constants/icons";
 import { useLocale } from "../../i18n/useLocale";
 import NotificationsPopover from "./NotificationsPopover";
-import { useQueryClient } from "@tanstack/react-query";
-import { useOrgContextStore } from "../../features/auth/store/orgContextStore";
 import GlobalSearchModal from "./GlobalSearchModal";
 import { useRoom } from "../../features/room/hooks/useRoom";
 
@@ -28,6 +26,29 @@ interface BreadcrumbItem {
   url?: string;
 }
 
+const VALID_PATHS = new Set([
+  "/dashboard",
+  "/academic/courses",
+  "/academic/classes",
+  "/academic/sessions",
+  "/academic/attendance",
+  "/academic/assessments",
+  "/leaderboard",
+  "/academic/reports",
+  "/crm/members",
+  "/finance/ledger",
+  "/recordings",
+  "/settings/notifications",
+  "/settings/templates",
+  "/settings/organization",
+  "/settings/billing",
+  "/settings/profile",
+  "/miniapps",
+  "/sys-admin",
+  "/academic/homework",
+  "/academic/payments",
+]);
+
 export default function Topbar({
   title,
   subtitle,
@@ -38,15 +59,10 @@ export default function Topbar({
 }: TopbarProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const queryClient = useQueryClient();
   const { t } = useTranslation(["dashboard", "common", "auth", "notifications"]);
   const { language, toggleLanguage } = useLocale();
   const { logout, user } = useAuthStore();
-  const { orgContext, activeSlug, fetchOrgContext, setActiveSlug } = useOrgContextStore();
   const { createRoom, isLoading: roomLoading } = useRoom();
-
-  const [showOrgDropdown, setShowOrgDropdown] = useState(false);
-  const orgDropdownRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = useNotificationsStore((s) =>
     s.items.filter((it) => it.readAt === null).length,
@@ -68,31 +84,6 @@ export default function Topbar({
     };
   }, []);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (orgDropdownRef.current && !orgDropdownRef.current.contains(event.target as Node)) {
-        setShowOrgDropdown(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  const handleOrgSwitch = async (slug: string) => {
-    setShowOrgDropdown(false);
-    setActiveSlug(slug);
-    await fetchOrgContext(slug);
-    queryClient.clear();
-    navigate("/dashboard");
-  };
-
-  const hasMultipleOrgs = (user?.organizations?.length ?? 0) > 1;
-  const activeOrgName = orgContext?.organization?.name ||
-    user?.organizations?.find(o => o.slug === activeSlug)?.name ||
-    activeSlug;
-
   const nextLanguageLabel =
     language === "en" ? t("common:language.persian") : t("common:language.english");
 
@@ -100,14 +91,6 @@ export default function Topbar({
 
   const getBreadcrumbItems = (): BreadcrumbItem[] => {
     const items: BreadcrumbItem[] = [];
-    
-    // Start with active Organization Name (if exists)
-    if (orgContext?.organization?.name) {
-      items.push({
-        name: orgContext.organization.name,
-        url: "/dashboard",
-      });
-    }
     
     // Parse pathname segments
     const segments = location.pathname.split("/").filter(Boolean);
@@ -174,6 +157,11 @@ export default function Topbar({
 
   const breadcrumbs = getBreadcrumbItems();
 
+  const isPathValid = (path?: string) => {
+    if (!path) return false;
+    return VALID_PATHS.has(path);
+  };
+
   return (
     <header className="h-16 flex-shrink-0 flex items-center justify-between gap-4 px-4 md:px-5 bg-[var(--s1)] border-b border-[var(--b)] transition-colors duration-300">
       {/* Left section: Hamburger / Breadcrumbs */}
@@ -195,15 +183,18 @@ export default function Topbar({
           <div className="hidden lg:flex items-center gap-1.5 text-xs text-[var(--t3)] font-medium select-none">
             {breadcrumbs.map((item, idx) => {
               const isLast = idx === breadcrumbs.length - 1;
+              const canClick = !isLast && item.url && isPathValid(item.url);
               return (
                 <React.Fragment key={idx}>
                   {idx > 0 && <span className="text-[var(--t3)] mx-0.5">&gt;</span>}
                   {isLast ? (
                     <span className="text-[var(--brand-text)] font-semibold">{item.name}</span>
-                  ) : (
-                    <Link to={item.url || "/dashboard"} className="hover:text-[var(--brand-text)] text-[var(--t3)] no-underline transition-colors">
+                  ) : canClick ? (
+                    <Link to={item.url!} className="hover:text-[var(--brand-text)] text-[var(--t3)] no-underline transition-colors">
                       {item.name}
                     </Link>
+                  ) : (
+                    <span className="text-[var(--t3)]">{item.name}</span>
                   )}
                 </React.Fragment>
               );

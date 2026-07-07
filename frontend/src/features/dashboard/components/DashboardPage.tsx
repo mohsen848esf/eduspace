@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import AppShell from "../../../components/layout/AppShell";
 import { useAuthStore } from "../../auth/store/authStore";
 import { useRoom } from "../../room/hooks/useRoom";
@@ -34,6 +34,18 @@ export default function DashboardPage() {
   // Guest flow states
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("action") === "create-org") {
+      setShowCreateModal(true);
+      navigate(location.pathname, { replace: true });
+    } else if (params.get("action") === "join-org") {
+      setShowJoinModal(true);
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.search, navigate]);
   const [orgName, setOrgName] = useState("");
   const [orgCodeOrSlug, setOrgCodeOrSlug] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
