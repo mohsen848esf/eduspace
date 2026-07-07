@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import AppShell from "../../../components/layout/AppShell";
+import { cn } from "../../../lib/utils";
 import { useAuthStore } from "../../auth/store/authStore";
 import { useRoom } from "../../room/hooks/useRoom";
 import { useLocale } from "../../../i18n/useLocale";
