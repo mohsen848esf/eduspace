@@ -232,7 +232,7 @@ export function useWhiteboard() {
 
             listenersRef.current.forEach((fn) => {
               try {
-                fn("WHITEBOARD_SYNC", data.paths, identity);
+                fn("WHITEBOARD_SYNC", data, identity);
               } catch (e) {
                 console.warn("whiteboard listener threw", e);
               }
