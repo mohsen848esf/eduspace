@@ -97,7 +97,7 @@ const ControlButton = forwardRef<HTMLButtonElement, ControlButtonProps>(
             "flex items-center justify-center transition-colors duration-150",
             isLeave
               ? containerSize[size]
-              : cn(containerSize[size], variantClasses[variant]),
+              : cn(containerSize[size], variantClasses[variant], "border border-[var(--b)]"),
             isLeave && variantClasses.leave,
           )}
         >

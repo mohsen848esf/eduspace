@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { useRoomContext } from "@livekit/components-react";
 import { type SidebarTab } from "../hooks/useRoomControls";
 import { Tooltip } from "../../../components/ui/Tooltip";
 import ControlButton, {
@@ -60,6 +61,20 @@ function LayoutPopover({
   onClose: () => void;
 }) {
   const { t } = useTranslation("room");
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [onClose]);
+
   const layouts = [
     {
       id: "grid" as LayoutMode,
@@ -82,38 +97,32 @@ function LayoutPopover({
   ];
 
   return (
-    <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute bottom-[76px] left-1/2 -translate-x-1/2 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-52 fade-in">
-        <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2 px-1">
-          {t("layouts.title")}
-        </div>
-        {layouts.map((l) => (
-          <button
-            key={l.id}
-            onClick={() => {
-              onChange(l.id);
-              onClose();
-            }}
-            className={cn(
-              "w-full flex items-center gap-2.5 px-2 py-2 rounded-lg border-none cursor-pointer transition-all duration-150 text-start",
-              layout === l.id
-                ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
-                : "bg-transparent text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
-            )}
-          >
-            <span className="text-lg w-6 text-center">{l.icon}</span>
-            <div>
-              <div className="text-xs font-semibold">{l.label}</div>
-              <div className="text-[10px] text-[var(--t3)]">{l.desc}</div>
-            </div>
-            {layout === l.id && (
-              <span className="ms-auto text-[var(--brand)] text-xs">✓</span>
-            )}
-          </button>
-        ))}
+    <div ref={popoverRef} className="absolute bottom-[76px] left-1/2 -translate-x-1/2 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-52 fade-in">
+      <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2 px-1">
+        {t("layouts.title")}
       </div>
-    </>
+      {layouts.map((l) => (
+        <button
+          key={l.id}
+          onClick={() => {
+            onChange(l.id);
+            onClose();
+          }}
+          className={cn(
+            "w-full flex items-center gap-2.5 px-2 py-2 rounded-lg border-none cursor-pointer transition-all duration-150 text-start",
+            layout === l.id
+              ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
+              : "bg-transparent text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
+          )}
+        >
+          <span className="text-lg w-6 text-center">{l.icon}</span>
+          <div>
+            <div className="text-xs font-semibold">{l.label}</div>
+            <div className="text-[10px] text-[var(--t3)]">{l.desc}</div>
+          </div>
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -129,6 +138,7 @@ function CtrlBtn({
   isOn,
   isOff,
   size = "md",
+  hideLabel = true,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -137,6 +147,7 @@ function CtrlBtn({
   isOn?: boolean;
   isOff?: boolean;
   size?: ControlButtonSize;
+  hideLabel?: boolean;
 }) {
   const variant = isOn ? "active" : isOff ? "danger" : "default";
   return (
@@ -147,9 +158,16 @@ function CtrlBtn({
       onClick={onClick}
       variant={variant}
       size={size}
+      hideLabel={hideLabel}
     />
   );
 }
+
+const splitSizes = {
+  sm: { height: "h-10", mainWidth: "min-w-[40px]", arrowWidth: "w-5" },
+  md: { height: "h-11", mainWidth: "min-w-[44px]", arrowWidth: "w-[22px]" },
+  lg: { height: "h-12", mainWidth: "min-w-[48px]", arrowWidth: "w-6" },
+};
 
 // ── Split Button (mic/cam with settings arrow) ──
 function SplitBtn({
@@ -162,6 +180,7 @@ function SplitBtn({
   onArrow,
   isOn,
   popover,
+  size = "md",
 }: {
   iconOn: React.ReactNode;
   iconOff: React.ReactNode;
@@ -172,34 +191,38 @@ function SplitBtn({
   onArrow: () => void;
   isOn: boolean;
   popover?: React.ReactNode;
+  size?: ControlButtonSize;
 }) {
   const stateClass = isOn
     ? "bg-[var(--brand-soft)] text-[var(--brand)]"
     : "bg-[var(--red)]/10 text-[var(--red)]";
 
+  const { height, mainWidth, arrowWidth } = splitSizes[size];
+
   return (
-    <div className="relative flex h-[52px]">
+    <div className={cn("relative flex border border-[var(--b)] rounded-xl", height)}>
       <Tooltip content={tooltipMain}>
         <button
           onClick={onMain}
           className={cn(
-            "flex flex-col items-center justify-center gap-1",
-            "px-2.5 rounded-s-xl border-none cursor-pointer",
-            "min-w-[40px] transition-all duration-150 active:scale-[0.96]",
+            "flex flex-col items-center justify-center",
+            "px-2 rounded-s-xl border-none cursor-pointer",
+            "transition-all duration-150 active:scale-[0.96]",
+            mainWidth,
             stateClass,
           )}
         >
           <span className="leading-none">{isOn ? iconOn : iconOff}</span>
-          <span className="text-[9px] font-medium">{label}</span>
         </button>
       </Tooltip>
       <Tooltip content={tooltipArrow} side="top">
         <button
           onClick={onArrow}
           className={cn(
-            "w-5 rounded-e-xl border-none border-s border-[var(--b)]",
+            "border-none border-s border-[var(--b)]",
             "cursor-pointer text-[10px] transition-all duration-150",
             "flex items-center justify-center",
+            arrowWidth,
             stateClass,
           )}
         >
@@ -300,79 +323,150 @@ function MicSettingsPopover({
   isMicOn: boolean;
 }) {
   const { t } = useTranslation("room");
+  const room = useRoomContext();
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedInput, setSelectedInput] = useState("");
   const [selectedOutput, setSelectedOutput] = useState("");
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [onClose]);
 
   useEffect(() => {
     navigator.mediaDevices.enumerateDevices().then((d) => {
       setDevices(d);
-      const input = d.find((x) => x.kind === "audioinput");
-      const output = d.find((x) => x.kind === "audiooutput");
-      if (input) setSelectedInput(input.deviceId);
-      if (output) setSelectedOutput(output.deviceId);
+      
+      const currentInput = room.getActiveDevice("audioinput");
+      const currentOutput = room.getActiveDevice("audiooutput");
+      
+      if (currentInput) {
+        setSelectedInput(currentInput);
+      } else {
+        const input = d.find((x) => x.kind === "audioinput");
+        if (input) setSelectedInput(input.deviceId);
+      }
+      
+      if (currentOutput) {
+        setSelectedOutput(currentOutput);
+      } else {
+        const output = d.find((x) => x.kind === "audiooutput");
+        if (output) setSelectedOutput(output.deviceId);
+      }
     });
-  }, []);
+  }, [room]);
+
+  const handleInputChange = async (deviceId: string) => {
+    setSelectedInput(deviceId);
+    try {
+      await room.switchActiveDevice("audioinput", deviceId);
+    } catch (err) {
+      console.error("Failed to switch audio input device", err);
+    }
+  };
+
+  const handleOutputChange = async (deviceId: string) => {
+    setSelectedOutput(deviceId);
+    try {
+      await room.switchActiveDevice("audiooutput", deviceId);
+    } catch (err) {
+      console.error("Failed to switch audio output device", err);
+    }
+  };
 
   const inputs = devices.filter((d) => d.kind === "audioinput");
   const outputs = devices.filter((d) => d.kind === "audiooutput");
 
   return (
-    <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute bottom-[76px] left-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-64 fade-in">
-        <div className="relative">
-          <AudioVisualizer isMicOn={isMicOn} />
-        </div>
-
-        <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-1.5">
-          {t("preJoin.microphone")}
-        </div>
-        <select
-          value={selectedInput}
-          onChange={(e) => setSelectedInput(e.target.value)}
-          className="w-full bg-[var(--s3)] border border-[var(--b)] rounded-lg px-2 py-1.5 text-xs text-[var(--t1)] outline-none mb-3"
-        >
-          {inputs.map((d) => (
-            <option key={d.deviceId} value={d.deviceId}>
-              {d.label || t("preJoin.deviceLabels.microphone")}
-            </option>
-          ))}
-        </select>
-
-        <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-1.5">
-          {t("preJoin.speaker")}
-        </div>
-        <select
-          value={selectedOutput}
-          onChange={(e) => setSelectedOutput(e.target.value)}
-          className="w-full bg-[var(--s3)] border border-[var(--b)] rounded-lg px-2 py-1.5 text-xs text-[var(--t1)] outline-none"
-        >
-          {outputs.map((d) => (
-            <option key={d.deviceId} value={d.deviceId}>
-              {d.label || t("preJoin.deviceLabels.speaker")}
-            </option>
-          ))}
-        </select>
+    <div ref={popoverRef} className="absolute bottom-[76px] left-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-64 fade-in">
+      <div className="relative">
+        <AudioVisualizer isMicOn={isMicOn} />
       </div>
-    </>
+
+      <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-1.5">
+        {t("preJoin.microphone")}
+      </div>
+      <select
+        value={selectedInput}
+        onChange={(e) => handleInputChange(e.target.value)}
+        className="w-full bg-[var(--s3)] border border-[var(--b)] rounded-lg px-2 py-1.5 text-xs text-[var(--t1)] outline-none mb-3"
+      >
+        {inputs.map((d) => (
+          <option key={d.deviceId} value={d.deviceId}>
+            {d.label || t("preJoin.deviceLabels.microphone")}
+          </option>
+        ))}
+      </select>
+
+      <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-1.5">
+        {t("preJoin.speaker")}
+      </div>
+      <select
+        value={selectedOutput}
+        onChange={(e) => handleOutputChange(e.target.value)}
+        className="w-full bg-[var(--s3)] border border-[var(--b)] rounded-lg px-2 py-1.5 text-xs text-[var(--t1)] outline-none"
+      >
+        {outputs.map((d) => (
+          <option key={d.deviceId} value={d.deviceId}>
+            {d.label || t("preJoin.deviceLabels.speaker")}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
 
 // ── Camera Settings Popover ──
 function CamSettingsPopover({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation("room");
+  const room = useRoomContext();
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedCam, setSelectedCam] = useState("");
   const { background, isSupported, changeBackground } = useBackgroundBlur();
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [onClose]);
 
   useEffect(() => {
     navigator.mediaDevices.enumerateDevices().then((d) => {
       setDevices(d);
-      const cam = d.find((x) => x.kind === "videoinput");
-      if (cam) setSelectedCam(cam.deviceId);
+      
+      const currentCam = room.getActiveDevice("videoinput");
+      if (currentCam) {
+        setSelectedCam(currentCam);
+      } else {
+        const cam = d.find((x) => x.kind === "videoinput");
+        if (cam) setSelectedCam(cam.deviceId);
+      }
     });
-  }, []);
+  }, [room]);
+
+  const handleCamChange = async (deviceId: string) => {
+    setSelectedCam(deviceId);
+    try {
+      await room.switchActiveDevice("videoinput", deviceId);
+    } catch (err) {
+      console.error("Failed to switch video input device", err);
+    }
+  };
 
   const cameras = devices.filter((d) => d.kind === "videoinput");
 
@@ -408,74 +502,76 @@ function CamSettingsPopover({ onClose }: { onClose: () => void }) {
     ];
 
   return (
-    <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute bottom-[76px] left-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-64 fade-in">
-        {/* Camera device */}
-        <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-1.5">
-          {t("preJoin.camera")}
-        </div>
-        <select
-          value={selectedCam}
-          onChange={(e) => setSelectedCam(e.target.value)}
-          className="w-full bg-[var(--s3)] border border-[var(--b)] rounded-lg px-2 py-1.5 text-xs text-[var(--t1)] outline-none mb-3"
-        >
-          {cameras.map((d) => (
-            <option key={d.deviceId} value={d.deviceId}>
-              {d.label || t("preJoin.deviceLabels.camera")}
-            </option>
-          ))}
-        </select>
-
-        {/* Background */}
-        <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2">
-          {t("preJoin.background")}
-        </div>
-
-        {!isSupported ? (
-          <p className="text-xs text-[var(--t3)] px-1">
-            {t("preJoin.bgNotSupported")}
-          </p>
-        ) : (
-          <div className="grid grid-cols-3 gap-1.5">
-            {backgrounds.map((bg) => (
-              <Tooltip key={bg.id} content={bg.label}>
-                <button
-                  onClick={() => changeBackground(bg.id)}
-                  className={cn(
-                    "h-12 rounded-lg border-2 cursor-pointer transition-all overflow-hidden relative",
-                    background === bg.id
-                      ? "border-[var(--brand)] scale-105"
-                      : "border-transparent hover:border-[var(--bh)]",
-                  )}
-                >
-                  {bg.id === "none" ? (
-                    <div className="w-full h-full bg-[var(--s3)] flex items-center justify-center text-[9px] text-[var(--t3)] font-semibold">
-                      None
-                    </div>
-                  ) : bg.id === "blur" ? (
-                    <div className="w-full h-full bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center text-[9px] text-white font-semibold backdrop-blur-sm">
-                      Blur
-                    </div>
-                  ) : (
-                    <img
-                      src={bg.preview}
-                      alt={bg.label}
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                  {background === bg.id && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-[var(--brand)]/30">
-                      <span className="text-white text-sm">✓</span>
-                    </div>
-                  )}
-                </button>
-              </Tooltip>
-            ))}
-          </div>
-        )}
+    <div ref={popoverRef} className="absolute bottom-[76px] left-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-64 fade-in">
+      {/* Camera device */}
+      <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-1.5">
+        {t("preJoin.camera")}
       </div>
-    </>
+      <select
+        value={selectedCam}
+        onChange={(e) => handleCamChange(e.target.value)}
+        className="w-full bg-[var(--s3)] border border-[var(--b)] rounded-lg px-2 py-1.5 text-xs text-[var(--t1)] outline-none mb-3"
+      >
+        {cameras.map((d) => (
+          <option key={d.deviceId} value={d.deviceId}>
+            {d.label || t("preJoin.deviceLabels.camera")}
+          </option>
+        ))}
+      </select>
+
+      {/* Background */}
+      <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2">
+        {t("preJoin.background")}
+      </div>
+
+      {!isSupported ? (
+        <p className="text-xs text-[var(--t3)] px-1">
+          {t("preJoin.backgroundNotSupported")}
+        </p>
+      ) : (
+        <div className="grid grid-cols-3 gap-1.5">
+          {backgrounds.map((bg) => (
+            <button
+              key={bg.id}
+              onClick={() => changeBackground(bg.id)}
+              className={cn(
+                "h-12 rounded-lg border-2 cursor-pointer transition-all overflow-hidden relative bg-[var(--s3)] p-0",
+                background === bg.id
+                  ? "border-[var(--brand)] scale-105"
+                  : "border-transparent hover:border-[var(--bh)]",
+              )}
+            >
+              {bg.id === "none" && (
+                <div className="w-full h-full flex flex-col items-center justify-center text-[8px] text-[var(--t2)] font-medium leading-none gap-0.5">
+                  <span className="text-sm">Ø</span>
+                  <span>{t("preJoin.bgNone")}</span>
+                </div>
+              )}
+              {bg.id === "blur" && (
+                <div className="w-full h-full flex flex-col items-center justify-center text-[8px] text-[var(--t2)] font-medium leading-none gap-0.5 bg-[var(--s4)]">
+                  <span className="text-xs">░</span>
+                  <span>{t("preJoin.bgBlur")}</span>
+                </div>
+              )}
+              {bg.id !== "none" && bg.id !== "blur" && (
+                <>
+                  <img
+                    src={bg.preview}
+                    alt={bg.label}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-[8px] text-white font-medium">
+                      {bg.label}
+                    </span>
+                  </div>
+                </>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -537,10 +633,8 @@ export default function RoomControls({
   return (
     <div
       className={cn(
-        "relative bg-[var(--s1)] border-t border-[var(--b)]",
-        "flex items-center justify-between gap-2 flex-shrink-0",
-        shellHeight,
-        shellPadding,
+        "relative bg-[color-mix(in srgb,var(--s1)_75%,transparent)] backdrop-blur-md border-t border-[var(--b)]",
+        "flex items-center justify-center gap-3 flex-shrink-0 shadow-2xl h-20 px-4",
       )}
     >
       <SettingsPanel
@@ -549,8 +643,8 @@ export default function RoomControls({
         isPushToTalk={isPushToTalk}
         onTogglePushToTalk={onTogglePushToTalk}
       />
-      {/* Left — mic, camera, screen share */}
-      <div className="flex items-center gap-1 md:gap-1.5 min-w-0">
+      {/* Left — mic, camera */}
+      <div className="flex items-center gap-2 pr-4 border-r border-[var(--b)]">
         <SplitBtn
           iconOn={Icons.mic}
           iconOff={Icons.micOff}
@@ -565,6 +659,7 @@ export default function RoomControls({
             setCamPopoverOpen(false);
           }}
           isOn={isMicOn}
+          size={size}
           popover={
             micPopoverOpen && (
               <MicSettingsPopover
@@ -588,12 +683,17 @@ export default function RoomControls({
             setMicPopoverOpen(false);
           }}
           isOn={isCamOn}
+          size={size}
           popover={
             camPopoverOpen && (
               <CamSettingsPopover onClose={() => setCamPopoverOpen(false)} />
             )
           }
         />
+      </div>
+
+      {/* Center — Actions */}
+      <div className="flex items-center gap-3 px-4">
         <CtrlBtn
           icon={Icons.screenShare}
           label={t("controls.share")}
@@ -610,10 +710,6 @@ export default function RoomControls({
           isOn={handRaised}
           size={size}
         />
-      </div>
-
-      {/* Center */}
-      <div className="flex items-center gap-1 md:gap-1.5 min-w-0">
         <CtrlBtn
           icon={Icons.people}
           label={t("controls.people")}
@@ -638,7 +734,6 @@ export default function RoomControls({
           isOn={isPanelActive("tools")}
           size={size}
         />
-        <div className="hidden md:block w-px h-7 bg-[var(--b)] mx-1" />
 
         {/* Layout button */}
         <div className="relative">
@@ -675,17 +770,20 @@ export default function RoomControls({
         />
       </div>
 
-      {/* Right — leave (refreshed: solid rose with a subtle divider). */}
-      <div className="flex items-center gap-2">
-        <div className="hidden md:block w-px h-7 bg-[var(--b)]" />
-        <ControlButton
-          icon={Icons.leave}
-          label={t("controls.leave")}
-          tooltip={t("tooltips.leave")}
+      {/* Right — Leave Session */}
+      <div className="flex items-center pl-4 border-l border-[var(--b)]">
+        <button
+          type="button"
           onClick={onLeave}
-          variant="leave"
-          size={size}
-        />
+          className={cn(
+            "px-5 flex items-center justify-center rounded-xl border-none cursor-pointer font-bold transition-all active:scale-[0.96] duration-150 shadow-md",
+            size === "sm" ? "h-10 text-xs" : size === "md" ? "h-11 text-sm" : "h-12 text-sm",
+            "bg-[var(--red)] hover:bg-[var(--red)]/90 text-white shadow-[var(--red)]/20"
+          )}
+          title={t("tooltips.leave")}
+        >
+          {t("controls.leave")}
+        </button>
       </div>
     </div>
   );
