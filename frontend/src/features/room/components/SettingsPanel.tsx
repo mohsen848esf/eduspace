@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "../../../lib/utils";
 
@@ -35,6 +35,20 @@ export default function SettingsPanel({
   onTogglePushToTalk,
 }: SettingsPanelProps) {
   const { t } = useTranslation("room");
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const shortcuts = [
@@ -51,12 +65,10 @@ export default function SettingsPanel({
   ];
 
   return (
-    <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute bottom-[76px] left-1/2 -translate-x-1/2 z-50 w-60 max-w-[calc(100vw-1.5rem)] bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 fade-in">
-        <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2 px-1">
-          {t("settings.title")}
-        </div>
+    <div ref={popoverRef} className="absolute bottom-[76px] left-1/2 -translate-x-1/2 z-50 w-60 max-w-[calc(100vw-1.5rem)] bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 fade-in">
+      <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2 px-1">
+        {t("settings.title")}
+      </div>
 
         {/* Push to Talk */}
         <div className="flex items-center justify-between py-2 px-1 mb-1">
@@ -109,8 +121,7 @@ export default function SettingsPanel({
             defaultOn={item.defaultOn}
           />
         ))}
-      </div>
-    </>
+    </div>
   );
 }
 
