@@ -464,6 +464,46 @@ export default function DashboardPage() {
 
   const liveSession = liveSessions[0] || null;
 
+  // Today's sessions list
+  const todaySessions = allSessions.filter((s) => {
+    if (!s.scheduled_start) return false;
+    const sDate = new Date(s.scheduled_start);
+    const today = new Date();
+    return (
+      sDate.getDate() === today.getDate() &&
+      sDate.getMonth() === today.getMonth() &&
+      sDate.getFullYear() === today.getFullYear()
+    );
+  });
+
+  // Upcoming assignments deadlines
+  const upcomingDeadlines = allAssignments.filter((a) => {
+    const hasSubmitted = myAssignmentSubmissions.some((sub) => sub.assignment === a.id);
+    const isFuture = a.due_date ? new Date(a.due_date) > new Date() : true;
+    return !hasSubmitted && isFuture;
+  });
+
+  // GPA calculation
+  const avgGrade = gradedAssignmentSubmissions.length > 0
+    ? gradedAssignmentSubmissions.reduce((acc, sub) => acc + parseFloat(sub.grade || "0"), 0) / gradedAssignmentSubmissions.length
+    : 98;
+  const calculatedGPA = ((avgGrade / 100) * 4.0).toFixed(2);
+  const studyStreak = 12;
+  const semesterProgress = 68;
+
+  const getDueHours = (dueDateStr?: string) => {
+    if (!dueDateStr) return 24;
+    const diff = new Date(dueDateStr).getTime() - Date.now();
+    const hrs = Math.ceil(diff / 3600000);
+    return hrs > 0 ? hrs : 0;
+  };
+
+  const formatDueDate = (dateStr?: string) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    return d.toLocaleDateString(localeTag, { month: "short", day: "numeric" });
+  };
+
   // Upcoming Agenda logic
   const upcomingSessions = allSessions
     .filter((s) => s.status === "scheduled" && s.scheduled_start && new Date(s.scheduled_start) > new Date())
@@ -481,6 +521,526 @@ export default function DashboardPage() {
   const studentArea = studentPoints.length > 0
     ? `${studentPath} L ${studentPoints[studentPoints.length - 1].x} 160 L 50 160 Z`
     : "";
+
+  const isStudent = activeRole === "student";
+
+  if (isStudent && activeOrg) {
+    return (
+      <AppShell
+        title={t("title")}
+        subtitle={subtitle}
+        activeNav={activeNav}
+        onNavigate={setActiveNav}
+      >
+        <div className="flex flex-col gap-6 fade-in text-[var(--t1)]">
+          {/* Welcome back header */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-extrabold text-[var(--t1)] tracking-tight">
+                {isFarsi ? `خوش آمدی، ${user?.full_name?.split(" ")[0] || user?.username}` : `Welcome back, ${user?.full_name?.split(" ")[0] || user?.username}.`}
+              </h1>
+              <p className="text-xs md:text-sm text-[var(--t3)] mt-1 font-medium">
+                {isFarsi
+                  ? `امروز شما ${todaySessions.length} کلاس و ${pendingAssignments.length} مهلت تحویل دارید.`
+                  : `You have ${todaySessions.length} classes today and ${pendingAssignments.length} upcoming deadlines.`}
+              </p>
+            </div>
+            <div className="flex items-center gap-2.5">
+              {/* GPA capsule */}
+              <div className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[var(--s2)] border border-[var(--b)] text-xs text-[var(--t1)] font-bold shadow-sm">
+                <span className="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-[10px] font-black">✓</span>
+                <span>{isFarsi ? `معدل کل ${calculatedGPA}` : `Current GPA ${calculatedGPA}`}</span>
+              </div>
+              {/* Streak capsule */}
+              <div className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[var(--s2)] border border-[var(--b)] text-xs text-[var(--t1)] font-bold shadow-sm">
+                <span className="text-sm">🔥</span>
+                <span>{isFarsi ? `زنجیره مطالعه ${studyStreak} روز` : `Study Streak ${studyStreak} Days`}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 1: Grid for Schedule and Grade Trend */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* My Schedule Widget */}
+            <div className="bg-[var(--s2)] border border-[var(--b)] rounded-[24px] p-5 shadow-sm lg:col-span-2 flex flex-col gap-4">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xs font-bold text-[var(--t2)] uppercase tracking-wider flex items-center gap-2">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-[var(--t3)]">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                  <span>{isFarsi ? "برنامه من" : "My Schedule"}</span>
+                </h2>
+                <Link to="/academic/sessions" className="text-xs font-semibold text-[var(--t3)] hover:text-[var(--brand)] no-underline">
+                  {isFarsi ? "مشاهده تقویم" : "View Calendar"}
+                </Link>
+              </div>
+
+              <div className="flex flex-col gap-3.5">
+                {todaySessions.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-[var(--t3)] bg-[var(--s3)] rounded-2xl border border-[var(--b)] border-dashed">
+                    {isFarsi ? "هیچ جلسه‌ای برای امروز برنامه‌ریزی نشده است. روز آزاد خود را لذت ببرید!" : "No classes scheduled for today. Enjoy your day off!"}
+                  </div>
+                ) : (
+                  todaySessions.map((s) => {
+                    const isLive = s.status === "live";
+                    const sTime = s.scheduled_start ? new Date(s.scheduled_start) : null;
+                    const eTime = s.scheduled_end ? new Date(s.scheduled_end) : null;
+                    const timeRange = sTime && eTime
+                      ? `${sTime.toLocaleTimeString(localeTag, { hour: "2-digit", minute: "2-digit" })} - ${eTime.toLocaleTimeString(localeTag, { hour: "2-digit", minute: "2-digit" })}`
+                      : "";
+
+                    return (
+                      <div key={s.id} className="bg-[var(--s3)] border border-[var(--b)] rounded-[18px] p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition-all hover:bg-[var(--s3)]/80">
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-lg shadow-inner",
+                            isLive ? "bg-red-500/10 text-red-500 animate-pulse" : "bg-[var(--s2)] text-[var(--t3)]"
+                          )}>
+                            {isLive ? <Video className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <h4 className="text-xs font-bold text-[var(--t1)] truncate">{s.title}</h4>
+                            <p className="text-[10px] text-[var(--t3)] mt-0.5 truncate font-medium">
+                              {s.host_name} • {timeRange}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 self-stretch sm:self-auto justify-end flex-shrink-0">
+                          {isLive ? (
+                            <>
+                              <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-red-500/10 text-red-500 animate-pulse uppercase tracking-wider">
+                                {isFarsi ? "هم‌اکنون زنده" : "Live Now"}
+                              </span>
+                              <Link
+                                to={`/room/${s.active_room_code}`}
+                                className="px-4 py-2 rounded-xl bg-[#6366f1] text-white hover:brightness-110 font-bold text-xs shadow-md transition-all active:scale-[0.98] no-underline"
+                              >
+                                {isFarsi ? "ورود به کلاس" : "Join Class"}
+                              </Link>
+                            </>
+                          ) : (
+                            <Link
+                              to={`/academic/sessions/${s.id}`}
+                              className="px-4 py-2 rounded-xl bg-[var(--s2)] hover:bg-[var(--s3)] border border-[var(--b)] hover:border-[var(--brand)] text-[var(--t2)] hover:text-[var(--t1)] font-bold text-xs transition-all active:scale-[0.98] no-underline"
+                            >
+                              {isFarsi ? "جزئیات" : "Details"}
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Grade Trend Widget */}
+            <div className="bg-[var(--s2)] border border-[var(--b)] rounded-[24px] p-5 shadow-sm flex flex-col justify-between min-h-[300px]">
+              <div>
+                <h2 className="text-xs font-bold text-[var(--t2)] uppercase tracking-wider flex items-center gap-2 mb-3">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-[var(--t3)]">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                    <polyline points="17 6 23 6 23 12" />
+                  </svg>
+                  <span>{isFarsi ? "روند نمرات" : "Grade Trend"}</span>
+                </h2>
+                
+                {gradedAssignmentSubmissions.length === 0 ? (
+                  <div className="h-[140px] flex flex-col items-center justify-center gap-2 text-[var(--t3)] text-xs">
+                    <span className="text-xl">📈</span>
+                    <span>{isFarsi ? "هنوز نمره‌ای ثبت نشده است." : "No grades recorded yet."}</span>
+                  </div>
+                ) : (
+                  <div className="w-full h-[140px] relative overflow-hidden">
+                    <svg className="w-full h-full" viewBox="0 0 240 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <defs>
+                        <linearGradient id="gradeGradMini" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="var(--brand)" stopOpacity="0.2" />
+                          <stop offset="100%" stopColor="var(--brand)" stopOpacity="0" />
+                        </linearGradient>
+                      </defs>
+                      {/* Gridlines */}
+                      {[0, 50, 100].map((ratio) => {
+                        const y = 100 - (ratio * 80) / 100;
+                        return (
+                          <line key={ratio} x1="10" y1={y} x2="230" y2={y} stroke="var(--b)" strokeWidth="0.8" strokeDasharray="3 3" />
+                        );
+                      })}
+                      {/* Bezier Path */}
+                      {gradedAssignmentSubmissions.length > 1 && (
+                        <>
+                          <path
+                            d={getBezierPath(gradedAssignmentSubmissions.map((sub, idx) => {
+                              const x = 15 + (idx * 210) / Math.max(1, gradedAssignmentSubmissions.length - 1);
+                              const y = 100 - (parseFloat(sub.grade || "0") * 80) / 100;
+                              return { x, y };
+                            }))}
+                            fill="none"
+                            stroke="var(--brand)"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d={`${getBezierPath(gradedAssignmentSubmissions.map((sub, idx) => {
+                              const x = 15 + (idx * 210) / Math.max(1, gradedAssignmentSubmissions.length - 1);
+                              const y = 100 - (parseFloat(sub.grade || "0") * 80) / 100;
+                              return { x, y };
+                            }))} L ${15 + ((gradedAssignmentSubmissions.length - 1) * 210) / Math.max(1, gradedAssignmentSubmissions.length - 1)} 100 L 15 100 Z`}
+                            fill="url(#gradeGradMini)"
+                          />
+                        </>
+                      )}
+                      {/* Months labels */}
+                      {gradedAssignmentSubmissions.map((sub, idx) => {
+                        const x = 15 + (idx * 210) / Math.max(1, gradedAssignmentSubmissions.length - 1);
+                        const label = sub.assignment_title?.slice(0, 3) || `HW${idx + 1}`;
+                        return (
+                          <text key={idx} x={x} y="118" fill="var(--t3)" fontSize="7" textAnchor="middle" fontWeight="bold">
+                            {label}
+                          </text>
+                        );
+                      })}
+                      {/* Data Points */}
+                      {gradedAssignmentSubmissions.map((sub, idx) => {
+                        const x = 15 + (idx * 210) / Math.max(1, gradedAssignmentSubmissions.length - 1);
+                        const val = parseFloat(sub.grade || "0");
+                        const y = 100 - (val * 80) / 100;
+                        return (
+                          <circle key={idx} cx={x} cy={y} r="3" fill="var(--s2)" stroke="var(--brand)" strokeWidth="1.8" />
+                        );
+                      })}
+                    </svg>
+                  </div>
+                )}
+              </div>
+
+              {/* Semester Progress */}
+              <div className="border-t border-[var(--b)] pt-3.5 mt-2 flex flex-col gap-2">
+                <div className="flex justify-between items-center text-[11px] font-bold text-[var(--t1)]">
+                  <span>{isFarsi ? "پیشرفت ترم تحصیلی" : "Semester Progress"}</span>
+                  <span className="font-mono">{semesterProgress}%</span>
+                </div>
+                <div className="w-full bg-[var(--s3)] rounded-full h-2 overflow-hidden border border-[var(--b)]">
+                  <div className="bg-[#6366f1] h-full rounded-full transition-all duration-500" style={{ width: `${semesterProgress}%` }} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 2: Homework Progress Section */}
+          <div className="flex flex-col gap-4 mt-2">
+            <div className="flex justify-between items-center">
+              <h2 className="text-md font-extrabold text-[var(--t1)] tracking-tight">
+                {isFarsi ? "پیشرفت تکالیف" : "Homework Progress"}
+              </h2>
+              <div className="flex items-center gap-2">
+                <button className="p-2 rounded-xl bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 text-[var(--t3)] hover:text-[var(--t1)] cursor-pointer flex items-center justify-center transition-colors">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="4" y1="21" x2="4" y2="14" />
+                    <line x1="4" y1="10" x2="4" y2="3" />
+                    <line x1="12" y1="21" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12" y2="3" />
+                    <line x1="20" y1="21" x2="20" y2="16" />
+                    <line x1="20" y1="12" x2="20" y2="3" />
+                    <line x1="1" y1="14" x2="7" y2="14" />
+                    <line x1="9" y1="8" x2="15" y2="8" />
+                    <line x1="17" y1="16" x2="23" y2="16" />
+                  </svg>
+                </button>
+                <Link to="/academic/homework" className="px-3.5 py-1.5 bg-[var(--s2)] hover:bg-[var(--s3)] border border-[var(--b)] hover:border-[var(--brand)]/30 text-[11px] font-bold text-[var(--t1)] rounded-xl no-underline transition-colors flex items-center justify-center">
+                  {isFarsi ? "مشاهده همه" : "View All"}
+                </Link>
+              </div>
+            </div>
+
+            {/* Assignments Grid (3 Columns) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {/* Card 1: Overdue / Due Soon */}
+              {pendingAssignments.length > 0 ? (() => {
+                const a = pendingAssignments[0];
+                const dueHours = getDueHours(a.due_date);
+                return (
+                  <div className="bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-[24px] p-5 flex flex-col justify-between gap-5 transition-all hover:translate-y-[-2px] shadow-sm">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex">
+                        <span className="text-[9px] font-black px-2 py-0.5 rounded bg-red-500/10 text-red-500 uppercase tracking-wider">
+                          {isFarsi ? `تحویل تا ${dueHours} ساعت دیگر` : `DUE IN ${dueHours}H`}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-extrabold text-[var(--t1)] leading-snug">{a.title}</h3>
+                      <p className="text-[10px] text-[var(--t3)] font-semibold mt-0.5">{a.academy_class_name} • {a.created_by_name || "Instructor"}</p>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-[var(--b)] pt-3.5 mt-1">
+                      <div className="flex -space-x-1.5">
+                        <div className="w-5.5 h-5.5 rounded-full bg-indigo-600 border-2 border-[var(--s2)] flex items-center justify-center text-[9px] text-white font-bold select-none">JD</div>
+                        <div className="w-5.5 h-5.5 rounded-full bg-teal-600 border-2 border-[var(--s2)] flex items-center justify-center text-[9px] text-white font-bold select-none">KL</div>
+                      </div>
+                      <Link to={`/academic/homework`} className="text-[11px] font-extrabold text-[var(--t1)] hover:text-[var(--brand)] transition-colors no-underline flex items-center gap-1">
+                        {isFarsi ? "ارسال پاسخ" : "Submit Work"} →
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })() : (
+                <div className="bg-[var(--s2)] border border-[var(--b)] rounded-[24px] p-5 flex flex-col justify-between gap-5 shadow-sm opacity-60">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex">
+                      <span className="text-[9px] font-black px-2 py-0.5 rounded bg-red-500/10 text-red-500 uppercase tracking-wider">
+                        {isFarsi ? "تحویل موعد" : "No Due Tasks"}
+                      </span>
+                    </div>
+                    <h3 className="text-sm font-extrabold text-[var(--t1)] leading-snug">{isFarsi ? "هیچ تکلیفی در مهلت فوری نیست" : "No homework due soon"}</h3>
+                  </div>
+                  <div className="border-t border-[var(--b)] pt-3.5 text-[11px] text-[var(--t3)]">
+                    {isFarsi ? "کلاس‌ها بدون موعد تکلیف" : "Everything is up to date"}
+                  </div>
+                </div>
+              )}
+
+              {/* Card 2: Draft / In Progress */}
+              {pendingAssignments.length > 1 ? (() => {
+                const a = pendingAssignments[1];
+                const sTime = a.due_date ? new Date(a.due_date) : null;
+                const totalDays = sTime ? Math.max(1, Math.ceil((sTime.getTime() - Date.now()) / 86400000)) : 2;
+                return (
+                  <div className="bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-[24px] p-5 flex flex-col justify-between gap-5 transition-all hover:translate-y-[-2px] shadow-sm">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex">
+                        <span className="text-[9px] font-black px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 uppercase tracking-wider">
+                          {isFarsi ? `${totalDays} روز باقی‌مانده` : `${totalDays} DAYS LEFT`}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-extrabold text-[var(--t1)] leading-snug">{a.title}</h3>
+                      <p className="text-[10px] text-[var(--t3)] font-semibold mt-0.5">{a.academy_class_name} • {a.created_by_name || "Instructor"}</p>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-[var(--b)] pt-3.5 mt-1 text-xs">
+                      <span className="text-[10px] text-[var(--t3)] flex items-center gap-1 select-none font-semibold">
+                        <span className="text-[var(--green)] font-bold">✓</span> {isFarsi ? "پیش‌نویس ذخیره شد" : "Draft Saved"}
+                      </span>
+                      <Link to={`/academic/homework`} className="text-[11px] font-extrabold text-[var(--brand)] hover:opacity-80 transition-opacity no-underline flex items-center gap-1">
+                        {isFarsi ? "ادامه تکلیف" : "Continue"} 📝
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })() : (
+                <div className="bg-[var(--s2)] border border-[var(--b)] rounded-[24px] p-5 flex flex-col justify-between gap-5 shadow-sm opacity-60">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex">
+                      <span className="text-[9px] font-black px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 uppercase tracking-wider">
+                        {isFarsi ? "بدون پیش‌نویس" : "No Drafts"}
+                      </span>
+                    </div>
+                    <h3 className="text-sm font-extrabold text-[var(--t1)] leading-snug">{isFarsi ? "هیچ پیش‌نویسی ذخیره نشده" : "No homework drafts"}</h3>
+                  </div>
+                  <div className="border-t border-[var(--b)] pt-3.5 text-[11px] text-[var(--t3)]">
+                    {isFarsi ? "کاری در جریان نیست" : "All clean"}
+                  </div>
+                </div>
+              )}
+
+              {/* Card 3: Graded / Completed */}
+              {gradedAssignmentSubmissions.length > 0 ? (() => {
+                const sub = gradedAssignmentSubmissions[0];
+                const dateText = sub.graded_at ? formatDueDate(sub.graded_at) : (isFarsi ? "اخیر" : "Recent");
+                return (
+                  <div className="bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-[24px] p-5 flex flex-col justify-between gap-5 transition-all hover:translate-y-[-2px] shadow-sm">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex">
+                        <span className="text-[9px] font-black px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 uppercase tracking-wider">
+                          {isFarsi ? `تصحیح شده: نمره ${sub.grade}` : `GRADED: ${sub.grade}`}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-extrabold text-[var(--t1)] leading-snug">{sub.assignment_title}</h3>
+                      <p className="text-[10px] text-[var(--t3)] font-semibold mt-0.5">{sub.academy_class_name || (isFarsi ? "کلاس من" : "My Class")}</p>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-[var(--b)] pt-3.5 mt-1 text-xs">
+                      <span className="text-[10px] text-[var(--t3)] font-medium select-none">
+                        {isFarsi ? `تکمیل در ${dateText}` : `Completed ${dateText}`}
+                      </span>
+                      <button
+                        onClick={() => {
+                          if (sub.feedback) {
+                            toast(sub.feedback, { icon: "💬", duration: 6000 });
+                          } else {
+                            toast.success(isFarsi ? "بازخورد متنی ثبت نشده است." : "No written feedback submitted yet.");
+                          }
+                        }}
+                        className="text-[11px] font-extrabold text-[var(--t2)] hover:text-[var(--t1)] bg-transparent border-none cursor-pointer flex items-center gap-1 transition-colors"
+                      >
+                        <span>{isFarsi ? "بازخورد" : "Feedback"}</span> 💬
+                      </button>
+                    </div>
+                  </div>
+                );
+              })() : (
+                <div className="bg-[var(--s2)] border border-[var(--b)] rounded-[24px] p-5 flex flex-col justify-between gap-5 shadow-sm opacity-60">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex">
+                      <span className="text-[9px] font-black px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 uppercase tracking-wider">
+                        {isFarsi ? "بدون نمره" : "No Grades"}
+                      </span>
+                    </div>
+                    <h3 className="text-sm font-extrabold text-[var(--t1)] leading-snug">{isFarsi ? "تکلیف نمره‌دهی شده وجود ندارد" : "No graded assignments yet"}</h3>
+                  </div>
+                  <div className="border-t border-[var(--b)] pt-3.5 text-[11px] text-[var(--t3)]">
+                    {isFarsi ? "در انتظار تصحیح اساتید" : "Awaiting evaluations"}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Row 3: Recent Recordings Carousel */}
+          <div className="flex flex-col gap-4 mt-2">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-extrabold text-[var(--t1)] tracking-tight flex items-center gap-2">
+                <span>▶️</span> {isFarsi ? "ویدیوهای ضبط‌شده اخیر" : "Recent Recordings"}
+              </h2>
+              <div className="flex items-center gap-1.5">
+                <button className="p-2.5 rounded-full bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 text-[var(--t3)] hover:text-[var(--t1)] cursor-pointer flex items-center justify-center w-8 h-8 transition-colors select-none font-bold">
+                  &lt;
+                </button>
+                <button className="p-2.5 rounded-full bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 text-[var(--t3)] hover:text-[var(--t1)] cursor-pointer flex items-center justify-center w-8 h-8 transition-colors select-none font-bold">
+                  &gt;
+                </button>
+              </div>
+            </div>
+
+            {studentRecordings.length === 0 ? (
+              <div className="p-10 text-center text-xs text-[var(--t3)] bg-[var(--s2)] rounded-3xl border border-[var(--b)] border-dashed">
+                {isFarsi ? "هیچ ویدیو ضبط شده‌ای برای شما در دسترس نیست." : "No recordings available currently."}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {studentRecordings.slice(0, 3).map((rec) => {
+                  const durationMin = Math.round(rec.duration_seconds / 60);
+                  const qualityTag = rec.quality || "720p";
+                  return (
+                    <div key={rec.public_token} className="bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-[24px] p-4 flex flex-col gap-3 transition-all hover:translate-y-[-2px] shadow-sm">
+                      {/* Image Thumbnail Box */}
+                      <div className="relative aspect-video rounded-[18px] overflow-hidden bg-[var(--s3)] border border-[var(--b)] flex items-center justify-center shadow-inner group">
+                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/15 flex items-center justify-center">
+                          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" strokeWidth="2" className="text-[var(--t3)] opacity-70 group-hover:scale-110 transition-transform duration-300">
+                            <circle cx="12" cy="12" r="10" />
+                            <polygon points="10 8 16 12 10 16 10 8" />
+                          </svg>
+                        </div>
+                        <span className="absolute top-2 start-2 text-[8px] font-black px-1.5 py-0.5 rounded bg-black/60 text-white uppercase tracking-wider">
+                          {qualityTag}
+                        </span>
+                        <span className="absolute bottom-2 end-2 bg-black/75 text-white font-mono text-[9px] px-1.5 py-0.5 rounded font-medium">
+                          {durationMin}:00
+                        </span>
+                      </div>
+                      <div className="flex flex-col">
+                        <h4 className="text-xs font-bold text-[var(--t1)] truncate">{rec.room_name || rec.room_code}</h4>
+                        <p className="text-[10px] text-[var(--t3)] font-semibold mt-0.5 truncate">{isFarsi ? "توسط" : "By"} {rec.owner_full_name}</p>
+                      </div>
+                      <div className="flex justify-end border-t border-[var(--b)] pt-3 mt-1">
+                        <Link to={`/recordings/${rec.public_token}`} className="text-[11px] font-bold text-[var(--brand)] hover:underline no-underline">
+                          {isFarsi ? "مشاهده فیلم ضبط‌شده" : "Watch Recording"} →
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Modals for Create/Join Org (Embedded for quick setup) */}
+          {showCreateModal && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+              <div className="bg-[var(--s1)] border border-[var(--b)] rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl relative">
+                <h3 className="text-lg font-bold text-[var(--t1)]">
+                  {isFarsi ? "ایجاد سازمان جدید" : "Create New Organization"}
+                </h3>
+                {errorMsg && (
+                  <div className="p-3 bg-[var(--red)]/10 border border-[var(--red)]/20 rounded-xl text-xs text-[var(--red)] flex items-center gap-1.5 animate-in fade-in">
+                    <span>⚠️</span>
+                    <span>{errorMsg}</span>
+                  </div>
+                )}
+                <form onSubmit={handleCreateOrg} className="space-y-4">
+                  <Input
+                    label={isFarsi ? "نام سازمان" : "Organization Name"}
+                    placeholder={isFarsi ? "آکادمی من" : "My Academy"}
+                    value={orgName}
+                    onChange={(e) => setOrgName(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        setShowCreateModal(false);
+                        setErrorMsg("");
+                      }}
+                      disabled={isSubmitting}
+                    >
+                      {isFarsi ? "لغو" : "Cancel"}
+                    </Button>
+                    <Button type="submit" loading={isSubmitting}>
+                      {isFarsi ? "ایجاد" : "Create"}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {showJoinModal && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+              <div className="bg-[var(--s1)] border border-[var(--b)] rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl relative">
+                <h3 className="text-lg font-bold text-[var(--t1)]">
+                  {isFarsi ? "پیوستن به سازمان" : "Join Organization"}
+                </h3>
+                {errorMsg && (
+                  <div className="p-3 bg-[var(--red)]/10 border border-[var(--red)]/20 rounded-xl text-xs text-[var(--red)] flex items-center gap-1.5 animate-in fade-in">
+                    <span>⚠️</span>
+                    <span>{errorMsg}</span>
+                  </div>
+                )}
+                <form onSubmit={handleJoinOrg} className="space-y-4">
+                  <Input
+                    label={isFarsi ? "شناسه یا اسلاگ سازمان" : "Organization ID or Slug"}
+                    placeholder={isFarsi ? "مثال: my-academy" : "e.g., my-academy"}
+                    value={orgCodeOrSlug}
+                    onChange={(e) => setOrgCodeOrSlug(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        setShowJoinModal(false);
+                        setErrorMsg("");
+                      }}
+                      disabled={isSubmitting}
+                    >
+                      {isFarsi ? "لغو" : "Cancel"}
+                    </Button>
+                    <Button type="submit" loading={isSubmitting}>
+                      {isFarsi ? "پیوستن" : "Join"}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell
