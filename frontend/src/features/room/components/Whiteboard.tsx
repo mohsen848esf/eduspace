@@ -6,6 +6,8 @@ import { Tooltip } from "../../../components/ui/Tooltip";
 import { Icons } from "../../../lib/constants/icons";
 import { cn } from "../../../lib/utils";
 import toast from "react-hot-toast";
+import { CanvasElement } from "../types/whiteboard";
+import InfiniteCanvas from "./InfiniteCanvas";
 
 interface WhiteboardProps {
   whiteboard: {
@@ -18,15 +20,6 @@ interface WhiteboardProps {
   broadcastWhiteboardEvent: (type: string, payload: any, reliable?: boolean) => void;
   subscribeWhiteboardEvents: (fn: (type: string, payload: any, fromIdentity?: string) => void) => () => void;
   requestSyncState: () => void;
-}
-
-interface Path {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-  color: string;
-  width: number;
 }
 
 interface CursorState {
@@ -45,6 +38,14 @@ const COLORS = [
   { value: "#0f172a", label: "Dark" },
 ];
 
+const FILL_COLORS = [
+  { value: "transparent", label: "None" },
+  { value: "rgba(99, 102, 241, 0.12)", label: "Indigo Light" },
+  { value: "rgba(16, 185, 129, 0.12)", label: "Emerald Light" },
+  { value: "rgba(245, 158, 11, 0.12)", label: "Amber Light" },
+  { value: "rgba(239, 68, 68, 0.12)", label: "Rose Light" },
+];
+
 const WIDTHS = [
   { value: 2, label: "Thin" },
   { value: 5, label: "Medium" },
@@ -60,29 +61,39 @@ export default function Whiteboard({
   requestSyncState,
 }: WhiteboardProps) {
   const { t } = useTranslation(["room", "common"]);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const { isHost } = useRoomStore();
   const { localParticipant } = useLocalParticipant();
   const participants = useParticipants();
 
+  // Floating toolbar state
+  const [activeTool, setActiveTool] = useState<string>("pencil");
   const [color, setColor] = useState("#6366f1");
+  const [fillColor, setFillColor] = useState("transparent");
   const [lineWidth, setLineWidth] = useState(5);
-  const [isEraser, setIsEraser] = useState(false);
-  const [isDrawing, setIsDrawing] = useState(false);
+  const [opacity] = useState(1);
+  const [snapToGrid, setSnapToGrid] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Floating cursors for other participants
+  // Whiteboard Canvas State
+  const [elements, setElements] = useState<Record<string, CanvasElement>>({});
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [cursors, setCursors] = useState<Record<string, CursorState>>({});
 
-  // History of lines drawn (stored locally for late-joiner sync)
-  const pathsRef = useRef<Path[]>([]);
-  const lastPosRef = useRef<{ x: number; y: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const elementsRef = useRef(elements);
 
-  // Drawing permissions check
+  // Undo / Redo history stacks
+  const historyRef = useRef<Record<string, CanvasElement>[]>([]);
+  const historyIndexRef = useRef<number>(-1);
+
+  // Sync elementsRef to read latest in listeners
+  useEffect(() => {
+    elementsRef.current = elements;
+  }, [elements]);
+
   const canDraw = isHost || whiteboard.isDrawingAllowed;
 
-  // Resolve display name by identity
+  // Resolve user display names
   const getParticipantName = useCallback(
     (identity: string) => {
       if (identity === localParticipant.identity) {
@@ -94,131 +105,120 @@ export default function Whiteboard({
     [localParticipant, participants],
   );
 
-  // Redraw canvas from path history
-  const redrawCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+  // Push elements snapshot to history stack
+  const saveToHistory = useCallback((nextElements: Record<string, CanvasElement>) => {
+    // Truncate future stack if we were in the middle of undoing
+    const history = historyRef.current.slice(0, historyIndexRef.current + 1);
+    history.push(nextElements);
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Draw all recorded paths
-    pathsRef.current.forEach((path) => {
-      ctx.beginPath();
-      ctx.strokeStyle = path.color;
-      ctx.lineWidth = path.width;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
+    // Limit stack size to 50
+    if (history.length > 50) {
+      history.shift();
+    }
 
-      // Convert percentages back to local pixels
-      const x1 = (path.x1 / 100) * canvas.width;
-      const y1 = (path.y1 / 100) * canvas.height;
-      const x2 = (path.x2 / 100) * canvas.width;
-      const y2 = (path.y2 / 100) * canvas.height;
-
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-    });
+    historyRef.current = history;
+    historyIndexRef.current = history.length - 1;
   }, []);
 
-  // Handle canvas sizing and responsiveness
-  const resizeCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
+  const handleUndo = useCallback(() => {
+    if (historyIndexRef.current > 0) {
+      historyIndexRef.current--;
+      const prevState = historyRef.current[historyIndexRef.current] || {};
+      setElements(prevState);
+      broadcastWhiteboardEvent("WHITEBOARD_OP", { type: "SYNC_ALL", elements: prevState }, true);
+    }
+  }, [broadcastWhiteboardEvent]);
 
-    // Set canvas dimensions to match display size
-    canvas.width = rect.width;
-    canvas.height = rect.height;
+  const handleRedo = useCallback(() => {
+    if (historyIndexRef.current < historyRef.current.length - 1) {
+      historyIndexRef.current++;
+      const nextState = historyRef.current[historyIndexRef.current];
+      setElements(nextState);
+      broadcastWhiteboardEvent("WHITEBOARD_OP", { type: "SYNC_ALL", elements: nextState }, true);
+    }
+  }, [broadcastWhiteboardEvent]);
 
-    // Redraw all lines to scale properly after resize
-    redrawCanvas();
-  }, [redrawCanvas]);
-
-  useEffect(() => {
-    resizeCanvas();
-    window.addEventListener("resize", resizeCanvas);
-    return () => window.removeEventListener("resize", resizeCanvas);
-  }, [resizeCanvas]);
-
-  // Request state sync from host on mount (late joiners)
-  useEffect(() => {
-    requestSyncState();
-  }, [requestSyncState]);
-
-  // Handle network whiteboard events
+  // Handle incoming collaboration events
   useEffect(() => {
     return subscribeWhiteboardEvents((type, payload, fromIdentity) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
       switch (type) {
-        case "WHITEBOARD_DRAW": {
-          const path = payload as Path;
-          // Store in local path history
-          pathsRef.current.push(path);
+        case "WHITEBOARD_OP": {
+          const op = payload as any;
+          if (fromIdentity === localParticipant.identity) break;
 
-          // Draw the received line segment
-          ctx.beginPath();
-          ctx.strokeStyle = path.color;
-          ctx.lineWidth = path.width;
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-
-          const x1 = (path.x1 / 100) * canvas.width;
-          const y1 = (path.y1 / 100) * canvas.height;
-          const x2 = (path.x2 / 100) * canvas.width;
-          const y2 = (path.y2 / 100) * canvas.height;
-
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-          ctx.stroke();
+          switch (op.type) {
+            case "CREATE": {
+              const el = op.element as CanvasElement;
+              setElements((prev) => {
+                const existing = prev[el.id];
+                if (existing && existing.timestamp >= el.timestamp) return prev;
+                return { ...prev, [el.id]: el };
+              });
+              break;
+            }
+            case "UPDATE": {
+              const { id, updates } = op;
+              setElements((prev) => {
+                const el = prev[id];
+                if (!el || el.timestamp >= updates.timestamp) return prev;
+                return { ...prev, [id]: { ...el, ...updates } };
+              });
+              break;
+            }
+            case "DELETE": {
+              const { ids } = op;
+              setElements((prev) => {
+                const next = { ...prev };
+                ids.forEach((id: string) => delete next[id]);
+                return next;
+              });
+              setSelectedIds((prev) => prev.filter((id) => !ids.includes(id)));
+              break;
+            }
+            case "CURSOR": {
+              if (!fromIdentity) break;
+              setCursors((prev) => ({
+                ...prev,
+                [fromIdentity]: {
+                  x: op.x,
+                  y: op.y,
+                  name: getParticipantName(fromIdentity),
+                  lastUpdated: Date.now(),
+                },
+              }));
+              break;
+            }
+            case "SYNC_ALL": {
+              setElements(op.elements);
+              break;
+            }
+          }
           break;
         }
 
         case "WHITEBOARD_CLEAR":
-          pathsRef.current = [];
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          setElements({});
+          setSelectedIds([]);
           break;
-
-        case "WHITEBOARD_CURSOR": {
-          if (!fromIdentity || fromIdentity === localParticipant.identity) break;
-          const cursor = payload as { x: number; y: number };
-          setCursors((prev) => ({
-            ...prev,
-            [fromIdentity]: {
-              x: cursor.x,
-              y: cursor.y,
-              name: getParticipantName(fromIdentity),
-              lastUpdated: Date.now(),
-            },
-          }));
-          break;
-        }
 
         case "WHITEBOARD_REQUEST_STATE":
-          // If we are the host, reply with state sync
+          // If we are host, respond to joiner request with current elements dictionary
           if (isHost && fromIdentity) {
-            broadcastWhiteboardEvent(
-              "WHITEBOARD_SYNC",
-              {
-                hostIdentity: localParticipant.identity,
-                isDrawingAllowed: whiteboard.isDrawingAllowed,
-                paths: pathsRef.current,
-                identity: localParticipant.identity, // needed to bypass sender check in RELAY
-              }
-            );
+            broadcastWhiteboardEvent("WHITEBOARD_SYNC", {
+              hostIdentity: localParticipant.identity,
+              isDrawingAllowed: whiteboard.isDrawingAllowed,
+              elements: elementsRef.current,
+            });
           }
           break;
 
         case "WHITEBOARD_SYNC": {
-          const syncPaths = payload as Path[];
-          if (Array.isArray(syncPaths)) {
-            pathsRef.current = syncPaths;
-            redrawCanvas();
+          const syncData = payload as any;
+          if (syncData && syncData.elements) {
+            setElements(syncData.elements);
+            // Seed initial history
+            historyRef.current = [syncData.elements];
+            historyIndexRef.current = 0;
           }
           break;
         }
@@ -231,10 +231,9 @@ export default function Whiteboard({
     whiteboard.isDrawingAllowed,
     broadcastWhiteboardEvent,
     getParticipantName,
-    redrawCanvas,
   ]);
 
-  // Clean up stale cursors (inactive for >3 seconds)
+  // Clean stale cursor pointers (> 3s inactivity)
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
@@ -250,116 +249,89 @@ export default function Whiteboard({
         return changed ? next : prev;
       });
     }, 1000);
-
     return () => clearInterval(interval);
   }, []);
 
-  // Local drawing actions
-  const drawLine = useCallback(
-    (x1: number, y1: number, x2: number, y2: number) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+  // Request state sync from host on startup (late joiners)
+  useEffect(() => {
+    requestSyncState();
+  }, [requestSyncState]);
 
-      const activeColor = isEraser ? "#0f172a" : color;
+  // Element changes trigger callback
+  const handleElementsChange = (nextElements: Record<string, CanvasElement>) => {
+    setElements(nextElements);
+    saveToHistory(nextElements);
+  };
 
-      // Normalize coordinates to percentage (0-100) for responsiveness
-      const normX1 = (x1 / canvas.clientWidth) * 100;
-      const normY1 = (y1 / canvas.clientHeight) * 100;
-      const normX2 = (x2 / canvas.clientWidth) * 100;
-      const normY2 = (y2 / canvas.clientHeight) * 100;
+  // Dispatch operations to participants
+  const handleBroadcastOp = (op: any) => {
+    const reliable = op.type !== "CURSOR";
+    broadcastWhiteboardEvent("WHITEBOARD_OP", op, reliable);
+  };
 
-      const path: Path = {
-        x1: normX1,
-        y1: normY1,
-        x2: normX2,
-        y2: normY2,
-        color: activeColor,
-        width: lineWidth,
+  // Embed video helper
+  const handleAddVideo = () => {
+    const url = prompt("Enter YouTube or Vimeo video URL:");
+    if (!url) return;
+
+    const id = "el_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
+    const newEl: CanvasElement = {
+      id,
+      type: "video",
+      x: 100,
+      y: 100,
+      width: 320,
+      height: 180,
+      color: "#6366f1",
+      creatorId: localParticipant.identity,
+      timestamp: Date.now(),
+      url: url,
+    } as any;
+
+    const nextElements = { ...elements, [id]: newEl };
+    handleElementsChange(nextElements);
+    handleBroadcastOp({ type: "CREATE", element: newEl });
+  };
+
+  // Upload image helper
+  const handleAddImage = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const id = "el_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
+        const newEl: CanvasElement = {
+          id,
+          type: "image",
+          x: 150,
+          y: 150,
+          width: 250,
+          height: 250,
+          color: "#6366f1",
+          creatorId: localParticipant.identity,
+          timestamp: Date.now(),
+          url: reader.result as string,
+        } as any;
+
+        const nextElements = { ...elements, [id]: newEl };
+        handleElementsChange(nextElements);
+        handleBroadcastOp({ type: "CREATE", element: newEl });
       };
-
-      // Draw locally immediately
-      pathsRef.current.push(path);
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.beginPath();
-        ctx.strokeStyle = activeColor;
-        ctx.lineWidth = lineWidth;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      }
-
-      // Broadcast to other participants
-      broadcastWhiteboardEvent("WHITEBOARD_DRAW", path, true);
-    },
-    [color, lineWidth, isEraser, broadcastWhiteboardEvent],
-  );
-
-  const handleStartDraw = (x: number, y: number) => {
-    if (!canDraw) {
-      toast.error("Drawing is locked by host", { id: "wb-locked" });
-      return;
-    }
-    setIsDrawing(true);
-    lastPosRef.current = { x, y };
+      reader.readAsDataURL(file);
+    };
+    input.click();
   };
 
-  const handleDrawing = (x: number, y: number) => {
-    // Broadcast cursor position (unreliable, throttled implicitly by mousemove speed)
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const normX = (x / canvas.clientWidth) * 100;
-      const normY = (y / canvas.clientHeight) * 100;
-      broadcastWhiteboardEvent("WHITEBOARD_CURSOR", { x: normX, y: normY }, false);
-    }
-
-    if (!isDrawing || !lastPosRef.current) return;
-    drawLine(lastPosRef.current.x, lastPosRef.current.y, x, y);
-    lastPosRef.current = { x, y };
-  };
-
-  const handleStopDraw = () => {
-    setIsDrawing(false);
-    lastPosRef.current = null;
-  };
-
-  // Mouse events
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    handleStartDraw(e.clientX - rect.left, e.clientY - rect.top);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    handleDrawing(e.clientX - rect.left, e.clientY - rect.top);
-  };
-
-  // Touch events (for mobile/tablet drawing)
-  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    const touch = e.touches[0];
-    if (!touch) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    handleStartDraw(touch.clientX - rect.left, touch.clientY - rect.top);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    const touch = e.touches[0];
-    if (!touch) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    handleDrawing(touch.clientX - rect.left, touch.clientY - rect.top);
-  };
-
-  // Clear canvas
+  // Clear canvas board
   const handleClear = () => {
     if (!isHost) return;
-    pathsRef.current = [];
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
+    setElements({});
+    setSelectedIds([]);
     broadcastWhiteboardEvent("WHITEBOARD_CLEAR", {}, true);
     toast.success("Board cleared");
   };
@@ -384,10 +356,10 @@ export default function Whiteboard({
   return (
     <div
       ref={containerRef}
-      className="flex flex-1 flex-col overflow-hidden bg-[#0f172a] select-none touch-none"
+      className="flex flex-1 flex-col overflow-hidden bg-[#0f172a] select-none touch-none relative"
     >
       {/* Topbar */}
-      <div className="h-12 bg-[#1e293b] border-b border-[#334155] flex items-center justify-between px-3 flex-shrink-0">
+      <div className="h-12 bg-[#1e293b] border-b border-[#334155] flex items-center justify-between px-3 flex-shrink-0 z-10">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-sm" aria-hidden>
             ✏️
@@ -455,130 +427,208 @@ export default function Whiteboard({
         </div>
       </div>
 
-      {/* Canvas Area */}
+      {/* Infinite Drawing Canvas Viewport */}
       <div className="flex-1 relative bg-[#0f172a] overflow-hidden">
-        <canvas
-          ref={canvasRef}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleStopDraw}
-          onMouseLeave={handleStopDraw}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleStopDraw}
-          className="absolute inset-0 w-full h-full cursor-crosshair"
+        <InfiniteCanvas
+          elements={elements}
+          selectedIds={selectedIds}
+          activeTool={activeTool}
+          color={color}
+          fillColor={fillColor}
+          lineWidth={lineWidth}
+          opacity={opacity}
+          canDraw={canDraw}
+          snapToGrid={snapToGrid}
+          onElementsChange={handleElementsChange}
+          onSelectedIdsChange={setSelectedIds}
+          broadcastOp={handleBroadcastOp}
+          localParticipantIdentity={localParticipant.identity}
         />
 
-        {/* Cursor overlays */}
-        {Object.entries(cursors).map(([id, cursor]) => {
-          const canvas = canvasRef.current;
-          if (!canvas) return null;
-          const x = (cursor.x / 100) * canvas.clientWidth;
-          const y = (cursor.y / 100) * canvas.clientHeight;
-
-          return (
-            <div
-              key={id}
-              className="absolute pointer-events-none transition-all duration-75 flex items-center gap-1"
-              style={{
-                left: `${x}px`,
-                top: `${y}px`,
-                transform: "translate(-2px, -2px)",
-                zIndex: 100,
-              }}
+        {/* Remote Cursors Floating Overlay */}
+        {Object.entries(cursors).map(([id, cursor]) => (
+          <div
+            key={id}
+            className="absolute pointer-events-none transition-all duration-75 flex items-center gap-1 z-40"
+            style={{
+              left: `${cursor.x}px`,
+              top: `${cursor.y}px`,
+              transform: "translate(-2px, -2px)",
+            }}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              className="text-indigo-400 drop-shadow"
             >
-              {/* Pointer SVG icon */}
-              <svg
-                viewBox="0 0 24 24"
-                width="16"
-                height="16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                className="text-indigo-400 drop-shadow"
-              >
-                <path
-                  d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"
-                  fill="currentColor"
-                />
-              </svg>
-              {/* Floating username label */}
-              <span className="text-[9px] font-bold bg-[#1e293b] text-white px-1.5 py-0.5 rounded shadow border border-[#334155] whitespace-nowrap">
-                {cursor.name}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+              <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" fill="currentColor" />
+            </svg>
+            <span className="text-[9px] font-bold bg-[#1e293b] text-white px-1.5 py-0.5 rounded shadow border border-[#334155] whitespace-nowrap">
+              {cursor.name}
+            </span>
+          </div>
+        ))}
 
-      {/* Toolbar */}
-      {canDraw && (
-        <div className="h-14 bg-[#1e293b] border-t border-[#334155] flex items-center justify-between px-4 flex-shrink-0">
-          <div className="flex items-center gap-4">
-            {/* Color Palette */}
-            <div className="flex items-center gap-1.5">
+        {/* Floating Left Toolbar (Miro-like) */}
+        {canDraw && (
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 bg-[#1e293b]/95 backdrop-blur border border-[#334155] rounded-xl p-2 shadow-2xl z-50">
+            {[
+              { id: "select", icon: "↖", label: "Select (V)" },
+              { id: "pencil", icon: "✏️", label: "Brush" },
+              { id: "highlighter", icon: "🖌️", label: "Highlighter" },
+              { id: "text", icon: "🇦", label: "Text Block" },
+              { id: "sticky", icon: "🗒️", label: "Sticky Note" },
+              { id: "rectangle", icon: "▭", label: "Rectangle" },
+              { id: "ellipse", icon: "◯", label: "Ellipse" },
+              { id: "diamond", icon: "♢", label: "Diamond" },
+              { id: "line", icon: "―", label: "Line" },
+              { id: "arrow", icon: "➔", label: "Arrow Connector" },
+            ].map((tool) => (
+              <Tooltip key={tool.id} content={tool.label} side="right">
+                <button
+                  onClick={() => {
+                    setActiveTool(tool.id);
+                    setSelectedIds([]);
+                  }}
+                  className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold cursor-pointer transition-colors border-none",
+                    activeTool === tool.id
+                      ? "bg-indigo-500 text-white"
+                      : "bg-transparent text-gray-300 hover:bg-[#334155]"
+                  )}
+                >
+                  {tool.icon}
+                </button>
+              </Tooltip>
+            ))}
+          </div>
+        )}
+
+        {/* Floating Bottom Properties Bar */}
+        {canDraw && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-[#1e293b]/95 backdrop-blur border border-[#334155] rounded-xl px-3 py-2 shadow-2xl z-50">
+            {/* Color choices */}
+            <div className="flex items-center gap-1">
               {COLORS.map((col) => (
                 <button
                   key={col.value}
-                  onClick={() => {
-                    setColor(col.value);
-                    setIsEraser(false);
-                  }}
-                  aria-label={col.label}
+                  onClick={() => setColor(col.value)}
                   className={cn(
-                    "w-6 h-6 rounded-full border cursor-pointer transition-transform",
-                    color === col.value && !isEraser
+                    "w-5 h-5 rounded-full border cursor-pointer transition-transform",
+                    color === col.value
                       ? "scale-125 border-white ring-2 ring-indigo-500/40"
                       : "border-transparent hover:scale-110"
                   )}
                   style={{ backgroundColor: col.value }}
                 />
               ))}
-              <Tooltip content="Eraser">
+            </div>
+
+            <div className="w-px h-5 bg-[#334155]" />
+
+            {/* Fill styles choice */}
+            <div className="flex items-center gap-1">
+              {FILL_COLORS.map((col) => (
                 <button
-                  onClick={() => setIsEraser(true)}
+                  key={col.value}
+                  onClick={() => setFillColor(col.value)}
                   className={cn(
-                    "w-7 h-7 rounded-lg border cursor-pointer flex items-center justify-center text-xs transition-colors",
-                    isEraser
+                    "w-5 h-5 rounded border cursor-pointer transition-transform flex items-center justify-center text-[10px] text-white",
+                    fillColor === col.value
+                      ? "scale-125 border-white ring-2 ring-indigo-500/40"
+                      : "border-transparent hover:scale-110"
+                  )}
+                  style={{
+                    backgroundColor: col.value === "transparent" ? "#0f172a" : col.value,
+                    border: col.value === "transparent" ? "1px dashed rgba(255,255,255,0.4)" : "none",
+                  }}
+                >
+                  {col.value === "transparent" && "Ø"}
+                </button>
+              ))}
+            </div>
+
+            <div className="w-px h-5 bg-[#334155]" />
+
+            {/* Brush sizes */}
+            <div className="flex gap-1">
+              {WIDTHS.map((w) => (
+                <button
+                  key={w.value}
+                  onClick={() => setLineWidth(w.value)}
+                  className={cn(
+                    "px-2 h-6 rounded text-[9px] font-bold border cursor-pointer transition-colors",
+                    lineWidth === w.value
                       ? "bg-indigo-500/20 border-indigo-400 text-indigo-400"
                       : "bg-[#334155] border-transparent text-gray-300 hover:bg-[#475569]"
                   )}
                 >
-                  🧽
+                  {w.label}
                 </button>
-              </Tooltip>
+              ))}
             </div>
 
-            {/* Line Width */}
-            <div className="h-6 w-px bg-[#334155]" />
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                Size:
-              </span>
-              <div className="flex gap-1">
-                {WIDTHS.map((w) => (
-                  <button
-                    key={w.value}
-                    onClick={() => setLineWidth(w.value)}
-                    className={cn(
-                      "px-2.5 h-6 rounded text-[10px] font-bold border cursor-pointer transition-colors",
-                      lineWidth === w.value
-                        ? "bg-indigo-500/20 border-indigo-400 text-indigo-400"
-                        : "bg-[#334155] border-transparent text-gray-300 hover:bg-[#475569]"
-                    )}
-                  >
-                    {w.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+            <div className="w-px h-5 bg-[#334155]" />
 
-          <div className="text-[10px] text-gray-400 font-semibold">
-            {isEraser ? "Mode: Eraser" : `Brush: ${lineWidth}px`}
+            {/* Embed Image and Video options */}
+            <Tooltip content="Upload Image">
+              <button
+                onClick={handleAddImage}
+                className="h-6 w-6 rounded bg-[#334155] hover:bg-[#475569] text-white text-xs border-none cursor-pointer flex items-center justify-center"
+              >
+                🖼️
+              </button>
+            </Tooltip>
+
+            <Tooltip content="Embed YouTube / Vimeo">
+              <button
+                onClick={handleAddVideo}
+                className="h-6 w-6 rounded bg-[#334155] hover:bg-[#475569] text-white text-xs border-none cursor-pointer flex items-center justify-center"
+              >
+                📺
+              </button>
+            </Tooltip>
+
+            <div className="w-px h-5 bg-[#334155]" />
+
+            {/* Grid Snapping Toggle */}
+            <Tooltip content={snapToGrid ? "Disable Snap to Grid" : "Enable Snap to Grid"}>
+              <button
+                onClick={() => setSnapToGrid(!snapToGrid)}
+                className={cn(
+                  "w-6 h-6 rounded text-xs border-none cursor-pointer flex items-center justify-center transition-colors",
+                  snapToGrid ? "bg-indigo-500 text-white" : "bg-[#334155] text-gray-300 hover:bg-[#475569]"
+                )}
+              >
+                🧲
+              </button>
+            </Tooltip>
+
+            {/* Undo / Redo */}
+            <Tooltip content="Undo">
+              <button
+                onClick={handleUndo}
+                className="w-6 h-6 rounded text-xs border-none bg-[#334155] text-gray-300 hover:bg-[#475569] cursor-pointer flex items-center justify-center"
+              >
+                ↶
+              </button>
+            </Tooltip>
+
+            <Tooltip content="Redo">
+              <button
+                onClick={handleRedo}
+                className="w-6 h-6 rounded text-xs border-none bg-[#334155] text-gray-300 hover:bg-[#475569] cursor-pointer flex items-center justify-center"
+              >
+                ↷
+              </button>
+            </Tooltip>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
