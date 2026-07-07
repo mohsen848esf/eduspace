@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
-  CanvasElement,
-  ElementType,
-  Point,
-  ViewportState,
-  PencilElement,
-  StickyElement,
-  TextElement,
+  type CanvasElement,
+  type ElementType,
+  type Point,
+  type ViewportState,
+  type PencilElement,
+  type StickyElement,
+  type TextElement,
 } from "../types/whiteboard";
 import { cn } from "../../../lib/utils";
 

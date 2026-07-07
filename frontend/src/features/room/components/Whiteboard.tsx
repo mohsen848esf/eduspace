@@ -6,7 +6,7 @@ import { Tooltip } from "../../../components/ui/Tooltip";
 import { Icons } from "../../../lib/constants/icons";
 import { cn } from "../../../lib/utils";
 import toast from "react-hot-toast";
-import { CanvasElement } from "../types/whiteboard";
+import { type CanvasElement } from "../types/whiteboard";
 import InfiniteCanvas from "./InfiniteCanvas";
 
 interface WhiteboardProps {
