@@ -1523,8 +1523,6 @@ export default function DashboardPage() {
     );
   }
 
-  const isTeacher = activeRole === "teacher" || activeRole === "admin";
-
   return (
     <AppShell
       title={t("title")}
