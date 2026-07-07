@@ -96,7 +96,7 @@ export default function Topbar({
   const isFarsi = language === "fa";
 
   return (
-    <header className="h-16 flex-shrink-0 flex items-center justify-between gap-4 px-4 md:px-5 bg-[#111827] border-b border-[#1f2937] transition-colors duration-300">
+    <header className="h-16 flex-shrink-0 flex items-center justify-between gap-4 px-4 md:px-5 bg-[#16161f] border-b border-[rgba(255,255,255,0.08)] transition-colors duration-300">
       {/* Left section: Hamburger / Breadcrumbs */}
       <div className="flex items-center gap-3 min-w-0">
         {showHamburger && (
@@ -104,7 +104,7 @@ export default function Topbar({
             <button
               onClick={onHamburgerClick}
               aria-label={t("dashboard:nav.openMenu")}
-              className="w-10 h-10 -ms-1 rounded-lg bg-transparent border-none cursor-pointer text-[#9ca3af] hover:bg-[#1f2937]/50 hover:text-white flex items-center justify-center transition-colors duration-150 flex-shrink-0"
+              className="w-10 h-10 -ms-1 rounded-lg bg-transparent border-none cursor-pointer text-[#c7c4d7] hover:bg-[#1e1e2a] hover:text-[#e4e1ed] flex items-center justify-center transition-colors duration-150 flex-shrink-0"
             >
               {Icons.menu}
             </button>
@@ -112,12 +112,12 @@ export default function Topbar({
         )}
         
         {/* Breadcrumbs */}
-        <div className="hidden lg:flex items-center gap-1.5 text-xs text-[#9ca3af] font-medium select-none">
+        <div className="hidden lg:flex items-center gap-1.5 text-xs text-[#c7c4d7] font-medium select-none">
           <span>{isFarsi ? "مسیریاب" : "Breadcrumbs"}</span>
-          <span className="text-[#4b5563]">&gt;</span>
+          <span className="text-[#464554]">&gt;</span>
           <span>{isFarsi ? "خانه" : "Home"}</span>
-          <span className="text-[#4b5563]">&gt;</span>
-          <span className="text-[#818cf8] font-semibold">{isFarsi ? "سامانه آموزشی" : "LMS"}</span>
+          <span className="text-[#464554]">&gt;</span>
+          <span className="text-[#c0c1ff] font-semibold">{isFarsi ? "سامانه آموزشی" : "LMS"}</span>
         </div>
 
         {/* Separator if breadcrumbs not visible on smaller screens */}
@@ -130,13 +130,13 @@ export default function Topbar({
 
       {/* Middle section: Search pill input */}
       <div className="hidden md:flex items-center relative max-w-[240px] w-full mx-auto">
-        <span className="absolute start-3 text-[#9ca3af] text-[11px]">🔍</span>
+        <span className="absolute start-3 text-[#c7c4d7] text-[11px]">🔍</span>
         <input
           type="text"
           placeholder={isFarsi ? "جستجوی دوره‌ها، فایل‌ها..." : "Search courses, docs..."}
           readOnly
           onClick={() => setShowSearchModal(true)}
-          className="w-full bg-[#1f2937]/50 hover:bg-[#1f2937] border border-[#374151] hover:border-[#4b5563] rounded-full py-1.5 ps-9 pe-4 text-xs cursor-pointer text-white focus:outline-none transition-all placeholder-[#6b7280]"
+          className="w-full bg-[#1e1e2a] border border-[rgba(255,255,255,0.1)] hover:border-[#6366f1] rounded-full py-1.5 ps-9 pe-4 text-xs cursor-pointer text-white focus:outline-none transition-all placeholder-[#908fa0]"
         />
       </div>
 
@@ -145,7 +145,7 @@ export default function Topbar({
         <Tooltip content={t("common:language.switchTo", { language: nextLanguageLabel })}>
           <button
             onClick={toggleLanguage}
-            className="px-2 h-8 rounded-lg bg-transparent border-none text-[#9ca3af] hover:bg-[#1f2937]/50 hover:text-white cursor-pointer flex items-center justify-center text-xs font-semibold uppercase tracking-wider transition-all duration-150"
+            className="px-2 h-8 rounded-lg bg-transparent border-none text-[#c7c4d7] hover:bg-[#1e1e2a] hover:text-[#e4e1ed] cursor-pointer flex items-center justify-center text-xs font-semibold uppercase tracking-wider transition-all duration-150"
           >
             {language === "en" ? "EN" : "FA"}
           </button>
@@ -154,7 +154,7 @@ export default function Topbar({
         <Tooltip content={isDark ? t("topbar.switchToLight") : t("topbar.switchToDark")}>
           <button
             onClick={onToggleTheme}
-            className="w-8 h-8 rounded-lg bg-transparent border-none text-[#9ca3af] hover:bg-[#1f2937]/50 hover:text-white cursor-pointer flex items-center justify-center text-base transition-all duration-150"
+            className="w-8 h-8 rounded-lg bg-transparent border-none text-[#c7c4d7] hover:bg-[#1e1e2a] hover:text-[#e4e1ed] cursor-pointer flex items-center justify-center text-base transition-all duration-150"
           >
             {isDark ? "🌙" : "☀️"}
           </button>
@@ -164,7 +164,7 @@ export default function Topbar({
         <Tooltip content={t("topbar.search") + " (Ctrl+K)"}>
           <button
             onClick={() => setShowSearchModal(true)}
-            className="w-8 h-8 rounded-lg bg-transparent border-none text-[#9ca3af] hover:bg-[#1f2937]/50 hover:text-white cursor-pointer flex items-center justify-center transition-all"
+            className="w-8 h-8 rounded-lg bg-transparent border-none text-[#c7c4d7] hover:bg-[#1e1e2a] hover:text-[#e4e1ed] cursor-pointer flex items-center justify-center transition-all"
           >
             🔍
           </button>
@@ -176,7 +176,7 @@ export default function Topbar({
             <button
               ref={bellRef}
               onClick={() => setShowInbox((p) => !p)}
-              className="relative w-8 h-8 rounded-lg border-none cursor-pointer flex items-center justify-center bg-transparent text-[#9ca3af] hover:bg-[#1f2937]/50 hover:text-white transition-all [&>svg]:w-[18px] [&>svg]:h-[18px]"
+              className="relative w-8 h-8 rounded-lg border-none cursor-pointer flex items-center justify-center bg-transparent text-[#c7c4d7] hover:bg-[#1e1e2a] hover:text-[#e4e1ed] transition-all [&>svg]:w-[18px] [&>svg]:h-[18px]"
             >
               {Icons.bell}
               {unreadCount > 0 && (
@@ -196,7 +196,7 @@ export default function Topbar({
           <button
             id="help-tour-button"
             onClick={triggerHelp}
-            className="w-8 h-8 rounded-lg border border-[#374151] hover:border-[#4b5563] bg-transparent text-[#9ca3af] hover:bg-[#1f2937]/50 hover:text-white cursor-pointer flex items-center justify-center text-sm font-semibold transition-all"
+            className="w-8 h-8 rounded-lg border border-[rgba(255,255,255,0.1)] hover:border-[#6366f1] bg-transparent text-[#c7c4d7] hover:bg-[#1e1e2a] hover:text-[#e4e1ed] cursor-pointer flex items-center justify-center text-sm font-semibold transition-all"
           >
             ❓
           </button>
@@ -214,7 +214,7 @@ export default function Topbar({
             })
           }
           disabled={roomLoading}
-          className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#818cf8] hover:bg-[#818cf8]/90 text-[#1e1b4b] font-bold text-xs cursor-pointer border-none transition-all active:scale-[0.98] disabled:opacity-50"
+          className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#c0c1ff] hover:bg-[#c0c1ff]/90 text-[#1000a9] font-bold text-xs cursor-pointer border-none transition-all active:scale-[0.98] disabled:opacity-50"
         >
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-shrink-0">
             <polygon points="23 7 16 12 23 17 23 7" />
@@ -230,7 +230,7 @@ export default function Topbar({
         {/* User avatar */}
         <div
           onClick={() => navigate("/settings/profile")}
-          className="w-8 h-8 rounded-full bg-gradient-to-br from-[#818cf8] to-[#c084fc] flex items-center justify-center text-white text-xs font-bold border-2 border-[#1f2937] hover:scale-105 transition-transform cursor-pointer flex-shrink-0"
+          className="w-8 h-8 rounded-full bg-gradient-to-br from-[#c0c1ff] to-[#8083ff] flex items-center justify-center text-white text-xs font-bold border-2 border-[#16161f] hover:scale-105 transition-transform cursor-pointer flex-shrink-0"
         >
           {user?.full_name?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase() || "U"}
         </div>

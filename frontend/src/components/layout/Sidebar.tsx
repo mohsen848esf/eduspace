@@ -93,8 +93,8 @@ export default function Sidebar({
           "text-start border-none cursor-pointer my-0.5",
           collapsed && "justify-center px-2",
           isActive
-            ? "bg-[#818cf8] text-[#1e1b4b] font-semibold shadow-sm hover:brightness-105"
-            : "bg-transparent text-[#9ca3af] hover:bg-[#1f2937]/50 hover:text-white",
+            ? "bg-[#c0c1ff] text-[#1000a9] font-bold shadow-sm"
+            : "bg-transparent text-[#c7c4d7] hover:bg-[#1e1e2a] hover:text-[#e4e1ed]",
         )}
       >
         <span className="text-base w-5 h-5 flex items-center justify-center flex-shrink-0">
@@ -121,7 +121,7 @@ export default function Sidebar({
     <aside
       className={cn(
         "flex flex-col flex-shrink-0 h-full",
-        "bg-[#111827] border-e border-[var(--b)]",
+        "bg-[#16161f] border-e border-[rgba(255,255,255,0.08)]",
         "transition-all duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
         collapsed ? "w-14" : "w-[220px]",
       )}
@@ -129,7 +129,7 @@ export default function Sidebar({
       {/* Logo */}
       <div
         className={cn(
-          "flex items-center h-16 px-4 border-b border-[#1f2937] flex-shrink-0",
+          "flex items-center h-16 px-4 border-b border-[rgba(255,255,255,0.08)] flex-shrink-0",
           collapsed && "justify-center",
         )}
       >
@@ -144,7 +144,7 @@ export default function Sidebar({
               collapsed && "justify-center",
             )}
           >
-            <div className="w-9 h-9 bg-[#818cf8] rounded-[10px] flex items-center justify-center text-white text-base font-bold flex-shrink-0 shadow-md">
+            <div className="w-9 h-9 bg-[#6366f1] rounded-[10px] flex items-center justify-center text-white text-base font-bold flex-shrink-0 shadow-md">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white">
                 <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
                 <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
@@ -155,7 +155,7 @@ export default function Sidebar({
                 <span className="text-[14px] font-bold text-white leading-tight">
                   EduSpace
                 </span>
-                <span className="text-[10px] text-[#9ca3af]">
+                <span className="text-[10px] text-[#c7c4d7]">
                   Enterprise LMS
                 </span>
               </div>
@@ -174,12 +174,12 @@ export default function Sidebar({
       </nav>
 
       {/* Bottom Actions */}
-      <div className="p-3 border-t border-[#1f2937] flex flex-col gap-1">
+      <div className="p-3 border-t border-[rgba(255,255,255,0.08)] flex flex-col gap-1">
         {/* Help */}
         <button
           onClick={triggerHelp}
           className={cn(
-            "flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-xl text-start border-none cursor-pointer bg-transparent text-[#9ca3af] hover:bg-[#1f2937]/50 hover:text-white transition-all",
+            "flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-xl text-start border-none cursor-pointer bg-transparent text-[#c7c4d7] hover:bg-[#1e1e2a] hover:text-[#e4e1ed] transition-all",
             collapsed && "justify-center px-2",
           )}
         >
@@ -201,7 +201,7 @@ export default function Sidebar({
         <button
           onClick={handleLogout}
           className={cn(
-            "flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-xl text-start border-none cursor-pointer bg-transparent text-[#9ca3af] hover:bg-[var(--red)]/10 hover:text-[var(--red)] transition-all",
+            "flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-xl text-start border-none cursor-pointer bg-transparent text-[#c7c4d7] hover:bg-[#ef4444]/10 hover:text-[#ef4444] transition-all",
             collapsed && "justify-center px-2",
           )}
         >
@@ -221,7 +221,7 @@ export default function Sidebar({
         {!collapsed && (
           <button
             onClick={() => navigate("/dashboard")}
-            className="w-full bg-[#374151]/40 hover:bg-[#374151] text-white border border-[#4b5563]/30 transition-all font-semibold rounded-xl text-center py-2 px-4 text-xs mt-3 flex items-center justify-center cursor-pointer whitespace-nowrap"
+            className="w-full bg-[rgba(255,255,255,0.05)] text-[#e4e1ed] border border-[rgba(255,255,255,0.1)] transition-all font-semibold rounded-xl text-center py-2 px-4 text-xs mt-3 flex items-center justify-center cursor-pointer whitespace-nowrap hover:bg-[#1e1e2a] hover:text-white"
           >
             {isFarsi ? "مرکز پشتیبانی" : "Support Center"}
           </button>
