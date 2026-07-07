@@ -1322,42 +1322,88 @@ export default function DashboardPage() {
                 <p className="text-[10px] text-[var(--t3)] font-semibold mt-1">{isFarsi ? "مجموع آمار به دست آمده از جلسات پایان یافته امروز" : "Aggregated metrics across all completed sessions today."}</p>
               </div>
 
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 pb-2">
+              <div className="flex flex-row justify-between items-center gap-6 pb-2">
                 {/* Statistics list */}
                 <div className="flex flex-col gap-3.5 w-full sm:w-1/2">
                   {/* Present */}
                   <div className="flex justify-between items-center text-xs font-bold">
                     <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[var(--green)]" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]" />
                       <span className="text-[var(--t2)]">{isFarsi ? "حاضر" : "Present"}</span>
                     </div>
-                    <span className="font-mono">88%</span>
+                    <span className="font-mono text-[var(--t1)]">88%</span>
                   </div>
                   {/* Late */}
                   <div className="flex justify-between items-center text-xs font-bold">
                     <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[var(--amber)]" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#f59e0b]" />
                       <span className="text-[var(--t2)]">{isFarsi ? "تاخیر" : "Late"}</span>
                     </div>
-                    <span className="font-mono">5%</span>
+                    <span className="font-mono text-[var(--t1)]">5%</span>
                   </div>
                   {/* Absent */}
                   <div className="flex justify-between items-center text-xs font-bold">
                     <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[var(--red)]" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#ef4444]" />
                       <span className="text-[var(--t2)]">{isFarsi ? "غایب" : "Absent"}</span>
                     </div>
-                    <span className="font-mono">7%</span>
+                    <span className="font-mono text-[var(--t1)]">7%</span>
                   </div>
                 </div>
 
-                {/* Vertical Separator */}
-                <div className="hidden sm:block w-px h-16 bg-[var(--b)]" />
-
-                {/* Big Count Box */}
-                <div className="flex flex-col items-center sm:items-start justify-center min-w-[120px] self-center sm:self-auto">
-                  <span className="text-4xl font-black text-[var(--t1)] font-mono">142</span>
-                  <span className="text-[10px] text-[var(--t3)] font-bold uppercase tracking-wider mt-1">{isFarsi ? "کل دانشجویان" : "Total Students"}</span>
+                {/* Donut Chart Ring */}
+                <div className="relative w-32 h-32 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
+                    <circle
+                      cx="60"
+                      cy="60"
+                      r="45"
+                      fill="transparent"
+                      stroke="var(--s3)"
+                      strokeWidth="10"
+                    />
+                    {/* Segment 1: Present (Green, 88%) */}
+                    <circle
+                      cx="60"
+                      cy="60"
+                      r="45"
+                      fill="transparent"
+                      stroke="#10b981"
+                      strokeWidth="10"
+                      strokeDasharray="248.8 282.7"
+                      strokeDashoffset="0"
+                    />
+                    {/* Segment 2: Late (Amber, 5%) */}
+                    <circle
+                      cx="60"
+                      cy="60"
+                      r="45"
+                      fill="transparent"
+                      stroke="#f59e0b"
+                      strokeWidth="10"
+                      strokeDasharray="14.1 282.7"
+                      strokeDashoffset="-248.8"
+                    />
+                    {/* Segment 3: Absent (Red, 7%) */}
+                    <circle
+                      cx="60"
+                      cy="60"
+                      r="45"
+                      fill="transparent"
+                      stroke="#ef4444"
+                      strokeWidth="10"
+                      strokeDasharray="19.8 282.7"
+                      strokeDashoffset="-262.9"
+                    />
+                  </svg>
+                  
+                  {/* Inner text values */}
+                  <div className="absolute flex flex-col items-center justify-center text-center">
+                    <span className="text-2xl font-black text-[var(--t1)] font-mono leading-none">142</span>
+                    <span className="text-[8px] text-[var(--t3)] font-bold uppercase tracking-wider mt-1 select-none">
+                      {isFarsi ? "کل دانشجویان" : "Total Students"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
