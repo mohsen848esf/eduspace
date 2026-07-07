@@ -3,6 +3,40 @@ import { useTranslation } from "react-i18next";
 import { useLocalParticipant, useRoomContext } from "@livekit/components-react";
 import { Track } from "livekit-client";
 import toast from "react-hot-toast";
+import client from "../../../lib/api/client";
+import { useRoomStore } from "../store/roomStore";
+
+function playChime() {
+  try {
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+    
+    const osc2 = audioCtx.createOscillator();
+    const gain2 = audioCtx.createGain();
+    osc2.connect(gain2);
+    gain2.connect(audioCtx.destination);
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); // E5
+    gain2.gain.setValueAtTime(0, audioCtx.currentTime);
+    gain2.gain.setValueAtTime(0.3, audioCtx.currentTime + 0.1);
+    gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+    
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + 0.25);
+    osc2.start(audioCtx.currentTime + 0.1);
+    osc2.stop(audioCtx.currentTime + 0.4);
+  } catch (e) {
+    console.error(e);
+  }
+}
 
 export type SidebarTab = "participants" | "chat" | "tools" | null;
 
@@ -16,6 +50,70 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [isPushToTalk, setIsPushToTalk] = useState(false);
   const room = useRoomContext();
+  const { roomCode } = useRoomStore();
+  const [handRaised, setHandRaised] = useState(false);
+
+  // Synchronize handRaised with local participant metadata
+  useEffect(() => {
+    if (!localParticipant) return;
+    const updateHandState = () => {
+      if (localParticipant.metadata) {
+        try {
+          const meta = JSON.parse(localParticipant.metadata);
+          setHandRaised(!!meta.handRaised);
+        } catch {
+          setHandRaised(false);
+        }
+      } else {
+        setHandRaised(false);
+      }
+    };
+
+    updateHandState();
+    localParticipant.on("metadataChanged", updateHandState);
+    return () => {
+      localParticipant.off("metadataChanged", updateHandState);
+    };
+  }, [localParticipant]);
+
+  const toggleHandRaise = useCallback(async () => {
+    if (!roomCode) return;
+    const nextState = !handRaised;
+    setHandRaised(nextState);
+    try {
+      await client.post(`/rooms/${roomCode}/raise-hand/`, {
+        raised: nextState,
+      });
+    } catch {
+      setHandRaised(handRaised);
+      toast.error(t("handRaise.failed"));
+    }
+  }, [roomCode, handRaised, t]);
+
+  // Listen to remote participant metadata changes (Raise Hand notification)
+  useEffect(() => {
+    if (!room || !localParticipant) return;
+
+    const handleParticipantMetadataChanged = (metadata: string | undefined, participant: any) => {
+      if (participant.identity === localParticipant.identity) return;
+      if (!metadata) return;
+      try {
+        const meta = JSON.parse(metadata);
+        if (meta.handRaised) {
+          playChime();
+          const name = participant.name || participant.identity;
+          toast(t("handRaise.toastRaised", { name }), { icon: "✋" });
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    room.on("participantMetadataChanged", handleParticipantMetadataChanged);
+    return () => {
+      room.off("participantMetadataChanged", handleParticipantMetadataChanged);
+    };
+  }, [room, localParticipant, t]);
 
   // PTT state — track if space is held
   const pttActive = useRef(false);
@@ -188,5 +286,7 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
     toggleSettings,
     togglePushToTalk,
     setIsCamOn,
+    handRaised,
+    toggleHandRaise,
   };
 }

@@ -87,6 +87,7 @@ interface TileViewProps {
   onMute?: (p: RemoteParticipant) => void;
   onKick?: (p: RemoteParticipant) => void;
   mutedByHost?: Set<string>;
+  onLowerHand?: (p: RemoteParticipant) => void;
   /** Currently pinned tile key, used to render the pin badge. */
   pinnedKey: string | null;
   /** Pin / unpin handler. */
@@ -117,6 +118,7 @@ function TileView({
   onMute,
   onKick,
   mutedByHost,
+  onLowerHand,
   pinnedKey,
   onTogglePin,
   compact = false,
@@ -130,6 +132,17 @@ function TileView({
   const isLocal = participant.identity === localIdentity;
   const name = participant.name || participant.identity;
   const gradient = getAvatarGradient(participant.identity);
+
+  // Parse participant metadata
+  let handRaised = false;
+  if (participant.metadata) {
+    try {
+      const meta = JSON.parse(participant.metadata);
+      handRaised = !!meta.handRaised;
+    } catch {
+      // ignore
+    }
+  }
 
   const camRef = getCamRef(participant, tracks);
   const screenRef = getScreenRef(participant, tracks);
@@ -211,6 +224,13 @@ function TileView({
         </div>
       )}
 
+      {handRaised && kind === "camera" && (
+        <div className="absolute top-2 start-2 bg-[var(--amber)]/90 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-md animate-pulse">
+          <span>✋</span>
+          {!compact && <span>{t("controls.raiseHand") || "Raised"}</span>}
+        </div>
+      )}
+
       {pinned && !compact && (
         <div className="absolute top-2 end-2 bg-[var(--brand)]/80 backdrop-blur-sm text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md">
           📌
@@ -263,6 +283,19 @@ function TileView({
               would be redundant. */}
           {isHost && kind === "camera" && !isLocal && (
             <>
+              {handRaised && (
+                <Tooltip content={t("host.lowerHand") || "Lower Hand"}>
+                  <button
+                    className={cn(
+                      "rounded-full border-none cursor-pointer text-white flex items-center justify-center transition-all active:scale-95 bg-[var(--amber)]/60 hover:bg-[var(--amber)]/80",
+                      compact ? "w-7 h-7 text-xs" : "w-9 h-9 text-base",
+                    )}
+                    onClick={() => onLowerHand?.(participant as RemoteParticipant)}
+                  >
+                    ✋
+                  </button>
+                </Tooltip>
+              )}
               <Tooltip
                 content={
                   mutedByHost?.has(participant.identity)
@@ -324,6 +357,7 @@ interface LayoutCommonProps {
   onMute?: (p: RemoteParticipant) => void;
   onKick?: (p: RemoteParticipant) => void;
   mutedByHost?: Set<string>;
+  onLowerHand?: (p: RemoteParticipant) => void;
   pinnedKey: string | null;
   onTogglePin: (key: string) => void;
 }
@@ -356,6 +390,7 @@ function GridLayout(props: LayoutCommonProps) {
           onMute={props.onMute}
           onKick={props.onKick}
           mutedByHost={props.mutedByHost}
+          onLowerHand={props.onLowerHand}
           pinnedKey={props.pinnedKey}
           onTogglePin={props.onTogglePin}
           className={getTileClass(idx, tiles.length)}
@@ -496,6 +531,7 @@ function PinnedShareLayout(props: LayoutCommonProps) {
           onMute={props.onMute}
           onKick={props.onKick}
           mutedByHost={props.mutedByHost}
+          onLowerHand={props.onLowerHand}
           pinnedKey={pinnedKey}
           onTogglePin={props.onTogglePin}
         />
@@ -540,6 +576,7 @@ function PinnedShareLayout(props: LayoutCommonProps) {
           onMute={props.onMute}
           onKick={props.onKick}
           mutedByHost={props.mutedByHost}
+          onLowerHand={props.onLowerHand}
           pinnedKey={pinnedKey}
           onTogglePin={props.onTogglePin}
         />
@@ -556,6 +593,7 @@ function PinnedShareLayout(props: LayoutCommonProps) {
             onMute={props.onMute}
             onKick={props.onKick}
             mutedByHost={props.mutedByHost}
+            onLowerHand={props.onLowerHand}
             pinnedKey={pinnedKey}
             onTogglePin={props.onTogglePin}
             compact
@@ -617,6 +655,7 @@ function SpotlightLayout(props: LayoutCommonProps) {
           onMute={props.onMute}
           onKick={props.onKick}
           mutedByHost={props.mutedByHost}
+          onLowerHand={props.onLowerHand}
           pinnedKey={pinnedKey}
           onTogglePin={onTogglePin}
         />
@@ -634,6 +673,7 @@ function SpotlightLayout(props: LayoutCommonProps) {
                 tracks={props.tracks}
                 localIdentity={props.localIdentity}
                 mutedByHost={props.mutedByHost}
+                onLowerHand={props.onLowerHand}
                 pinnedKey={pinnedKey}
                 onTogglePin={onTogglePin}
                 compact
@@ -669,6 +709,7 @@ function SidebarLayout(props: LayoutCommonProps) {
           onMute={props.onMute}
           onKick={props.onKick}
           mutedByHost={props.mutedByHost}
+          onLowerHand={props.onLowerHand}
           pinnedKey={pinnedKey}
           onTogglePin={onTogglePin}
         />
@@ -681,6 +722,7 @@ function SidebarLayout(props: LayoutCommonProps) {
               tracks={props.tracks}
               localIdentity={props.localIdentity}
               mutedByHost={props.mutedByHost}
+              onLowerHand={props.onLowerHand}
               pinnedKey={pinnedKey}
               onTogglePin={onTogglePin}
               compact
@@ -698,7 +740,7 @@ interface VideoGridProps {
 }
 
 export default function VideoGrid({ layout }: VideoGridProps) {
-  const { isHost, muteParticipant, kickParticipant } = useHostControls();
+  const { isHost, muteParticipant, kickParticipant, lowerParticipantHand } = useHostControls();
   const { mutedByHost } = useRoomStore();
   const { tiles, tracks, localIdentity, pinnedKey, setPinnedKey } =
     useCallTiles();
@@ -715,6 +757,7 @@ export default function VideoGrid({ layout }: VideoGridProps) {
     onMute: muteParticipant,
     onKick: kickParticipant,
     mutedByHost,
+    onLowerHand: lowerParticipantHand,
     pinnedKey,
     onTogglePin,
   };

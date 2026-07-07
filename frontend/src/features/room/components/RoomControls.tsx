@@ -31,6 +31,8 @@ interface RoomControlsProps {
   isPushToTalk: boolean;
   onTogglePushToTalk: () => void;
   onLeave: () => void;
+  handRaised: boolean;
+  onToggleHandRaise: () => void;
   /**
    * Optional override the active panel highlight. Used by mobile shells
    * that drive their own activePanel state instead of relying on
@@ -497,6 +499,8 @@ export default function RoomControls({
   activePanelOverride,
   onPanelButtonClick,
   size = "md",
+  handRaised,
+  onToggleHandRaise,
 }: RoomControlsProps) {
   const { t } = useTranslation("room");
   const [micPopoverOpen, setMicPopoverOpen] = useState(false);
@@ -596,6 +600,14 @@ export default function RoomControls({
           tooltip={t("tooltips.screenShare")}
           onClick={onToggleScreenShare}
           isOn={isScreenSharing}
+          size={size}
+        />
+        <CtrlBtn
+          icon={handRaised ? Icons.handFilled : Icons.hand}
+          label={handRaised ? t("controls.lowerHand") : t("controls.raiseHand")}
+          tooltip={handRaised ? t("tooltips.lowerHand") : t("tooltips.raiseHand")}
+          onClick={onToggleHandRaise}
+          isOn={handRaised}
           size={size}
         />
       </div>

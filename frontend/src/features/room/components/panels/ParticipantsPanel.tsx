@@ -15,6 +15,7 @@ import recordingsApi, {
 } from "../../../recordings/api/recordings.api";
 import InviteModal from "../InviteModal";
 import { getAvatarGradient, getInitials } from "./avatarHelpers";
+import { useHostControls } from "../../hooks/useHostControls";
 
 /**
  * Panel content listing the host and other participants.
@@ -29,6 +30,7 @@ export default function ParticipantsPanel() {
   const participants = useParticipants();
   const { localParticipant } = useLocalParticipant();
   const { roomCode, isHost } = useRoomStore();
+  const { lowerParticipantHand, lowerAllHands } = useHostControls();
   const [showInvite, setShowInvite] = useState(false);
   const [grants, setGrants] = useState<RecordingGrantUser[]>([]);
   const [grantBusy, setGrantBusy] = useState<string | null>(null);
@@ -101,6 +103,39 @@ export default function ParticipantsPanel() {
     participants.find((p) => p.permissions?.canPublish) || localParticipant;
   const others = participants.filter((p) => p.identity !== host.identity);
 
+  const getHandRaiseInfo = (p: any) => {
+    if (!p.metadata) return { raised: false, at: 0 };
+    try {
+      const meta = JSON.parse(p.metadata);
+      return {
+        raised: !!meta.handRaised,
+        at: typeof meta.handRaisedAt === "number" ? meta.handRaisedAt : 0,
+      };
+    } catch {
+      return { raised: false, at: 0 };
+    }
+  };
+
+  const sortedOthers = useMemo(() => {
+    return [...others].sort((a, b) => {
+      const infoA = getHandRaiseInfo(a);
+      const infoB = getHandRaiseInfo(b);
+      if (infoA.raised && !infoB.raised) return -1;
+      if (!infoA.raised && infoB.raised) return 1;
+      if (infoA.raised && infoB.raised) {
+        return infoA.at - infoB.at;
+      }
+      return 0;
+    });
+  }, [others]);
+
+  const hasHandsRaised = useMemo(() => {
+    return others.some((p) => {
+      const info = getHandRaiseInfo(p);
+      return info.raised;
+    });
+  }, [others]);
+
   const ParticipantRow = ({
     participant,
     isLocal,
@@ -112,6 +147,15 @@ export default function ParticipantsPanel() {
     const gradient = getAvatarGradient(participant.identity);
     const { mutedByHost } = useRoomStore();
     const isMutedByHost = mutedByHost?.has(participant.identity);
+
+    // Parse participant metadata
+    let handRaised = false;
+    if (participant.metadata) {
+      try {
+        const meta = JSON.parse(participant.metadata);
+        handRaised = !!meta.handRaised;
+      } catch {}
+    }
 
     // Real publication state — preferred over the local "we asked the host
     // to mute" flag so the row never lies if the participant unmuted again.
@@ -140,10 +184,15 @@ export default function ParticipantsPanel() {
             </span>
           )}
         </div>
-        <span className="text-xs font-medium text-[var(--t1)] flex-1 truncate">
+        <span className="text-xs font-medium text-[var(--t1)] truncate">
           {isLocal ? `${name} ${t("tile.you")}` : name}
         </span>
-        <div className="flex gap-1 items-center">
+        {handRaised && (
+          <span className="text-amber-500 text-xs animate-pulse" title={t("controls.raiseHand")}>
+            ✋
+          </span>
+        )}
+        <div className="flex gap-1 items-center ms-auto">
           {/* Host-only: toggle to grant/revoke recording control. The
               host themselves is implicitly always allowed, so we only
               show the toggle on the "others" rows. */}
@@ -155,6 +204,19 @@ export default function ParticipantsPanel() {
               onToggle={(next) => toggleGrant(participant.identity, next)}
               t={t}
             />
+          )}
+          {isHost && !isLocal && handRaised && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                lowerParticipantHand(participant);
+              }}
+              title={t("host.lowerHand") || "Lower Hand"}
+              className="h-5 px-1.5 rounded-md border-none cursor-pointer flex items-center bg-[var(--amber)]/15 text-[var(--amber)] hover:bg-[var(--amber)]/25 text-[9px] font-bold transition-colors"
+            >
+              LOWER
+            </button>
           )}
           <span
             className={cn(
@@ -191,12 +253,23 @@ export default function ParticipantsPanel() {
       </div>
       <ParticipantRow participant={localParticipant} isLocal />
 
-      {others.length > 0 && (
+      {sortedOthers.length > 0 && (
         <>
-          <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider px-2 py-1.5 mt-2">
-            {t("sidebar.students", { count: others.length })}
+          <div className="flex items-center justify-between px-2 py-1.5 mt-2">
+            <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider">
+              {t("sidebar.students", { count: sortedOthers.length })}
+            </div>
+            {isHost && hasHandsRaised && (
+              <button
+                type="button"
+                onClick={lowerAllHands}
+                className="text-[9px] font-bold text-[var(--amber)] bg-[var(--amber)]/15 hover:bg-[var(--amber)]/25 px-2 py-0.5 rounded border-none cursor-pointer transition-colors"
+              >
+                {t("host.lowerAllHands") || "Lower all"}
+              </button>
+            )}
           </div>
-          {others.map((p) => (
+          {sortedOthers.map((p) => (
             <ParticipantRow key={p.identity} participant={p} />
           ))}
         </>

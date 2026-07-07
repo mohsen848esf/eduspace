@@ -68,9 +68,33 @@ export function useCallTiles(): UseCallTilesResult {
   // some versions of @livekit/components-react. Filter to be safe.
   const participants = useMemo<Participant[]>(() => {
     const list: Participant[] = [localParticipant];
-    for (const p of remote) {
-      if (p.identity !== localParticipant.identity) list.push(p);
-    }
+    const remoteList = remote.filter((p) => p.identity !== localParticipant.identity);
+
+    const getHandRaiseInfo = (p: Participant) => {
+      if (!p.metadata) return { raised: false, at: 0 };
+      try {
+        const meta = JSON.parse(p.metadata);
+        return {
+          raised: !!meta.handRaised,
+          at: typeof meta.handRaisedAt === "number" ? meta.handRaisedAt : 0,
+        };
+      } catch {
+        return { raised: false, at: 0 };
+      }
+    };
+
+    remoteList.sort((a, b) => {
+      const infoA = getHandRaiseInfo(a);
+      const infoB = getHandRaiseInfo(b);
+      if (infoA.raised && !infoB.raised) return -1;
+      if (!infoA.raised && infoB.raised) return 1;
+      if (infoA.raised && infoB.raised) {
+        return infoA.at - infoB.at;
+      }
+      return 0;
+    });
+
+    list.push(...remoteList);
     return list;
   }, [localParticipant, remote]);
 

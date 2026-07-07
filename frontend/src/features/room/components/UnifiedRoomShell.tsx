@@ -40,6 +40,8 @@ interface UnifiedRoomShellProps {
     toggleSidebar: (tab: SidebarTab) => void;
     toggleSettings: () => void;
     togglePushToTalk: () => void;
+    handRaised: boolean;
+    onToggleHandRaise: () => void;
   };
   layout: LayoutMode;
   onLayoutChange: (l: LayoutMode) => void;
@@ -190,6 +192,8 @@ export default function UnifiedRoomShell({
             onLayoutChange={onLayoutChange}
             onToggleSettings={controls.toggleSettings}
             onLeave={onLeaveRequest}
+            handRaised={controls.handRaised}
+            onToggleHandRaise={controls.onToggleHandRaise}
           />
         ) : (
           <RoomControls
@@ -209,6 +213,8 @@ export default function UnifiedRoomShell({
             onLayoutChange={onLayoutChange}
             onLeave={onLeaveRequest}
             size={breakpoint === "tablet" ? "md" : "lg"}
+            handRaised={controls.handRaised}
+            onToggleHandRaise={controls.onToggleHandRaise}
           />
         )}
 

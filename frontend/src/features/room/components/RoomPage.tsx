@@ -149,6 +149,8 @@ function RoomContent({
       toggleSidebar: controls.toggleSidebar,
       toggleSettings: controls.toggleSettings,
       togglePushToTalk: controls.togglePushToTalk,
+      handRaised: controls.handRaised,
+      onToggleHandRaise: controls.toggleHandRaise,
     },
     layout,
     onLayoutChange: setLayout,

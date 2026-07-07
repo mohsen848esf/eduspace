@@ -32,7 +32,9 @@
     "tools": "ابزارها",
     "settings": "تنظیمات",
     "leave": "خروج",
-    "layout": "چیدمان"
+    "layout": "چیدمان",
+    "raiseHand": "بالا بردن دست",
+    "lowerHand": "پایین آوردن دست"
   },
   "tooltips": {
     "muteOn": "بستن میکروفون · Ctrl+D",
@@ -47,7 +49,9 @@
     "tools": "ابزارهای جلسه",
     "layout": "تغییر چیدمان",
     "settings": "تنظیمات کلی",
-    "leave": "خروج از جلسه"
+    "leave": "خروج از جلسه",
+    "raiseHand": "بالا بردن دست",
+    "lowerHand": "پایین آوردن دست"
   },
   "layouts": {
     "title": "چیدمان",
@@ -153,7 +157,13 @@
     "screenShareFailed": "اعطای دسترسی ناموفق بود",
     "youWereMuted": "میزبان میکروفون شما را بست",
     "hostUnmuted": "میزبان میکروفون شما را باز کرد",
-    "hostTurnedOffCamera": "میزبان دوربین شما را خاموش کرد"
+    "hostTurnedOffCamera": "میزبان دوربین شما را خاموش کرد",
+    "lowerHand": "پایین آوردن دست",
+    "lowerAllHands": "پایین آوردن دست همه",
+    "handLowered": "دست {{name}} پایین آورده شد",
+    "handLowerFailed": "پایین آوردن دست ناموفق بود",
+    "loweredAllHands": "دست همه شرکت‌کنندگان پایین آورده شد",
+    "lowerAllHandsFailed": "پایین آوردن دست همه ناموفق بود"
   },
   "join": {
     "joining": "در حال ورود به اتاق...",
@@ -166,5 +176,9 @@
     "toastGranted": "{{name}} اکنون می‌تواند ضبط را مدیریت کند",
     "toastRevoked": "{{name}} دیگر نمی‌تواند ضبط را مدیریت کند",
     "toastFailed": "به‌روزرسانی مجوز ضبط ناموفق بود"
+  },
+  "handRaise": {
+    "toastRaised": "{{name}} دست خود را بالا برد!",
+    "failed": "تغییر وضعیت دست ناموفق بود"
   }
 }
