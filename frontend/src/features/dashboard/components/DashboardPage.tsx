@@ -231,14 +231,33 @@ export default function DashboardPage() {
   );
   const roundMaxVal = Math.ceil(maxVal / 100) * 100;
 
+  const getBezierPath = (points: { x: number; y: number }[]) => {
+    if (points.length === 0) return "";
+    if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+    let path = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[i];
+      const p1 = points[i + 1];
+      const cp1x = p0.x + (p1.x - p0.x) / 2;
+      const cp1y = p0.y;
+      const cp2x = p0.x + (p1.x - p0.x) / 2;
+      const cp2y = p1.y;
+      path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
+    }
+    return path;
+  };
+
   const getX = (index: number) => 50 + (index * 530) / 5;
   const getY = (value: number) => 210 - (value * 190) / roundMaxVal;
 
-  const revenuePath = `M ${chartData.map((d, idx) => `${getX(idx)} ${getY(d.revenue)}`).join(" L ")}`;
-  const expensePath = `M ${chartData.map((d, idx) => `${getX(idx)} ${getY(d.expense)}`).join(" L ")}`;
+  const pointsRevenue = chartData.map((d, idx) => ({ x: getX(idx), y: getY(d.revenue) }));
+  const pointsExpense = chartData.map((d, idx) => ({ x: getX(idx), y: getY(d.expense) }));
 
-  const revenueArea = `${revenuePath} L ${getX(5)} 210 L ${getX(0)} 210 Z`;
-  const expenseArea = `${expensePath} L ${getX(5)} 210 L ${getX(0)} 210 Z`;
+  const revenuePath = getBezierPath(pointsRevenue);
+  const expensePath = getBezierPath(pointsExpense);
+
+  const revenueArea = pointsRevenue.length > 0 ? `${revenuePath} L ${getX(pointsRevenue.length - 1)} 210 L ${getX(0)} 210 Z` : "";
+  const expenseArea = pointsExpense.length > 0 ? `${expensePath} L ${getX(pointsExpense.length - 1)} 210 L ${getX(0)} 210 Z` : "";
 
   // Next Up Session Logic
   const scheduledSessions = allSessions
@@ -438,6 +457,18 @@ export default function DashboardPage() {
     .filter((s) => s.status === "scheduled" && s.scheduled_start && new Date(s.scheduled_start) > new Date())
     .sort((a, b) => new Date(a.scheduled_start!).getTime() - new Date(b.scheduled_start!).getTime())
     .slice(0, 5);
+
+  const studentPoints = gradedAssignmentSubmissions.map((sub, idx) => {
+    const x = 50 + (idx * 500) / Math.max(1, gradedAssignmentSubmissions.length - 1);
+    const val = parseFloat(sub.grade || "0");
+    const y = 160 - (val * 130) / 100;
+    return { x, y };
+  });
+
+  const studentPath = getBezierPath(studentPoints);
+  const studentArea = studentPoints.length > 0
+    ? `${studentPath} L ${studentPoints[studentPoints.length - 1].x} 160 L 50 160 Z`
+    : "";
 
   return (
     <AppShell
@@ -1207,13 +1238,7 @@ export default function DashboardPage() {
                         {gradedAssignmentSubmissions.length > 1 && (
                           <>
                             <path
-                              d={`M ${gradedAssignmentSubmissions
-                                .map((sub, idx) => {
-                                  const x = 50 + (idx * 500) / Math.max(1, gradedAssignmentSubmissions.length - 1);
-                                  const y = 160 - (parseFloat(sub.grade || "0") * 130) / 100;
-                                  return `${x} ${y}`;
-                                })
-                                .join(" L ")}`}
+                              d={studentPath}
                               fill="none"
                               stroke="var(--brand)"
                               strokeWidth="3"
@@ -1221,16 +1246,7 @@ export default function DashboardPage() {
                               strokeLinejoin="round"
                             />
                             <path
-                              d={`M ${gradedAssignmentSubmissions
-                                .map((sub, idx) => {
-                                  const x = 50 + (idx * 500) / Math.max(1, gradedAssignmentSubmissions.length - 1);
-                                  const y = 160 - (parseFloat(sub.grade || "0") * 130) / 100;
-                                  return `${x} ${y}`;
-                                })
-                                .join(" L ")} L ${50 +
-                                ((gradedAssignmentSubmissions.length - 1) * 500) /
-                                Math.max(1, gradedAssignmentSubmissions.length - 1)
-                                } 160 L 50 160 Z`}
+                              d={studentArea}
                               fill="url(#gradeGrad)"
                             />
                           </>
