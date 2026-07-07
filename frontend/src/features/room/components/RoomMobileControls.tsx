@@ -24,6 +24,8 @@ interface RoomMobileControlsProps {
   onLayoutChange: (l: LayoutMode) => void;
   onToggleSettings: () => void;
   onLeave: () => void;
+  handRaised: boolean;
+  onToggleHandRaise: () => void;
 }
 
 /**
@@ -50,6 +52,8 @@ export default function RoomMobileControls({
   onLayoutChange,
   onToggleSettings,
   onLeave,
+  handRaised,
+  onToggleHandRaise,
 }: RoomMobileControlsProps) {
   const { t } = useTranslation("room");
 
@@ -90,6 +94,12 @@ export default function RoomMobileControls({
         icon={Icons.screenShare}
         onClick={onToggleScreenShare}
         variant={isScreenSharing ? "active" : "default"}
+      />
+      <IconButton
+        tooltip={handRaised ? t("tooltips.lowerHand") : t("tooltips.raiseHand")}
+        icon={handRaised ? Icons.handFilled : Icons.hand}
+        onClick={onToggleHandRaise}
+        variant={handRaised ? "active" : "default"}
       />
 
       <span className="w-px h-6 bg-[var(--b)] mx-0.5" aria-hidden />

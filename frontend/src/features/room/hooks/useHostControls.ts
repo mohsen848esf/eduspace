@@ -88,5 +88,35 @@ export function useHostControls() {
     [isHost, roomCode, t],
   );
 
-  return { isHost, muteParticipant, kickParticipant, grantScreenShare };
+  const lowerParticipantHand = useCallback(
+    async (participant: RemoteParticipant) => {
+      if (!isHost) return;
+      try {
+        await client.post(`/rooms/${roomCode}/raise-hand/`, {
+          identity: participant.identity,
+          raised: false,
+        });
+        const name = participant.name || participant.identity;
+        toast.success(t("host.handLowered", { name }));
+      } catch {
+        toast.error(t("host.handLowerFailed"));
+      }
+    },
+    [isHost, roomCode, t],
+  );
+
+  const lowerAllHands = useCallback(
+    async () => {
+      if (!isHost) return;
+      try {
+        await client.post(`/rooms/${roomCode}/lower-all-hands/`);
+        toast.success(t("host.loweredAllHands"));
+      } catch {
+        toast.error(t("host.lowerAllHandsFailed"));
+      }
+    },
+    [isHost, roomCode, t],
+  );
+
+  return { isHost, muteParticipant, kickParticipant, grantScreenShare, lowerParticipantHand, lowerAllHands };
 }

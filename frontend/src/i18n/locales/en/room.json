@@ -32,7 +32,9 @@
     "tools": "Tools",
     "settings": "Settings",
     "leave": "Leave",
-    "layout": "Layout"
+    "layout": "Layout",
+    "raiseHand": "Raise Hand",
+    "lowerHand": "Lower Hand"
   },
   "tooltips": {
     "muteOn": "Mute · Ctrl+D",
@@ -47,7 +49,9 @@
     "tools": "Session tools",
     "layout": "Change layout",
     "settings": "General settings",
-    "leave": "Leave session"
+    "leave": "Leave session",
+    "raiseHand": "Raise Hand",
+    "lowerHand": "Lower Hand"
   },
   "layouts": {
     "title": "Layout",
@@ -153,7 +157,13 @@
     "screenShareFailed": "Failed to grant permission",
     "youWereMuted": "You were muted by the host",
     "hostUnmuted": "Host unmuted your microphone",
-    "hostTurnedOffCamera": "Your camera was turned off by the host"
+    "hostTurnedOffCamera": "Your camera was turned off by the host",
+    "lowerHand": "Lower Hand",
+    "lowerAllHands": "Lower All Hands",
+    "handLowered": "Lowered hand for {{name}}",
+    "handLowerFailed": "Failed to lower hand",
+    "loweredAllHands": "Lowered all hands",
+    "lowerAllHandsFailed": "Failed to lower all hands"
   },
   "join": {
     "joining": "Joining room...",
@@ -166,5 +176,9 @@
     "toastGranted": "{{name}} can now control recording",
     "toastRevoked": "{{name}} can no longer control recording",
     "toastFailed": "Could not update recording permission"
+  },
+  "handRaise": {
+    "toastRaised": "{{name}} raised their hand!",
+    "failed": "Failed to update hand state"
   }
 }

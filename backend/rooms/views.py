@@ -352,3 +352,123 @@ def grant_screen_share(request, room_code):
         return Response({'error': 'Identity required'}, status=status.HTTP_400_BAD_REQUEST)
 
     return Response({'message': f'Permission granted to {identity}'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def raise_hand(request, room_code):
+    try:
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    raised = request.data.get('raised')
+    if raised is None:
+        return Response({'error': 'raised (boolean) is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    identity = request.data.get('identity')
+    
+    # If a host wants to lower another user's hand:
+    if identity and identity != request.user.username:
+        if room.host != request.user:
+            return Response({'error': 'Only host can change other participants hand raise state'}, status=status.HTTP_403_FORBIDDEN)
+        target_identity = identity
+    else:
+        target_identity = request.user.username
+
+    try:
+        from livekit import api as lk_api
+        import json
+
+        async def update_meta():
+            lk = lk_api.LiveKitAPI(
+                url=settings.LIVEKIT_HOST_URL,
+                api_key=settings.LIVEKIT_API_KEY,
+                api_secret=settings.LIVEKIT_API_SECRET,
+            )
+            # Fetch the participant from list to retrieve current metadata
+            res = await lk.room.list_participants(
+                lk_api.ListParticipantsRequest(room=room_code)
+            )
+            participant = next((p for p in res.participants if p.identity == target_identity), None)
+            
+            meta = {}
+            if participant and participant.metadata:
+                try:
+                    meta = json.loads(participant.metadata)
+                except Exception:
+                    pass
+            
+            meta['handRaised'] = raised
+            meta['handRaisedAt'] = int(timezone.now().timestamp() * 1000) if raised else 0
+
+            await lk.room.update_participant(
+                lk_api.UpdateParticipantRequest(
+                    room=room_code,
+                    identity=target_identity,
+                    metadata=json.dumps(meta)
+                )
+            )
+            await lk.aclose()
+
+        asyncio.run(update_meta())
+        return Response({'message': f'Hand raise state updated for {target_identity}', 'raised': raised})
+
+    except Exception as e:
+        import traceback
+        print('HAND RAISE ERROR:', traceback.format_exc())
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def lower_all_hands(request, room_code):
+    try:
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if room.host != request.user:
+        return Response({'error': 'Only host can lower all hands'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        from livekit import api as lk_api
+        import json
+
+        async def lower_all():
+            lk = lk_api.LiveKitAPI(
+                url=settings.LIVEKIT_HOST_URL,
+                api_key=settings.LIVEKIT_API_KEY,
+                api_secret=settings.LIVEKIT_API_SECRET,
+            )
+            res = await lk.room.list_participants(
+                lk_api.ListParticipantsRequest(room=room_code)
+            )
+            for p in res.participants:
+                meta = {}
+                if p.metadata:
+                    try:
+                        meta = json.loads(p.metadata)
+                    except Exception:
+                        pass
+                
+                if meta.get('handRaised'):
+                    meta['handRaised'] = False
+                    meta['handRaisedAt'] = 0
+                    await lk.room.update_participant(
+                        lk_api.UpdateParticipantRequest(
+                            room=room_code,
+                            identity=p.identity,
+                            metadata=json.dumps(meta)
+                        )
+                    )
+            await lk.aclose()
+
+        asyncio.run(lower_all())
+        return Response({'message': 'All hands lowered successfully'})
+
+    except Exception as e:
+        import traceback
+        print('LOWER ALL HANDS ERROR:', traceback.format_exc())
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
