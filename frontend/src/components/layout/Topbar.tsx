@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useEffect, useRef, useState } from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Tooltip } from "../ui/Tooltip";
 import { useAuthStore } from "../../features/auth/store/authStore";
@@ -10,7 +10,6 @@ import NotificationsPopover from "./NotificationsPopover";
 import { useQueryClient } from "@tanstack/react-query";
 import { useOrgContextStore } from "../../features/auth/store/orgContextStore";
 import GlobalSearchModal from "./GlobalSearchModal";
-import { usePageHelp } from "../help/PageHelpProvider";
 import { useRoom } from "../../features/room/hooks/useRoom";
 
 interface TopbarProps {
@@ -22,6 +21,11 @@ interface TopbarProps {
   showHamburger?: boolean;
   /** Click handler for the hamburger; AppShell wires this to open the drawer. */
   onHamburgerClick?: () => void;
+}
+
+interface BreadcrumbItem {
+  name: string;
+  url?: string;
 }
 
 export default function Topbar({
@@ -39,7 +43,6 @@ export default function Topbar({
   const { language, toggleLanguage } = useLocale();
   const { logout, user } = useAuthStore();
   const { orgContext, activeSlug, fetchOrgContext, setActiveSlug } = useOrgContextStore();
-  const { triggerHelp } = usePageHelp();
   const { createRoom, isLoading: roomLoading } = useRoom();
 
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
@@ -95,8 +98,84 @@ export default function Topbar({
 
   const isFarsi = language === "fa";
 
+  const getBreadcrumbItems = (): BreadcrumbItem[] => {
+    const items: BreadcrumbItem[] = [];
+    
+    // Start with active Organization Name (if exists)
+    if (orgContext?.organization?.name) {
+      items.push({
+        name: orgContext.organization.name,
+        url: "/dashboard",
+      });
+    }
+    
+    // Parse pathname segments
+    const segments = location.pathname.split("/").filter(Boolean);
+    
+    const segmentNamesEn: Record<string, string> = {
+      dashboard: "Dashboard",
+      academic: "Academic",
+      courses: "Courses",
+      classes: "Classroom",
+      sessions: "Sessions",
+      attendance: "Attendance",
+      homework: "Homework",
+      payments: "Payments",
+      assessments: "Assessments",
+      leaderboard: "Leaderboard",
+      reports: "Reports",
+      crm: "CRM",
+      members: "Members",
+      finance: "Finance",
+      ledger: "Ledger",
+      recordings: "Recordings",
+      settings: "Settings",
+      profile: "Profile",
+    };
+
+    const segmentNamesFa: Record<string, string> = {
+      dashboard: "داشبورد",
+      academic: "آموزش",
+      courses: "دوره‌ها",
+      classes: "کلاس درس",
+      sessions: "جلسات",
+      attendance: "حضور و غیاب",
+      homework: "تکالیف",
+      payments: "پرداخت‌ها",
+      assessments: "آزمون‌ها",
+      leaderboard: "امتیازات",
+      reports: "گزارش‌ها",
+      crm: "سی‌آرام",
+      members: "اعضا",
+      finance: "امور مالی",
+      ledger: "دفتر مالی",
+      recordings: "ویدیوها",
+      settings: "تنظیمات",
+      profile: "پروفایل",
+    };
+
+    let currentPath = "";
+    segments.forEach((seg) => {
+      currentPath += `/${seg}`;
+      
+      // Ignore if dynamic ID (numbers or UUIDs)
+      const isId = /^\d+$/.test(seg) || /^[0-9a-fA-F-]{8,}$/.test(seg);
+      if (isId) return;
+      
+      const label = isFarsi ? (segmentNamesFa[seg] || seg) : (segmentNamesEn[seg] || seg);
+      items.push({
+        name: label,
+        url: currentPath,
+      });
+    });
+    
+    return items;
+  };
+
+  const breadcrumbs = getBreadcrumbItems();
+
   return (
-    <header className="h-16 flex-shrink-0 flex items-center justify-between gap-4 px-4 md:px-5 bg-[#16161f] border-b border-[rgba(255,255,255,0.08)] transition-colors duration-300">
+    <header className="h-16 flex-shrink-0 flex items-center justify-between gap-4 px-4 md:px-5 bg-[var(--s1)] border-b border-[var(--b)] transition-colors duration-300">
       {/* Left section: Hamburger / Breadcrumbs */}
       <div className="flex items-center gap-3 min-w-0">
         {showHamburger && (
@@ -104,25 +183,37 @@ export default function Topbar({
             <button
               onClick={onHamburgerClick}
               aria-label={t("dashboard:nav.openMenu")}
-              className="w-10 h-10 -ms-1 rounded-lg bg-transparent border-none cursor-pointer text-[#c7c4d7] hover:bg-[#1e1e2a] hover:text-[#e4e1ed] flex items-center justify-center transition-colors duration-150 flex-shrink-0"
+              className="w-10 h-10 -ms-1 rounded-lg bg-transparent border-none cursor-pointer text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] flex items-center justify-center transition-colors duration-150 flex-shrink-0"
             >
               {Icons.menu}
             </button>
           </Tooltip>
         )}
         
-        {/* Breadcrumbs */}
-        <div className="hidden lg:flex items-center gap-1.5 text-xs text-[#c7c4d7] font-medium select-none">
-          <span>{isFarsi ? "مسیریاب" : "Breadcrumbs"}</span>
-          <span className="text-[#464554]">&gt;</span>
-          <span>{isFarsi ? "خانه" : "Home"}</span>
-          <span className="text-[#464554]">&gt;</span>
-          <span className="text-[#c0c1ff] font-semibold">{isFarsi ? "سامانه آموزشی" : "LMS"}</span>
-        </div>
+        {/* Dynamic Breadcrumbs */}
+        {breadcrumbs.length > 0 && (
+          <div className="hidden lg:flex items-center gap-1.5 text-xs text-[var(--t3)] font-medium select-none">
+            {breadcrumbs.map((item, idx) => {
+              const isLast = idx === breadcrumbs.length - 1;
+              return (
+                <React.Fragment key={idx}>
+                  {idx > 0 && <span className="text-[var(--t3)] mx-0.5">&gt;</span>}
+                  {isLast ? (
+                    <span className="text-[var(--brand-text)] font-semibold">{item.name}</span>
+                  ) : (
+                    <Link to={item.url || "/dashboard"} className="hover:text-[var(--brand-text)] text-[var(--t3)] no-underline transition-colors">
+                      {item.name}
+                    </Link>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        )}
 
-        {/* Separator if breadcrumbs not visible on smaller screens */}
+        {/* Dynamic single title if breadcrumbs not visible on smaller screens */}
         <div className="lg:hidden flex flex-col min-w-0">
-          <span className="text-[13px] font-semibold text-white truncate">
+          <span className="text-[13px] font-semibold text-[var(--t1)] truncate">
             {title}
           </span>
         </div>
@@ -130,22 +221,22 @@ export default function Topbar({
 
       {/* Middle section: Search pill input */}
       <div className="hidden md:flex items-center relative max-w-[240px] w-full mx-auto">
-        <span className="absolute start-3 text-[#c7c4d7] text-[11px]">🔍</span>
+        <span className="absolute start-3 text-[var(--t3)] text-[11px]">🔍</span>
         <input
           type="text"
           placeholder={isFarsi ? "جستجوی دوره‌ها، فایل‌ها..." : "Search courses, docs..."}
           readOnly
           onClick={() => setShowSearchModal(true)}
-          className="w-full bg-[#1e1e2a] border border-[rgba(255,255,255,0.1)] hover:border-[#6366f1] rounded-full py-1.5 ps-9 pe-4 text-xs cursor-pointer text-white focus:outline-none transition-all placeholder-[#908fa0]"
+          className="w-full bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)] rounded-full py-1.5 ps-9 pe-4 text-xs cursor-pointer text-[var(--t1)] focus:outline-none transition-all placeholder-[var(--t3)]"
         />
       </div>
 
-      {/* Right section: Actions, Search, Notifications, Help, New Meeting, Avatar */}
+      {/* Right section: Language, Theme, Notifications, New Meeting, Avatar */}
       <div className="flex items-center gap-2 flex-shrink-0">
         <Tooltip content={t("common:language.switchTo", { language: nextLanguageLabel })}>
           <button
             onClick={toggleLanguage}
-            className="px-2 h-8 rounded-lg bg-transparent border-none text-[#c7c4d7] hover:bg-[#1e1e2a] hover:text-[#e4e1ed] cursor-pointer flex items-center justify-center text-xs font-semibold uppercase tracking-wider transition-all duration-150"
+            className="px-2 h-8 rounded-lg bg-transparent border-none text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] cursor-pointer flex items-center justify-center text-xs font-semibold uppercase tracking-wider transition-all duration-150"
           >
             {language === "en" ? "EN" : "FA"}
           </button>
@@ -154,19 +245,9 @@ export default function Topbar({
         <Tooltip content={isDark ? t("topbar.switchToLight") : t("topbar.switchToDark")}>
           <button
             onClick={onToggleTheme}
-            className="w-8 h-8 rounded-lg bg-transparent border-none text-[#c7c4d7] hover:bg-[#1e1e2a] hover:text-[#e4e1ed] cursor-pointer flex items-center justify-center text-base transition-all duration-150"
+            className="w-8 h-8 rounded-lg bg-transparent border-none text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] cursor-pointer flex items-center justify-center text-base transition-all duration-150"
           >
             {isDark ? "🌙" : "☀️"}
-          </button>
-        </Tooltip>
-
-        {/* Search Icon */}
-        <Tooltip content={t("topbar.search") + " (Ctrl+K)"}>
-          <button
-            onClick={() => setShowSearchModal(true)}
-            className="w-8 h-8 rounded-lg bg-transparent border-none text-[#c7c4d7] hover:bg-[#1e1e2a] hover:text-[#e4e1ed] cursor-pointer flex items-center justify-center transition-all"
-          >
-            🔍
           </button>
         </Tooltip>
 
@@ -176,7 +257,7 @@ export default function Topbar({
             <button
               ref={bellRef}
               onClick={() => setShowInbox((p) => !p)}
-              className="relative w-8 h-8 rounded-lg border-none cursor-pointer flex items-center justify-center bg-transparent text-[#c7c4d7] hover:bg-[#1e1e2a] hover:text-[#e4e1ed] transition-all [&>svg]:w-[18px] [&>svg]:h-[18px]"
+              className="relative w-8 h-8 rounded-lg border-none cursor-pointer flex items-center justify-center bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-all [&>svg]:w-[18px] [&>svg]:h-[18px]"
             >
               {Icons.bell}
               {unreadCount > 0 && (
@@ -191,17 +272,6 @@ export default function Topbar({
           />
         </div>
 
-        {/* Help question rounded square */}
-        <Tooltip content={t("common:help.title", "Help & Tours")}>
-          <button
-            id="help-tour-button"
-            onClick={triggerHelp}
-            className="w-8 h-8 rounded-lg border border-[rgba(255,255,255,0.1)] hover:border-[#6366f1] bg-transparent text-[#c7c4d7] hover:bg-[#1e1e2a] hover:text-[#e4e1ed] cursor-pointer flex items-center justify-center text-sm font-semibold transition-all"
-          >
-            ❓
-          </button>
-        </Tooltip>
-
         {/* New Meeting button */}
         <button
           onClick={() =>
@@ -214,7 +284,7 @@ export default function Topbar({
             })
           }
           disabled={roomLoading}
-          className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#c0c1ff] hover:bg-[#c0c1ff]/90 text-[#1000a9] font-bold text-xs cursor-pointer border-none transition-all active:scale-[0.98] disabled:opacity-50"
+          className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[var(--brand-soft)] hover:opacity-95 text-[var(--brand-text)] font-bold text-xs cursor-pointer border-none transition-all active:scale-[0.98] disabled:opacity-50"
         >
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-shrink-0">
             <polygon points="23 7 16 12 23 17 23 7" />
@@ -230,7 +300,7 @@ export default function Topbar({
         {/* User avatar */}
         <div
           onClick={() => navigate("/settings/profile")}
-          className="w-8 h-8 rounded-full bg-gradient-to-br from-[#c0c1ff] to-[#8083ff] flex items-center justify-center text-white text-xs font-bold border-2 border-[#16161f] hover:scale-105 transition-transform cursor-pointer flex-shrink-0"
+          className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--brand-soft)] to-[var(--brand)] flex items-center justify-center text-[var(--brand-text)] text-xs font-bold border-2 border-[var(--b)] hover:scale-105 transition-transform cursor-pointer flex-shrink-0"
         >
           {user?.full_name?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase() || "U"}
         </div>

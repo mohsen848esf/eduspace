@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { Tooltip } from "../ui/Tooltip";
 import { useOrgPermission } from "../../hooks/useOrgPermission";
-import { mainNavItems, manageNavItems } from "./navItems";
+import { mainNavItems, manageNavItems, type NavItem } from "./navItems";
 import { useAuthStore } from "../../features/auth/store/authStore";
 import { Icons } from "../../lib/constants/icons";
 import { useLocale } from "../../i18n/useLocale";
@@ -33,47 +33,7 @@ export default function Sidebar({
     navigate("/login");
   };
 
-  const customNavItems = [
-    { id: "dashboard", labelEn: "Dashboard", labelFa: "داشبورد", icon: Icons.home },
-    {
-      id: "courses",
-      labelEn: "Course Catalog",
-      labelFa: "کاتالوگ دوره‌ها",
-      icon: (
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-          <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
-        </svg>
-      ),
-    },
-    { id: "classes", labelEn: "Classroom", labelFa: "کلاس درس", icon: Icons.camera },
-    {
-      id: "reports",
-      labelEn: "Analytics",
-      labelFa: "تحلیل و آمار",
-      icon: (
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M18 20V10M12 20V4M6 20v-6" />
-        </svg>
-      ),
-    },
-    {
-      id: "ledger",
-      labelEn: "Finance",
-      labelFa: "امور مالی",
-      icon: (
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="2" y="5" width="20" height="14" rx="2" ry="2" />
-          <line x1="2" y1="10" x2="22" y2="10" />
-        </svg>
-      ),
-    },
-    { id: "organization", labelEn: "Settings", labelFa: "تنظیمات", icon: Icons.settings },
-  ];
-
-  const filterNavItem = (id: string) => {
-    const item = [...mainNavItems, ...manageNavItems].find((n) => n.id === id);
-    if (!item) return true;
+  const filterNavItem = (item: NavItem) => {
     if (item.permissions && !hasAnyPermission(item.permissions)) return false;
     if (item.roles) {
       const normActiveRole = (activeRole || "").toLowerCase();
@@ -82,9 +42,9 @@ export default function Sidebar({
     return true;
   };
 
-  const NavButton = ({ item }: { item: typeof customNavItems[0] }) => {
+  const NavButton = ({ item }: { item: NavItem }) => {
     const isActive = activeId === item.id;
-    const label = isFarsi ? item.labelFa : item.labelEn;
+    const label = t(item.labelKey);
     const btn = (
       <button
         onClick={() => onNavigate?.(item.id)}
@@ -93,8 +53,8 @@ export default function Sidebar({
           "text-start border-none cursor-pointer my-0.5",
           collapsed && "justify-center px-2",
           isActive
-            ? "bg-[#c0c1ff] text-[#1000a9] font-bold shadow-sm"
-            : "bg-transparent text-[#c7c4d7] hover:bg-[#1e1e2a] hover:text-[#e4e1ed]",
+            ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-bold shadow-sm"
+            : "bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)]",
         )}
       >
         <span className="text-base w-5 h-5 flex items-center justify-center flex-shrink-0">
@@ -105,11 +65,19 @@ export default function Sidebar({
             {label}
           </span>
         )}
+        {!collapsed && item.badge && (
+          <span className="bg-[var(--red)] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+            {item.badge}
+          </span>
+        )}
       </button>
     );
 
     return collapsed ? (
-      <Tooltip content={label} side="right">
+      <Tooltip
+        content={item.badge ? `${label} · ${item.badge} new` : label}
+        side="right"
+      >
         {btn}
       </Tooltip>
     ) : (
@@ -121,7 +89,7 @@ export default function Sidebar({
     <aside
       className={cn(
         "flex flex-col flex-shrink-0 h-full",
-        "bg-[#16161f] border-e border-[rgba(255,255,255,0.08)]",
+        "bg-[var(--s1)] border-e border-[var(--b)]",
         "transition-all duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
         collapsed ? "w-14" : "w-[220px]",
       )}
@@ -129,7 +97,7 @@ export default function Sidebar({
       {/* Logo */}
       <div
         className={cn(
-          "flex items-center h-16 px-4 border-b border-[rgba(255,255,255,0.08)] flex-shrink-0",
+          "flex items-center h-16 px-4 border-b border-[var(--b)] flex-shrink-0",
           collapsed && "justify-center",
         )}
       >
@@ -144,7 +112,7 @@ export default function Sidebar({
               collapsed && "justify-center",
             )}
           >
-            <div className="w-9 h-9 bg-[#6366f1] rounded-[10px] flex items-center justify-center text-white text-base font-bold flex-shrink-0 shadow-md">
+            <div className="w-9 h-9 bg-[var(--brand)] rounded-[10px] flex items-center justify-center text-white text-base font-bold flex-shrink-0 shadow-md">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white">
                 <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
                 <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
@@ -152,10 +120,10 @@ export default function Sidebar({
             </div>
             {!collapsed && (
               <div className="flex flex-col">
-                <span className="text-[14px] font-bold text-white leading-tight">
+                <span className="text-[14px] font-bold text-[var(--t1)] leading-tight">
                   EduSpace
                 </span>
-                <span className="text-[10px] text-[#c7c4d7]">
+                <span className="text-[10px] text-[var(--t3)]">
                   Enterprise LMS
                 </span>
               </div>
@@ -165,21 +133,48 @@ export default function Sidebar({
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 p-2 flex flex-col overflow-hidden pt-4">
-        {customNavItems
-          .filter((item) => filterNavItem(item.id))
+      <nav className="flex-1 p-2 flex flex-col overflow-y-auto pt-4 scrollbar-thin scrollbar-thumb-[var(--b)]">
+        {!collapsed && (
+          <span className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-[0.8px] px-3.5 py-1.5">
+            {t("nav.main")}
+          </span>
+        )}
+        {mainNavItems
+          .filter(filterNavItem)
           .map((item) => (
             <NavButton key={item.id} item={item} />
           ))}
+
+        {!collapsed && (
+          <span className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-[0.8px] px-3.5 py-1.5 mt-3">
+            {t("nav.manage")}
+          </span>
+        )}
+        {manageNavItems
+          .filter(filterNavItem)
+          .map((item) => (
+            <NavButton key={item.id} item={item} />
+          ))}
+        {user?.is_superuser && (
+          <NavButton
+            key="sysAdmin"
+            item={{
+              id: "sysAdmin",
+              icon: Icons.tools,
+              labelKey: "nav.sysAdmin",
+              to: "/sys-admin",
+            }}
+          />
+        )}
       </nav>
 
       {/* Bottom Actions */}
-      <div className="p-3 border-t border-[rgba(255,255,255,0.08)] flex flex-col gap-1">
+      <div className="p-3 border-t border-[var(--b)] flex flex-col gap-1">
         {/* Help */}
         <button
           onClick={triggerHelp}
           className={cn(
-            "flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-xl text-start border-none cursor-pointer bg-transparent text-[#c7c4d7] hover:bg-[#1e1e2a] hover:text-[#e4e1ed] transition-all",
+            "flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-xl text-start border-none cursor-pointer bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-all",
             collapsed && "justify-center px-2",
           )}
         >
@@ -201,7 +196,7 @@ export default function Sidebar({
         <button
           onClick={handleLogout}
           className={cn(
-            "flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-xl text-start border-none cursor-pointer bg-transparent text-[#c7c4d7] hover:bg-[#ef4444]/10 hover:text-[#ef4444] transition-all",
+            "flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-xl text-start border-none cursor-pointer bg-transparent text-[var(--t2)] hover:bg-[var(--red)]/10 hover:text-[var(--red)] transition-all",
             collapsed && "justify-center px-2",
           )}
         >
@@ -221,7 +216,7 @@ export default function Sidebar({
         {!collapsed && (
           <button
             onClick={() => navigate("/dashboard")}
-            className="w-full bg-[rgba(255,255,255,0.05)] text-[#e4e1ed] border border-[rgba(255,255,255,0.1)] transition-all font-semibold rounded-xl text-center py-2 px-4 text-xs mt-3 flex items-center justify-center cursor-pointer whitespace-nowrap hover:bg-[#1e1e2a] hover:text-white"
+            className="w-full bg-[var(--s2)] text-[var(--t2)] border border-[var(--b)] transition-all font-semibold rounded-xl text-center py-2 px-4 text-xs mt-3 flex items-center justify-center cursor-pointer whitespace-nowrap hover:bg-[var(--s3)] hover:text-[var(--t1)]"
           >
             {isFarsi ? "مرکز پشتیبانی" : "Support Center"}
           </button>
