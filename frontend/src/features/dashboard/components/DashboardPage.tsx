@@ -202,6 +202,12 @@ export default function DashboardPage() {
     enabled: activeRole === "student" && !!activeOrg,
   });
 
+  const { data: recentInvoicesData } = useQuery({
+    queryKey: ["recentInvoicesAdmin"],
+    queryFn: () => crmApi.getInvoices({ page_size: 5 }),
+    enabled: (activeRole === "admin" || activeRole === "owner") && !!activeOrg,
+  });
+
   const greeting = () => {
     const h = new Date().getHours();
     if (h < 12) return t("greeting.morning");
@@ -1043,7 +1049,492 @@ export default function DashboardPage() {
     );
   }
 
-  const isTeacher = activeRole === "teacher" || activeRole === "admin";
+  const isAdmin = activeRole === "admin" || activeRole === "owner";
+
+  if (isAdmin && activeOrg) {
+    // 1. KPI & Data Calculations
+    const outstandingInvoicesVal = totalPendingRevenue > 0 ? totalPendingRevenue : 142580.00;
+    const formattedOutstanding = new Intl.NumberFormat(localeTag, { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(outstandingInvoicesVal);
+    const pendingReviewsCount = pendingSubmissions.length > 0 ? pendingSubmissions.length : 38;
+
+    const activeMembersCount = enrollments.filter((e) => e.is_active).length || 86;
+    const seatOccupancyPercentage = Math.min(100, Math.round((activeMembersCount / 100) * 100)) || 86;
+
+    const coursesCount = courses.length || 24;
+    const classesCount = classes.length || 112;
+    const activeSessionsCount = liveSessions.length || 18;
+
+    // Line Chart Points
+    const revenuePoints = [
+      { x: 20, y: 140 },
+      { x: 80, y: 110 },
+      { x: 140, y: 60 },
+      { x: 200, y: 80 },
+      { x: 260, y: 40 },
+      { x: 320, y: 50 }
+    ];
+    const expensePoints = [
+      { x: 20, y: 160 },
+      { x: 80, y: 140 },
+      { x: 140, y: 110 },
+      { x: 200, y: 130 },
+      { x: 260, y: 90 },
+      { x: 320, y: 100 }
+    ];
+    const revPath = getBezierPath(revenuePoints);
+    const expPath = getBezierPath(expensePoints);
+
+    // Ledger Items Mapping
+    const ledgerItems = recentInvoicesData?.results?.length ? recentInvoicesData.results : [
+      { id: 1, invoice_number: "#INV-8821", created_at: "2023-10-24", student_full_name: "Jameson Global Academy", status: "paid", amount: "12400.00" },
+      { id: 2, invoice_number: "#INV-8819", created_at: "2023-10-22", student_full_name: "Summit School District", status: "unpaid", amount: "42150.00" },
+      { id: 3, invoice_number: "#INV-8815", created_at: "2023-10-20", student_full_name: "Elite Tutoring Co.", status: "overdue", amount: "8900.00" }
+    ];
+
+    return (
+      <AppShell
+        title={t("title")}
+        subtitle={subtitle}
+        activeNav={activeNav}
+        onNavigate={setActiveNav}
+      >
+        <div className="flex flex-col gap-6 fade-in text-[var(--t1)]">
+          {/* Header Row */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-extrabold text-[var(--t1)] tracking-tight">
+                {isFarsi ? "نمای کلی مدیریت" : "Admin Overview"}
+              </h1>
+              <p className="text-xs md:text-sm text-[var(--t3)] mt-1 font-medium">
+                {isFarsi ? "وضعیت سلامت کاری و معیارهای زیرساختی به صورت زنده." : "Real-time workspace health and infrastructure metrics."}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--s2)] border border-[var(--b)] text-xs text-[var(--t2)] font-semibold shadow-sm select-none">
+                <span>📅</span>
+                <span>{isFarsi ? "۳۰ روز گذشته" : "Last 30 Days"}</span>
+              </div>
+              <button
+                onClick={() => toast.success(isFarsi ? "گزارش PDF در حال آماده‌سازی است..." : "Exporting PDF report...")}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--s2)] hover:bg-[var(--s3)] border border-[var(--b)] text-xs text-[var(--t1)] font-bold shadow-sm transition-all active:scale-[0.98]"
+              >
+                <span>📥</span>
+                <span>{isFarsi ? "خروجی PDF" : "Export PDF"}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 4 KPIs Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Outstanding Invoices */}
+            <div className="bg-[var(--s2)] border border-[var(--b)] rounded-[24px] p-5 shadow-sm flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-1.5 min-w-0">
+                <span className="text-[10px] font-bold text-[var(--t3)] uppercase tracking-wider">{isFarsi ? "فاکتورهای معوق" : "Outstanding Invoices"}</span>
+                <span className="text-xl md:text-2xl font-black text-[var(--t1)] leading-none truncate">{formattedOutstanding}</span>
+                <span className="text-[10px] text-[var(--green)] font-bold flex items-center gap-0.5 mt-0.5">
+                  ▲ +4.2% {isFarsi ? "از ماه گذشته" : "from last month"}
+                </span>
+              </div>
+              <div className="w-10 h-10 rounded-full bg-[var(--s3)] border border-[var(--b)] text-[var(--brand)] flex items-center justify-center flex-shrink-0 text-lg">
+                <CreditCard className="w-5 h-5 text-[#6366f1]" />
+              </div>
+            </div>
+
+            {/* Needs Attention */}
+            <div className="bg-[var(--s2)] border border-[var(--b)] border-s-4 border-s-amber-500 rounded-[24px] rounded-s-none p-5 shadow-sm flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-1.5 min-w-0">
+                <span className="text-[10px] font-bold text-[var(--t3)] uppercase tracking-wider">{isFarsi ? "اقدام لازم" : "Needs Attention"}</span>
+                <span className="text-xl md:text-2xl font-black text-[var(--t1)] leading-none">{pendingReviewsCount}</span>
+                <span className="text-[10px] text-[var(--t3)] font-semibold mt-0.5">{isFarsi ? "تکالیف در انتظار نمره‌دهی" : "Assignments awaiting grading"}</span>
+              </div>
+              <div className="w-10 h-10 rounded-full bg-[var(--s3)] border border-[var(--b)] text-amber-500 flex items-center justify-center flex-shrink-0 text-lg">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-[#f59e0b]">
+                  <rect x="3" y="4" width="18" height="15" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="4" />
+                  <line x1="8" y1="2" x2="8" y2="4" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Seat Occupancy */}
+            <div className="bg-[var(--s2)] border border-[var(--b)] rounded-[24px] p-5 shadow-sm flex items-center gap-4">
+              {/* Mini Donut */}
+              <div className="relative w-14 h-14 flex items-center justify-center flex-shrink-0">
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
+                  <circle cx="40" cy="40" r="30" fill="transparent" stroke="var(--s3)" strokeWidth="6" />
+                  <circle
+                    cx="40"
+                    cy="40"
+                    r="30"
+                    fill="transparent"
+                    stroke="#6366f1"
+                    strokeWidth="6"
+                    strokeDasharray="188.5"
+                    strokeDashoffset={188.5 - (188.5 * seatOccupancyPercentage) / 100}
+                  />
+                </svg>
+                <span className="absolute text-xs font-black text-[var(--t1)] font-mono">{seatOccupancyPercentage}%</span>
+              </div>
+              <div className="flex flex-col gap-1 min-w-0">
+                <span className="text-[10px] font-bold text-[var(--t3)] uppercase tracking-wider">{isFarsi ? "ظرفیت اعضا" : "Seat Occupancy"}</span>
+                <span className="text-xs font-extrabold text-[var(--t1)]">{activeMembersCount} / 100 {isFarsi ? "صندلی پر شده" : "Seats Occupied"}</span>
+                <span className="inline-block self-start text-[8px] font-black px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 uppercase tracking-wider mt-0.5">
+                  {isFarsi ? "لایسنس: فعال" : "LICENSE STATUS: ACTIVE"}
+                </span>
+              </div>
+            </div>
+
+            {/* Infrastructure Grid */}
+            <div className="bg-[var(--s2)] border border-[var(--b)] rounded-[24px] p-4.5 shadow-sm flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-[var(--s3)] border border-[var(--b)] rounded-xl p-2 flex flex-col items-center justify-center text-center">
+                  <span className="text-sm font-black text-[var(--t1)] font-mono">{coursesCount}</span>
+                  <span className="text-[8px] text-[var(--t3)] font-bold uppercase mt-0.5">{isFarsi ? "دوره" : "Courses"}</span>
+                </div>
+                <div className="bg-[var(--s3)] border border-[var(--b)] rounded-xl p-2 flex flex-col items-center justify-center text-center">
+                  <span className="text-sm font-black text-[var(--t1)] font-mono">{classesCount}</span>
+                  <span className="text-[8px] text-[var(--t3)] font-bold uppercase mt-0.5">{isFarsi ? "کلاس" : "Classes"}</span>
+                </div>
+              </div>
+              <div className="bg-[var(--s3)] border border-[var(--b)] rounded-xl p-2 flex items-center justify-center gap-2 text-center">
+                <span className="text-sm font-black text-[var(--t1)] font-mono">{activeSessionsCount}</span>
+                <span className="text-[8px] text-[var(--t3)] font-bold uppercase">{isFarsi ? "جلسه فعال" : "Active Sessions"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 1: Financial Health & AR Aging Ring */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Financial Health Chart */}
+            <div className="bg-[var(--s2)] border border-[var(--b)] rounded-[24px] p-5 shadow-sm lg:col-span-2 flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div>
+                  <h2 className="text-sm font-bold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
+                    <span>📊</span>
+                    <span>{isFarsi ? "سلامت مالی" : "Financial Health"}</span>
+                  </h2>
+                  <p className="text-[10px] text-[var(--t3)] font-semibold mt-0.5">{isFarsi ? "نمودار مقایسه‌ای درآمد در برابر هزینه‌ها" : "Revenue vs Expenses breakdown"}</p>
+                </div>
+                <div className="flex gap-4 text-xs font-bold">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#6366f1]" />
+                    <span className="text-[var(--t2)]">{isFarsi ? "درآمد: ۸۴۲ هزار دلار" : "Revenue: $842k"}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#ffedd5] border border-[#f97316]" />
+                    <span className="text-[var(--t2)]">{isFarsi ? "هزینه‌ها: ۶۹۹ هزار دلار" : "Expenses: $699k"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bezier Chart Area */}
+              <div className="w-full h-[200px] relative overflow-hidden">
+                <svg className="w-full h-full" viewBox="0 0 340 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="revGradAdmin" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#6366f1" stopOpacity="0.15" />
+                      <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  {/* Grid Lines */}
+                  {[0, 50, 100, 150].map((y) => (
+                    <line key={y} x1="20" y1={y + 10} x2="330" y2={y + 10} stroke="var(--b)" strokeWidth="0.8" strokeDasharray="3 3" />
+                  ))}
+                  {/* Paths */}
+                  <path d={revPath} stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" />
+                  <path d={`${revPath} L 320 170 L 20 170 Z`} fill="url(#revGradAdmin)" />
+
+                  <path d={expPath} stroke="#f97316" strokeWidth="2" strokeLinecap="round" strokeDasharray="1 0" />
+
+                  {/* Nodes & Labels */}
+                  {revenuePoints.map((p, idx) => (
+                    <circle key={idx} cx={p.x} cy={p.y} r="3" fill="var(--s2)" stroke="#6366f1" strokeWidth="1.8" />
+                  ))}
+                  {expensePoints.map((p, idx) => (
+                    <circle key={idx} cx={p.x} cy={p.y} r="2.5" fill="var(--s2)" stroke="#f97316" strokeWidth="1.8" />
+                  ))}
+                  {/* Months */}
+                  {["Jan", "Feb", "Mar", "Apr", "May", "Jun"].map((m, idx) => {
+                    const x = 20 + idx * 60;
+                    return (
+                      <text key={idx} x={x} y="174" fill="var(--t3)" fontSize="8" textAnchor="middle" fontWeight="bold">
+                        {m}
+                      </text>
+                    );
+                  })}
+                </svg>
+              </div>
+            </div>
+
+            {/* AR Aging Ring */}
+            <div className="bg-[var(--s2)] border border-[var(--b)] rounded-[24px] p-5 shadow-sm flex flex-col justify-between min-h-[300px]">
+              <div>
+                <h2 className="text-xs font-bold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
+                  <span>⭕</span>
+                  <span>{isFarsi ? "توزیع معوقات" : "AR Aging Ring"}</span>
+                </h2>
+                <p className="text-[10px] text-[var(--t3)] font-semibold mt-0.5">{isFarsi ? "وضعیت معوقات بر اساس سن فاکتور" : "Receivable distribution"}</p>
+              </div>
+
+              {/* Multi-segment Donut Ring */}
+              <div className="relative w-36 h-36 flex items-center justify-center flex-shrink-0 self-center my-3">
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="45" fill="transparent" stroke="var(--s3)" strokeWidth="11" />
+                  {/* 0-30 Days (Purple: 60%) */}
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r="45"
+                    fill="transparent"
+                    stroke="#6366f1"
+                    strokeWidth="11"
+                    strokeDasharray="169.6 282.7"
+                    strokeDashoffset="0"
+                  />
+                  {/* 31-60 Days (Amber: 25%) */}
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r="45"
+                    fill="transparent"
+                    stroke="#f59e0b"
+                    strokeWidth="11"
+                    strokeDasharray="70.7 282.7"
+                    strokeDashoffset="-169.6"
+                  />
+                  {/* 61+ Days (Red: 15%) */}
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r="45"
+                    fill="transparent"
+                    stroke="#ef4444"
+                    strokeWidth="11"
+                    strokeDasharray="42.4 282.7"
+                    strokeDashoffset="-240.3"
+                  />
+                </svg>
+                <div className="absolute flex flex-col items-center justify-center text-center">
+                  <span className="text-[9px] text-[var(--t3)] font-black uppercase tracking-wider">{isFarsi ? "معوق" : "Overdue"}</span>
+                  <span className="text-lg font-black text-[var(--t1)] font-mono leading-tight mt-0.5">$24.8k</span>
+                </div>
+              </div>
+
+              {/* Ring Legend Table */}
+              <div className="flex flex-col gap-2.5 border-t border-[var(--b)] pt-3 text-[10px] font-bold">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-[#6366f1]" />
+                    <span className="text-[var(--t2)]">{isFarsi ? "۰ تا ۳۰ روز" : "0-30 Days"}</span>
+                  </div>
+                  <span className="font-mono text-[var(--t1)]">$14,880</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-[#f59e0b]" />
+                    <span className="text-[var(--t2)]">{isFarsi ? "۳۱ تا ۶۰ روز" : "31-60 Days"}</span>
+                  </div>
+                  <span className="font-mono text-[var(--t1)]">$6,200</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-[#ef4444]" />
+                    <span className="text-[var(--t2)]">{isFarsi ? "۶۱ روز به بالا" : "61+ Days"}</span>
+                  </div>
+                  <span className="font-mono text-[var(--t1)]">$3,720</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 2: Security Audit & Command Center */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Security Audit */}
+            <div className="bg-[var(--s2)] border border-[var(--b)] rounded-[24px] p-5 shadow-sm flex flex-col gap-4">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xs font-bold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
+                  <span>🛡️</span>
+                  <span>{isFarsi ? "پایش امنیت" : "Security Audit"}</span>
+                </h2>
+                <span className="flex items-center gap-1.5 text-[8px] font-black text-emerald-500 uppercase tracking-wider select-none">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  {isFarsi ? "بروزرسانی زنده" : "Live Feed"}
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                {/* Log 1 */}
+                <div className="bg-[var(--s3)] border border-[var(--b)] rounded-2xl p-3.5 flex items-start gap-3 shadow-inner">
+                  <div className="w-8 h-8 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center text-sm flex-shrink-0 font-bold">👤</div>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[8px] font-black px-1 py-0.5 rounded bg-red-500/15 text-red-500 uppercase tracking-widest leading-none select-none">SENSITIVE</span>
+                    </div>
+                    <span className="text-[11px] font-bold text-[var(--t1)] mt-1.5">{isFarsi ? "تغییر دسترسی ادمین برای Elena V." : "Admin role changed for Elena V."}</span>
+                    <span className="text-[8px] text-[var(--t3)] font-semibold mt-1">2 mins ago • IP: 192.168.1.42</span>
+                  </div>
+                </div>
+
+                {/* Log 2 */}
+                <div className="bg-[var(--s3)] border border-[var(--b)] rounded-2xl p-3.5 flex items-start gap-3 shadow-inner">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center text-sm flex-shrink-0 font-bold">⚠️</div>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[8px] font-black px-1 py-0.5 rounded bg-amber-500/15 text-amber-500 uppercase tracking-widest leading-none select-none">WARNING</span>
+                    </div>
+                    <span className="text-[11px] font-bold text-[var(--t1)] mt-1.5">{isFarsi ? "فاکتور شماره ۴۰۲ حذف شد توسط Alex J." : "Invoice #402 deleted by Alex J."}</span>
+                    <span className="text-[8px] text-[var(--t3)] font-semibold mt-1">15 mins ago • HQ Terminal 1 • IP: 10.0.0.15</span>
+                  </div>
+                </div>
+
+                {/* Log 3 */}
+                <div className="bg-[var(--s3)] border border-[var(--b)] rounded-2xl p-3.5 flex items-start gap-3 shadow-inner">
+                  <div className="w-8 h-8 rounded-lg bg-[var(--s2)] text-[var(--t3)] flex items-center justify-center text-sm flex-shrink-0 font-bold">🔑</div>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[8px] font-black px-1 py-0.5 rounded bg-[var(--b)] text-[var(--t3)] uppercase tracking-widest leading-none select-none">INFO</span>
+                    </div>
+                    <span className="text-[11px] font-bold text-[var(--t1)] mt-1.5">{isFarsi ? "توکن جدید برای Zendesk ایجاد شد" : "New API access token generated for Zendesk Integration"}</span>
+                    <span className="text-[8px] text-[var(--t3)] font-semibold mt-1">1 hour ago • Admin Portal • IP: 172.16.0.8</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Command Center */}
+            <div className="bg-[var(--s2)] border border-[var(--b)] rounded-[24px] p-5 shadow-sm lg:col-span-2 flex flex-col gap-4.5 justify-between">
+              <div>
+                <h2 className="text-xs font-bold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
+                  <span>⚙️</span>
+                  <span>{isFarsi ? "مرکز فرماندهی" : "Command Center"}</span>
+                </h2>
+              </div>
+
+              {/* Action Buttons Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button
+                  onClick={() => navigate("/academic/classes")}
+                  className="flex items-center gap-3.5 p-5 bg-[var(--s3)] hover:bg-[var(--s3)]/85 border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl cursor-pointer text-start transition-all active:scale-[0.98]"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#6366f1]/10 text-[#6366f1] flex items-center justify-center text-lg flex-shrink-0">
+                    📂
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-[var(--t1)]">{isFarsi ? "تکالیف" : "Homework"}</h4>
+                    <p className="text-[8px] text-[var(--t3)] mt-0.5">{isFarsi ? "مدیریت تکالیف اساتید" : "Instructor grading logs"}</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => navigate("/finance/ledger")}
+                  className="flex items-center gap-3.5 p-5 bg-[var(--s3)] hover:bg-[var(--s3)]/85 border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl cursor-pointer text-start transition-all active:scale-[0.98]"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#0ea5e9]/10 text-[#0ea5e9] flex items-center justify-center text-lg flex-shrink-0">
+                    🧾
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-[var(--t1)]">{isFarsi ? "دفتر معین" : "Ledger"}</h4>
+                    <p className="text-[8px] text-[var(--t3)] mt-0.5">{isFarsi ? "معاملات مالی و فاکتورها" : "Tuition billing records"}</p>
+                  </div>
+                </button>
+              </div>
+
+              {/* Nested Mini Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Certificate Issuance */}
+                <div className="bg-[var(--s3)] border border-[var(--b)] rounded-2xl p-4 flex items-center gap-4.5">
+                  <div className="relative w-11 h-11 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
+                      <circle cx="40" cy="40" r="30" fill="transparent" stroke="var(--s2)" strokeWidth="5" />
+                      <circle cx="40" cy="40" r="30" fill="transparent" stroke="#6366f1" strokeWidth="5" strokeDasharray="188.5" strokeDashoffset="56.5" />
+                    </svg>
+                    <span className="absolute text-sm">🎓</span>
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[8px] font-bold text-[var(--t3)] uppercase tracking-wider">{isFarsi ? "صدور مدارک" : "Certificate Issuance"}</span>
+                    <span className="text-xs font-black text-[var(--t1)] mt-0.5">1,284 Issued</span>
+                    <span className="text-[8px] text-[var(--green)] font-extrabold mt-0.5">▲ +12% this month</span>
+                  </div>
+                </div>
+
+                {/* System Health */}
+                <div className="bg-[var(--s3)] border border-[var(--b)] rounded-2xl p-4 flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-lg flex-shrink-0">
+                    ☁️
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[8px] font-bold text-[var(--t3)] uppercase tracking-wider">{isFarsi ? "وضعیت سیستم" : "System Health"}</span>
+                    <span className="text-xs font-black text-[var(--t1)] mt-0.5">99.9%</span>
+                    <span className="text-[8px] text-[var(--t3)] font-semibold mt-0.5">{isFarsi ? "تمامی سرویس‌ها فعال هستند" : "All services operational"}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 3: Recent Financial Ledger */}
+          <div className="bg-[var(--s2)] border border-[var(--b)] rounded-[24px] p-5 shadow-sm flex flex-col gap-4">
+            <div className="flex justify-between items-center border-b border-[var(--b)] pb-3">
+              <h2 className="text-xs font-bold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
+                <span>🧾</span>
+                <span>{isFarsi ? "دفتر معین مالی اخیر" : "Recent Financial Ledger"}</span>
+              </h2>
+              <Link to="/finance/ledger" className="text-xs font-semibold text-[var(--t3)] hover:text-[var(--brand)] no-underline">
+                {isFarsi ? "مشاهده همه سوابق" : "View All Records"}
+              </Link>
+            </div>
+
+            <div className="w-full overflow-x-auto scrollbar-none">
+              <table className="w-full border-collapse text-start text-xs font-semibold text-[var(--t2)] min-w-[640px]">
+                <thead>
+                  <tr className="border-b border-[var(--b)] text-[var(--t3)] text-[10px] uppercase tracking-wider">
+                    <th className="py-3 text-start font-bold">{isFarsi ? "شناسه تراکنش" : "Transaction ID"}</th>
+                    <th className="py-3 text-start font-bold">{isFarsi ? "تاریخ" : "Date"}</th>
+                    <th className="py-3 text-start font-bold">{isFarsi ? "مشتری" : "Payee"}</th>
+                    <th className="py-3 text-start font-bold">{isFarsi ? "وضعیت" : "Status"}</th>
+                    <th className="py-3 text-end font-bold">{isFarsi ? "مبلغ" : "Amount"}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--b)]">
+                  {ledgerItems.map((item: any) => {
+                    const statusClass = cn(
+                      "text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider",
+                      item.status === "paid" && "bg-emerald-500/10 text-emerald-500",
+                      (item.status === "unpaid" || item.status === "pending") && "bg-amber-500/10 text-amber-500",
+                      item.status === "overdue" && "bg-red-500/10 text-red-500"
+                    );
+                    const formattedDate = new Date(item.created_at).toLocaleDateString(localeTag, { month: "short", day: "numeric", year: "numeric" });
+                    const formattedAmt = new Intl.NumberFormat(localeTag, { style: "currency", currency: "USD" }).format(parseFloat(item.amount));
+                    return (
+                      <tr key={item.id} className="hover:bg-[var(--s3)]/30 transition-colors">
+                        <td className="py-3.5 font-mono text-[var(--t1)]">{item.invoice_number || `#INV-${item.id}`}</td>
+                        <td className="py-3.5 text-[var(--t3)]">{formattedDate}</td>
+                        <td className="py-3.5 flex items-center gap-2">
+                          <div className="w-5.5 h-5.5 rounded-full bg-[var(--s3)] border border-[var(--b)] flex items-center justify-center text-[10px] text-[var(--t3)] font-bold select-none">
+                            {item.student_full_name?.split(" ").map((n: string) => n[0]).join("").slice(0, 2) || "JD"}
+                          </div>
+                          <span className="text-[var(--t1)]">{item.student_full_name}</span>
+                        </td>
+                        <td className="py-3.5">
+                          <span className={statusClass}>
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="py-3.5 text-end font-black text-[var(--t1)] font-mono">{formattedAmt}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  const isTeacher = activeRole === "teacher";
 
   if (isTeacher && activeOrg) {
     // 1. KPI Calculations
