@@ -27,6 +27,34 @@ export interface AcademyClass {
   created_at: string;
   session_count?: number;
   latest_session?: Session | null;
+  student_ids?: number[];
+  enrolled_student_ids?: number[];
+  scheduling_mode?: 'manual' | 'automatic';
+  capacity_mode?: 'unlimited' | 'limited';
+  max_students?: number | null;
+  recurrence_weekdays?: string[];
+  recurrence_start_time?: string | null;
+  recurrence_duration_minutes?: number | null;
+  recurrence_timezone?: string;
+  recurrence_end_mode?: 'date' | 'occurrences';
+  recurrence_max_occurrences?: number | null;
+  google_calendar_id?: string | null;
+}
+
+export interface ClassOccurrence {
+  id: number;
+  academy_class: number;
+  academy_class_name?: string;
+  occurrence_id: string;
+  scheduled_start: string;
+  scheduled_end: string;
+  status: 'scheduled' | 'live' | 'completed' | 'cancelled';
+  room?: number | null;
+  room_code?: string | null;
+  google_event_id?: string | null;
+  attendance_count?: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Enrollment {
@@ -143,6 +171,10 @@ export const crmApi = {
   deleteClass: async (id: number): Promise<void> => {
     await client.delete(`/auth/classes/${id}/`);
   },
+  startAutomaticClass: async (id: number): Promise<{ active_room_code: string; id: number }> => {
+    const res = await client.post(`/auth/classes/${id}/start/`);
+    return res.data;
+  },
 
   // Enrollments CRUD
   getEnrollments: async (): Promise<Enrollment[]> => {
@@ -240,6 +272,27 @@ export const crmApi = {
     return res.data;
   },
 
+  getOccurrences: async (params?: { class_id?: number; status?: string }): Promise<ClassOccurrence[]> => {
+    const res = await client.get("/auth/occurrences/", { params });
+    return Array.isArray(res.data) ? res.data : (res.data?.results || []);
+  },
+  startOccurrence: async (id: number): Promise<{ occurrence: ClassOccurrence; token: string; room_code: string; livekit_url: string }> => {
+    const res = await client.post(`/auth/occurrences/${id}/start/`);
+    return res.data;
+  },
+  completeOccurrence: async (id: number): Promise<ClassOccurrence> => {
+    const res = await client.post(`/auth/occurrences/${id}/complete/`);
+    return res.data;
+  },
+  cancelOccurrence: async (id: number): Promise<ClassOccurrence> => {
+    const res = await client.post(`/auth/occurrences/${id}/cancel/`);
+    return res.data;
+  },
+  getCalendarEvents: async (): Promise<any[]> => {
+    const res = await client.get("/auth/calendar/");
+    return res.data;
+  },
+
   // User search for selector
   searchUsers: async (q: string, role?: string): Promise<SimpleUser[]> => {
     const url = `/auth/search/?q=${encodeURIComponent(q)}${role ? `&role=${encodeURIComponent(role)}` : ""}`;
@@ -259,6 +312,8 @@ export const crmApi = {
   createMember: async (data: {
     username?: string;
     email?: string;
+    password?: string;
+    full_name?: string;
     role: number | null;
     contract_type?: string;
     expires_at?: string | null;

@@ -21,7 +21,7 @@ import AttendanceModal from "./AttendanceModal";
 import AppShell from "../../../components/layout/AppShell";
 import { useLocale } from "../../../i18n/useLocale";
 import { TableRowActions, type TableAction } from "../../../components/ui/TableRowActions";
-import { Play, Video, CheckCircle, ClipboardList } from "lucide-react";
+import { Play, Video, CheckCircle, ClipboardList, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 
 export default function SessionsPage() {
   const { language } = useLocale();
@@ -43,11 +43,20 @@ export default function SessionsPage() {
 
   const [activeAttendanceSessionId, setActiveAttendanceSessionId] = useState<number | null>(null);
 
+  // View state and Month pagination state
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("calendar");
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
   // Queries
   const { data: sessions = [], isLoading: loadingSessions } = useSessions();
   const { data: classes = [] } = useQuery({
     queryKey: ["classes"],
     queryFn: crmApi.getClasses,
+  });
+
+  const { data: calendarEvents = [], isLoading: loadingCalendar } = useQuery({
+    queryKey: ["calendar-events"],
+    queryFn: crmApi.getCalendarEvents,
   });
 
   // Start scheduling with pre-filled first class if available
@@ -136,14 +145,159 @@ export default function SessionsPage() {
           <span className="text-xs font-semibold text-[var(--t3)] uppercase tracking-wider">
             {isFarsi ? "برنامه جلسات آکادمی" : "Academy Class Sessions"}
           </span>
-          {canSchedule && (
-            <Button size="sm" onClick={handleOpenSchedule}>
-              {isFarsi ? "+ برنامه‌ریزی جلسه" : "+ Schedule Session"}
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            <div className="flex rounded-xl bg-[var(--s3)] border border-[var(--b)] p-0.5">
+              <button
+                type="button"
+                onClick={() => setViewMode("calendar")}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg cursor-pointer transition-all border-none ${
+                  viewMode === "calendar"
+                    ? "bg-[var(--brand)] text-white shadow-sm"
+                    : "text-[var(--t2)] hover:text-[var(--brand)] bg-transparent"
+                }`}
+              >
+                {isFarsi ? "تقویم" : "Calendar"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("list")}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg cursor-pointer transition-all border-none ${
+                  viewMode === "list"
+                    ? "bg-[var(--brand)] text-white shadow-sm"
+                    : "text-[var(--t2)] hover:text-[var(--brand)] bg-transparent"
+                }`}
+              >
+                {isFarsi ? "لیست" : "List"}
+              </button>
+            </div>
+            {canSchedule && (
+              <Button size="sm" onClick={handleOpenSchedule}>
+                {isFarsi ? "+ برنامه‌ریزی جلسه" : "+ Schedule Session"}
+              </Button>
+            )}
+          </div>
         </div>
 
-        {loadingSessions ? (
+        {viewMode === "calendar" ? (
+          <div className="p-4 flex flex-col gap-4">
+            {/* Calendar Month Header */}
+            <div className="flex justify-between items-center bg-[var(--s3)] border border-[var(--b)] p-3 rounded-2xl">
+              <button 
+                type="button"
+                onClick={handlePrevMonth} 
+                className="p-2 border border-[var(--b)] bg-[var(--s2)] text-[var(--t1)] hover:border-[var(--brand)] rounded-xl transition-all cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <h3 className="text-sm font-bold text-[var(--t1)]">
+                {currentMonth.toLocaleString(isFarsi ? "fa-IR" : "en-US", { month: "long", year: "numeric" })}
+              </h3>
+              <button 
+                type="button"
+                onClick={handleNextMonth} 
+                className="p-2 border border-[var(--b)] bg-[var(--s2)] text-[var(--t1)] hover:border-[var(--brand)] rounded-xl transition-all cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Grid */}
+            <div className="border border-[var(--b)] rounded-2xl overflow-hidden bg-[var(--s2)]">
+              {/* Day Names */}
+              <div className="grid grid-cols-7 border-b border-[var(--b)] bg-[var(--s3)] text-[var(--t3)] text-[10px] font-semibold uppercase tracking-wider text-center py-2">
+                {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d) => (
+                  <div key={d} className="py-1">
+                    {isFarsi ? {
+                      Sunday: "یکشنبه", Monday: "دوشنبه", Tuesday: "سه‌شنبه",
+                      Wednesday: "چهارشنبه", Thursday: "پنج‌شنبه", Friday: "جمعه", Saturday: "شنبه"
+                    }[d] : d.slice(0, 3)}
+                  </div>
+                ))}
+              </div>
+
+              {/* Day Cells */}
+              <div className="grid grid-cols-7 bg-[var(--b)] gap-[1px]">
+                {(() => {
+                  const getDaysInMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+                  const getFirstDayOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+
+                  const daysInMonth = getDaysInMonth(currentMonth);
+                  const firstDayIndex = getFirstDayOfMonth(currentMonth);
+                  const cells = [];
+
+                  // Blank cells before first day
+                  for (let i = 0; i < firstDayIndex; i++) {
+                    cells.push(
+                      <div key={`blank-${i}`} className="bg-[var(--s2)] min-h-[100px] p-2 opacity-50" />
+                    );
+                  }
+
+                  // Day cells
+                  for (let day = 1; day <= daysInMonth; day++) {
+                    const cellDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                    const dayStart = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate(), 0, 0, 0, 0);
+                    const dayEnd = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate(), 23, 59, 59, 999);
+
+                    const dayEvents = calendarEvents.filter((event: any) => {
+                      const eventStart = new Date(event.start);
+                      return eventStart >= dayStart && eventStart <= dayEnd;
+                    });
+
+                    cells.push(
+                      <div key={`day-${day}`} className="bg-[var(--s2)] min-h-[100px] p-2 flex flex-col gap-1.5 hover:bg-[var(--s3)]/50 transition-colors">
+                        <span className="text-xs font-bold text-[var(--t3)] self-end mb-1">
+                          {day}
+                        </span>
+                        <div className="flex flex-col gap-1 overflow-y-auto max-h-[80px]">
+                          {dayEvents.slice(0, 3).map((event: any) => {
+                            const isSession = event.type === 'session';
+                            const isOccurrence = event.type === 'occurrence';
+                            const isHomework = event.type === 'homework';
+                            
+                            const badgeColor = isSession ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
+                                               isOccurrence ? "bg-purple-500/10 text-purple-500 border-purple-500/20" :
+                                               "bg-amber-500/10 text-amber-500 border-amber-500/20";
+                            
+                            const targetUrl = isSession ? `/academic/sessions/${event.id}` :
+                                              isOccurrence ? `/academic/classes/${event.class_id}` :
+                                              `/academic/assignments/${event.id}`;
+
+                            return (
+                              <Link 
+                                key={event.id + '-' + event.type}
+                                to={targetUrl}
+                                className={`text-[9px] font-medium px-1.5 py-0.5 rounded border ${badgeColor} truncate hover:underline no-underline block`}
+                              >
+                                {isHomework ? "📝 " : isSession ? "💻 " : "📅 "}
+                                {event.title}
+                              </Link>
+                            );
+                          })}
+                          {dayEvents.length > 3 && (
+                            <span className="text-[8px] text-[var(--t3)] text-center font-bold">
+                              +{dayEvents.length - 3} {isFarsi ? "مورد بیشتر" : "more"}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Empty cells after end of month to complete grid line if needed
+                  const totalGridCells = cells.length;
+                  const remainingCells = totalGridCells % 7 === 0 ? 0 : 7 - (totalGridCells % 7);
+                  for (let i = 0; i < remainingCells; i++) {
+                    cells.push(
+                      <div key={`blank-end-${i}`} className="bg-[var(--s2)] min-h-[100px] p-2 opacity-50" />
+                    );
+                  }
+
+                  return cells;
+                })()}
+              </div>
+            </div>
+          </div>
+        ) : loadingSessions ? (
           <div className="flex justify-center p-8">
             <Spinner />
           </div>

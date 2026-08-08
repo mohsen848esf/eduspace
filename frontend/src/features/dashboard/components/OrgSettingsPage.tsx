@@ -101,6 +101,23 @@ export default function OrgSettingsPage() {
   const [inviteContract, setInviteContract] = useState("full_time");
   const [inviteExpires, setInviteExpires] = useState("");
 
+  // Create member form state (Separate Modal)
+  const [isCreateMemberOpen, setIsCreateMemberOpen] = useState(false);
+  const [createMemberForm, setCreateMemberForm] = useState({
+    username: "",
+    email: "",
+    password: "",
+    full_name: "",
+    role: "" as string,
+    contract_type: "full_time" as string,
+    expires_at: "",
+  });
+
+  // Role change states for member directory tab
+  const [isRoleChangeOpen, setIsRoleChangeOpen] = useState(false);
+  const [selectedMemberForRoleChange, setSelectedMemberForRoleChange] = useState<OrgMember | null>(null);
+  const [newRoleId, setNewRoleId] = useState<string>("");
+
   // Custom role creation state
   const [isCreateRoleOpen, setIsCreateRoleOpen] = useState(false);
   const [newRoleName, setNewRoleName] = useState("");
@@ -131,7 +148,7 @@ export default function OrgSettingsPage() {
   const { data: roles = [], isLoading: loadingRoles } = useQuery<Role[]>({
     queryKey: ["orgRoles"],
     queryFn: authApi.getRoles,
-    enabled: activeTab === "roles" || isInviteOpen,
+    enabled: activeTab === "roles" || activeTab === "members" || isInviteOpen || isRoleChangeOpen || isCreateMemberOpen,
   });
 
   const { data: sessions = [], isLoading: loadingSessions } = useQuery<UserSession[]>({
@@ -211,6 +228,30 @@ export default function OrgSettingsPage() {
       const detail = err.response?.data?.detail;
       const fieldError = err.response?.data?.non_field_errors?.[0];
       toast.error(detail || fieldError || (isFarsi ? "خطا در ارسال دعوت‌نامه" : "Failed to invite member"));
+    }
+  });
+
+  const createMemberMutation = useMutation({
+    mutationFn: authApi.inviteMember,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orgMembers"] });
+      toast.success(isFarsi ? "عضو جدید با موفقیت ایجاد شد" : "Member created successfully");
+      setIsCreateMemberOpen(false);
+      setCreateMemberForm({
+        username: "",
+        email: "",
+        password: "",
+        full_name: "",
+        role: roles.length > 0 ? (roles.find(r => r.name.toLowerCase().includes("student"))?.id?.toString() || roles[0].id.toString()) : "",
+        contract_type: "full_time",
+        expires_at: "",
+      });
+    },
+    onError: (err: any) => {
+      const detail = err.response?.data?.detail;
+      const fieldError = err.response?.data?.non_field_errors?.[0];
+      const errorMsg = err.response?.data?.[0];
+      toast.error(detail || fieldError || errorMsg || (isFarsi ? "خطا در ایجاد عضو جدید" : "Failed to create member"));
     }
   });
 
@@ -332,6 +373,38 @@ export default function OrgSettingsPage() {
       role: inviteRoleId,
       contract_type: inviteContract,
       expires_at: inviteExpires || null,
+    });
+  };
+
+  const handleCreateMemberSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createMemberForm.username.trim() || !createMemberForm.password.trim() || !createMemberForm.role) {
+      toast.error(isFarsi ? "نام کاربری، رمز عبور و نقش الزامی هستند" : "Username, Password and Role are required");
+      return;
+    }
+    createMemberMutation.mutate({
+      username: createMemberForm.username,
+      email: createMemberForm.email || undefined,
+      password: createMemberForm.password,
+      full_name: createMemberForm.full_name || undefined,
+      role: parseInt(createMemberForm.role),
+      contract_type: createMemberForm.contract_type,
+      expires_at: createMemberForm.expires_at || null,
+    });
+  };
+
+  const handleRoleChangeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMemberForRoleChange) return;
+    updateMemberMutation.mutate({
+      id: selectedMemberForRoleChange.id,
+      data: { role: newRoleId ? parseInt(newRoleId) : null } as any,
+    }, {
+      onSuccess: () => {
+        setIsRoleChangeOpen(false);
+        setSelectedMemberForRoleChange(null);
+        setNewRoleId("");
+      }
     });
   };
 
@@ -684,9 +757,26 @@ export default function OrgSettingsPage() {
                 </p>
               </div>
               {canManageMembers && (
-                <Button onClick={() => setIsInviteOpen(true)} size="sm">
-                  {isFarsi ? "دعوت عضو جدید" : "Invite Member"}
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={() => setIsInviteOpen(true)} size="sm" variant="secondary">
+                    {isFarsi ? "دعوت عضو" : "Invite Member"}
+                  </Button>
+                  <Button onClick={() => {
+                    const defaultRoleId = roles.length > 0 ? (roles.find(r => r.name.toLowerCase().includes("student"))?.id?.toString() || roles[0].id.toString()) : "";
+                    setCreateMemberForm({
+                      username: "",
+                      email: "",
+                      password: "",
+                      full_name: "",
+                      role: defaultRoleId,
+                      contract_type: "full_time",
+                      expires_at: "",
+                    });
+                    setIsCreateMemberOpen(true);
+                  }} size="sm">
+                    {isFarsi ? "+ ایجاد عضو جدید" : "+ Create Member"}
+                  </Button>
+                </div>
               )}
             </div>
 
@@ -741,8 +831,15 @@ export default function OrgSettingsPage() {
                         </td>
                         <td className="py-3 px-2">
                           <span
-                            className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                            className="px-2 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer hover:opacity-85"
                             style={getRoleBadgeStyle(member.role_name || "")}
+                            onClick={() => {
+                              if (canManageMembers) {
+                                setSelectedMemberForRoleChange(member);
+                                setNewRoleId(member.role?.toString() || "");
+                                setIsRoleChangeOpen(true);
+                              }
+                            }}
                           >
                             {member.role_name || (isFarsi ? "بدون نقش" : "No Role")}
                           </span>
@@ -769,7 +866,18 @@ export default function OrgSettingsPage() {
                           </button>
                         </td>
                         {canManageMembers && (
-                          <td className="py-3 px-2 text-end">
+                          <td className="py-3 px-2 text-end flex justify-end gap-1.5">
+                            <button
+                              onClick={() => {
+                                setSelectedMemberForRoleChange(member);
+                                setNewRoleId(member.role?.toString() || "");
+                                setIsRoleChangeOpen(true);
+                              }}
+                              className="w-7 h-7 rounded-lg bg-transparent border-none text-[var(--t3)] hover:bg-[var(--brand)]/10 hover:text-[var(--brand)] cursor-pointer flex items-center justify-center transition-all"
+                              title={isFarsi ? "تغییر نقش" : "Change role"}
+                            >
+                              👤
+                            </button>
                             <button
                               onClick={() => handleRemoveMember(member.id)}
                               className="w-7 h-7 rounded-lg bg-transparent border-none text-[var(--t3)] hover:bg-[var(--red)]/10 hover:text-[var(--red)] cursor-pointer flex items-center justify-center transition-all"
@@ -1138,6 +1246,7 @@ export default function OrgSettingsPage() {
         )}
 
         {/* Invite Dialog */}
+        {/* Invite Dialog */}
         <Modal open={isInviteOpen} onOpenChange={setIsInviteOpen}>
           <form onSubmit={handleInviteSubmit}>
             <ModalHeader>
@@ -1194,7 +1303,6 @@ export default function OrgSettingsPage() {
                   value={inviteExpires || undefined}
                   onChange={(val) => setInviteExpires(val)}
                 />
-
               </div>
             </ModalBody>
             <ModalFooter>
@@ -1203,6 +1311,100 @@ export default function OrgSettingsPage() {
               </Button>
               <Button type="submit" disabled={inviteMemberMutation.isPending}>
                 {inviteMemberMutation.isPending ? <Spinner size="sm" /> : (isFarsi ? "ارسال دعوت" : "Send Invite")}
+              </Button>
+            </ModalFooter>
+          </form>
+        </Modal>
+
+        {/* Create Member Modal */}
+        <Modal open={isCreateMemberOpen} onOpenChange={setIsCreateMemberOpen}>
+          <form onSubmit={handleCreateMemberSubmit}>
+            <ModalHeader>
+              <ModalTitle>
+                {isFarsi ? "ایجاد و ثبت‌نام عضو جدید" : "Create New Member"}
+              </ModalTitle>
+            </ModalHeader>
+            <ModalBody>
+              <div className="flex flex-col gap-4">
+                <Input
+                  label={isFarsi ? "نام کاربری" : "Username"}
+                  placeholder={isFarsi ? "مثال: ali_student" : "e.g. ali_student"}
+                  value={createMemberForm.username}
+                  onChange={(e) => setCreateMemberForm({ ...createMemberForm, username: e.target.value })}
+                  required
+                />
+                
+                <Input
+                  label={isFarsi ? "رمز عبور" : "Password"}
+                  placeholder={isFarsi ? "رمز عبور را وارد کنید" : "Enter password"}
+                  type="password"
+                  value={createMemberForm.password}
+                  onChange={(e) => setCreateMemberForm({ ...createMemberForm, password: e.target.value })}
+                  required
+                />
+
+                <Input
+                  label={isFarsi ? "نام کامل (اختیاری)" : "Full Name (Optional)"}
+                  placeholder={isFarsi ? "مثال: علی محمدی" : "e.g. Ali Mohammadi"}
+                  value={createMemberForm.full_name}
+                  onChange={(e) => setCreateMemberForm({ ...createMemberForm, full_name: e.target.value })}
+                />
+
+                <Input
+                  label={isFarsi ? "ایمیل (اختیاری)" : "Email (Optional)"}
+                  placeholder={isFarsi ? "ali@example.com" : "ali@example.com"}
+                  value={createMemberForm.email}
+                  onChange={(e) => setCreateMemberForm({ ...createMemberForm, email: e.target.value })}
+                />
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-[var(--t2)]">
+                    {isFarsi ? "نقش" : "Role"}
+                  </label>
+                  <select
+                    value={createMemberForm.role}
+                    onChange={(e) => setCreateMemberForm({ ...createMemberForm, role: e.target.value })}
+                    className="w-full h-10 px-3 rounded-xl bg-[var(--s3)] border border-[var(--b)] text-xs text-[var(--t1)] focus:outline-none focus:border-[var(--brand-text)]"
+                    required
+                  >
+                    <option value="" disabled>{isFarsi ? "انتخاب نقش..." : "Select Role..."}</option>
+                    {roles.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-[var(--t2)]">
+                    {isFarsi ? "نوع قرارداد" : "Contract Type"}
+                  </label>
+                  <select
+                    value={createMemberForm.contract_type}
+                    onChange={(e) => setCreateMemberForm({ ...createMemberForm, contract_type: e.target.value })}
+                    className="w-full h-10 px-3 rounded-xl bg-[var(--s3)] border border-[var(--b)] text-xs text-[var(--t1)] focus:outline-none focus:border-[var(--brand-text)]"
+                  >
+                    <option value="full_time">{isFarsi ? "تمام وقت (Full Time)" : "Full Time"}</option>
+                    <option value="part_time">{isFarsi ? "پاره وقت (Part Time)" : "Part Time"}</option>
+                    <option value="contractor">{isFarsi ? "پیمانکار (Contractor)" : "Contractor"}</option>
+                    <option value="guest">{isFarsi ? "مهمان (Guest)" : "Guest"}</option>
+                  </select>
+                </div>
+
+                <DatePicker
+                  label={isFarsi ? "تاریخ انقضای عضویت (اختیاری)" : "Expiration Date (Optional)"}
+                  value={createMemberForm.expires_at || undefined}
+                  onChange={(val) => setCreateMemberForm({ ...createMemberForm, expires_at: val })}
+                />
+              </div>
+            </ModalBody>
+            <ModalFooter>
+              <Button type="button" variant="secondary" onClick={() => setIsCreateMemberOpen(false)}>
+                {isFarsi ? "انصراف" : "Cancel"}
+              </Button>
+              <Button type="submit" disabled={createMemberMutation.isPending}>
+                {createMemberMutation.isPending ? <Spinner size="sm" /> : (isFarsi ? "ایجاد عضو" : "Create Member")}
               </Button>
             </ModalFooter>
           </form>
@@ -1267,6 +1469,47 @@ export default function OrgSettingsPage() {
               </Button>
             </ModalFooter>
           </form>
+        </Modal>
+
+        {/* Change Member Role Modal */}
+        <Modal open={isRoleChangeOpen} onOpenChange={setIsRoleChangeOpen}>
+          <ModalHeader>
+            <ModalTitle>{isFarsi ? "تغییر نقش عضو" : "Change Member Role"}</ModalTitle>
+          </ModalHeader>
+          <ModalBody>
+            <form onSubmit={handleRoleChangeSubmit} className="flex flex-col gap-4">
+              <p className="text-xs text-[var(--t2)]">
+                {isFarsi 
+                  ? `در حال تغییر نقش کاربر ${selectedMemberForRoleChange?.user_details?.full_name || selectedMemberForRoleChange?.user_details?.username}` 
+                  : `Changing role for user: ${selectedMemberForRoleChange?.user_details?.full_name || selectedMemberForRoleChange?.user_details?.username}`}
+              </p>
+              <div className="flex flex-col gap-1.5 w-full">
+                <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                  {isFarsi ? "نقش جدید" : "New Role"}
+                </label>
+                <select
+                  className="w-full bg-[var(--s2)] text-[var(--t1)] text-sm border border-[var(--b)] rounded-xl px-4 py-2.5 outline-none focus:border-[var(--brand)] transition-colors"
+                  value={newRoleId}
+                  onChange={(e) => setNewRoleId(e.target.value)}
+                >
+                  <option value="">{isFarsi ? "بدون نقش (لغو دسترسی)" : "No Role (Revoke Role)"}</option>
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
+                <Button type="button" variant="secondary" onClick={() => setIsRoleChangeOpen(false)}>
+                  {isFarsi ? "انصراف" : "Cancel"}
+                </Button>
+                <Button type="submit" disabled={updateMemberMutation.isPending}>
+                  {updateMemberMutation.isPending 
+                    ? (isFarsi ? "در حال تغییر..." : "Saving...") 
+                    : (isFarsi ? "ذخیره تغییرات" : "Save Changes")}
+                </Button>
+              </div>
+            </form>
+          </ModalBody>
         </Modal>
 
       </div>

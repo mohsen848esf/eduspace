@@ -54,6 +54,7 @@ export default function ClassDetailPage() {
   });
 
   const { data: liveSessions = [] } = useSessions(undefined, "live");
+  const { data: classSessions = [] } = useSessions(id);
 
   const { data: classInvoicesResponse } = useQuery({
     queryKey: ["class-invoices", id],
@@ -88,9 +89,50 @@ export default function ClassDetailPage() {
     queryFn: () => assessmentsApi.getAssignmentSubmissions({ class_id: id }),
   });
 
+  // Class Occurrences (Automatic Recurrence Mode)
+  const { data: occurrences = [], isLoading: loadingOccurrences } = useQuery({
+    queryKey: ["occurrences", id],
+    queryFn: () => crmApi.getOccurrences({ class_id: id }),
+    enabled: cls?.scheduling_mode === 'automatic',
+  });
+
+  const startOccurrenceMutation = useMutation({
+    mutationFn: (occurrenceId: number) => crmApi.startOccurrence(occurrenceId),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["occurrences", id] });
+      toast.success(isFarsi ? "جلسه کلاس با موفقیت شروع شد" : "Class session started successfully");
+      navigate(`/rooms/${data.room_code}?token=${data.token}`);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در شروع جلسه کلاس" : "Failed to start class session"));
+    }
+  });
+
+  const completeOccurrenceMutation = useMutation({
+    mutationFn: (occurrenceId: number) => crmApi.completeOccurrence(occurrenceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["occurrences", id] });
+      toast.success(isFarsi ? "جلسه کلاس با موفقیت خاتمه یافت" : "Class session completed");
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در خاتمه دادن جلسه" : "Failed to complete session"));
+    }
+  });
+
+  const cancelOccurrenceMutation = useMutation({
+    mutationFn: (occurrenceId: number) => crmApi.cancelOccurrence(occurrenceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["occurrences", id] });
+      toast.success(isFarsi ? "جلسه کلاس با موفقیت لغو شد" : "Class session cancelled");
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در لغو جلسه" : "Failed to cancel session"));
+    }
+  });
+
   // Create Assignment Form State
   const [isCreateAssignmentOpen, setIsCreateAssignmentOpen] = useState(false);
-  const [assignmentForm, setAssignmentForm] = useState({ title: "", description: "", due_date: "" });
+  const [assignmentForm, setAssignmentForm] = useState({ title: "", description: "", due_date: "", session: "" });
   const [assignmentAttachment, setAssignmentAttachment] = useState<File | null>(null);
 
   // Submit Homework Form State
@@ -105,7 +147,7 @@ export default function ClassDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["assignments", id] });
       toast.success(isFarsi ? "تکلیف با موفقیت ایجاد شد" : "Assignment created successfully");
       setIsCreateAssignmentOpen(false);
-      setAssignmentForm({ title: "", description: "", due_date: "" });
+      setAssignmentForm({ title: "", description: "", due_date: "", session: "" });
       setAssignmentAttachment(null);
     },
     onError: (err: any) => {
@@ -136,6 +178,13 @@ export default function ClassDetailPage() {
     if (assignmentForm.due_date) {
       formData.append("due_date", new Date(assignmentForm.due_date).toISOString());
     }
+    if (assignmentForm.session) {
+      if (cls?.scheduling_mode === 'automatic') {
+        formData.append("occurrence", assignmentForm.session);
+      } else {
+        formData.append("session", assignmentForm.session);
+      }
+    }
     if (assignmentAttachment) {
       formData.append("attachment", assignmentAttachment);
     }
@@ -156,7 +205,18 @@ export default function ClassDetailPage() {
 
   // ── Edit Modal ───────────────────────────────────────────────────
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [classForm, setClassForm] = useState({ name: "", course: "", teacher: "", mentor: "", start_date: "", end_date: "", room: "" });
+  const [classForm, setClassForm] = useState({
+    name: "",
+    course: "",
+    teacher: "",
+    mentor: "",
+    start_date: "",
+    end_date: "",
+    room: "",
+    scheduling_mode: "manual" as "manual" | "automatic",
+    capacity_mode: "unlimited" as "unlimited" | "limited",
+    max_students: ""
+  });
   const [teacherSearch, setTeacherSearch] = useState("");
   const [teacherResults, setTeacherResults] = useState<any[]>([]);
   const [mentorSearch, setMentorSearch] = useState("");
@@ -188,6 +248,9 @@ export default function ClassDetailPage() {
       start_date: cls.start_date || "",
       end_date: cls.end_date || "",
       room: cls.room || "",
+      scheduling_mode: cls.scheduling_mode || "manual",
+      capacity_mode: cls.capacity_mode || "unlimited",
+      max_students: cls.max_students?.toString() || "",
     });
     setTeacherSearch(cls.teacher_name || "");
     setTeacherResults([]);
@@ -220,6 +283,19 @@ export default function ClassDetailPage() {
     }
   });
 
+  const startAutomaticClassMutation = useMutation({
+    mutationFn: () => crmApi.startAutomaticClass(id),
+    onSuccess: (data) => {
+      toast.success(isFarsi ? "کلاس با موفقیت آغاز شد" : "Class started successfully");
+      queryClient.invalidateQueries({ queryKey: ["classes"] });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      navigate(`/room/${data.active_room_code}`);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.detail || err.response?.data?.error || (isFarsi ? "خطا در شروع کلاس" : "Failed to start class"));
+    }
+  });
+
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateMutation.mutate({
@@ -230,6 +306,9 @@ export default function ClassDetailPage() {
       start_date: classForm.start_date || null,
       end_date: classForm.end_date || null,
       room: classForm.room || null,
+      scheduling_mode: classForm.scheduling_mode,
+      capacity_mode: classForm.capacity_mode,
+      max_students: classForm.capacity_mode === 'limited' ? parseInt(classForm.max_students) : null
     });
   };
 
@@ -381,6 +460,14 @@ export default function ClassDetailPage() {
                   <Button>🔴 {isFarsi ? "ورود به کلاس زنده" : "Join Live Class"}</Button>
                 </Link>
               )}
+              {cls.scheduling_mode === 'automatic' && !isLive && (isAdmin || (isTeacher && isMyClass)) && (
+                <Button
+                  onClick={() => startAutomaticClassMutation.mutate()}
+                  disabled={startAutomaticClassMutation.isPending}
+                >
+                  🚀 {startAutomaticClassMutation.isPending ? (isFarsi ? "در حال راه‌اندازی..." : "Starting...") : (isFarsi ? "شروع کلاس زنده" : "Start Live Class")}
+                </Button>
+              )}
               {(isAdmin || (isTeacher && isMyClass)) && (
                 <Button variant="secondary" onClick={() => setIsBroadcastOpen(true)}>
                   {isFarsi ? "ارسال پیام" : "Broadcast"}
@@ -441,11 +528,187 @@ export default function ClassDetailPage() {
                 <span className="text-xs font-bold text-[var(--t3)] uppercase tracking-wide">
                   {isFarsi ? "برنامه جلسات" : "Session Schedule"}
                 </span>
-                <Link to="/academic/sessions" className="text-[10px] text-[var(--brand)] hover:underline">
-                  {isFarsi ? "مشاهده همه جلسات" : "View All Sessions"} →
-                </Link>
+                {cls.scheduling_mode === 'manual' && (
+                  <Link to="/academic/sessions" className="text-[10px] text-[var(--brand)] hover:underline">
+                    {isFarsi ? "مشاهده همه جلسات" : "View All Sessions"} →
+                  </Link>
+                )}
               </div>
-              <ClassSessionsSubTable cls={cls} language={language} />
+              
+              {cls.scheduling_mode === 'automatic' ? (
+                <div className="p-4 flex flex-col gap-4">
+                  {/* Recurrence Rule Banner */}
+                  <div className="p-4 bg-[var(--brand)]/10 text-[var(--brand-text)] border border-[var(--brand)]/20 rounded-xl flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold mb-1">
+                        {isFarsi ? "برنامه هفتگی کلاس (سیستم خودکار)" : "Weekly Schedule (Automatic)"}
+                      </h4>
+                      <p className="text-xs text-[var(--t2)] font-medium">
+                        {isFarsi ? "برگزار می‌شود در: " : "Repeats on: "}
+                        <span className="font-bold">
+                          {cls.recurrence_weekdays?.map((d: string) => isFarsi ? {
+                            monday: "دوشنبه", tuesday: "سه‌شنبه", wednesday: "چهارشنبه",
+                            thursday: "پنج‌شنبه", friday: "جمعه", saturday: "شنبه", sunday: "یکشنبه"
+                          }[d] : d.charAt(0).toUpperCase() + d.slice(1)).join("، ")}
+                        </span>
+                        {" "}
+                        {isFarsi ? "ساعت: " : "at: "}
+                        <span className="font-bold font-mono">{cls.recurrence_start_time || "—"}</span>
+                        {" "}
+                        {isFarsi ? `(مدت جلسه: ${cls.recurrence_duration_minutes} دقیقه)` : `(Duration: ${cls.recurrence_duration_minutes} mins)`}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Next Occurrence Callout */}
+                  {(() => {
+                    const upcoming = occurrences.filter((o: any) => o.status === 'scheduled' || o.status === 'live');
+                    if (upcoming.length === 0) return null;
+                    const next = upcoming[0];
+                    const isNextLive = next.status === 'live';
+
+                    return (
+                      <div className="p-4 bg-[var(--s3)] border border-[var(--b)] rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] uppercase font-bold text-[var(--brand)] tracking-wider">
+                              {isFarsi ? "جلسه بعدی" : "Next Occurrence"}
+                            </span>
+                            {isNextLive && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--green)]/15 text-[var(--green)] animate-pulse">
+                                {isFarsi ? "زنده" : "LIVE"}
+                              </span>
+                            )}
+                          </div>
+                          <h4 className="text-sm font-semibold text-[var(--t1)]">
+                            {new Date(next.scheduled_start).toLocaleString(isFarsi ? "fa-IR" : "en-US")}
+                          </h4>
+                        </div>
+                        <div className="flex gap-2 w-full md:w-auto">
+                          {isNextLive ? (
+                            <Link to={`/room/${next.room_code}`} className="w-full md:w-auto">
+                              <Button className="w-full md:w-auto text-xs py-1.5">
+                                🔴 {isFarsi ? "ورود به کلاس" : "Join Session"}
+                              </Button>
+                            </Link>
+                          ) : (
+                            (isAdmin || (isTeacher && isMyClass)) && (
+                              <Button 
+                                onClick={() => startOccurrenceMutation.mutate(next.id)}
+                                disabled={startOccurrenceMutation.isPending}
+                                className="w-full md:w-auto text-xs py-1.5"
+                              >
+                                🚀 {isFarsi ? "شروع کلاس زنده" : "Start Live Class"}
+                              </Button>
+                            )
+                          )}
+                          {!isNextLive && (isAdmin || (isTeacher && isMyClass)) && (
+                            <Button 
+                              variant="secondary"
+                              onClick={() => {
+                                if (confirm(isFarsi ? "آیا مایل به لغو این جلسه هستید؟" : "Are you sure you want to cancel this occurrence?")) {
+                                  cancelOccurrenceMutation.mutate(next.id);
+                                }
+                              }}
+                              disabled={cancelOccurrenceMutation.isPending}
+                              className="text-xs py-1.5 border-[var(--red)] text-[var(--red)] hover:bg-[var(--red)]/10"
+                            >
+                              ❌ {isFarsi ? "لغو" : "Cancel"}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Occurrences List Table */}
+                  <div className="overflow-x-auto border border-[var(--b)] rounded-xl bg-[var(--s2)]">
+                    <table className="w-full text-start text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-[var(--b)] text-[var(--t3)] uppercase text-left bg-[var(--s3)] font-semibold">
+                          <th className="p-3">{isFarsi ? "جلسه" : "Session Date"}</th>
+                          <th className="p-3">{isFarsi ? "زمان" : "Time"}</th>
+                          <th className="p-3">{isFarsi ? "وضعیت" : "Status"}</th>
+                          <th className="p-3">{isFarsi ? "حاضرین" : "Attendance"}</th>
+                          <th className="p-3 text-right">{isFarsi ? "اقدامات" : "Actions"}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {occurrences.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="p-4 text-center text-[var(--t3)]">
+                              {isFarsi ? "هیچ جلسه‌ای تولید نشده است" : "No occurrences generated."}
+                            </td>
+                          </tr>
+                        ) : (
+                          occurrences.map((o: any) => (
+                            <tr key={o.id} className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors">
+                              <td className="p-3 font-semibold text-[var(--t1)]">
+                                {new Date(o.scheduled_start).toLocaleDateString(isFarsi ? "fa-IR" : "en-US")}
+                              </td>
+                              <td className="p-3 font-mono text-[var(--t2)]">
+                                {new Date(o.scheduled_start).toLocaleTimeString(isFarsi ? "fa-IR" : "en-US", { hour: '2-digit', minute: '2-digit' })}
+                                {" → "}
+                                {new Date(o.scheduled_end).toLocaleTimeString(isFarsi ? "fa-IR" : "en-US", { hour: '2-digit', minute: '2-digit' })}
+                              </td>
+                              <td className="p-3">
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                  o.status === 'live' ? "bg-[var(--green)]/15 text-[var(--green)] animate-pulse" :
+                                  o.status === 'completed' ? "bg-[var(--brand)]/10 text-[var(--brand)]" :
+                                  o.status === 'cancelled' ? "bg-[var(--red)]/10 text-[var(--red)]" :
+                                  "bg-[var(--s3)] text-[var(--t3)] border border-[var(--b)]"
+                                }`}>
+                                  {isFarsi ? {
+                                    scheduled: "برنامه‌ریزی شده", live: "زنده", completed: "خاتمه یافته", cancelled: "لغو شده"
+                                  }[o.status] : o.status}
+                                </span>
+                              </td>
+                              <td className="p-3 text-[var(--t3)]">
+                                📊 {o.attendance_count || 0} {isFarsi ? "نفر" : "students"}
+                              </td>
+                              <td className="p-3 text-right flex items-center justify-end gap-1">
+                                {o.status === 'live' ? (
+                                  <Link to={`/room/${o.room_code}`}>
+                                    <button className="text-[10px] font-semibold text-[var(--green)] hover:underline bg-transparent border-none cursor-pointer">
+                                      {isFarsi ? "ورود" : "Join"}
+                                    </button>
+                                  </Link>
+                                ) : o.status === 'scheduled' && (isAdmin || (isTeacher && isMyClass)) ? (
+                                  <>
+                                    <button 
+                                      onClick={() => startOccurrenceMutation.mutate(o.id)}
+                                      className="text-[10px] font-semibold text-[var(--brand)] hover:underline bg-transparent border-none cursor-pointer mr-2"
+                                    >
+                                      {isFarsi ? "شروع" : "Start"}
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        if (confirm(isFarsi ? "لغو جلسه؟" : "Cancel session?")) cancelOccurrenceMutation.mutate(o.id);
+                                      }}
+                                      className="text-[10px] font-semibold text-[var(--red)] hover:underline bg-transparent border-none cursor-pointer"
+                                    >
+                                      {isFarsi ? "لغو" : "Cancel"}
+                                    </button>
+                                  </>
+                                ) : o.status === 'live' && (isAdmin || (isTeacher && isMyClass)) ? (
+                                  <button 
+                                    onClick={() => completeOccurrenceMutation.mutate(o.id)}
+                                    className="text-[10px] font-semibold text-[var(--brand)] hover:underline bg-transparent border-none cursor-pointer"
+                                  >
+                                    {isFarsi ? "خاتمه" : "Complete"}
+                                  </button>
+                                ) : "—"}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <ClassSessionsSubTable cls={cls} language={language} />
+              )}
             </div>
 
             {/* Assignments Panel */}
@@ -768,6 +1031,81 @@ export default function ClassDetailPage() {
             </div>
 
             <Input label={isFarsi ? "اتاق" : "Room"} value={classForm.room} onChange={(e) => setClassForm({ ...classForm, room: e.target.value })} placeholder="e.g. Room 302" />
+
+            {/* Scheduling Mode Selection */}
+            <div className="flex flex-col gap-1.5 w-full">
+              <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                {isFarsi ? "نوع برنامه‌ریزی جلسات" : "Scheduling Mode"}
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setClassForm({ ...classForm, scheduling_mode: 'manual' })}
+                  className={`py-2 px-3 text-xs font-medium rounded-xl border transition-all cursor-pointer ${
+                    classForm.scheduling_mode === 'manual'
+                      ? "bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm"
+                      : "bg-[var(--s2)] text-[var(--t2)] border-[var(--b)] hover:border-[var(--brand)]"
+                  }`}
+                >
+                  {isFarsi ? "جلسات دستی" : "Manual Sessions"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setClassForm({ ...classForm, scheduling_mode: 'automatic' })}
+                  className={`py-2 px-3 text-xs font-medium rounded-xl border transition-all cursor-pointer ${
+                    classForm.scheduling_mode === 'automatic'
+                      ? "bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm"
+                      : "bg-[var(--s2)] text-[var(--t2)] border-[var(--b)] hover:border-[var(--brand)]"
+                  }`}
+                >
+                  {isFarsi ? "کلاس اتوماتیک" : "Automatic Continuous"}
+                </button>
+              </div>
+            </div>
+
+            {/* Enrollment Capacity Mode */}
+            <div className="flex flex-col gap-1.5 w-full">
+              <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                {isFarsi ? "ظرفیت ثبت‌نام" : "Enrollment Capacity"}
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setClassForm({ ...classForm, capacity_mode: 'unlimited' })}
+                  className={`py-2 px-3 text-xs font-medium rounded-xl border transition-all cursor-pointer ${
+                    classForm.capacity_mode === 'unlimited'
+                      ? "bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm"
+                      : "bg-[var(--s2)] text-[var(--t2)] border-[var(--b)] hover:border-[var(--brand)]"
+                  }`}
+                >
+                  {isFarsi ? "نامحدود" : "Unlimited"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setClassForm({ ...classForm, capacity_mode: 'limited' })}
+                  className={`py-2 px-3 text-xs font-medium rounded-xl border transition-all cursor-pointer ${
+                    classForm.capacity_mode === 'limited'
+                      ? "bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm"
+                      : "bg-[var(--s2)] text-[var(--t2)] border-[var(--b)] hover:border-[var(--brand)]"
+                  }`}
+                >
+                  {isFarsi ? "محدود" : "Limited"}
+                </button>
+              </div>
+            </div>
+
+            {/* Maximum Students (Only when limited capacity) */}
+            {classForm.capacity_mode === 'limited' && (
+              <Input
+                label={isFarsi ? "حداکثر تعداد دانشجویان" : "Maximum Students"}
+                type="number"
+                min="1"
+                value={classForm.max_students}
+                onChange={(e) => setClassForm({ ...classForm, max_students: e.target.value })}
+                placeholder="e.g. 20"
+                required
+              />
+            )}
             <div className="flex justify-end gap-2 mt-2">
               <Button type="button" variant="secondary" onClick={() => setIsEditOpen(false)}>{isFarsi ? "انصراف" : "Cancel"}</Button>
               <Button type="submit" disabled={updateMutation.isPending}>
@@ -871,6 +1209,32 @@ export default function ClassDetailPage() {
               value={assignmentForm.due_date || undefined}
               onChange={(val) => setAssignmentForm({ ...assignmentForm, due_date: val })}
             />
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                {isFarsi ? "جلسه مرتبط (اختیاری)" : "Link to Session (Optional)"}
+              </label>
+              <select
+                className="w-full bg-[var(--s2)] text-[var(--t1)] text-sm border border-[var(--b)] rounded-xl px-4 py-2.5 outline-none focus:border-[var(--brand)] transition-colors"
+                value={assignmentForm.session}
+                onChange={(e) => setAssignmentForm({ ...assignmentForm, session: e.target.value })}
+              >
+                <option value="">{isFarsi ? "تکلیف کلی کلاس (بدون جلسه خاص)" : "Class Homework (No specific session)"}</option>
+                {cls?.scheduling_mode === 'automatic' ? (
+                  occurrences.map((o: any) => (
+                    <option key={o.id} value={o.id}>
+                      Session - {new Date(o.scheduled_start).toLocaleDateString(language === 'fa' ? 'fa-IR' : 'en-US')} ({new Date(o.scheduled_start).toLocaleTimeString(language === 'fa' ? 'fa-IR' : 'en-US', { hour: '2-digit', minute: '2-digit' })})
+                    </option>
+                  ))
+                ) : (
+                  classSessions.map((s: any) => (
+                    <option key={s.id} value={s.id}>
+                      {s.title} ({new Date(s.scheduled_start || s.created_at).toLocaleDateString(language === 'fa' ? 'fa-IR' : 'en-US')})
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">

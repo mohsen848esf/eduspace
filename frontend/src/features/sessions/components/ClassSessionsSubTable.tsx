@@ -126,10 +126,19 @@ export default function ClassSessionsSubTable({
   return (
     <div className="p-4 bg-[var(--s3)] border-t border-[var(--b)] rounded-b-xl flex flex-col gap-4">
       <div className="flex justify-between items-center">
-        <h4 className="text-xs font-bold text-[var(--t2)] uppercase tracking-wider">
-          {isFarsi ? "لیست جلسات این کلاس" : "Class Sessions"} ({sessions.length})
-        </h4>
-        {canSchedule && (
+        <div className="flex flex-col gap-0.5">
+          <h4 className="text-xs font-bold text-[var(--t2)] uppercase tracking-wider">
+            {isFarsi ? "لیست جلسات این کلاس" : "Class Sessions"} ({sessions.length})
+          </h4>
+          {cls.scheduling_mode === 'automatic' && (
+            <span className="text-[10px] text-[var(--t3)]">
+              {isFarsi 
+                ? "جلسات این کلاس به صورت خودکار با شروع کلاس ایجاد می‌شوند."
+                : "Sessions are automatically created when this class starts."}
+            </span>
+          )}
+        </div>
+        {canSchedule && cls.scheduling_mode !== 'automatic' && (
           <Button
             size="sm"
             variant="ghost"
@@ -182,7 +191,10 @@ export default function ClassSessionsSubTable({
         </div>
       ) : sessions.length === 0 ? (
         <div className="text-xs text-[var(--t3)] text-center py-2">
-          {isFarsi ? "هیچ جلسه‌ای برای این کلاس ثبت نشده است." : "No sessions found for this class."}
+          {cls.scheduling_mode === 'automatic'
+            ? (isFarsi ? "هیچ جلسه‌ای تاکنون آغاز نشده است. با شروع اولین کلاس زنده، جلسات خودکار در اینجا ایجاد خواهند شد." : "No sessions started yet. When the first live class begins, sessions will be automatically created here.")
+            : (isFarsi ? "هیچ جلسه‌ای برای این کلاس ثبت نشده است." : "No sessions found for this class.")
+          }
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-[var(--b)] bg-[var(--s2)]">
