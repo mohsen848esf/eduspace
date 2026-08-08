@@ -8,7 +8,8 @@ import { useRoomStore } from "../store/roomStore";
 
 function playChime() {
   try {
-    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const audioCtx = new AudioContextClass();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.connect(gain);
