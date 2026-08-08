@@ -75,3 +75,45 @@ def monthly_generate_billing_and_usage_reports():
     except Exception as e:
         CELERY_TASKS_TOTAL.labels(task_name="monthly_generate_billing_and_usage_reports", status="failure").inc()
         raise e
+
+@shared_task(name="accounts.tasks.send_upcoming_class_reminders")
+def send_upcoming_class_reminders():
+    try:
+        from accounts.models import Session, ClassOccurrence
+        from django.utils import timezone
+        
+        now = timezone.now()
+        intervals = [
+            (24 * 60, "24 hours"),
+            (60, "1 hour"),
+            (15, "15 minutes")
+        ]
+        
+        sent_count = 0
+        for minutes, label in intervals:
+            start_range = now + timezone.timedelta(minutes=minutes - 7)
+            end_range = now + timezone.timedelta(minutes=minutes + 7)
+            
+            # 1. Remind for manual sessions
+            sessions = Session.objects.filter(
+                status=Session.Status.SCHEDULED,
+                scheduled_start__range=(start_range, end_range)
+            )
+            for s in sessions:
+                print(f"Reminder: Class session '{s.title}' is starting in {label}!")
+                sent_count += 1
+                
+            # 2. Remind for automatic occurrences
+            occurrences = ClassOccurrence.objects.filter(
+                status=ClassOccurrence.Status.SCHEDULED,
+                scheduled_start__range=(start_range, end_range)
+            )
+            for o in occurrences:
+                print(f"Reminder: Class '{o.academy_class.name}' session is starting in {label}!")
+                sent_count += 1
+                
+        CELERY_TASKS_TOTAL.labels(task_name="send_upcoming_class_reminders", status="success").inc()
+        return f"Dispatched {sent_count} reminders."
+    except Exception as e:
+        CELERY_TASKS_TOTAL.labels(task_name="send_upcoming_class_reminders", status="failure").inc()
+        raise e

@@ -244,7 +244,44 @@ class AcademyClass(models.Model):
     end_date = models.DateField(null=True, blank=True)
     room = models.ForeignKey('rooms.Room', on_delete=models.SET_NULL, null=True, blank=True, related_name='academy_classes')
     is_active = models.BooleanField(default=True)
+    class SchedulingMode(models.TextChoices):
+        MANUAL = 'manual', 'Manual'
+        AUTOMATIC = 'automatic', 'Automatic'
+
+    class CapacityMode(models.TextChoices):
+        UNLIMITED = 'unlimited', 'Unlimited'
+        LIMITED = 'limited', 'Limited'
+
+    scheduling_mode = models.CharField(
+        max_length=20,
+        choices=SchedulingMode.choices,
+        default=SchedulingMode.MANUAL
+    )
+    capacity_mode = models.CharField(
+        max_length=20,
+        choices=CapacityMode.choices,
+        default=CapacityMode.UNLIMITED
+    )
     max_students = models.PositiveIntegerField(null=True, blank=True)
+    
+    # Recurrence configuration for Automatic Session Mode
+    recurrence_weekdays = models.JSONField(default=list, blank=True)
+    recurrence_start_time = models.TimeField(null=True, blank=True)
+    recurrence_duration_minutes = models.PositiveIntegerField(null=True, blank=True)
+    recurrence_timezone = models.CharField(max_length=100, default='UTC')
+    
+    class EndMode(models.TextChoices):
+        DATE = 'date', 'End Date'
+        OCCURRENCES = 'occurrences', 'Number of Occurrences'
+        
+    recurrence_end_mode = models.CharField(
+        max_length=20,
+        choices=EndMode.choices,
+        default=EndMode.DATE
+    )
+    recurrence_max_occurrences = models.PositiveIntegerField(null=True, blank=True)
+    google_calendar_id = models.CharField(max_length=255, null=True, blank=True)
+
     created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='created_classes')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -255,6 +292,16 @@ class AcademyClass(models.Model):
 
     def __str__(self):
         return f"{self.course.code} - {self.name}"
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        
+        from accounts.services.scheduling_service import SchedulingService
+        if is_new:
+            SchedulingService.generate_occurrences(self)
+        else:
+            SchedulingService.update_class_occurrences(self)
 
     @property
     def session_count(self):
@@ -479,6 +526,10 @@ class Session(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+        # Sync to Google Calendar
+        from accounts.services.google_calendar_service import GoogleCalendarService
+        GoogleCalendarService.sync_manual_session(self)
+        
         # Sync to AcademyClass.room for backward compatibility during transition
         if self.academy_class:
             ac = self.academy_class
@@ -511,6 +562,33 @@ class Session(models.Model):
         return f"{self.title} ({self.status})"
 
 
+class ClassOccurrence(models.Model):
+    class Status(models.TextChoices):
+        SCHEDULED = 'scheduled', 'Scheduled'
+        LIVE = 'live', 'Live'
+        COMPLETED = 'completed', 'Completed'
+        CANCELLED = 'cancelled', 'Cancelled'
+
+    academy_class = models.ForeignKey(AcademyClass, on_delete=models.CASCADE, related_name='occurrences')
+    occurrence_id = models.CharField(max_length=100, unique=True)
+    scheduled_start = models.DateTimeField()
+    scheduled_end = models.DateTimeField()
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.SCHEDULED)
+    room = models.ForeignKey('rooms.Room', null=True, blank=True, on_delete=models.SET_NULL, related_name='occurrences')
+    google_event_id = models.CharField(max_length=255, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['academy_class', 'status']),
+            models.Index(fields=['scheduled_start']),
+        ]
+
+    def __str__(self):
+        return f"{self.academy_class.name} - {self.scheduled_start.strftime('%Y-%m-%d %H:%M')} ({self.status})"
+
+
 class Attendance(models.Model):
     class Status(models.TextChoices):
         PRESENT = 'present', 'Present'
@@ -518,7 +596,8 @@ class Attendance(models.Model):
         LATE = 'late', 'Late'
         EXCUSED = 'excused', 'Excused'
 
-    session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name='attendance_records')
+    session = models.ForeignKey(Session, null=True, blank=True, on_delete=models.CASCADE, related_name='attendance_records')
+    occurrence = models.ForeignKey(ClassOccurrence, null=True, blank=True, on_delete=models.CASCADE, related_name='attendance_records')
     student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='attendance_records')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ABSENT)
     joined_at = models.DateTimeField(null=True, blank=True)
@@ -527,11 +606,26 @@ class Attendance(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['session', 'student'], name='unique_session_student_attendance')
+            models.UniqueConstraint(
+                fields=['session', 'student'],
+                condition=models.Q(session__isnull=False),
+                name='unique_session_student_attendance'
+            ),
+            models.UniqueConstraint(
+                fields=['occurrence', 'student'],
+                condition=models.Q(occurrence__isnull=False),
+                name='unique_occurrence_student_attendance'
+            ),
+            models.CheckConstraint(
+                condition=(models.Q(session__isnull=False) & models.Q(occurrence__isnull=True)) | 
+                          (models.Q(session__isnull=True) & models.Q(occurrence__isnull=False)),
+                name='attendance_target_xor'
+            )
         ]
 
     def __str__(self):
-        return f"{self.student.username} - {self.session.title}: {self.status}"
+        title = self.session.title if self.session else f"Occurrence {self.occurrence.occurrence_id}"
+        return f"{self.student.username} - {title}: {self.status}"
 
 
 class Certificate(models.Model):

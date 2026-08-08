@@ -55,6 +55,19 @@ export default function MembersPage() {
   });
 
   // ──────────────────────────────────────────────
+  // Create Member Modal State
+  // ──────────────────────────────────────────────
+  const [isCreateMemberModalOpen, setIsCreateMemberModalOpen] = useState(false);
+  const [createMemberForm, setCreateMemberForm] = useState({
+    username: "",
+    email: "",
+    password: "",
+    full_name: "",
+    role: "" as string,
+    contract_type: "full_time" as string,
+  });
+
+  // ──────────────────────────────────────────────
   // Role Modal State
   // ──────────────────────────────────────────────
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
@@ -83,6 +96,28 @@ export default function MembersPage() {
   });
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SimpleUser[]>([]);
+
+  // ──────────────────────────────────────────────
+  // Change Role Modal State
+  // ──────────────────────────────────────────────
+  const [isRoleChangeOpen, setIsRoleChangeOpen] = useState(false);
+  const [selectedMemberForRoleChange, setSelectedMemberForRoleChange] = useState<OrgMember | null>(null);
+  const [newRoleId, setNewRoleId] = useState<string>("");
+
+  const handleRoleChangeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMemberForRoleChange) return;
+    updateMemberMutation.mutate({
+      id: selectedMemberForRoleChange.id,
+      data: { role: newRoleId ? parseInt(newRoleId) : null } as any,
+    }, {
+      onSuccess: () => {
+        setIsRoleChangeOpen(false);
+        setSelectedMemberForRoleChange(null);
+        setNewRoleId("");
+      }
+    });
+  };
 
   // ──────────────────────────────────────────────
   // Queries
@@ -198,12 +233,33 @@ export default function MembersPage() {
     mutationFn: crmApi.createMember,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["org-members"] });
-      toast.success(isFarsi ? "عضو جدید با موفقیت اضافه شد" : "Member added successfully");
+      toast.success(isFarsi ? "دعوت‌نامه با موفقیت ارسال شد" : "Member invited successfully");
       setIsInviteModalOpen(false);
       setInviteForm({ username: "", email: "", role: "", contract_type: "full_time" });
     },
     onError: (err: any) => {
-      const msg = err.response?.data?.detail || err.response?.data?.[0] || (isFarsi ? "خطا در افزودن عضو" : "Failed to add member");
+      const msg = err.response?.data?.detail || err.response?.data?.[0] || (isFarsi ? "خطا در ارسال دعوت‌نامه" : "Failed to invite member");
+      toast.error(typeof msg === "string" ? msg : JSON.stringify(msg));
+    }
+  });
+
+  const createMemberMutation = useMutation({
+    mutationFn: crmApi.createMember,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["org-members"] });
+      toast.success(isFarsi ? "عضو جدید با موفقیت ایجاد شد" : "Member created successfully");
+      setIsCreateMemberModalOpen(false);
+      setCreateMemberForm({
+        username: "",
+        email: "",
+        password: "",
+        full_name: "",
+        role: "",
+        contract_type: "full_time"
+      });
+    },
+    onError: (err: any) => {
+      const msg = err.response?.data?.detail || err.response?.data?.[0] || (isFarsi ? "خطا در ایجاد عضو جدید" : "Failed to create member");
       toast.error(typeof msg === "string" ? msg : JSON.stringify(msg));
     }
   });
@@ -367,6 +423,22 @@ export default function MembersPage() {
       email: inviteForm.email || undefined,
       role: inviteForm.role ? parseInt(inviteForm.role) : null,
       contract_type: inviteForm.contract_type,
+    });
+  };
+
+  const handleCreateMemberSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createMemberForm.username.trim() || !createMemberForm.password.trim() || !createMemberForm.role) {
+      toast.error(isFarsi ? "نام کاربری، رمز عبور و نقش الزامی هستند" : "Username, Password and Role are required");
+      return;
+    }
+    createMemberMutation.mutate({
+      username: createMemberForm.username,
+      email: createMemberForm.email || undefined,
+      password: createMemberForm.password,
+      full_name: createMemberForm.full_name || undefined,
+      role: parseInt(createMemberForm.role),
+      contract_type: createMemberForm.contract_type,
     });
   };
 
@@ -594,9 +666,25 @@ export default function MembersPage() {
                     />
                   </div>
                   {isOrisAdmin && (
-                    <Button size="sm" onClick={() => setIsInviteModalOpen(true)}>
-                      {isFarsi ? "+ دعوت عضو" : "+ Invite Member"}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="secondary" onClick={() => setIsInviteModalOpen(true)}>
+                        {isFarsi ? "+ دعوت عضو" : "+ Invite Member"}
+                      </Button>
+                      <Button size="sm" onClick={() => {
+                        const defaultRoleId = roles.length > 0 ? (roles.find(r => r.name.toLowerCase().includes("student"))?.id?.toString() || roles[0].id.toString()) : "";
+                        setCreateMemberForm({
+                          username: "",
+                          email: "",
+                          password: "",
+                          full_name: "",
+                          role: defaultRoleId,
+                          contract_type: "full_time"
+                        });
+                        setIsCreateMemberModalOpen(true);
+                      }}>
+                        {isFarsi ? "+ ایجاد عضو" : "+ Create Member"}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -681,6 +769,15 @@ export default function MembersPage() {
                                           id: m.id,
                                           data: { is_active: !m.is_active } as any,
                                         });
+                                      },
+                                      isEdit: true,
+                                    },
+                                    {
+                                      label: isFarsi ? "تغییر نقش" : "Change Role",
+                                      onClick: () => {
+                                        setSelectedMemberForRoleChange(m);
+                                        setNewRoleId(m.role?.toString() || "");
+                                        setIsRoleChangeOpen(true);
                                       },
                                       isEdit: true,
                                     },
@@ -905,6 +1002,9 @@ export default function MembersPage() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           Invite Member Modal
          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          Invite Member Modal
+         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <Modal open={isInviteModalOpen} onOpenChange={setIsInviteModalOpen}>
         <ModalHeader>
           <ModalTitle>{isFarsi ? "دعوت عضو جدید" : "Invite New Member"}</ModalTitle>
@@ -912,16 +1012,18 @@ export default function MembersPage() {
         <ModalBody>
           <form onSubmit={handleInviteSubmit} className="flex flex-col gap-4">
             <Input
-              label={isFarsi ? "نام کاربری" : "Username"}
-              value={inviteForm.username}
-              onChange={(e) => setInviteForm({ ...inviteForm, username: e.target.value })}
-              placeholder={isFarsi ? "نام کاربری را وارد کنید" : "Enter username"}
-            />
-            <Input
-              label={isFarsi ? "ایمیل (جایگزین)" : "Email (alternative)"}
-              value={inviteForm.email}
-              onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
-              placeholder={isFarsi ? "ایمیل را وارد کنید" : "Enter email address"}
+              label={isFarsi ? "نام کاربری یا ایمیل" : "Username or Email"}
+              value={inviteForm.username || inviteForm.email}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val.includes("@")) {
+                  setInviteForm({ ...inviteForm, email: val, username: "" });
+                } else {
+                  setInviteForm({ ...inviteForm, username: val, email: "" });
+                }
+              }}
+              placeholder={isFarsi ? "نام کاربری یا ایمیل عضو را وارد کنید" : "Enter username or email address"}
+              required
             />
             <p className="text-[10px] text-[var(--t3)] -mt-2">
               {isFarsi ? "نام کاربری یا ایمیل را وارد کنید. کاربر باید از قبل در سیستم ثبت‌نام کرده باشد." : "Provide a username or email. The user must already be registered."}
@@ -1000,14 +1102,92 @@ export default function MembersPage() {
                 {isFarsi ? "انصراف" : "Cancel"}
               </Button>
               <Button type="submit" disabled={inviteMemberMutation.isPending}>
-                {inviteMemberMutation.isPending
-                  ? (isFarsi ? "در حال افزودن..." : "Adding...")
-                  : (isFarsi ? "افزودن عضو" : "Add Member")}
+                {inviteMemberMutation.isPending ? (isFarsi ? "در حال ارسال..." : "Sending...") : (isFarsi ? "ارسال دعوت" : "Send Invite")}
               </Button>
             </div>
           </form>
-        </ModalBody>
-      </Modal>
+        </Modal>
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          Create Member Modal
+         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <Modal open={isCreateMemberModalOpen} onOpenChange={setIsCreateMemberModalOpen}>
+        <ModalHeader>
+          <ModalTitle>{isFarsi ? "ایجاد و ثبت‌نام عضو جدید" : "Create New Member"}</ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+          <form onSubmit={handleCreateMemberSubmit} className="flex flex-col gap-4">
+            <Input
+              label={isFarsi ? "نام کاربری" : "Username"}
+              value={createMemberForm.username}
+              onChange={(e) => setCreateMemberForm({ ...createMemberForm, username: e.target.value })}
+              placeholder={isFarsi ? "نام کاربری را وارد کنید" : "Enter username"}
+              required
+            />
+            <Input
+              label={isFarsi ? "رمز عبور" : "Password"}
+              value={createMemberForm.password}
+              onChange={(e) => setCreateMemberForm({ ...createMemberForm, password: e.target.value })}
+              placeholder={isFarsi ? "رمز عبور دلخواه..." : "Desired password..."}
+              type="password"
+              required
+            />
+            <Input
+              label={isFarsi ? "نام کامل (اختیاری)" : "Full Name (Optional)"}
+              value={createMemberForm.full_name}
+              onChange={(e) => setCreateMemberForm({ ...createMemberForm, full_name: e.target.value })}
+              placeholder={isFarsi ? "مثال: علی رضایی" : "e.g. Ali Rezaei"}
+            />
+            <Input
+              label={isFarsi ? "ایمیل (اختیاری)" : "Email (Optional)"}
+              value={createMemberForm.email}
+              onChange={(e) => setCreateMemberForm({ ...createMemberForm, email: e.target.value })}
+              placeholder={isFarsi ? "ali@example.com" : "ali@example.com"}
+            />
+
+            <div className="flex flex-col gap-1.5 w-full">
+              <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                {isFarsi ? "نقش" : "Role"}
+              </label>
+              <select
+                className="w-full bg-[var(--s2)] text-[var(--t1)] text-sm border border-[var(--b)] rounded-xl px-4 py-2.5 outline-none focus:border-[var(--brand)] transition-colors"
+                value={createMemberForm.role}
+                onChange={(e) => setCreateMemberForm({ ...createMemberForm, role: e.target.value })}
+                required
+              >
+                <option value="" disabled>{isFarsi ? "انتخاب نقش..." : "Select Role..."}</option>
+                {roles.map((r) => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5 w-full">
+              <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                {isFarsi ? "نوع قرارداد" : "Contract Type"}
+              </label>
+              <select
+                className="w-full bg-[var(--s2)] text-[var(--t1)] text-sm border border-[var(--b)] rounded-xl px-4 py-2.5 outline-none focus:border-[var(--brand)] transition-colors"
+                value={createMemberForm.contract_type}
+                onChange={(e) => setCreateMemberForm({ ...createMemberForm, contract_type: e.target.value })}
+              >
+                <option value="full_time">{isFarsi ? "تمام وقت" : "Full Time"}</option>
+                <option value="part_time">{isFarsi ? "پاره وقت" : "Part Time"}</option>
+                <option value="contractor">{isFarsi ? "پیمانکار" : "Contractor"}</option>
+                <option value="guest">{isFarsi ? "مهمان" : "Guest"}</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-4">
+              <Button type="button" variant="secondary" onClick={() => setIsCreateMemberModalOpen(false)}>
+                {isFarsi ? "انصراف" : "Cancel"}
+              </Button>
+              <Button type="submit" disabled={createMemberMutation.isPending}>
+                {createMemberMutation.isPending ? (isFarsi ? "در حال ایجاد..." : "Creating...") : (isFarsi ? "ایجاد عضو" : "Create Member")}
+              </Button>
+            </div>
+          </form>
+        </Modal>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           Create / Edit Role Modal
@@ -1090,6 +1270,49 @@ export default function MembersPage() {
                 {(createRoleMutation.isPending || updateRoleMutation.isPending)
                   ? (isFarsi ? "در حال ذخیره..." : "Saving...")
                   : (editRoleId ? (isFarsi ? "ذخیره تغییرات" : "Save Changes") : (isFarsi ? "ایجاد نقش" : "Create Role"))}
+              </Button>
+            </div>
+          </form>
+        </ModalBody>
+      </Modal>
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          Change Member Role Modal
+         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <Modal open={isRoleChangeOpen} onOpenChange={setIsRoleChangeOpen}>
+        <ModalHeader>
+          <ModalTitle>{isFarsi ? "تغییر نقش عضو" : "Change Member Role"}</ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+          <form onSubmit={handleRoleChangeSubmit} className="flex flex-col gap-4">
+            <p className="text-xs text-[var(--t2)]">
+              {isFarsi 
+                ? `در حال تغییر نقش کاربر ${selectedMemberForRoleChange?.user_details?.full_name || selectedMemberForRoleChange?.user_details?.username}` 
+                : `Changing role for user: ${selectedMemberForRoleChange?.user_details?.full_name || selectedMemberForRoleChange?.user_details?.username}`}
+            </p>
+            <div className="flex flex-col gap-1.5 w-full">
+              <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                {isFarsi ? "نقش جدید" : "New Role"}
+              </label>
+              <select
+                className="w-full bg-[var(--s2)] text-[var(--t1)] text-sm border border-[var(--b)] rounded-xl px-4 py-2.5 outline-none focus:border-[var(--brand)] transition-colors"
+                value={newRoleId}
+                onChange={(e) => setNewRoleId(e.target.value)}
+              >
+                <option value="">{isFarsi ? "بدون نقش (لغو دسترسی)" : "No Role (Revoke Role)"}</option>
+                {roles.map((r) => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button type="button" variant="secondary" onClick={() => setIsRoleChangeOpen(false)}>
+                {isFarsi ? "انصراف" : "Cancel"}
+              </Button>
+              <Button type="submit" disabled={updateMemberMutation.isPending}>
+                {updateMemberMutation.isPending 
+                  ? (isFarsi ? "در حال تغییر..." : "Saving...") 
+                  : (isFarsi ? "ذخیره تغییرات" : "Save Changes")}
               </Button>
             </div>
           </form>

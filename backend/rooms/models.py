@@ -25,6 +25,13 @@ class Room(models.Model):
         blank=True,
         related_name='rooms'
     )
+    occurrence = models.ForeignKey(
+        'accounts.ClassOccurrence',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='rooms'
+    )
     organization = models.ForeignKey(
         'accounts.Organization',
         on_delete=models.SET_NULL,
@@ -134,6 +141,13 @@ class Recording(models.Model):
     )
     session = models.ForeignKey(
         'accounts.Session',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='recordings'
+    )
+    occurrence = models.ForeignKey(
+        'accounts.ClassOccurrence',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

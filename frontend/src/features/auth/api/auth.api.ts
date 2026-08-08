@@ -171,7 +171,7 @@ export const authApi = {
     return res.data;
   },
 
-  inviteMember: async (data: { username?: string; email?: string; role: number | null; contract_type: string; expires_at?: string | null }): Promise<OrgMember> => {
+  inviteMember: async (data: { username?: string; email?: string; password?: string; full_name?: string; role: number | null; contract_type: string; expires_at?: string | null }): Promise<OrgMember> => {
     const res = await client.post("/auth/org-members/", data);
     return res.data;
   },

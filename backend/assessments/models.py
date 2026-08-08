@@ -3,7 +3,7 @@ from django.db import models
 from django.db.models import ProtectedError, Q
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from accounts.models import Organization, Session, AcademyClass, validate_no_svg
+from accounts.models import Organization, Session, AcademyClass, ClassOccurrence, validate_no_svg
 
 
 class QuestionBank(models.Model):
@@ -227,6 +227,20 @@ class Assignment(models.Model):
     academy_class = models.ForeignKey(
         AcademyClass,
         on_delete=models.CASCADE,
+        related_name="assignments"
+    )
+    session = models.ForeignKey(
+        Session,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="assignments"
+    )
+    occurrence = models.ForeignKey(
+        ClassOccurrence,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
         related_name="assignments"
     )
     title = models.CharField(max_length=255)

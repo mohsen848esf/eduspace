@@ -180,10 +180,12 @@ class AssignmentSerializer(serializers.ModelSerializer):
     submissions_count = serializers.SerializerMethodField()
     graded_count = serializers.SerializerMethodField()
     class_name = serializers.CharField(source='academy_class.name', read_only=True)
+    session_title = serializers.CharField(source='session.title', read_only=True)
+    occurrence_title = serializers.SerializerMethodField()
 
     class Meta:
         model = Assignment
-        fields = ('id', 'academy_class', 'class_name', 'title', 'description', 'due_date', 'attachment', 'created_by', 'created_at', 'updated_at', 'submissions_count', 'graded_count')
+        fields = ('id', 'academy_class', 'class_name', 'session', 'session_title', 'occurrence', 'occurrence_title', 'title', 'description', 'due_date', 'attachment', 'created_by', 'created_at', 'updated_at', 'submissions_count', 'graded_count')
         read_only_fields = ('id', 'created_by', 'created_at', 'updated_at')
 
     def get_submissions_count(self, obj):
@@ -191,6 +193,12 @@ class AssignmentSerializer(serializers.ModelSerializer):
 
     def get_graded_count(self, obj):
         return obj.submissions.filter(status='graded').count()
+
+    def get_occurrence_title(self, obj):
+        if obj.occurrence:
+            from django.utils import timezone
+            return f"Session - {timezone.localtime(obj.occurrence.scheduled_start).strftime('%Y-%m-%d %H:%M')}"
+        return ""
 
     def validate_academy_class(self, value):
         request = self.context.get('request')
@@ -206,6 +214,23 @@ class AssignmentSerializer(serializers.ModelSerializer):
         if request and request.user and request.user.is_authenticated:
             validated_data['created_by'] = request.user
         return super().create(validated_data)
+
+    def validate(self, attrs):
+        academy_class = attrs.get('academy_class', getattr(self.instance, 'academy_class', None))
+        session = attrs.get('session', getattr(self.instance, 'session', None))
+        occurrence = attrs.get('occurrence', getattr(self.instance, 'occurrence', None))
+        
+        if session and occurrence:
+            raise serializers.ValidationError("An assignment cannot be linked to both a session and an occurrence.")
+            
+        if session and academy_class:
+            if session.academy_class != academy_class:
+                raise serializers.ValidationError({"session": "The selected session does not belong to this class."})
+                
+        if occurrence and academy_class:
+            if occurrence.academy_class != academy_class:
+                raise serializers.ValidationError({"occurrence": "The selected occurrence does not belong to this class."})
+        return attrs
 
 
 class AssignmentSubmissionSerializer(serializers.ModelSerializer):
