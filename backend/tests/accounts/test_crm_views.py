@@ -437,3 +437,64 @@ class CRMViewsIntegrationTest(APITestCase):
         self.assertEqual(items[1].description, 'Lab fee')
         self.assertEqual(float(items[1].unit_price), 30.00)
 
+    def test_automatic_class_scheduling_and_start_live(self):
+        course = Course.objects.create(title='Auto Course', code='AC102', organization=self.org)
+        ac = AcademyClass.objects.create(
+            course=course,
+            name='Auto Class',
+            scheduling_mode='automatic',
+            teacher=self.user
+        )
+        
+        perm_sessions, _ = Permission.objects.get_or_create(codename='can_manage_sessions', defaults={'name': 'Manage Sessions'})
+        self.admin_role.permissions.add(perm_sessions)
+        
+        # Test starting class
+        url = reverse('class-start', args=[ac.id])
+        res = self.client.post(url, HTTP_X_ORGANIZATION_SLUG='crm-org')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        
+        # Verify a session was created and is live
+        self.assertEqual(ac.sessions.count(), 1)
+        session = ac.sessions.first()
+        self.assertEqual(session.status, 'live')
+        self.assertIsNotNone(session.active_room)
+        
+        # Test idempotency (starting class again should return the same live session without creating another one)
+        res2 = self.client.post(url, HTTP_X_ORGANIZATION_SLUG='crm-org')
+        self.assertEqual(res2.status_code, status.HTTP_200_OK)
+        self.assertEqual(res2.data['id'], session.id)
+        self.assertEqual(ac.sessions.count(), 1)
+
+    def test_enrollment_capacity_limit_validation(self):
+        course = Course.objects.create(title='Capacity Course', code='CC103', organization=self.org)
+        ac = AcademyClass.objects.create(
+            course=course,
+            name='Limited Class',
+            capacity_mode='limited',
+            max_students=1
+        )
+        
+        # Enroll first student (should succeed)
+        student1 = User.objects.create_user(username='student1', password='password')
+        # Add student member to organization
+        OrgMember.objects.create(organization=self.org, user=student1, is_active=True)
+        
+        url = reverse('enrollment-list')
+        res = self.client.post(url, {
+            'academy_class': ac.id,
+            'student': student1.id
+        }, format='json', HTTP_X_ORGANIZATION_SLUG='crm-org')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        
+        # Enroll second student (should fail because max_students = 1)
+        student2 = User.objects.create_user(username='student2', password='password')
+        OrgMember.objects.create(organization=self.org, user=student2, is_active=True)
+        
+        res2 = self.client.post(url, {
+            'academy_class': ac.id,
+            'student': student2.id
+        }, format='json', HTTP_X_ORGANIZATION_SLUG='crm-org')
+        self.assertEqual(res2.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("reached its maximum enrollment capacity", str(res2.data))
+

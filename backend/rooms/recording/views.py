@@ -138,6 +138,8 @@ def _serialize(recording: Recording, *, detail: bool = False, viewer=None) -> di
         ),
         'is_published': recording.is_published,
         'is_link_shared': recording.is_link_shared,
+        'session': recording.session_id,
+        'occurrence': recording.occurrence_id,
         'segment_count': recording.segments.count(),
     }
     if detail:
