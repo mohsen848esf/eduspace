@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Course, AcademyClass, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance, Organization, OrgMember, Role, Certificate, AuditLog, Permission, UserSession, InvoiceLineItem
+from .models import User, Course, AcademyClass, ClassOccurrence, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance, Organization, OrgMember, Role, Certificate, AuditLog, Permission, UserSession, InvoiceLineItem
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -85,6 +85,13 @@ class AcademyClassSerializer(serializers.ModelSerializer):
     mentor_name = serializers.CharField(source='mentor.full_name', read_only=True)
     session_count = serializers.IntegerField(read_only=True)
     latest_session = CompactSessionSerializer(read_only=True)
+    student_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=User.objects.all(),
+        required=False,
+        write_only=True
+    )
+    enrolled_student_ids = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = AcademyClass
@@ -92,15 +99,47 @@ class AcademyClassSerializer(serializers.ModelSerializer):
             'id', 'course', 'course_title', 'course_code', 'teacher', 'teacher_name',
             'mentor', 'mentor_name',
             'name', 'start_date', 'end_date', 'room', 'is_active', 'max_students',
-            'session_count', 'latest_session', 'created_by', 'created_at'
+            'session_count', 'latest_session', 'created_by', 'created_at',
+            'student_ids', 'enrolled_student_ids', 'scheduling_mode', 'capacity_mode',
+            'recurrence_weekdays', 'recurrence_start_time', 'recurrence_duration_minutes',
+            'recurrence_timezone', 'recurrence_end_mode', 'recurrence_max_occurrences', 'google_calendar_id'
         )
-        read_only_fields = ('id', 'created_by', 'created_at')
+        read_only_fields = ('id', 'created_by', 'created_at', 'google_calendar_id')
+
+    def get_enrolled_student_ids(self, obj):
+        return list(obj.enrollments.values_list('student_id', flat=True))
 
     def create(self, validated_data):
+        student_ids = validated_data.pop('student_ids', [])
         request = self.context.get('request')
         if request and request.user and request.user.is_authenticated:
             validated_data['created_by'] = request.user
-        return super().create(validated_data)
+        
+        instance = super().create(validated_data)
+        
+        for student in student_ids:
+            Enrollment.objects.get_or_create(
+                academy_class=instance,
+                student=student,
+                defaults={'enrolled_by': request.user if request and request.user and request.user.is_authenticated else None}
+            )
+        return instance
+
+    def update(self, instance, validated_data):
+        student_ids = validated_data.pop('student_ids', None)
+        request = self.context.get('request')
+        
+        instance = super().update(instance, validated_data)
+        
+        if student_ids is not None:
+            Enrollment.objects.filter(academy_class=instance).exclude(student__in=student_ids).delete()
+            for student in student_ids:
+                Enrollment.objects.get_or_create(
+                    academy_class=instance,
+                    student=student,
+                    defaults={'enrolled_by': request.user if request and request.user and request.user.is_authenticated else None}
+                )
+        return instance
 
     def validate_course(self, value):
         request = self.context.get('request')
@@ -108,6 +147,35 @@ class AcademyClassSerializer(serializers.ModelSerializer):
             if value.organization != request.organization:
                 raise serializers.ValidationError("Course does not belong to your organization.")
         return value
+
+    def validate(self, attrs):
+        capacity_mode = attrs.get('capacity_mode', getattr(self.instance, 'capacity_mode', None))
+        max_students = attrs.get('max_students', getattr(self.instance, 'max_students', None))
+        student_ids = attrs.get('student_ids', None)
+
+        if 'capacity_mode' not in attrs:
+            if 'max_students' in attrs:
+                if attrs['max_students'] is not None and attrs['max_students'] > 0:
+                    attrs['capacity_mode'] = 'limited'
+                    capacity_mode = 'limited'
+                else:
+                    attrs['capacity_mode'] = 'unlimited'
+                    capacity_mode = 'unlimited'
+            elif self.instance is None:
+                attrs['capacity_mode'] = 'unlimited'
+                capacity_mode = 'unlimited'
+
+        if capacity_mode == 'limited':
+            if max_students is None or max_students <= 0:
+                raise serializers.ValidationError({"max_students": "Maximum students limit must be a positive integer when capacity is limited."})
+            
+            if student_ids is not None:
+                if len(student_ids) > max_students:
+                    raise serializers.ValidationError({"student_ids": f"Number of enrolled students ({len(student_ids)}) exceeds the maximum capacity of {max_students}."})
+        else:
+            attrs['max_students'] = None
+            
+        return attrs
 
 
 class EnrollmentSerializer(serializers.ModelSerializer):
@@ -154,6 +222,31 @@ class EnrollmentSerializer(serializers.ModelSerializer):
             if not OrgMember.objects.filter(organization=org, user=value, is_active=True).exists():
                 raise serializers.ValidationError("Student is not an active member of this organization.")
         return value
+
+    def validate(self, attrs):
+        academy_class = attrs.get('academy_class', getattr(self.instance, 'academy_class', None))
+        student = attrs.get('student', getattr(self.instance, 'student', None))
+        is_active_input = attrs.get('is_active', getattr(self.instance, 'is_active', True))
+
+        if academy_class and academy_class.capacity_mode == 'limited' and academy_class.max_students:
+            already_active = Enrollment.objects.filter(
+                academy_class=academy_class,
+                student=student,
+                is_active=True
+            ).exists()
+
+            if is_active_input and not already_active:
+                current_active_count = Enrollment.objects.filter(
+                    academy_class=academy_class,
+                    is_active=True
+                ).count()
+
+                if current_active_count >= academy_class.max_students:
+                    raise serializers.ValidationError({
+                        "non_field_errors": f"This class has reached its maximum enrollment capacity of {academy_class.max_students} students."
+                    })
+
+        return attrs
 
 
 class InvoiceLineItemSerializer(serializers.ModelSerializer):
@@ -354,17 +447,61 @@ class SessionSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class ClassOccurrenceSerializer(serializers.ModelSerializer):
+    academy_class_name = serializers.CharField(source='academy_class.name', read_only=True)
+    room_code = serializers.CharField(source='room.room_code', read_only=True)
+    attendance_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ClassOccurrence
+        fields = (
+            'id', 'academy_class', 'academy_class_name', 'occurrence_id',
+            'scheduled_start', 'scheduled_end', 'status', 'room', 'room_code',
+            'google_event_id', 'attendance_count', 'created_at', 'updated_at'
+        )
+        read_only_fields = ('id', 'occurrence_id', 'google_event_id', 'created_at', 'updated_at')
+
+    def get_attendance_count(self, obj):
+        return obj.attendance_records.count()
+
+
 class AttendanceSerializer(serializers.ModelSerializer):
     student_username = serializers.CharField(source='student.username', read_only=True)
     student_full_name = serializers.CharField(source='student.full_name', read_only=True)
-    session_title = serializers.CharField(source='session.title', read_only=True)
-    academy_class_name = serializers.CharField(source='session.academy_class.name', read_only=True)
-    academy_class = serializers.IntegerField(source='session.academy_class.id', read_only=True)
+    
+    event_title = serializers.SerializerMethodField()
+    academy_class_name = serializers.SerializerMethodField()
+    academy_class = serializers.SerializerMethodField()
 
     class Meta:
         model = Attendance
-        fields = ('id', 'session', 'session_title', 'academy_class', 'academy_class_name', 'student', 'student_username', 'student_full_name', 'status', 'joined_at', 'left_at', 'note')
-        read_only_fields = ('id', 'session', 'student', 'joined_at', 'left_at')
+        fields = (
+            'id', 'session', 'occurrence', 'event_title', 'academy_class', 'academy_class_name', 
+            'student', 'student_username', 'student_full_name', 'status', 'joined_at', 'left_at', 'note'
+        )
+        read_only_fields = ('id', 'session', 'occurrence', 'student', 'joined_at', 'left_at')
+
+    def get_event_title(self, obj):
+        if obj.session:
+            return obj.session.title
+        elif obj.occurrence:
+            from django.utils import timezone
+            return f"Session - {timezone.localtime(obj.occurrence.scheduled_start).strftime('%Y-%m-%d %H:%M')}"
+        return ""
+
+    def get_academy_class_name(self, obj):
+        if obj.session and obj.session.academy_class:
+            return obj.session.academy_class.name
+        elif obj.occurrence and obj.occurrence.academy_class:
+            return obj.occurrence.academy_class.name
+        return ""
+
+    def get_academy_class(self, obj):
+        if obj.session and obj.session.academy_class:
+            return obj.session.academy_class.id
+        elif obj.occurrence and obj.occurrence.academy_class:
+            return obj.occurrence.academy_class.id
+        return None
 
 
 class OrgContextSerializer(serializers.Serializer):
@@ -405,6 +542,8 @@ class OrgMemberSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
     username = serializers.CharField(write_only=True, required=False)
     email = serializers.CharField(write_only=True, required=False)
+    password = serializers.CharField(write_only=True, required=False)
+    full_name = serializers.CharField(write_only=True, required=False)
     user_details = UserSerializer(source='user', read_only=True)
     role_name = serializers.CharField(source='role.name', read_only=True)
 
@@ -412,7 +551,7 @@ class OrgMemberSerializer(serializers.ModelSerializer):
         model = OrgMember
         fields = (
             'id', 'user', 'user_details', 'role', 'role_name', 'username', 'email',
-            'is_active', 'contract_type', 'joined_at', 'expires_at'
+            'password', 'full_name', 'is_active', 'contract_type', 'joined_at', 'expires_at'
         )
         read_only_fields = ('id', 'joined_at')
 
@@ -433,6 +572,8 @@ class OrgMemberSerializer(serializers.ModelSerializer):
         user = validated_data.get('user', None)
         username = validated_data.pop('username', None)
         email = validated_data.pop('email', None)
+        password = validated_data.pop('password', None)
+        full_name = validated_data.pop('full_name', None)
 
         if not user:
             if username:
@@ -444,7 +585,20 @@ class OrgMemberSerializer(serializers.ModelSerializer):
                 user = User.objects.filter(email=email).first()
 
             if not user:
-                raise serializers.ValidationError("User not found on the system. Please verify the user ID, username or email.")
+                if username and password:
+                    if User.objects.filter(username=username).exists():
+                        raise serializers.ValidationError("A user with this username already exists.")
+                    if email and User.objects.filter(email=email).exists():
+                        raise serializers.ValidationError("A user with this email already exists.")
+                    
+                    user = User.objects.create_user(
+                        username=username,
+                        email=email or "",
+                        password=password,
+                        full_name=full_name or ""
+                    )
+                else:
+                    raise serializers.ValidationError("User not found. Provide both Username and Password to register a new user.")
 
         if OrgMember.objects.filter(organization=org, user=user).exists():
             raise serializers.ValidationError("This user is already a member of this organization.")

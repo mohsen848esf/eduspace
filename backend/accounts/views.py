@@ -611,6 +611,8 @@ class AcademyClassViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             self.required_org_permission = 'can_view_dashboard'
+        elif self.action == 'start':
+            self.required_org_permission = 'can_manage_sessions'
         else:
             self.required_org_permission = 'can_manage_members'
         return super().get_permissions()
@@ -634,6 +636,55 @@ class AcademyClassViewSet(viewsets.ModelViewSet):
         if not include_archived:
             queryset = queryset.filter(is_active=True)
         return queryset.distinct()
+
+    @action(detail=True, methods=['POST'])
+    def start(self, request, pk=None):
+        from rest_framework.exceptions import PermissionDenied, ValidationError as DRFValidationError
+        from django.utils import timezone
+        
+        academy_class = self.get_object()
+        org = getattr(request, 'organization', None)
+        
+        # Check permissions: must be superuser, have can_manage_sessions, or be the class teacher
+        is_teacher = academy_class.teacher_id == request.user.id
+        has_manage = org and has_org_permission(request.user, org, 'can_manage_sessions')
+        if not request.user.is_superuser and not has_manage and not is_teacher:
+            raise PermissionDenied("You do not have permission to start sessions for this class.")
+            
+        if academy_class.scheduling_mode != 'automatic':
+            raise DRFValidationError({"detail": "This class is not configured for Automatic scheduling."})
+            
+        # Check if there is already an active live session for this class
+        live_session = Session.objects.filter(
+            academy_class=academy_class,
+            status=Session.Status.LIVE
+        ).first()
+        
+        if live_session:
+            return Response(SessionSerializer(live_session).data)
+            
+        # Create a new Session automatically
+        now_str = timezone.localtime(timezone.now()).strftime('%Y-%m-%d %H:%M')
+        session_title = f"Class Session - {now_str}"
+        
+        session = Session.objects.create(
+            academy_class=academy_class,
+            organization=org,
+            host=academy_class.teacher or request.user,
+            created_by=request.user,
+            title=session_title,
+            scheduled_start=timezone.now(),
+            scheduled_end=timezone.now() + timezone.timedelta(hours=2),
+            status=Session.Status.SCHEDULED
+        )
+        
+        try:
+            session.start_live()
+        except ValidationError as e:
+            session.delete()
+            raise DRFValidationError(detail=e.message_dict if hasattr(e, 'message_dict') else e.messages)
+            
+        return Response(SessionSerializer(session).data)
 
 
 class EnrollmentViewSet(viewsets.ModelViewSet):
@@ -1126,6 +1177,169 @@ class SessionViewSet(viewsets.ModelViewSet):
         return Response({'message': f'Bulk updated {updated_count} records', 'updated': updated_count})
 
 
+class ClassOccurrenceViewSet(viewsets.ModelViewSet):
+    permission_classes = [HasOrgPermission]
+    pagination_class = StandardResultsSetPagination
+
+    def get_serializer_class(self):
+        from accounts.serializers import ClassOccurrenceSerializer
+        return ClassOccurrenceSerializer
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'attendance']:
+            self.required_org_permission = ['can_view_sessions', 'can_view_dashboard']
+        else:
+            self.required_org_permission = 'can_manage_sessions'
+        return super().get_permissions()
+
+    def get_queryset(self):
+        from accounts.models import ClassOccurrence
+        org = getattr(self.request, 'organization', None)
+        if not org:
+            return ClassOccurrence.objects.none()
+
+        queryset = ClassOccurrence.objects.select_related('academy_class__course', 'room').filter(academy_class__course__organization=org)
+
+        if not self.request.user.is_superuser and not has_org_permission(self.request.user, org, 'can_manage_sessions'):
+            if has_org_permission(self.request.user, org, 'can_teach_class'):
+                queryset = queryset.filter(
+                    models.Q(academy_class__teacher=self.request.user) |
+                    models.Q(academy_class__mentor=self.request.user)
+                )
+            else:
+                queryset = queryset.filter(
+                    models.Q(academy_class__enrollments__student=self.request.user, academy_class__enrollments__is_active=True) |
+                    models.Q(academy_class__mentor=self.request.user)
+                )
+
+        class_id = self.request.query_params.get('class_id')
+        if class_id:
+            queryset = queryset.filter(academy_class_id=class_id)
+
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+
+        return queryset.distinct().order_by('scheduled_start')
+
+    @action(detail=True, methods=['POST'])
+    def start(self, request, pk=None):
+        from accounts.models import ClassOccurrence
+        from rest_framework.exceptions import ValidationError as DRFValidationError
+        from django.conf import settings
+        
+        occurrence = self.get_object()
+        if occurrence.status == ClassOccurrence.Status.COMPLETED:
+            raise DRFValidationError("Cannot start a completed occurrence.")
+        
+        # Check if there is already a live occurrence for this class
+        live_exists = ClassOccurrence.objects.filter(
+            academy_class=occurrence.academy_class, 
+            status=ClassOccurrence.Status.LIVE
+        ).exclude(pk=occurrence.pk).exists()
+        if live_exists:
+            raise DRFValidationError("Another occurrence is currently live.")
+
+        from rooms.models import Room
+        from rooms.views import generate_room_code
+        
+        room = occurrence.room
+        if not room:
+            room_code = generate_room_code()
+            while Room.objects.filter(room_code=room_code).exists():
+                room_code = generate_room_code()
+                
+            room = Room.objects.create(
+                name=f"{occurrence.academy_class.name} - {occurrence.scheduled_start.strftime('%Y-%m-%d')}",
+                room_code=room_code,
+                host=request.user,
+                organization=occurrence.academy_class.course.organization,
+                meeting_type='class_session',
+                occurrence=occurrence
+            )
+            occurrence.room = room
+            
+        occurrence.status = ClassOccurrence.Status.LIVE
+        occurrence.save(update_fields=['status', 'room'])
+        
+        from rooms.views import generate_livekit_token
+        token = generate_livekit_token(room.room_code, request.user, is_host=True)
+        
+        from accounts.serializers import ClassOccurrenceSerializer
+        return Response({
+            'occurrence': ClassOccurrenceSerializer(occurrence).data,
+            'token': token,
+            'room_code': room.room_code,
+            'livekit_url': settings.LIVEKIT_WS_URL
+        })
+
+    @action(detail=True, methods=['POST'])
+    def complete(self, request, pk=None):
+        from accounts.serializers import ClassOccurrenceSerializer
+        occurrence = self.get_object()
+        occurrence.status = occurrence.Status.COMPLETED
+        if occurrence.room:
+            occurrence.room.status = 'ended'
+            occurrence.room.save(update_fields=['status'])
+        occurrence.save(update_fields=['status'])
+        return Response(ClassOccurrenceSerializer(occurrence).data)
+
+    @action(detail=True, methods=['POST'])
+    def cancel(self, request, pk=None):
+        from accounts.serializers import ClassOccurrenceSerializer
+        occurrence = self.get_object()
+        occurrence.status = occurrence.Status.CANCELLED
+        occurrence.save(update_fields=['status'])
+        
+        # Google calendar cancellation sync
+        from accounts.services.google_calendar_service import GoogleCalendarService
+        GoogleCalendarService.cancel_occurrence_event(occurrence)
+        
+        return Response(ClassOccurrenceSerializer(occurrence).data)
+
+    @action(detail=True, methods=['GET'])
+    def attendance(self, request, pk=None):
+        from accounts.models import Attendance
+        from accounts.serializers import AttendanceSerializer
+        occurrence = self.get_object()
+        queryset = Attendance.objects.filter(occurrence=occurrence).select_related('student')
+        
+        org = getattr(request, 'organization', None)
+        if org and not has_org_permission(request.user, org, 'can_view_attendance'):
+            queryset = queryset.filter(student=request.user)
+            
+        serializer = AttendanceSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['PATCH', 'POST'], url_path='attendance/(?P<student_id>[^/.]+)')
+    def update_student_attendance(self, request, pk=None, student_id=None):
+        from accounts.models import Attendance
+        from accounts.serializers import AttendanceSerializer
+        occurrence = self.get_object()
+        att, created = Attendance.objects.get_or_create(
+            occurrence=occurrence,
+            student_id=student_id,
+            defaults={'status': 'absent'}
+        )
+
+        serializer = AttendanceSerializer(att, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            
+            org = getattr(request, 'organization', None)
+            AuditService.log(
+                actor=request.user,
+                action='attendance.override',
+                entity=occurrence,
+                before={'status': att.status, 'note': att.note} if not created else None,
+                after={'status': serializer.validated_data.get('status', att.status), 'note': serializer.validated_data.get('note', att.note)},
+                organization=org
+            )
+            
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class AttendanceViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AttendanceSerializer
     permission_classes = [HasOrgPermission]
@@ -1142,7 +1356,10 @@ class AttendanceViewSet(viewsets.ReadOnlyModelViewSet):
         if not org:
             return Attendance.objects.none()
 
-        queryset = Attendance.objects.filter(session__organization=org).select_related('session', 'student', 'session__academy_class')
+        queryset = Attendance.objects.filter(
+            models.Q(session__organization=org) | 
+            models.Q(occurrence__academy_class__course__organization=org)
+        ).select_related('session', 'student', 'session__academy_class', 'occurrence__academy_class')
 
         # Isolation: Students only see their own attendance logs
         if not has_org_permission(self.request.user, org, 'can_view_attendance'):
@@ -1152,17 +1369,24 @@ class AttendanceViewSet(viewsets.ReadOnlyModelViewSet):
         if session_id:
             queryset = queryset.filter(session_id=session_id)
 
+        occurrence_id = self.request.query_params.get('occurrence_id')
+        if occurrence_id:
+            queryset = queryset.filter(occurrence_id=occurrence_id)
+
         class_id = self.request.query_params.get('class_id')
         if class_id:
-            queryset = queryset.filter(session__academy_class_id=class_id)
+            queryset = queryset.filter(
+                models.Q(session__academy_class_id=class_id) |
+                models.Q(occurrence__academy_class_id=class_id)
+            )
 
         student_id = self.request.query_params.get('student')
         if student_id:
             queryset = queryset.filter(student_id=student_id)
 
-        status = self.request.query_params.get('status')
-        if status:
-            queryset = queryset.filter(status=status)
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            queryset = queryset.filter(status=status_param)
 
         q = self.request.query_params.get('q')
         if q:
@@ -1173,6 +1397,97 @@ class AttendanceViewSet(viewsets.ReadOnlyModelViewSet):
             )
 
         return queryset.order_by('-id')
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def calendar_events(request):
+    org = getattr(request, 'organization', None)
+    if not org:
+        return Response({'error': 'Organization context required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # 1. Fetch relevant manual sessions
+    sessions_qs = Session.objects.filter(organization=org).select_related('academy_class')
+    
+    # 2. Fetch relevant class occurrences
+    from accounts.models import ClassOccurrence
+    occurrences_qs = ClassOccurrence.objects.filter(academy_class__course__organization=org).select_related('academy_class')
+
+    # 3. Fetch relevant homework/assignments
+    from assessments.models import Assignment
+    assignments_qs = Assignment.objects.filter(academy_class__course__organization=org).select_related('academy_class')
+
+    # Filtering based on user roles
+    if not request.user.is_superuser and not has_org_permission(request.user, org, 'can_manage_sessions'):
+        # If user is teacher, show events they teach
+        if has_org_permission(request.user, org, 'can_teach_class'):
+            sessions_qs = sessions_qs.filter(
+                models.Q(host=request.user) | models.Q(academy_class__teacher=request.user)
+            )
+            occurrences_qs = occurrences_qs.filter(
+                models.Q(academy_class__teacher=request.user) | models.Q(academy_class__mentor=request.user)
+            )
+            assignments_qs = assignments_qs.filter(
+                models.Q(academy_class__teacher=request.user) | models.Q(academy_class__mentor=request.user)
+            )
+        else:
+            # Student
+            sessions_qs = sessions_qs.filter(
+                models.Q(academy_class__enrollments__student=request.user, academy_class__enrollments__is_active=True) |
+                models.Q(academy_class__mentor=request.user)
+            )
+            occurrences_qs = occurrences_qs.filter(
+                models.Q(academy_class__enrollments__student=request.user, academy_class__enrollments__is_active=True) |
+                models.Q(academy_class__mentor=request.user)
+            )
+            assignments_qs = assignments_qs.filter(
+                models.Q(academy_class__enrollments__student=request.user, academy_class__enrollments__is_active=True) |
+                models.Q(academy_class__mentor=request.user)
+            )
+
+    events = []
+    
+    # Normalize Sessions
+    for s in sessions_qs:
+        events.append({
+            'id': f"session_{s.id}",
+            'title': f"{s.academy_class.name if s.academy_class else 'Ad-hoc'}: {s.title}",
+            'start': s.scheduled_start.isoformat() if s.scheduled_start else None,
+            'end': s.scheduled_end.isoformat() if s.scheduled_end else None,
+            'type': 'session',
+            'status': s.status,
+            'class_id': s.academy_class_id,
+            'details_url': f"/dashboard/classes/{s.academy_class_id}" if s.academy_class_id else None
+        })
+
+    # Normalize Occurrences
+    for o in occurrences_qs:
+        events.append({
+            'id': f"occurrence_{o.id}",
+            'title': f"{o.academy_class.name}: Session",
+            'start': o.scheduled_start.isoformat(),
+            'end': o.scheduled_end.isoformat(),
+            'type': 'occurrence',
+            'status': o.status,
+            'class_id': o.academy_class_id,
+            'details_url': f"/dashboard/classes/{o.academy_class_id}"
+        })
+
+    # Normalize Homework Assignments
+    for a in assignments_qs:
+        if a.due_date:
+            events.append({
+                'id': f"assignment_{a.id}",
+                'title': f"Homework: {a.title}",
+                'start': a.due_date.isoformat(),
+                'end': None,
+                'type': 'homework',
+                'status': 'due',
+                'class_id': a.academy_class_id,
+                'details_url': f"/dashboard/classes/{a.academy_class_id}"
+            })
+
+    return Response(events)
 
 
 class OrganizationViewSet(viewsets.ModelViewSet):
