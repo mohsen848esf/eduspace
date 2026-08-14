@@ -822,7 +822,7 @@ export default function ClassesPage() {
                         value={studentSearch}
                         onChange={(e) => setStudentSearch(e.target.value)}
                         placeholder={isFarsi ? "جستجوی دانشجو..." : "Filter students..."}
-                        size="sm"
+                        className="py-1 text-xs"
                       />
 
                       <div className="flex gap-2.5">

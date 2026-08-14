@@ -8,9 +8,8 @@
     "skipLibCheck": true,
 
     /* Path Aliases & Strictness */
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
     "strict": true,
 

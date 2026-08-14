@@ -1106,7 +1106,8 @@ export default function MembersPage() {
               </Button>
             </div>
           </form>
-        </Modal>
+        </ModalBody>
+      </Modal>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           Create Member Modal
@@ -1187,7 +1188,8 @@ export default function MembersPage() {
               </Button>
             </div>
           </form>
-        </Modal>
+        </ModalBody>
+      </Modal>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           Create / Edit Role Modal

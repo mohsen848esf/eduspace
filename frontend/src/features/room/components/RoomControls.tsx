@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRoomContext } from "@livekit/components-react";
 import { type SidebarTab } from "../hooks/useRoomControls";
@@ -28,12 +28,24 @@ interface RoomControlsProps {
   onToggleScreenShare: () => void;
   onToggleSidebar: (tab: SidebarTab) => void;
   onToggleSettings: () => void;
-  onLayoutChange: (layout: LayoutMode) => void;
-  isPushToTalk: boolean;
-  onTogglePushToTalk: () => void;
+  onLayoutChange?: (layout: LayoutMode) => void;
+  isPushToTalk?: boolean;
+  onTogglePushToTalk?: () => void;
   onLeave: () => void;
-  handRaised: boolean;
-  onToggleHandRaise: () => void;
+  roomCode?: string;
+  size?: ControlButtonSize;
+  className?: string;
+  showWhiteboard?: boolean;
+  showGame?: boolean;
+  showRecording?: boolean;
+  onToggleWhiteboard?: () => void;
+  onToggleGame?: () => void;
+  onToggleRecording?: () => void;
+  isRecording?: boolean;
+  handRaised?: boolean;
+  onToggleHandRaise?: () => void;
+  onOpenGuestPassModal?: () => void;
+  onOpenInviteModal?: () => void;
   /**
    * Optional override the active panel highlight. Used by mobile shells
    * that drive their own activePanel state instead of relying on
@@ -46,8 +58,6 @@ interface RoomControlsProps {
    * shells use this to drive swipe-stage / bottom-sheet state.
    */
   onPanelButtonClick?: (panel: "people" | "chat" | "tools") => void;
-  /** Button size token; defaults to md (tablet/desktop sizing). */
-  size?: ControlButtonSize;
 }
 
 // ── Layout Popover ──
@@ -173,7 +183,7 @@ const splitSizes = {
 function SplitBtn({
   iconOn,
   iconOff,
-  label,
+  label: _label,
   tooltipMain,
   tooltipArrow,
   onMain,
@@ -184,7 +194,7 @@ function SplitBtn({
 }: {
   iconOn: React.ReactNode;
   iconOff: React.ReactNode;
-  label: string;
+  label?: string;
   tooltipMain: string;
   tooltipArrow: string;
   onMain: () => void;
@@ -634,14 +644,16 @@ export default function RoomControls({
     <div
       className={cn(
         "relative bg-[color-mix(in srgb,var(--s1)_75%,transparent)] backdrop-blur-md border-t border-[var(--b)]",
-        "flex items-center justify-center gap-3 flex-shrink-0 shadow-2xl h-20 px-4",
+        "flex items-center justify-center gap-3 flex-shrink-0 shadow-2xl",
+        shellHeight,
+        shellPadding,
       )}
     >
       <SettingsPanel
         isOpen={settingsOpen}
         onClose={onToggleSettings}
-        isPushToTalk={isPushToTalk}
-        onTogglePushToTalk={onTogglePushToTalk}
+        isPushToTalk={!!isPushToTalk}
+        onTogglePushToTalk={onTogglePushToTalk || (() => {})}
       />
       {/* Left — mic, camera */}
       <div className="flex items-center gap-2 pr-4 border-r border-[var(--b)]">
@@ -706,7 +718,7 @@ export default function RoomControls({
           icon={handRaised ? Icons.handFilled : Icons.hand}
           label={handRaised ? t("controls.lowerHand") : t("controls.raiseHand")}
           tooltip={handRaised ? t("tooltips.lowerHand") : t("tooltips.raiseHand")}
-          onClick={onToggleHandRaise}
+          onClick={onToggleHandRaise || (() => {})}
           isOn={handRaised}
           size={size}
         />
@@ -751,7 +763,7 @@ export default function RoomControls({
             isOn={layoutPopoverOpen}
             size={size}
           />
-          {layoutPopoverOpen && (
+          {layoutPopoverOpen && onLayoutChange && (
             <LayoutPopover
               layout={layout}
               onChange={onLayoutChange}
