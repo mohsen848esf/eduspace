@@ -31,7 +31,7 @@ export default function Sidebar({
   const { activeRole, hasAnyPermission } = useOrgPermission();
 
   const queryClient = useQueryClient();
-  const { orgContext, activeSlug, fetchOrgContext, setActiveSlug } = useOrgContextStore();
+  const { activeSlug, fetchOrgContext, setActiveSlug } = useOrgContextStore();
   const [showSwitcher, setShowSwitcher] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
 

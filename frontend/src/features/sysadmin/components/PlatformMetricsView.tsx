@@ -8,13 +8,8 @@ import {
   Zap,
   Building,
   Radio,
-  Shield,
   Key,
   CheckCircle,
-  AlertTriangle,
-  ChevronRight,
-  Cpu,
-  Layers,
   ShieldAlert
 } from "lucide-react";
 

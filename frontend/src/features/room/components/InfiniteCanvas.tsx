@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   type CanvasElement,
-  type ElementType,
   type Point,
   type ViewportState,
   type PencilElement,
@@ -305,8 +304,6 @@ export default function InfiniteCanvas({
   const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     const rect = svgRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const clientX = e.clientX - rect.left;
-    const clientY = e.clientY - rect.top;
 
     // Sync remote pointer cursors (throttled locally by mousemove event speed)
     const rawPos = screenToCanvas(e.clientX, e.clientY);

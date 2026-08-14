@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocalParticipant, useRoomContext } from "@livekit/components-react";
-import { Track } from "livekit-client";
+import { Track, ParticipantEvent } from "livekit-client";
 import toast from "react-hot-toast";
 import client from "../../../lib/api/client";
 import { useRoomStore } from "../store/roomStore";
 
 function playChime() {
   try {
-    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const audioCtx = new AudioContextClass();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.connect(gain);
@@ -70,9 +71,9 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
     };
 
     updateHandState();
-    localParticipant.on("metadataChanged", updateHandState);
+    localParticipant.on(ParticipantEvent.ParticipantMetadataChanged, updateHandState);
     return () => {
-      localParticipant.off("metadataChanged", updateHandState);
+      localParticipant.off(ParticipantEvent.ParticipantMetadataChanged, updateHandState);
     };
   }, [localParticipant]);
 

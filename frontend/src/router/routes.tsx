@@ -100,7 +100,7 @@ const StudentPaymentsPage = lazy(
 
 export interface RouteConfig {
   path: string;
-  component: React.LazyExoticComponent<any>;
+  component: React.LazyExoticComponent<React.ComponentType<unknown>>;
   isPrivate: boolean;
   requiredPermissions?: string[];
   isSuperUserOnly?: boolean;

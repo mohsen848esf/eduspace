@@ -21,7 +21,7 @@ import AttendanceModal from "./AttendanceModal";
 import AppShell from "../../../components/layout/AppShell";
 import { useLocale } from "../../../i18n/useLocale";
 import { TableRowActions, type TableAction } from "../../../components/ui/TableRowActions";
-import { Play, Video, CheckCircle, ClipboardList, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { Play, Video, CheckCircle, ClipboardList, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function SessionsPage() {
   const { language } = useLocale();
@@ -47,6 +47,13 @@ export default function SessionsPage() {
   const [viewMode, setViewMode] = useState<"list" | "calendar">("calendar");
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
+  const handlePrevMonth = () => {
+    setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+  const handleNextMonth = () => {
+    setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
   // Queries
   const { data: sessions = [], isLoading: loadingSessions } = useSessions();
   const { data: classes = [] } = useQuery({
@@ -54,7 +61,7 @@ export default function SessionsPage() {
     queryFn: crmApi.getClasses,
   });
 
-  const { data: calendarEvents = [], isLoading: loadingCalendar } = useQuery({
+  const { data: calendarEvents = [] } = useQuery({
     queryKey: ["calendar-events"],
     queryFn: crmApi.getCalendarEvents,
   });

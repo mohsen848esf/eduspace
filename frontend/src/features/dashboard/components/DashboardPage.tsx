@@ -483,13 +483,6 @@ export default function DashboardPage() {
     );
   });
 
-  // Upcoming assignments deadlines
-  const upcomingDeadlines = allAssignments.filter((a) => {
-    const hasSubmitted = myAssignmentSubmissions.some((sub) => sub.assignment === a.id);
-    const isFuture = a.due_date ? new Date(a.due_date) > new Date() : true;
-    return !hasSubmitted && isFuture;
-  });
-
   // GPA calculation
   const avgGrade = gradedAssignmentSubmissions.length > 0
     ? gradedAssignmentSubmissions.reduce((acc, sub) => acc + parseFloat(sub.grade || "0"), 0) / gradedAssignmentSubmissions.length
@@ -498,7 +491,7 @@ export default function DashboardPage() {
   const studyStreak = 12;
   const semesterProgress = 68;
 
-  const getDueHours = (dueDateStr?: string) => {
+  const getDueHours = (dueDateStr?: string | null) => {
     if (!dueDateStr) return 24;
     const diff = new Date(dueDateStr).getTime() - Date.now();
     const hrs = Math.ceil(diff / 3600000);
@@ -779,7 +772,7 @@ export default function DashboardPage() {
                         </span>
                       </div>
                       <h3 className="text-sm font-extrabold text-[var(--t1)] leading-snug">{a.title}</h3>
-                      <p className="text-[10px] text-[var(--t3)] font-semibold mt-0.5">{a.academy_class_name} • {a.created_by_name || "Instructor"}</p>
+                      <p className="text-[10px] text-[var(--t3)] font-semibold mt-0.5">{a.class_name || (isFarsi ? "کلاس من" : "My Class")} • {isFarsi ? "استاد" : "Instructor"}</p>
                     </div>
                     <div className="flex justify-between items-center border-t border-[var(--b)] pt-3.5 mt-1">
                       <div className="flex -space-x-1.5">
@@ -822,7 +815,7 @@ export default function DashboardPage() {
                         </span>
                       </div>
                       <h3 className="text-sm font-extrabold text-[var(--t1)] leading-snug">{a.title}</h3>
-                      <p className="text-[10px] text-[var(--t3)] font-semibold mt-0.5">{a.academy_class_name} • {a.created_by_name || "Instructor"}</p>
+                      <p className="text-[10px] text-[var(--t3)] font-semibold mt-0.5">{a.class_name || (isFarsi ? "کلاس من" : "My Class")} • {isFarsi ? "استاد" : "Instructor"}</p>
                     </div>
                     <div className="flex justify-between items-center border-t border-[var(--b)] pt-3.5 mt-1 text-xs">
                       <span className="text-[10px] text-[var(--t3)] flex items-center gap-1 select-none font-semibold">
@@ -863,7 +856,7 @@ export default function DashboardPage() {
                         </span>
                       </div>
                       <h3 className="text-sm font-extrabold text-[var(--t1)] leading-snug">{sub.assignment_title}</h3>
-                      <p className="text-[10px] text-[var(--t3)] font-semibold mt-0.5">{sub.academy_class_name || (isFarsi ? "کلاس من" : "My Class")}</p>
+                      <p className="text-[10px] text-[var(--t3)] font-semibold mt-0.5">{isFarsi ? "کلاس من" : "My Class"}</p>
                     </div>
                     <div className="flex justify-between items-center border-t border-[var(--b)] pt-3.5 mt-1 text-xs">
                       <span className="text-[10px] text-[var(--t3)] font-medium select-none">

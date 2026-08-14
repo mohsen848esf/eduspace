@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const getApiUrl = (): string => {
-  const envUrl = (import.meta as any).env?.VITE_API_URL;
+  const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl) {
     return envUrl.endsWith("/") ? `${envUrl}api` : `${envUrl}/api`;
   }
@@ -35,10 +35,15 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
-let isRefreshing = false;
-let failedQueue: any[] = [];
+interface QueueItem {
+  resolve: (token: string | null) => void;
+  reject: (error: unknown) => void;
+}
 
-const processQueue = (error: any, token: string | null = null) => {
+let isRefreshing = false;
+let failedQueue: QueueItem[] = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);

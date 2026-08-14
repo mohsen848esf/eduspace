@@ -51,7 +51,6 @@ const VALID_PATHS = new Set([
 
 export default function Topbar({
   title,
-  subtitle,
   isDark,
   onToggleTheme,
   showHamburger = false,
@@ -61,7 +60,7 @@ export default function Topbar({
   const location = useLocation();
   const { t } = useTranslation(["dashboard", "common", "auth", "notifications"]);
   const { language, toggleLanguage } = useLocale();
-  const { logout, user } = useAuthStore();
+  const { user } = useAuthStore();
   const { createRoom, isLoading: roomLoading } = useRoom();
 
   const unreadCount = useNotificationsStore((s) =>

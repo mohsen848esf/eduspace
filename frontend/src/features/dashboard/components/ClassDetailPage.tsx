@@ -90,7 +90,7 @@ export default function ClassDetailPage() {
   });
 
   // Class Occurrences (Automatic Recurrence Mode)
-  const { data: occurrences = [], isLoading: loadingOccurrences } = useQuery({
+  const { data: occurrences = [] } = useQuery({
     queryKey: ["occurrences", id],
     queryFn: () => crmApi.getOccurrences({ class_id: id }),
     enabled: cls?.scheduling_mode === 'automatic',
@@ -658,9 +658,9 @@ export default function ClassDetailPage() {
                                   o.status === 'cancelled' ? "bg-[var(--red)]/10 text-[var(--red)]" :
                                   "bg-[var(--s3)] text-[var(--t3)] border border-[var(--b)]"
                                 }`}>
-                                  {isFarsi ? {
+                                  {isFarsi ? ({
                                     scheduled: "برنامه‌ریزی شده", live: "زنده", completed: "خاتمه یافته", cancelled: "لغو شده"
-                                  }[o.status] : o.status}
+                                  } as Record<string, string>)[o.status] || o.status : o.status}
                                 </span>
                               </td>
                               <td className="p-3 text-[var(--t3)]">
