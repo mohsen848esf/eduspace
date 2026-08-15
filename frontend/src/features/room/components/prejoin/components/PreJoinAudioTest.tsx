@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Volume2, Mic, MicOff, Play, CheckCircle2, AlertCircle } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ export const PreJoinAudioTest: React.FC<PreJoinAudioTestProps> = ({
   onPlayTestSound,
   isPlayingTestSound,
 }) => {
+  const { t } = useTranslation("room");
   const isSpeaking = micEnabled && audioLevel > 15;
   const isClipping = audioLevel > 85;
 
@@ -31,8 +33,8 @@ export const PreJoinAudioTest: React.FC<PreJoinAudioTestProps> = ({
               <Volume2 className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-xs font-bold text-[var(--t1)]">تست خروجی بلندگو</div>
-              <div className="text-[11px] text-[var(--t3)]">پخش یک نوای آزمایشی برای اطمینان از شنیدن صدا</div>
+              <div className="text-xs font-bold text-[var(--t1)]">{t("preJoin.testSpeaker")}</div>
+              <div className="text-[11px] text-[var(--t3)]">{t("preJoin.testSpeakerDesc")}</div>
             </div>
           </div>
 
@@ -41,17 +43,17 @@ export const PreJoinAudioTest: React.FC<PreJoinAudioTestProps> = ({
             variant="secondary"
             onClick={onPlayTestSound}
             disabled={isPlayingTestSound}
-            className="flex items-center gap-1.5 font-bold"
+            className="flex items-center gap-1.5 font-bold cursor-pointer"
           >
             {isPlayingTestSound ? (
               <>
                 <span className="w-2 h-2 rounded-full bg-[var(--green)] animate-ping" />
-                <span>در حال پخش...</span>
+                <span>{t("preJoin.playing")}</span>
               </>
             ) : (
               <>
                 <Play className="w-3.5 h-3.5" />
-                <span>پخش صدای تست</span>
+                <span>{t("preJoin.playTestSound")}</span>
               </>
             )}
           </Button>
@@ -73,9 +75,9 @@ export const PreJoinAudioTest: React.FC<PreJoinAudioTestProps> = ({
               {micEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
             </div>
             <div>
-              <div className="text-xs font-bold text-[var(--t1)]">تست ورودی میکروفون</div>
+              <div className="text-xs font-bold text-[var(--t1)]">{t("preJoin.testMic")}</div>
               <div className="text-[11px] text-[var(--t3)]">
-                {micEnabled ? "چند کلمه صحبت کنید تا حساسیت میکروفون سنجیده شود" : "میکروفون در حالت خاموش است"}
+                {micEnabled ? t("preJoin.testMicDesc") : t("preJoin.testMicOffDesc")}
               </div>
             </div>
           </div>
@@ -93,12 +95,12 @@ export const PreJoinAudioTest: React.FC<PreJoinAudioTestProps> = ({
               {isSpeaking ? (
                 <>
                   <CheckCircle2 className="w-3 h-3" />
-                  <span>دریافت صدا فعال</span>
+                  <span>{t("preJoin.soundActive")}</span>
                 </>
               ) : (
                 <>
                   <AlertCircle className="w-3 h-3" />
-                  <span>سکوت</span>
+                  <span>{t("preJoin.soundSilence")}</span>
                 </>
               )}
             </div>

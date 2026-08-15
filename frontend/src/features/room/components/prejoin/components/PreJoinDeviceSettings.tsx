@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   X,
   Camera,
@@ -69,6 +70,7 @@ export const PreJoinDeviceSettings: React.FC<PreJoinDeviceSettingsProps> = ({
   bgLoading,
   bgSupported,
 }) => {
+  const { t } = useTranslation("room");
   const [activeTab, setActiveTab] = useState<TabType>("audio");
 
   if (!isOpen) return null;
@@ -83,8 +85,8 @@ export const PreJoinDeviceSettings: React.FC<PreJoinDeviceSettingsProps> = ({
               <Camera className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-[var(--t1)]">تنظیمات صدا و تصویر</h3>
-              <p className="text-xs text-[var(--t3)]">تجهیزات ورودی، خروجی و پس‌زمینه خود را بررسی کنید</p>
+              <h3 className="text-base font-bold text-[var(--t1)]">{t("preJoin.deviceSettings")}</h3>
+              <p className="text-xs text-[var(--t3)]">{t("preJoin.deviceSettingsDesc")}</p>
             </div>
           </div>
 
@@ -110,7 +112,7 @@ export const PreJoinDeviceSettings: React.FC<PreJoinDeviceSettingsProps> = ({
             )}
           >
             <Mic className="w-4 h-4" />
-            <span>صدا و میکروفون</span>
+            <span>{t("preJoin.tabAudio")}</span>
           </button>
 
           <button
@@ -124,7 +126,7 @@ export const PreJoinDeviceSettings: React.FC<PreJoinDeviceSettingsProps> = ({
             )}
           >
             <Camera className="w-4 h-4" />
-            <span>دوربین و ویدیو</span>
+            <span>{t("preJoin.tabCamera")}</span>
           </button>
 
           <button
@@ -138,7 +140,7 @@ export const PreJoinDeviceSettings: React.FC<PreJoinDeviceSettingsProps> = ({
             )}
           >
             <Sparkles className="w-4 h-4" />
-            <span>افکت و پس‌زمینه</span>
+            <span>{t("preJoin.tabEffects")}</span>
           </button>
         </div>
 
@@ -149,7 +151,7 @@ export const PreJoinDeviceSettings: React.FC<PreJoinDeviceSettingsProps> = ({
             <div className="space-y-5">
               {/* Microphone Selector */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[var(--t1)] block">میکروفون ورودی</label>
+                <label className="text-xs font-bold text-[var(--t1)] block">{t("preJoin.microphone")}</label>
                 <select
                   value={selectedMic}
                   onChange={(e) => onSelectMic(e.target.value)}
@@ -158,7 +160,7 @@ export const PreJoinDeviceSettings: React.FC<PreJoinDeviceSettingsProps> = ({
                 >
                   {microphones.map((mic) => (
                     <option key={mic.deviceId} value={mic.deviceId}>
-                      {mic.label || `میکروفون ${mic.deviceId.slice(0, 5)}`}
+                      {mic.label || `${t("preJoin.deviceLabels.microphone")} (${mic.deviceId.slice(0, 5)})`}
                     </option>
                   ))}
                 </select>
@@ -166,7 +168,7 @@ export const PreJoinDeviceSettings: React.FC<PreJoinDeviceSettingsProps> = ({
 
               {/* Speaker Selector */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[var(--t1)] block">بلندگوی خروجی (اسپیکر)</label>
+                <label className="text-xs font-bold text-[var(--t1)] block">{t("preJoin.speaker")}</label>
                 <select
                   value={selectedSpeaker}
                   onChange={(e) => onSelectSpeaker(e.target.value)}
@@ -174,7 +176,7 @@ export const PreJoinDeviceSettings: React.FC<PreJoinDeviceSettingsProps> = ({
                 >
                   {speakers.map((spk) => (
                     <option key={spk.deviceId} value={spk.deviceId}>
-                      {spk.label || `بلندگو ${spk.deviceId.slice(0, 5)}`}
+                      {spk.label || `${t("preJoin.deviceLabels.speaker")} (${spk.deviceId.slice(0, 5)})`}
                     </option>
                   ))}
                 </select>
@@ -196,7 +198,7 @@ export const PreJoinDeviceSettings: React.FC<PreJoinDeviceSettingsProps> = ({
             <div className="space-y-5">
               {/* Camera Selector */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[var(--t1)] block">دوربین ورودی (وب‌کم)</label>
+                <label className="text-xs font-bold text-[var(--t1)] block">{t("preJoin.camera")}</label>
                 <select
                   value={selectedCam}
                   onChange={(e) => onSelectCam(e.target.value)}
@@ -205,7 +207,7 @@ export const PreJoinDeviceSettings: React.FC<PreJoinDeviceSettingsProps> = ({
                 >
                   {cameras.map((cam) => (
                     <option key={cam.deviceId} value={cam.deviceId}>
-                      {cam.label || `دوربین ${cam.deviceId.slice(0, 5)}`}
+                      {cam.label || `${t("preJoin.deviceLabels.camera")} (${cam.deviceId.slice(0, 5)})`}
                     </option>
                   ))}
                 </select>
@@ -218,8 +220,8 @@ export const PreJoinDeviceSettings: React.FC<PreJoinDeviceSettingsProps> = ({
                     <FlipHorizontal className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-[var(--t1)]">آینه‌ای کردن تصویر</div>
-                    <div className="text-[11px] text-[var(--t3)]">نمایش تصویر به صورت آینه‌ای در پیش‌نمایش خودتان</div>
+                    <div className="text-xs font-bold text-[var(--t1)]">{t("preJoin.mirrorVideo")}</div>
+                    <div className="text-[11px] text-[var(--t3)]">{t("preJoin.mirrorVideoDesc")}</div>
                   </div>
                 </div>
 
@@ -228,7 +230,7 @@ export const PreJoinDeviceSettings: React.FC<PreJoinDeviceSettingsProps> = ({
                   variant={isMirrored ? "primary" : "secondary"}
                   onClick={onToggleMirror}
                 >
-                  {isMirrored ? "فعال" : "غیرفعال"}
+                  {isMirrored ? t("preJoin.enabled") : t("preJoin.disabled")}
                 </Button>
               </div>
             </div>
@@ -247,8 +249,8 @@ export const PreJoinDeviceSettings: React.FC<PreJoinDeviceSettingsProps> = ({
 
         {/* Footer */}
         <div className="p-4 border-t border-[var(--b)] bg-[var(--s1)] flex justify-end">
-          <Button onClick={onClose} className="px-6 font-bold">
-            بستن و ذخیره
+          <Button onClick={onClose} className="px-6 font-bold cursor-pointer">
+            {t("preJoin.closeAndSave")}
           </Button>
         </div>
       </div>

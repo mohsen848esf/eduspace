@@ -14,7 +14,6 @@ export interface PreJoinSettings {
   selectedCam: string;
   selectedSpeaker: string;
   background: BackgroundType;
-  startWithScreenShare?: boolean;
 }
 
 export interface PreJoinScreenProps {
@@ -25,7 +24,6 @@ export interface PreJoinScreenProps {
 }
 
 export default function PreJoinScreen({
-  roomName,
   roomCode,
   onJoin,
   onCancel,
@@ -78,18 +76,6 @@ export default function PreJoinScreen({
     });
   };
 
-  const handlePresentScreen = () => {
-    onJoin({
-      micEnabled,
-      camEnabled,
-      selectedMic,
-      selectedCam,
-      selectedSpeaker,
-      background: selectedBg,
-      startWithScreenShare: true,
-    });
-  };
-
   return (
     <div className="min-h-screen bg-[var(--s0)] flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
       <div className="w-full max-w-5xl mx-auto space-y-6">
@@ -106,8 +92,10 @@ export default function PreJoinScreen({
               isMirrored={isMirrored}
               onToggleMirror={() => setIsMirrored((prev) => !prev)}
               onOpenSettings={() => setIsSettingsOpen(true)}
-              onOpenEffects={() => setIsSettingsOpen(true)}
+              selectedBg={selectedBg}
+              onChangeBackground={changeBackground}
               bgLoading={bgLoading}
+              bgSupported={bgSupported}
               isLoadingDevices={isLoadingDevices}
               audioLevel={audioLevel}
               audioBars={audioBars}
@@ -117,11 +105,9 @@ export default function PreJoinScreen({
           {/* Right / Bottom Meeting Intelligence & CTAs (5 Cols) */}
           <div className="lg:col-span-5 flex flex-col justify-center">
             <PreJoinMeetingInfo
-              roomName={roomName || roomInfo?.name || "اتاق جلسه آنلاین"}
               roomCode={roomCode}
               roomInfo={roomInfo}
               onJoin={handleJoinNow}
-              onPresent={handlePresentScreen}
               onCancel={onCancel}
               camEnabled={camEnabled}
               micEnabled={micEnabled}

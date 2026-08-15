@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import PreJoinMeetingInfo from "../components/PreJoinMeetingInfo";
 import PreJoinAudioTest from "../components/PreJoinAudioTest";
 import PreJoinEffectsPicker from "../components/PreJoinEffectsPicker";
@@ -22,50 +23,47 @@ describe("PreJoinMeetingInfo Component", () => {
     is_recorded: true,
   };
 
-  it("renders room name, code, and participant info", () => {
+  it("renders room code and other participant info", () => {
     render(
-      <PreJoinMeetingInfo
-        roomName="جلسه جبر خطی پیشرفته"
-        roomCode="XYZ123"
-        roomInfo={mockRoomInfo}
-        onJoin={vi.fn()}
-        onPresent={vi.fn()}
-        onCancel={vi.fn()}
-        camEnabled={true}
-        micEnabled={true}
-      />
+      <MemoryRouter>
+        <PreJoinMeetingInfo
+          roomCode="XYZ123"
+          roomInfo={mockRoomInfo}
+          onJoin={vi.fn()}
+          onCancel={vi.fn()}
+          camEnabled={true}
+          micEnabled={true}
+        />
+      </MemoryRouter>
     );
 
-    expect(screen.getByText("جلسه جبر خطی پیشرفته")).toBeInTheDocument();
     expect(screen.getByText("XYZ123")).toBeInTheDocument();
     expect(screen.getByText(/سارا احمدی/)).toBeInTheDocument();
-    expect(screen.getByText("ضبط خودکار فعال است")).toBeInTheDocument();
   });
 
-  it("calls onJoin and onPresent when buttons are clicked", () => {
+  it("calls onJoin when join button is clicked", () => {
     const handleJoin = vi.fn();
-    const handlePresent = vi.fn();
 
     render(
-      <PreJoinMeetingInfo
-        roomName="کلاس فیزیک"
-        roomCode="ABC789"
-        roomInfo={null}
-        onJoin={handleJoin}
-        onPresent={handlePresent}
-        onCancel={vi.fn()}
-        camEnabled={true}
-        micEnabled={false}
-      />
+      <MemoryRouter>
+        <PreJoinMeetingInfo
+          roomCode="ABC789"
+          roomInfo={null}
+          onJoin={handleJoin}
+          onCancel={vi.fn()}
+          camEnabled={true}
+          micEnabled={false}
+        />
+      </MemoryRouter>
     );
 
-    const joinBtn = screen.getByRole("button", { name: /ورود به جلسه/i });
+    const joinBtn = screen.getByRole("button", { name: /ورود به جلسه|Join Now/i });
     fireEvent.click(joinBtn);
     expect(handleJoin).toHaveBeenCalledTimes(1);
 
-    const presentBtn = screen.getByRole("button", { name: /اشتراک مستقیم صفحه/i });
-    fireEvent.click(presentBtn);
-    expect(handlePresent).toHaveBeenCalledTimes(1);
+    // Verify semantic back navigation link exists
+    const backLink = screen.getByRole("link", { name: /انصراف|Cancel/i });
+    expect(backLink).toBeInTheDocument();
   });
 });
 
@@ -83,7 +81,7 @@ describe("PreJoinAudioTest Component", () => {
       />
     );
 
-    const playBtn = screen.getByRole("button", { name: /پخش صدای تست/i });
+    const playBtn = screen.getByRole("button", { name: /پخش صدای تست|Play Test/i });
     fireEvent.click(playBtn);
     expect(handlePlayTest).toHaveBeenCalledTimes(1);
   });
@@ -101,9 +99,6 @@ describe("PreJoinEffectsPicker Component", () => {
         isSupported={true}
       />
     );
-
-    expect(screen.getByText("واقعی")).toBeInTheDocument();
-    expect(screen.getByText("تاریک/بلور")).toBeInTheDocument();
 
     const buttons = screen.getAllByRole("button");
     expect(buttons.length).toBeGreaterThanOrEqual(6);

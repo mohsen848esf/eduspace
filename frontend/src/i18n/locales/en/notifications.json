@@ -19,6 +19,7 @@
   },
   "inbox": {
     "title": "Notifications Inbox",
+    "subtitle": "Centralized inbox for invites, classes, grades, and invoices",
     "empty": "No notifications yet",
     "emptyHint": "Invites, grading, and updates will show up here.",
     "unreadCount_one": "{{count}} unread",
@@ -43,6 +44,25 @@
       "recordings": "Recordings",
       "financial": "Finance & Invoices",
       "system": "System & Broadcasts"
+    },
+    "detail": {
+      "read": "Read",
+      "unread": "Unread",
+      "sender": "Sender:",
+      "roomInfo": "Live Room Details",
+      "roomCode": "Room Code:",
+      "assessmentResult": "Assessment Result",
+      "finalScore": "Final Score: {{score}} / {{total}}",
+      "financialInvoice": "Tuition Invoice",
+      "amount": "Amount: ${{amount}}",
+      "openDestination": "Open & View Destination",
+      "markAsRead": "Mark as read",
+      "markAsUnread": "Mark as unread",
+      "systemAnnouncement": "System Announcement",
+      "justNow": "Just now",
+      "minutesAgo": "{{count}}m ago",
+      "hoursAgo": "{{count}}h ago",
+      "daysAgo": "{{count}}d ago"
     }
   },
   "assessmentGraded": {

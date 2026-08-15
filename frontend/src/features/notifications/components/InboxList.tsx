@@ -36,7 +36,7 @@ function getNotificationDetails(item: NotificationItem, t: any) {
       return {
         icon: Video,
         iconBg: "bg-[var(--cyan)]/15 text-[var(--cyan)]",
-        title: (data.from as string) || "Room Invite",
+        title: (data.from as string) || t("notifications:roomInvite.title", { from: "Teacher", defaultValue: "Room Invite" }),
         subtitle: (data.room_name as string) || (data.room_code as string) || "Live Room",
         actionLabel: t("notifications:roomInvite.joinNow", { defaultValue: "Join Room" }),
         category: "rooms",
@@ -54,7 +54,7 @@ function getNotificationDetails(item: NotificationItem, t: any) {
       return {
         icon: Film,
         iconBg: "bg-[var(--brand-soft)] text-[var(--brand-text)]",
-        title: (data.from as string) || "New Recording",
+        title: (data.from as string) || t("recordings:title", { defaultValue: "New Recording" }),
         subtitle: (data.room_name as string) || "Session Recording",
         actionLabel: t("recordings:notification.watch", { defaultValue: "Watch" }),
         category: "recordings",
@@ -83,7 +83,7 @@ function getNotificationDetails(item: NotificationItem, t: any) {
       return {
         icon: CreditCard,
         iconBg: "bg-[var(--amber)]/15 text-[var(--amber)]",
-        title: (data.invoice_number as string) || "Tuition Invoice",
+        title: (data.invoice_number as string) || t("notifications:invoiceCreated.title", { defaultValue: "Tuition Invoice" }),
         subtitle: `Amount: $${data.amount ?? "0"} · ${data.status ?? "Issued"}`,
         actionLabel: t("notifications:invoiceCreated.pay", { defaultValue: "View Invoice" }),
         category: "financial",
@@ -93,7 +93,7 @@ function getNotificationDetails(item: NotificationItem, t: any) {
       return {
         icon: Bell,
         iconBg: "bg-[var(--s3)] text-[var(--t2)]",
-        title: (data.title as string) || "System Announcement",
+        title: (data.title as string) || t("notifications:inbox.detail.systemAnnouncement", { defaultValue: "System Announcement" }),
         subtitle: (data.message as string) || "Notification message",
         actionLabel: t("common:actions.view", { defaultValue: "View" }),
         category: "system",
@@ -101,15 +101,15 @@ function getNotificationDetails(item: NotificationItem, t: any) {
   }
 }
 
-function formatTimestamp(ms: number, localeTag = "fa-IR"): string {
+function formatTimestamp(ms: number, t: any, localeTag = "fa-IR"): string {
   const diff = Date.now() - ms;
   const min = Math.floor(diff / 60_000);
-  if (min < 1) return "هم‌اکنون";
-  if (min < 60) return `${min} دقیقه پیش`;
+  if (min < 1) return t("notifications:inbox.detail.justNow", { defaultValue: "Just now" });
+  if (min < 60) return t("notifications:inbox.detail.minutesAgo", { count: min, defaultValue: `${min}m ago` });
   const h = Math.floor(min / 60);
-  if (h < 24) return `${h} ساعت پیش`;
+  if (h < 24) return t("notifications:inbox.detail.hoursAgo", { count: h, defaultValue: `${h}h ago` });
   const d = Math.floor(h / 24);
-  if (d < 7) return `${d} روز پیش`;
+  if (d < 7) return t("notifications:inbox.detail.daysAgo", { count: d, defaultValue: `${d}d ago` });
 
   return new Date(ms).toLocaleDateString(localeTag, {
     month: "short",
@@ -167,7 +167,7 @@ export const InboxList: React.FC<InboxListProps> = ({
             <button
               type="button"
               onClick={(e) => onToggleSelect(item.id, e)}
-              className="p-1 text-[var(--t3)] hover:text-[var(--brand)] rounded transition-colors"
+              className="p-1 text-[var(--t3)] hover:text-[var(--brand)] rounded transition-colors cursor-pointer"
             >
               {isSelected ? (
                 <CheckSquare className="w-4 h-4 text-[var(--brand)]" />
@@ -212,7 +212,7 @@ export const InboxList: React.FC<InboxListProps> = ({
 
             {/* Right: Timestamp */}
             <div className="text-[11px] text-[var(--t3)] shrink-0 group-hover:hidden transition-all force-ltr">
-              {formatTimestamp(item.receivedAt, localeTag)}
+              {formatTimestamp(item.receivedAt, t, localeTag)}
             </div>
 
             {/* Hover Quick Action Toolbar */}
@@ -223,7 +223,7 @@ export const InboxList: React.FC<InboxListProps> = ({
               <button
                 type="button"
                 onClick={(e) => onActionClick(item, e)}
-                className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[var(--brand)] text-white hover:bg-[var(--brand-h)] transition-colors shadow-xs"
+                className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[var(--brand)] text-white hover:bg-[var(--brand-h)] transition-colors shadow-xs cursor-pointer"
               >
                 <span>{details.actionLabel}</span>
               </button>
@@ -233,7 +233,7 @@ export const InboxList: React.FC<InboxListProps> = ({
                   type="button"
                   onClick={(e) => onMarkRead(item.id, e)}
                   title={t("notifications:inbox.markRead", { defaultValue: "Mark as read" })}
-                  className="p-1.5 rounded-lg text-[var(--t3)] hover:text-[var(--brand)] hover:bg-[var(--s2)] transition-colors"
+                  className="p-1.5 rounded-lg text-[var(--t3)] hover:text-[var(--brand)] hover:bg-[var(--s2)] transition-colors cursor-pointer"
                 >
                   <MailCheck className="w-4 h-4" />
                 </button>
@@ -242,7 +242,7 @@ export const InboxList: React.FC<InboxListProps> = ({
                   type="button"
                   onClick={(e) => onMarkUnread(item.id, e)}
                   title={t("notifications:inbox.markUnread", { defaultValue: "Mark as unread" })}
-                  className="p-1.5 rounded-lg text-[var(--t3)] hover:text-[var(--t1)] hover:bg-[var(--s2)] transition-colors"
+                  className="p-1.5 rounded-lg text-[var(--t3)] hover:text-[var(--t1)] hover:bg-[var(--s2)] transition-colors cursor-pointer"
                 >
                   <Mail className="w-4 h-4" />
                 </button>
@@ -252,7 +252,7 @@ export const InboxList: React.FC<InboxListProps> = ({
                 type="button"
                 onClick={(e) => onDelete(item.id, e)}
                 title={t("notifications:inbox.remove", { defaultValue: "Delete" })}
-                className="p-1.5 rounded-lg text-[var(--t3)] hover:text-[var(--red)] hover:bg-[var(--red)]/10 transition-colors"
+                className="p-1.5 rounded-lg text-[var(--t3)] hover:text-[var(--red)] hover:bg-[var(--red)]/10 transition-colors cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
