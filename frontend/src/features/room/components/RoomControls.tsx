@@ -13,8 +13,7 @@ import {
   type BackgroundType,
 } from "../hooks/useBackgroundBlur";
 import SettingsPanel from "./SettingsPanel";
-
-type LayoutMode = "grid" | "spotlight" | "sidebar";
+import { type LayoutMode, useRoomLayoutStore } from "../store/roomLayoutStore";
 
 interface RoomControlsProps {
   isMicOn: boolean;
@@ -22,7 +21,7 @@ interface RoomControlsProps {
   isScreenSharing: boolean;
   sidebarTab: SidebarTab;
   settingsOpen: boolean;
-  layout: LayoutMode;
+  layout?: LayoutMode;
   onToggleMic: () => void;
   onToggleCam: () => void;
   onToggleScreenShare: () => void;
@@ -58,82 +57,6 @@ interface RoomControlsProps {
    * shells use this to drive swipe-stage / bottom-sheet state.
    */
   onPanelButtonClick?: (panel: "people" | "chat" | "tools") => void;
-}
-
-// ── Layout Popover ──
-function LayoutPopover({
-  layout,
-  onChange,
-  onClose,
-}: {
-  layout: LayoutMode;
-  onChange: (l: LayoutMode) => void;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation("room");
-  const popoverRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-    };
-  }, [onClose]);
-
-  const layouts = [
-    {
-      id: "grid" as LayoutMode,
-      icon: "⊞",
-      label: t("layouts.grid"),
-      desc: t("layouts.gridDesc"),
-    },
-    {
-      id: "spotlight" as LayoutMode,
-      icon: "□",
-      label: t("layouts.spotlight"),
-      desc: t("layouts.spotlightDesc"),
-    },
-    {
-      id: "sidebar" as LayoutMode,
-      icon: "▤",
-      label: t("layouts.sidebar"),
-      desc: t("layouts.sidebarDesc"),
-    },
-  ];
-
-  return (
-    <div ref={popoverRef} className="absolute bottom-[76px] left-1/2 -translate-x-1/2 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-52 fade-in">
-      <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2 px-1">
-        {t("layouts.title")}
-      </div>
-      {layouts.map((l) => (
-        <button
-          key={l.id}
-          onClick={() => {
-            onChange(l.id);
-            onClose();
-          }}
-          className={cn(
-            "w-full flex items-center gap-2.5 px-2 py-2 rounded-lg border-none cursor-pointer transition-all duration-150 text-start",
-            layout === l.id
-              ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
-              : "bg-transparent text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
-          )}
-        >
-          <span className="text-lg w-6 text-center">{l.icon}</span>
-          <div>
-            <div className="text-xs font-semibold">{l.label}</div>
-            <div className="text-[10px] text-[var(--t3)]">{l.desc}</div>
-          </div>
-        </button>
-      ))}
-    </div>
-  );
 }
 
 // ── Ctrl Button ──
@@ -598,7 +521,6 @@ export default function RoomControls({
   onToggleScreenShare,
   onToggleSidebar,
   onToggleSettings,
-  onLayoutChange,
   isPushToTalk,
   onTogglePushToTalk,
   onLeave,
@@ -611,7 +533,11 @@ export default function RoomControls({
   const { t } = useTranslation("room");
   const [micPopoverOpen, setMicPopoverOpen] = useState(false);
   const [camPopoverOpen, setCamPopoverOpen] = useState(false);
-  const [layoutPopoverOpen, setLayoutPopoverOpen] = useState(false);
+
+  const storeLayout = useRoomLayoutStore((s) => s.layoutMode);
+  const setAdjustViewOpen = useRoomLayoutStore((s) => s.setAdjustViewOpen);
+  const isAdjustViewOpen = useRoomLayoutStore((s) => s.isAdjustViewOpen);
+  const currentLayout = layout || storeLayout;
 
   // When the parent provides a panel override (mobile shells), highlight
   // based on that. Otherwise fall back to the docked-panel sidebarTab.
@@ -747,29 +673,22 @@ export default function RoomControls({
           size={size}
         />
 
-        {/* Layout button */}
+        {/* Layout Adjust View button */}
         <div className="relative">
           <CtrlBtn
             icon={
-              <span className="text-sm">
-                {layout === "grid" ? "⊞" : layout === "spotlight" ? "□" : "▤"}
+              <span className="text-base">
+                {currentLayout === "auto" ? "✦" : currentLayout === "tiled" ? "▦" : currentLayout === "spotlight" ? "□" : "▤"}
               </span>
             }
             label={t("controls.layout")}
             tooltip={t("tooltips.layout")}
             onClick={() => {
-              setLayoutPopoverOpen((p) => !p);
+              setAdjustViewOpen(true);
             }}
-            isOn={layoutPopoverOpen}
+            isOn={isAdjustViewOpen}
             size={size}
           />
-          {layoutPopoverOpen && onLayoutChange && (
-            <LayoutPopover
-              layout={layout}
-              onChange={onLayoutChange}
-              onClose={() => setLayoutPopoverOpen(false)}
-            />
-          )}
         </div>
 
         <CtrlBtn

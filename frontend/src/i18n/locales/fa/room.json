@@ -113,6 +113,21 @@
     "sidebar": "نواری",
     "sidebarDesc": "نمای اصلی با نوار کناری"
   },
+  "adjustView": {
+    "title": "تنظیمات چیدمان تصویر",
+    "savedNotice": "تنظیمات برای جلسات بعدی ذخیره می‌شود",
+    "auto": "خودکار (داینامیک)",
+    "autoDesc": "تنظیم خودکار چیدمان بر اساس گوینده و تعداد نفرات",
+    "tiled": "شبکه‌ای (ساده)",
+    "tiledDesc": "نمایش گرید شبکه‌ای مساوی برای همه افراد",
+    "spotlight": "تمرکز (Spotlight)",
+    "spotlightDesc": "تمرکز روی گوینده فعال یا تصویر پین‌شده",
+    "sidebar": "نوار کناری (Sidebar)",
+    "sidebarDesc": "گوینده اصلی در مرکز و سایر افراد در نوار کناری",
+    "tiles": "تایل‌ها",
+    "tilesDesc": "حداکثر {{count}} تایل برای نمایش، بسته به اندازه پنجره",
+    "hideNoVideo": "پنهان‌سازی افراد بدون دوربین"
+  },
   "topbar": {
     "defaultRoomName": "اتاق EduSpace",
     "host": "میزبان",
@@ -135,6 +150,7 @@
   "tile": {
     "you": "(شما)",
     "sharing": "در حال اشتراک",
+    "presentation": "ارائه",
     "zoomIn": "بزرگ‌نمایی",
     "pin": "سنجاق کن",
     "unpin": "حذف سنجاق",
@@ -143,7 +159,8 @@
     "remove": "حذف از تماس",
     "overflowMore_one": "{{count}} نفر دیگر",
     "overflowMore_other": "{{count}} نفر دیگر",
-    "overflowLabel": "بیشتر"
+    "overflowLabel": "بیشتر",
+    "clickToViewAll": "برای مشاهده همه افراد کلیک کنید"
   },
   "audioVisualizer": {
     "muted": "میکروفون بسته است"
