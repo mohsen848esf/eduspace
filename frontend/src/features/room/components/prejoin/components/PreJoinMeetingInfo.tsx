@@ -11,6 +11,7 @@ import {
   Mic,
   ArrowRight,
   ArrowLeft,
+  User as UserIcon,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -25,6 +26,8 @@ export interface PreJoinMeetingInfoProps {
   onCancel: () => void;
   camEnabled: boolean;
   micEnabled: boolean;
+  guestName?: string;
+  onGuestNameChange?: (name: string) => void;
 }
 
 export const PreJoinMeetingInfo: React.FC<PreJoinMeetingInfoProps> = ({
@@ -34,11 +37,14 @@ export const PreJoinMeetingInfo: React.FC<PreJoinMeetingInfoProps> = ({
   onCancel,
   camEnabled,
   micEnabled,
+  guestName = "",
+  onGuestNameChange,
 }) => {
   const { t } = useTranslation("room");
   const { language } = useLocale();
   const isFarsi = language === "fa";
   const { user } = useAuthStore();
+  const isAuthenticated = Boolean(user);
   const [copied, setCopied] = useState(false);
 
   const handleCopyLink = async () => {
@@ -48,13 +54,20 @@ export const PreJoinMeetingInfo: React.FC<PreJoinMeetingInfoProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const displayName = user?.full_name || user?.username || t("preJoin.joiningAs");
+  const displayName = isAuthenticated
+    ? user?.full_name || user?.username || t("preJoin.joiningAs")
+    : guestName.trim() || t("preJoin.guestDefaultName");
 
   // Filter out the current user to accurately show other participants already inside the call
-  const otherParticipants = (roomInfo?.participants || []).filter(
-    (p) => p.user__username !== user?.username
-  );
+  const otherParticipants = (roomInfo?.participants || []).filter((p) => {
+    if (isAuthenticated) {
+      return p.user__username !== user?.username;
+    }
+    return true;
+  });
   const otherCount = otherParticipants.length;
+
+  const isGuestNameValid = !isAuthenticated ? guestName.trim().length >= 2 : true;
 
   return (
     <div className="flex flex-col justify-between h-full space-y-6 bg-[var(--s1)] border border-[var(--b)] rounded-3xl p-6 shadow-xl">
@@ -72,6 +85,12 @@ export const PreJoinMeetingInfo: React.FC<PreJoinMeetingInfoProps> = ({
             <Badge variant="neutral" className="text-[var(--red)] border-[var(--red)]/30">
               <Radio className="w-3 h-3 me-1 text-[var(--red)] animate-pulse" />
               <span>{t("preJoin.autoRecording")}</span>
+            </Badge>
+          )}
+
+          {!isAuthenticated && (
+            <Badge variant="neutral" className="bg-[var(--cyan)]/15 text-[var(--cyan)] border-[var(--cyan)]/30">
+              <span>{t("preJoin.guestBadge")}</span>
             </Badge>
           )}
         </div>
@@ -140,11 +159,33 @@ export const PreJoinMeetingInfo: React.FC<PreJoinMeetingInfoProps> = ({
           )}
         </div>
 
-        {/* User Identity Confirmation */}
-        <div className="flex items-center justify-between px-3 py-2 text-xs text-[var(--t3)]">
-          <span>{t("preJoin.joiningAs")}</span>
-          <span className="font-bold text-[var(--t1)]">{displayName}</span>
-        </div>
+        {/* Identity Section: User Confirmation OR Guest Name Input */}
+        {isAuthenticated ? (
+          <div className="flex items-center justify-between px-3 py-2 text-xs text-[var(--t3)] bg-[var(--s2)] rounded-xl border border-[var(--b)]/60">
+            <span>{t("preJoin.joiningAs")}</span>
+            <span className="font-bold text-[var(--t1)]">{displayName}</span>
+          </div>
+        ) : (
+          <div className="space-y-1.5 p-3.5 rounded-2xl bg-[var(--s2)] border border-[var(--b)]">
+            <label className="text-xs font-bold text-[var(--t1)] flex items-center gap-1.5">
+              <UserIcon className="w-3.5 h-3.5 text-[var(--brand)]" />
+              <span>{t("preJoin.guestNameLabel")}</span>
+            </label>
+            <input
+              type="text"
+              value={guestName}
+              onChange={(e) => onGuestNameChange?.(e.target.value)}
+              placeholder={t("preJoin.guestNamePlaceholder")}
+              maxLength={50}
+              className="w-full bg-[var(--s0)] border border-[var(--b)] focus:border-[var(--brand)] rounded-xl px-3.5 py-2.5 text-xs text-[var(--t1)] outline-none transition-colors"
+            />
+            {guestName.trim().length > 0 && guestName.trim().length < 2 && (
+              <span className="text-[10px] text-[var(--red)] font-medium block">
+                {t("preJoin.guestNameMinLength")}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 2. Device Readiness Checklist */}
@@ -175,21 +216,24 @@ export const PreJoinMeetingInfo: React.FC<PreJoinMeetingInfoProps> = ({
           fullWidth
           size="lg"
           onClick={onJoin}
-          className="font-extrabold text-base py-3.5 shadow-lg shadow-[var(--brand)]/25 flex items-center justify-center gap-2 cursor-pointer"
+          disabled={!isGuestNameValid}
+          className="font-extrabold text-base py-3.5 shadow-lg shadow-[var(--brand)]/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <span>{t("preJoin.join")}</span>
+          <span>{isAuthenticated ? t("preJoin.join") : t("preJoin.joinAsGuest")}</span>
           <span className="text-lg">→</span>
         </Button>
 
         {/* Semantic Link for Navigation */}
         <div className="flex items-center justify-center">
           <Link
-            to="/dashboard"
+            to={isAuthenticated ? "/dashboard" : "/login"}
             onClick={onCancel}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--t3)] hover:text-[var(--brand-text)] transition-colors hover:underline"
           >
             {isFarsi ? <ArrowRight className="w-3.5 h-3.5" /> : <ArrowLeft className="w-3.5 h-3.5" />}
-            <span>{t("preJoin.backToDashboard")}</span>
+            <span>
+              {isAuthenticated ? t("preJoin.backToDashboard") : t("preJoin.backToLogin")}
+            </span>
           </Link>
         </div>
       </div>

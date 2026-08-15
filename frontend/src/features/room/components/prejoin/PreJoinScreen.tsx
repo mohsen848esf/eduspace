@@ -14,10 +14,11 @@ export interface PreJoinSettings {
   selectedCam: string;
   selectedSpeaker: string;
   background: BackgroundType;
+  guestName?: string;
 }
 
 export interface PreJoinScreenProps {
-  roomName: string;
+  roomName?: string;
   roomCode: string;
   onJoin: (settings: PreJoinSettings) => void;
   onCancel: () => void;
@@ -33,6 +34,9 @@ export default function PreJoinScreen({
   const [camEnabled, setCamEnabled] = useState(true);
   const [isMirrored, setIsMirrored] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [guestName, setGuestName] = useState(
+    () => localStorage.getItem("eduspace_guest_name") || "",
+  );
 
   // Hook 1: LiveKit Video Track & Background Effects
   const {
@@ -66,6 +70,9 @@ export default function PreJoinScreen({
 
   // Handlers
   const handleJoinNow = () => {
+    if (guestName.trim()) {
+      localStorage.setItem("eduspace_guest_name", guestName.trim());
+    }
     onJoin({
       micEnabled,
       camEnabled,
@@ -73,6 +80,7 @@ export default function PreJoinScreen({
       selectedCam,
       selectedSpeaker,
       background: selectedBg,
+      guestName: guestName.trim(),
     });
   };
 
@@ -99,6 +107,7 @@ export default function PreJoinScreen({
               isLoadingDevices={isLoadingDevices}
               audioLevel={audioLevel}
               audioBars={audioBars}
+              guestName={guestName}
             />
           </div>
 
@@ -111,6 +120,8 @@ export default function PreJoinScreen({
               onCancel={onCancel}
               camEnabled={camEnabled}
               micEnabled={micEnabled}
+              guestName={guestName}
+              onGuestNameChange={setGuestName}
             />
           </div>
         </div>

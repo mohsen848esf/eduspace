@@ -83,19 +83,31 @@ class RoomParticipant(models.Model):
     class Role(models.TextChoices):
         HOST = 'host', 'Host'
         PARTICIPANT = 'participant', 'Participant'
+        GUEST = 'guest', 'Guest'
 
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='participants')
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    guest_name = models.CharField(max_length=100, null=True, blank=True)
+    guest_identity = models.CharField(max_length=100, null=True, blank=True)
+    is_guest = models.BooleanField(default=False)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.PARTICIPANT)
     joined_at = models.DateTimeField(auto_now_add=True)
     left_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        unique_together = ('room', 'user')
+        constraints = [
+            models.UniqueConstraint(
+                fields=['room', 'user'],
+                condition=models.Q(user__isnull=False),
+                name='unique_authenticated_user_per_room'
+            )
+        ]
 
     def __str__(self):
-        return f"{self.user.username} in {self.room.room_code}"
+        if self.is_guest:
+            return f"{self.guest_name or self.guest_identity} (Guest) in {self.room.room_code}"
+        return f"{self.user.username if self.user else 'Unknown'} in {self.room.room_code}"
 
 
 def _make_recording_token() -> str:

@@ -22,6 +22,8 @@ export interface RoomResponse {
   token: string;
   livekit_url: string;
   is_host?: boolean;
+  is_guest?: boolean;
+  guest_identity?: string;
 }
 
 export interface RoomInfo {
@@ -32,7 +34,8 @@ export interface RoomInfo {
   participants: {
     user__username: string;
     user__full_name: string;
-    role: "host" | "participant";
+    role: "host" | "participant" | "guest";
+    is_guest?: boolean;
   }[];
   max_participants: number;
   is_recorded: boolean;

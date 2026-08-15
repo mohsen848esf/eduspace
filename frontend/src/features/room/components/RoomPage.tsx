@@ -180,7 +180,7 @@ export default function RoomPage() {
   const { t } = useTranslation(["room", "common"]);
   const { roomCode } = useParams<{ roomCode: string }>();
   const { token, livekitUrl, roomName } = useRoomStore();
-  const { joinRoom, leaveRoom, isLoading, error } = useRoom();
+  const { joinRoom, joinRoomGuest, leaveRoom, isLoading, error } = useRoom();
   const [preJoinDone, setPreJoinDone] = useState(false);
   const [preJoinSettings, setPreJoinSettings] =
     useState<PreJoinSettings | null>(null);
@@ -195,9 +195,14 @@ export default function RoomPage() {
 
   useEffect(() => {
     if (!token && roomCode && preJoinDone) {
-      joinRoom(roomCode);
+      const guestName = preJoinSettings?.guestName;
+      if (guestName) {
+        joinRoomGuest(roomCode, guestName);
+      } else {
+        joinRoom(roomCode);
+      }
     }
-  }, [roomCode, preJoinDone]);
+  }, [roomCode, preJoinDone, preJoinSettings?.guestName]);
 
   useEffect(() => {
     return () => {

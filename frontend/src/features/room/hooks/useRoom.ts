@@ -25,6 +25,7 @@ export function useRoom() {
           roomCode: res.room_code,
           roomName: res.name,
           isHost: true,
+          isGuest: false,
         });
         navigate(`/room/${res.room_code}`);
       } catch (err: any) {
@@ -48,6 +49,32 @@ export function useRoom() {
           roomCode: res.room_code,
           roomName: res.name,
           isHost: res.is_host || false,
+          isGuest: false,
+        });
+        navigate(`/room/${res.room_code}`);
+      } catch (err: any) {
+        setError(err.response?.data?.error || t("join.joinFailed"));
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [navigate, setRoom, t],
+  );
+
+  const joinRoomGuest = useCallback(
+    async (room_code: string, display_name: string) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await roomApi.guestJoin(room_code, display_name);
+        setRoom({
+          token: res.token,
+          livekitUrl: res.livekit_url,
+          roomCode: res.room_code,
+          roomName: res.name,
+          isHost: false,
+          isGuest: true,
+          guestIdentity: res.guest_identity,
         });
         navigate(`/room/${res.room_code}`);
       } catch (err: any) {
@@ -61,9 +88,7 @@ export function useRoom() {
 
   const leaveRoom = useCallback(
     async ({ redirectTo }: { redirectTo?: string | null } = {}) => {
-      const { roomCode } = useRoomStore.getState();
-
-
+      const { roomCode, isGuest, guestIdentity } = useRoomStore.getState();
 
       // Reset background
       useBackgroundStore.getState().setBackground("none");
@@ -71,7 +96,7 @@ export function useRoom() {
       // Leave room on backend
       if (roomCode) {
         try {
-          await roomApi.leave(roomCode);
+          await roomApi.leave(roomCode, guestIdentity || undefined);
         } catch {
           /* swallow */
         }
@@ -79,7 +104,7 @@ export function useRoom() {
 
       clearRoom();
       if (redirectTo !== null) {
-        navigate(redirectTo ?? "/dashboard");
+        navigate(redirectTo ?? (isGuest ? "/login" : "/dashboard"));
       }
     },
     [navigate, clearRoom],
@@ -92,6 +117,7 @@ export function useRoom() {
     error,
     createRoom,
     joinRoom,
+    joinRoomGuest,
     leaveRoom,
     clearError,
   };

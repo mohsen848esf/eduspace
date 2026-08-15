@@ -25,8 +25,20 @@ export const roomApi = {
     return res.data;
   },
 
-  leave: async (room_code: string): Promise<void> => {
-    await client.post(`/rooms/${room_code}/leave/`);
+  guestJoin: async (
+    room_code: string,
+    display_name: string,
+  ): Promise<RoomResponse> => {
+    const res = await client.post(`/rooms/${room_code}/guest-join/`, {
+      display_name,
+    });
+    return res.data;
+  },
+
+  leave: async (room_code: string, guest_identity?: string): Promise<void> => {
+    await client.post(`/rooms/${room_code}/leave/`, {
+      guest_identity,
+    });
   },
 
   getRoom: async (room_code: string): Promise<RoomInfo> => {

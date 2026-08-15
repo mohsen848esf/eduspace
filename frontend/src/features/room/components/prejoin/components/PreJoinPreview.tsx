@@ -33,6 +33,7 @@ export interface PreJoinPreviewProps {
   isLoadingDevices: boolean;
   audioLevel: number;
   audioBars: number[];
+  guestName?: string;
 }
 
 export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
@@ -51,6 +52,7 @@ export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
   isLoadingDevices,
   audioLevel,
   audioBars,
+  guestName = "",
 }) => {
   const { t } = useTranslation("room");
   const { user } = useAuthStore();
@@ -59,7 +61,11 @@ export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
   const isSpeaking = micEnabled && audioLevel > 15;
   const hasActiveEffect = selectedBg !== "none";
 
-  const displayName = user?.full_name || user?.username || t("preJoin.joiningAs");
+  const displayName =
+    user?.full_name ||
+    user?.username ||
+    guestName.trim() ||
+    t("preJoin.guestDefaultName");
   const initial = displayName.charAt(0).toUpperCase();
 
   return (
