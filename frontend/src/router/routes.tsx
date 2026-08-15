@@ -104,7 +104,8 @@ const InboxPage = lazy(
 export interface RouteConfig {
   path: string;
   component: React.LazyExoticComponent<React.ComponentType<unknown>>;
-  isPrivate: boolean;
+  isPrivate?: boolean;
+  guestOnly?: boolean;
   requiredPermissions?: string[];
   isSuperUserOnly?: boolean;
 }
@@ -118,6 +119,7 @@ export const routes: RouteConfig[] = [
     path: "/login",
     component: LoginPage,
     isPrivate: false,
+    guestOnly: true,
   },
   {
     path: "/sys-admin",
@@ -129,6 +131,7 @@ export const routes: RouteConfig[] = [
     path: "/register",
     component: RegisterPage,
     isPrivate: false,
+    guestOnly: true,
   },
   {
     path: "/dashboard",
