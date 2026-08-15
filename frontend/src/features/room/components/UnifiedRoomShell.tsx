@@ -23,8 +23,7 @@ import ToolsPanel from "./panels/ToolsPanel";
 import { type useGameBoard } from "../hooks/useGameBoard";
 import { type useWhiteboard } from "../hooks/useWhiteboard";
 import { cn } from "../../../lib/utils";
-
-type LayoutMode = "grid" | "spotlight" | "sidebar";
+import { type LayoutMode } from "../store/roomLayoutStore";
 
 interface UnifiedRoomShellProps {
   controls: {

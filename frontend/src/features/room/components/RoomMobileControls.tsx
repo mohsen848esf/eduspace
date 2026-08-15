@@ -2,15 +2,15 @@ import { useTranslation } from "react-i18next";
 import { Tooltip } from "../../../components/ui/Tooltip";
 import { Icons } from "../../../lib/constants/icons";
 import { cn } from "../../../lib/utils";
+import { type LayoutMode, useRoomLayoutStore } from "../store/roomLayoutStore";
 
-type LayoutMode = "grid" | "spotlight" | "sidebar";
 type PanelId = "people" | "chat" | "tools";
 
 interface RoomMobileControlsProps {
   isMicOn: boolean;
   isCamOn: boolean;
   isScreenSharing: boolean;
-  layout: LayoutMode;
+  layout?: LayoutMode;
   settingsOpen: boolean;
   /**
    * The panel whose sheet is currently open, or null when the user is
@@ -21,7 +21,7 @@ interface RoomMobileControlsProps {
   onToggleMic: () => void;
   onToggleCam: () => void;
   onToggleScreenShare: () => void;
-  onLayoutChange: (l: LayoutMode) => void;
+  onLayoutChange?: (l: LayoutMode) => void;
   onToggleSettings: () => void;
   onLeave: () => void;
   handRaised: boolean;
@@ -49,25 +49,25 @@ export default function RoomMobileControls({
   onToggleMic,
   onToggleCam,
   onToggleScreenShare,
-  onLayoutChange,
   onToggleSettings,
   onLeave,
   handRaised,
   onToggleHandRaise,
 }: RoomMobileControlsProps) {
   const { t } = useTranslation("room");
+  const storeLayout = useRoomLayoutStore((s) => s.layoutMode);
+  const setAdjustViewOpen = useRoomLayoutStore((s) => s.setAdjustViewOpen);
+  const isAdjustViewOpen = useRoomLayoutStore((s) => s.isAdjustViewOpen);
+  const currentLayout = layout || storeLayout;
 
-  const cycleLayout = () => {
-    const next: LayoutMode =
-      layout === "grid"
-        ? "spotlight"
-        : layout === "spotlight"
-          ? "sidebar"
-          : "grid";
-    onLayoutChange(next);
-  };
   const layoutIcon =
-    layout === "grid" ? "⊞" : layout === "spotlight" ? "□" : "▤";
+    currentLayout === "auto"
+      ? "✦"
+      : currentLayout === "tiled"
+      ? "▦"
+      : currentLayout === "spotlight"
+      ? "□"
+      : "▤";
 
   return (
     <div
@@ -128,7 +128,8 @@ export default function RoomMobileControls({
       <IconButton
         tooltip={t("tooltips.layout")}
         icon={<span className="text-base leading-none">{layoutIcon}</span>}
-        onClick={cycleLayout}
+        onClick={() => setAdjustViewOpen(true)}
+        variant={isAdjustViewOpen ? "active" : "default"}
       />
       <IconButton
         tooltip={t("tooltips.settings")}

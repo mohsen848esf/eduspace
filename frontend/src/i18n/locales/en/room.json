@@ -113,6 +113,21 @@
     "sidebar": "Sidebar",
     "sidebarDesc": "Main view with sidebar strip"
   },
+  "adjustView": {
+    "title": "Adjust view",
+    "savedNotice": "Selection is saved for future meetings",
+    "auto": "Auto (dynamic)",
+    "autoDesc": "Automatically adapts layout based on activity",
+    "tiled": "Tiled (legacy)",
+    "tiledDesc": "Equal sized grid tiles for all participants",
+    "spotlight": "Spotlight",
+    "spotlightDesc": "Focus on active speaker or pinned participant",
+    "sidebar": "Sidebar",
+    "sidebarDesc": "Main speaker on stage, others in a side strip",
+    "tiles": "Tiles",
+    "tilesDesc": "Max {{count}} tiles to display, depending on window size",
+    "hideNoVideo": "Hide tiles without video"
+  },
   "topbar": {
     "defaultRoomName": "EduSpace Room",
     "host": "Host",
@@ -135,15 +150,17 @@
   "tile": {
     "you": "(You)",
     "sharing": "Sharing",
+    "presentation": "Presentation",
     "zoomIn": "Zoom in",
     "pin": "Pin",
     "unpin": "Unpin",
     "mute": "Mute",
     "unmute": "Unmute",
     "remove": "Remove from call",
-    "overflowMore_one": "{{count}} more participant",
-    "overflowMore_other": "{{count}} more participants",
-    "overflowLabel": "more"
+    "overflowMore_one": "{{count}} other",
+    "overflowMore_other": "{{count}} others",
+    "overflowLabel": "more",
+    "clickToViewAll": "Click to view all"
   },
   "audioVisualizer": {
     "muted": "Microphone muted"

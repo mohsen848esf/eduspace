@@ -22,8 +22,7 @@ import { RoomGameProvider } from "../hooks/useRoomGameContext";
 import { useWhiteboard } from "../hooks/useWhiteboard";
 import { RoomWhiteboardProvider } from "../hooks/useRoomWhiteboardContext";
 import UnifiedRoomShell from "./UnifiedRoomShell";
-
-type LayoutMode = "grid" | "spotlight" | "sidebar";
+import { useRoomLayoutStore } from "../store/roomLayoutStore";
 
 function RoomContent({
   preJoinSettings,
@@ -34,7 +33,8 @@ function RoomContent({
     preJoinSettings?.camEnabled ?? true,
     preJoinSettings?.micEnabled ?? true,
   );
-  const [layout, setLayout] = useState<LayoutMode>("grid");
+  const layout = useRoomLayoutStore((s) => s.layoutMode);
+  const setLayout = useRoomLayoutStore((s) => s.setLayoutMode);
   const { localParticipant } = useLocalParticipant();
   const setupDone = useRef(false);
   const { disconnect } = useRoomDisconnect();
