@@ -129,8 +129,8 @@ export default function UnifiedRoomShell({
           {/* Main Game/Video Container - stable in the React DOM tree */}
           <div
             className={cn(
-              "relative flex-1 flex",
-              isMobile && "flex-col min-h-0 overflow-hidden"
+              "relative flex-1 flex min-w-0 min-h-0 overflow-hidden",
+              isMobile && "flex-col"
             )}
           >
             {game.gameBoard.isActive ? (
