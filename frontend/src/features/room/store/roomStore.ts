@@ -6,7 +6,8 @@ interface RoomState {
   roomCode: string | null;
   roomName: string | null;
   isHost: boolean;
-  // selectedBackground: BackgroundType;
+  isGuest: boolean;
+  guestIdentity: string | null;
   mutedByHost: Set<string>;
   setMutedByHost: (identity: string, muted: boolean) => void;
 
@@ -16,9 +17,10 @@ interface RoomState {
     roomCode: string;
     roomName: string;
     isHost: boolean;
+    isGuest?: boolean;
+    guestIdentity?: string | null;
   }) => void;
   clearRoom: () => void;
-  // setBackground: (bg: BackgroundType) => void;
 }
 
 export const useRoomStore = create<RoomState>((set) => ({
@@ -27,6 +29,8 @@ export const useRoomStore = create<RoomState>((set) => ({
   roomCode: null,
   roomName: null,
   isHost: false,
+  isGuest: false,
+  guestIdentity: null,
   mutedByHost: new Set<string>(),
   setMutedByHost: (identity, muted) =>
     set((state) => {
@@ -35,7 +39,16 @@ export const useRoomStore = create<RoomState>((set) => ({
       else updated.delete(identity);
       return { mutedByHost: updated };
     }),
-  setRoom: (data) => set(data),
+  setRoom: (data) =>
+    set({
+      token: data.token,
+      livekitUrl: data.livekitUrl,
+      roomCode: data.roomCode,
+      roomName: data.roomName,
+      isHost: data.isHost,
+      isGuest: data.isGuest || false,
+      guestIdentity: data.guestIdentity || null,
+    }),
   clearRoom: () =>
     set({
       token: null,
@@ -43,5 +56,7 @@ export const useRoomStore = create<RoomState>((set) => ({
       roomCode: null,
       roomName: null,
       isHost: false,
+      isGuest: false,
+      guestIdentity: null,
     }),
 }));

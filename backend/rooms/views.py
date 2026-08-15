@@ -1,5 +1,6 @@
 import asyncio
 import random
+import secrets
 import string
 
 from django.conf import settings
@@ -7,7 +8,7 @@ from django.utils import timezone
 from livekit import api
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Room, RoomParticipant
@@ -17,26 +18,39 @@ def generate_room_code():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
 
-def generate_livekit_token(room_code: str, user, is_host: bool) -> str:
+def generate_livekit_token(
+    room_code: str,
+    user=None,
+    is_host: bool = False,
+    guest_identity: str = None,
+    guest_name: str = None
+) -> str:
     """
-    Mint a short-lived LiveKit room token for `user`.
+    Mint a short-lived LiveKit room token for `user` or guest.
 
-    Identity is the username (unique) so that re-joining the same room
-    cleanly replaces the stale session instead of creating a duplicate.
+    For authenticated users, identity is the username (unique).
+    For guest users, identity is guest_identity (unique prefix).
     """
     token = api.AccessToken(
         api_key=settings.LIVEKIT_API_KEY,
         api_secret=settings.LIVEKIT_API_SECRET,
     )
-    token.with_identity(user.username)
-    token.with_name(user.full_name or user.username)
+    if user and user.is_authenticated:
+        token.with_identity(user.username)
+        token.with_name(user.full_name or user.username)
+    else:
+        ident = guest_identity or f"guest_{secrets.token_hex(6)}"
+        name = (guest_name or "Guest").strip()
+        token.with_identity(ident)
+        token.with_name(name)
+
     token.with_grants(api.VideoGrants(
         room_join=True,
         room=room_code,
         can_publish=True,
         can_subscribe=True,
         can_publish_data=True,
-        room_admin=is_host,
+        room_admin=is_host if (user and user.is_authenticated) else False,
     ))
     return token.to_jwt()
 
@@ -147,26 +161,105 @@ def join_room(request, room_code):
         'token': token,
         'livekit_url': settings.LIVEKIT_WS_URL,
         'is_host': is_host,
+        'is_guest': False,
     })
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def leave_room(request, room_code):
+@permission_classes([AllowAny])
+def guest_join_room(request, room_code):
+    """
+    Allow unauthenticated guests to join an active room by specifying
+    a display name. Mints a non-admin LiveKit token with a unique guest identity.
+    """
     try:
-        participant = RoomParticipant.objects.get(
-            room__room_code=room_code,
-            user=request.user,
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if room.status == Room.Status.ENDED:
+        return Response({'error': 'Room has ended'}, status=status.HTTP_400_BAD_REQUEST)
+
+    active_count = room.participants.filter(is_active=True).count()
+    if active_count >= room.max_participants:
+        return Response({'error': 'Room is full'}, status=status.HTTP_400_BAD_REQUEST)
+
+    display_name = str(request.data.get('display_name', '')).strip()
+    if not display_name or len(display_name) < 2:
+        return Response(
+            {'error': 'Display name must be at least 2 characters'},
+            status=status.HTTP_400_BAD_REQUEST
         )
-    except RoomParticipant.DoesNotExist:
-        return Response({'error': 'Not in room'}, status=status.HTTP_404_NOT_FOUND)
+    if len(display_name) > 60:
+        return Response(
+            {'error': 'Display name cannot exceed 60 characters'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    guest_identity = f"guest_{secrets.token_hex(6)}"
+
+    RoomParticipant.objects.create(
+        room=room,
+        user=None,
+        guest_name=display_name,
+        guest_identity=guest_identity,
+        is_guest=True,
+        role=RoomParticipant.Role.GUEST,
+        is_active=True,
+    )
+
+    token = generate_livekit_token(
+        room_code,
+        user=None,
+        is_host=False,
+        guest_identity=guest_identity,
+        guest_name=display_name,
+    )
+
+    return Response({
+        'room_code': room.room_code,
+        'name': room.name,
+        'token': token,
+        'livekit_url': settings.LIVEKIT_WS_URL,
+        'is_host': False,
+        'is_guest': True,
+        'guest_identity': guest_identity,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def leave_room(request, room_code):
+    guest_identity = request.data.get('guest_identity')
+
+    if request.user and request.user.is_authenticated:
+        try:
+            participant = RoomParticipant.objects.get(
+                room__room_code=room_code,
+                user=request.user,
+            )
+        except RoomParticipant.DoesNotExist:
+            return Response({'error': 'Not in room'}, status=status.HTTP_404_NOT_FOUND)
+    elif guest_identity:
+        try:
+            participant = RoomParticipant.objects.get(
+                room__room_code=room_code,
+                guest_identity=guest_identity,
+            )
+        except RoomParticipant.DoesNotExist:
+            return Response({'error': 'Not in room'}, status=status.HTTP_404_NOT_FOUND)
+    else:
+        return Response(
+            {'error': 'Authentication or guest_identity required'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
 
     participant.is_active = False
     participant.left_at = timezone.now()
     participant.save()
 
     room = participant.room
-    if room.host == request.user:
+    if request.user and request.user.is_authenticated and room.host == request.user:
         room.status = Room.Status.ENDED
         room.ended_at = timezone.now()
         room.save()
@@ -185,23 +278,37 @@ def leave_room(request, room_code):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def get_room(request, room_code):
     try:
         room = Room.objects.get(room_code=room_code)
     except Room.DoesNotExist:
         return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    participants = room.participants.filter(is_active=True).values(
-        'user__username', 'user__full_name', 'role'
-    )
+    participants_qs = room.participants.filter(is_active=True).select_related('user')
+    participants = []
+    for p in participants_qs:
+        if p.is_guest:
+            participants.append({
+                'user__username': p.guest_identity,
+                'user__full_name': p.guest_name,
+                'role': 'guest',
+                'is_guest': True,
+            })
+        elif p.user:
+            participants.append({
+                'user__username': p.user.username,
+                'user__full_name': p.user.full_name or p.user.username,
+                'role': p.role,
+                'is_guest': False,
+            })
 
     return Response({
         'room_code': room.room_code,
         'name': room.name,
         'status': room.status,
-        'host': room.host.username,
-        'participants': list(participants),
+        'host': room.host.username if room.host else 'Host',
+        'participants': participants,
         'max_participants': room.max_participants,
         'is_recorded': room.is_recorded,
     })

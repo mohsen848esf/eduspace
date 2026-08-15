@@ -33,6 +33,7 @@ describe("PreJoinMeetingInfo Component", () => {
           onCancel={vi.fn()}
           camEnabled={true}
           micEnabled={true}
+          guestName="Guest Student"
         />
       </MemoryRouter>
     );
@@ -41,7 +42,41 @@ describe("PreJoinMeetingInfo Component", () => {
     expect(screen.getByText(/سارا احمدی/)).toBeInTheDocument();
   });
 
-  it("calls onJoin when join button is clicked", () => {
+  it("allows unauthenticated guest to type name and join", () => {
+    const handleJoin = vi.fn();
+    const handleNameChange = vi.fn();
+
+    render(
+      <MemoryRouter>
+        <PreJoinMeetingInfo
+          roomCode="ABC789"
+          roomInfo={null}
+          onJoin={handleJoin}
+          onCancel={vi.fn()}
+          camEnabled={true}
+          micEnabled={false}
+          guestName="Ali"
+          onGuestNameChange={handleNameChange}
+        />
+      </MemoryRouter>
+    );
+
+    const input = screen.getByPlaceholderText(/نام نمایشی|Enter your full name/i);
+    expect(input).toBeInTheDocument();
+    expect(input).toHaveValue("Ali");
+
+    const joinBtn = screen.getByRole("button", { name: /مهمان|Guest|ورود/i });
+    expect(joinBtn).toBeEnabled();
+
+    fireEvent.click(joinBtn);
+    expect(handleJoin).toHaveBeenCalledTimes(1);
+
+    // Verify back to login link
+    const backLink = screen.getByRole("link", { name: /عضویت|Sign in|Login/i });
+    expect(backLink).toBeInTheDocument();
+  });
+
+  it("disables guest join button when guest name is too short", () => {
     const handleJoin = vi.fn();
 
     render(
@@ -53,17 +88,13 @@ describe("PreJoinMeetingInfo Component", () => {
           onCancel={vi.fn()}
           camEnabled={true}
           micEnabled={false}
+          guestName=""
         />
       </MemoryRouter>
     );
 
-    const joinBtn = screen.getByRole("button", { name: /ورود به جلسه|Join Now/i });
-    fireEvent.click(joinBtn);
-    expect(handleJoin).toHaveBeenCalledTimes(1);
-
-    // Verify semantic back navigation link exists
-    const backLink = screen.getByRole("link", { name: /انصراف|Cancel/i });
-    expect(backLink).toBeInTheDocument();
+    const joinBtn = screen.getByRole("button", { name: /مهمان|Guest|ورود/i });
+    expect(joinBtn).toBeDisabled();
   });
 });
 

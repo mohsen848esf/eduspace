@@ -1,0 +1,94 @@
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APITestCase
+from accounts.models import User
+from rooms.models import Room, RoomParticipant
+
+
+class GuestJoinAPITests(APITestCase):
+    def setUp(self):
+        self.host_user = User.objects.create_user(
+            username="hostteacher",
+            email="teacher@example.com",
+            password="password123",
+            full_name="Teacher Host",
+        )
+        self.active_room = Room.objects.create(
+            name="Linear Algebra 101",
+            room_code="ALG101",
+            host=self.host_user,
+            status=Room.Status.ACTIVE,
+            max_participants=5,
+        )
+        RoomParticipant.objects.create(
+            room=self.active_room,
+            user=self.host_user,
+            role=RoomParticipant.Role.HOST,
+            is_active=True,
+        )
+
+    def test_unauthenticated_user_can_fetch_public_room_info(self):
+        url = reverse("get_room", kwargs={"room_code": self.active_room.room_code})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data["room_code"], "ALG101")
+        self.assertEqual(data["name"], "Linear Algebra 101")
+        self.assertEqual(data["status"], "active")
+        self.assertEqual(len(data["participants"]), 1)
+        self.assertEqual(data["participants"][0]["user__username"], "hostteacher")
+
+    def test_guest_join_success(self):
+        url = reverse("guest_join_room", kwargs={"room_code": self.active_room.room_code})
+        response = self.client.post(url, {"display_name": "Guest Student"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data["room_code"], "ALG101")
+        self.assertTrue(data["is_guest"])
+        self.assertFalse(data["is_host"])
+        self.assertIn("token", data)
+        self.assertIsNotNone(data["token"])
+        self.assertIn("guest_identity", data)
+
+        # Check database participant created
+        participant = RoomParticipant.objects.get(guest_identity=data["guest_identity"])
+        self.assertTrue(participant.is_guest)
+        self.assertEqual(participant.guest_name, "Guest Student")
+        self.assertIsNone(participant.user)
+        self.assertTrue(participant.is_active)
+
+    def test_guest_join_rejects_empty_name(self):
+        url = reverse("guest_join_room", kwargs={"room_code": self.active_room.room_code})
+        response = self.client.post(url, {"display_name": "  "}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_guest_join_rejects_ended_room(self):
+        self.active_room.status = Room.Status.ENDED
+        self.active_room.save()
+
+        url = reverse("guest_join_room", kwargs={"room_code": self.active_room.room_code})
+        response = self.client.post(url, {"display_name": "Late Guest"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("ended", response.json()["error"])
+
+    def test_guest_join_rejects_full_room(self):
+        self.active_room.max_participants = 1  # only host is allowed
+        self.active_room.save()
+
+        url = reverse("guest_join_room", kwargs={"room_code": self.active_room.room_code})
+        response = self.client.post(url, {"display_name": "Overflow Guest"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("full", response.json()["error"])
+
+    def test_guest_leave_room(self):
+        join_url = reverse("guest_join_room", kwargs={"room_code": self.active_room.room_code})
+        join_res = self.client.post(join_url, {"display_name": "Departing Guest"}, format="json")
+        guest_identity = join_res.json()["guest_identity"]
+
+        leave_url = reverse("leave_room", kwargs={"room_code": self.active_room.room_code})
+        leave_res = self.client.post(leave_url, {"guest_identity": guest_identity}, format="json")
+        self.assertEqual(leave_res.status_code, status.HTTP_200_OK)
+
+        participant = RoomParticipant.objects.get(guest_identity=guest_identity)
+        self.assertFalse(participant.is_active)
+        self.assertIsNotNone(participant.left_at)

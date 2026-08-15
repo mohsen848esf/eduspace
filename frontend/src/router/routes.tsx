@@ -277,7 +277,7 @@ export const routes: RouteConfig[] = [
   {
     path: "/room/:roomCode",
     component: RoomPage,
-    isPrivate: true,
+    isPrivate: false,
   },
   {
     path: "/miniapps",
