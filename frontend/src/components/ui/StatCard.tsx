@@ -6,7 +6,7 @@ import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 export interface StatCardProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string;
   value: string | number;
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   subtitle?: string;
   trend?: {
     value: string | number;
@@ -54,14 +54,16 @@ export const StatCard: React.FC<StatCardProps> = ({
             {value}
           </span>
         </div>
-        <div
-          className={cn(
-            "w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 shadow-sm",
-            iconBgVariants[variant]
-          )}
-        >
-          {icon}
-        </div>
+        {icon && (
+          <div
+            className={cn(
+              "w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 shadow-sm",
+              iconBgVariants[variant]
+            )}
+          >
+            {icon}
+          </div>
+        )}
       </div>
 
       {(subtitle || trend) && (
@@ -89,7 +91,7 @@ export const StatCard: React.FC<StatCardProps> = ({
               {trend.value}
             </Badge>
           )}
-          {subtitle && (
+          {(trend?.label || subtitle) && (
             <span className="text-[var(--t3)] text-[11px] truncate">
               {trend?.label || subtitle}
             </span>
