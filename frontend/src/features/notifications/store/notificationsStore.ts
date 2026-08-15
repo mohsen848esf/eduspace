@@ -23,10 +23,12 @@ export interface NotificationItem {
 }
 
 interface NotificationsState {
+  userId: number | null;
   items: NotificationItem[];
   isHydrating: boolean;
   lastHydratedAt: number;
 
+  setUserId: (userId: number | null) => void;
   add: (
     kind: NotificationKind,
     data: Record<string, unknown>,
@@ -95,9 +97,21 @@ function fromServer(n: ServerNotification): NotificationItem {
 export const useNotificationsStore = create<NotificationsState>()(
   persist(
     (set, get) => ({
+      userId: null,
       items: [],
       isHydrating: false,
       lastHydratedAt: 0,
+
+      setUserId: (userId: number | null) => {
+        const currentUserId = get().userId;
+        if (currentUserId !== userId) {
+          set({
+            userId,
+            items: [],
+            lastHydratedAt: 0,
+          });
+        }
+      },
 
       add: (kind, data, opts) =>
         set((state) => {
@@ -141,23 +155,18 @@ export const useNotificationsStore = create<NotificationsState>()(
           ),
         }));
         if (item?.serverId) {
-          client.patch(`/notifications/read/`, { id: item.serverId }).catch(() => {});
+          client.post(`/auth/notifications/${item.serverId}/read/`).catch(() => {});
         }
       },
 
       markAllRead: () => {
         const now = Date.now();
-        const ids = get()
-          .items.filter((it) => it.readAt === null && it.serverId)
-          .map((it) => it.serverId!);
         set((state) => ({
           items: state.items.map((it) =>
             it.readAt === null ? { ...it, readAt: now } : it
           ),
         }));
-        if (ids.length > 0) {
-          client.patch(`/notifications/read/`, { all: true }).catch(() => {});
-        }
+        client.post(`/auth/notifications/read-all/`).catch(() => {});
       },
 
       remove: (id) => {
@@ -166,12 +175,12 @@ export const useNotificationsStore = create<NotificationsState>()(
           items: state.items.filter((it) => it.id !== id),
         }));
         if (item?.serverId) {
-          client.delete(`/notifications/${item.serverId}/`).catch(() => {});
+          client.delete(`/auth/notifications/${item.serverId}/`).catch(() => {});
         }
       },
 
       clearAll: () => {
-        set({ items: [] });
+        set({ items: [], lastHydratedAt: 0 });
       },
 
       unreadCount: () => get().items.filter((it) => it.readAt === null).length,
@@ -180,7 +189,8 @@ export const useNotificationsStore = create<NotificationsState>()(
         if (get().isHydrating) return;
         set({ isHydrating: true });
         try {
-          const res = await client.get("/notifications/");
+          // Use user-level notification inbox
+          const res = await client.get("/auth/notifications/");
           const data = Array.isArray(res.data) ? res.data : res.data?.results ?? [];
           const serverItems: NotificationItem[] = data.map((n: ServerNotification) => fromServer(n));
 
@@ -203,8 +213,8 @@ export const useNotificationsStore = create<NotificationsState>()(
     }),
     {
       name: "eduspace.notifications",
-      version: 2,
-      partialize: (state) => ({ items: state.items }),
+      version: 3,
+      partialize: (state) => ({ userId: state.userId, items: state.items }),
     }
   )
 );

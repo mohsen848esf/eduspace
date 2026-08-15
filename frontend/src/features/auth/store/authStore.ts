@@ -2,8 +2,8 @@ import { create } from "zustand";
 import i18n from "../../../i18n/config";
 import { authApi, type User } from "../api/auth.api";
 import type { LoginInput, RegisterPayload } from "../schemas/auth.schema";
-
 import { useOrgContextStore } from "./orgContextStore";
+import { useNotificationsStore } from "@/features/notifications/store/notificationsStore";
 
 interface AuthState {
   user: User | null;
@@ -32,6 +32,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const res = await authApi.login(data);
       localStorage.setItem("access_token", res.access);
       localStorage.setItem("refresh_token", res.refresh);
+      useNotificationsStore.getState().setUserId(res.user.id);
       set({ user: res.user, isAuthenticated: true, isLoading: false });
     } catch (err: any) {
       set({
@@ -47,6 +48,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const res = await authApi.register(data);
       localStorage.setItem("access_token", res.access);
       localStorage.setItem("refresh_token", res.refresh);
+      useNotificationsStore.getState().setUserId(res.user.id);
       set({ user: res.user, isAuthenticated: true, isLoading: false });
     } catch (err: any) {
       const errors = err.response?.data;
@@ -67,6 +69,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     useOrgContextStore.getState().clearOrgContext();
+    useNotificationsStore.getState().setUserId(null);
+    useNotificationsStore.getState().clearAll();
     set({
       user: null,
       isAuthenticated: false,
@@ -78,12 +82,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   fetchMe: async () => {
     const token = localStorage.getItem("access_token");
     if (!token) {
+      useNotificationsStore.getState().setUserId(null);
+      useNotificationsStore.getState().clearAll();
       set({ isInitialized: true, isAuthenticated: false });
       return;
     }
     set({ isLoading: true });
     try {
       const user = await authApi.me();
+      useNotificationsStore.getState().setUserId(user.id);
       set({
         user,
         isAuthenticated: true,
@@ -93,6 +100,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch {
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
+      useNotificationsStore.getState().setUserId(null);
+      useNotificationsStore.getState().clearAll();
       set({
         user: null,
         isAuthenticated: false,
