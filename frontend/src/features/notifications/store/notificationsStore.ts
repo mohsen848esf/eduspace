@@ -22,6 +22,16 @@ export interface NotificationItem {
   readAt: number | null;
 }
 
+export type InboxCategory =
+  | "all"
+  | "unread"
+  | "read"
+  | "rooms"
+  | "academic"
+  | "recordings"
+  | "financial"
+  | "system";
+
 interface NotificationsState {
   userId: number | null;
   items: NotificationItem[];
@@ -35,14 +45,18 @@ interface NotificationsState {
     opts?: { serverId?: number; createdAt?: string }
   ) => void;
   markRead: (id: string) => void;
+  markUnread: (id: string) => void;
+  markReadBatch: (ids: string[]) => void;
+  markUnreadBatch: (ids: string[]) => void;
   markAllRead: () => void;
   remove: (id: string) => void;
+  deleteBatch: (ids: string[]) => void;
   clearAll: () => void;
   unreadCount: () => number;
   hydrate: () => Promise<void>;
 }
 
-const MAX_ITEMS = 50;
+const MAX_ITEMS = 100;
 
 function makeLocalId(kind: NotificationKind, data: Record<string, unknown>): string {
   const tokens = [
@@ -159,6 +173,43 @@ export const useNotificationsStore = create<NotificationsState>()(
         }
       },
 
+      markUnread: (id) => {
+        set((state) => ({
+          items: state.items.map((it) =>
+            it.id === id ? { ...it, readAt: null } : it
+          ),
+        }));
+      },
+
+      markReadBatch: (ids) => {
+        const idSet = new Set(ids);
+        const now = Date.now();
+        const serverIds: number[] = [];
+
+        set((state) => ({
+          items: state.items.map((it) => {
+            if (idSet.has(it.id)) {
+              if (it.serverId) serverIds.push(it.serverId);
+              return { ...it, readAt: it.readAt ?? now };
+            }
+            return it;
+          }),
+        }));
+
+        serverIds.forEach((sid) => {
+          client.post(`/auth/notifications/${sid}/read/`).catch(() => {});
+        });
+      },
+
+      markUnreadBatch: (ids) => {
+        const idSet = new Set(ids);
+        set((state) => ({
+          items: state.items.map((it) =>
+            idSet.has(it.id) ? { ...it, readAt: null } : it
+          ),
+        }));
+      },
+
       markAllRead: () => {
         const now = Date.now();
         set((state) => ({
@@ -179,6 +230,25 @@ export const useNotificationsStore = create<NotificationsState>()(
         }
       },
 
+      deleteBatch: (ids) => {
+        const idSet = new Set(ids);
+        const serverIds: number[] = [];
+
+        set((state) => ({
+          items: state.items.filter((it) => {
+            if (idSet.has(it.id)) {
+              if (it.serverId) serverIds.push(it.serverId);
+              return false;
+            }
+            return true;
+          }),
+        }));
+
+        serverIds.forEach((sid) => {
+          client.delete(`/auth/notifications/${sid}/`).catch(() => {});
+        });
+      },
+
       clearAll: () => {
         set({ items: [], lastHydratedAt: 0 });
       },
@@ -189,7 +259,6 @@ export const useNotificationsStore = create<NotificationsState>()(
         if (get().isHydrating) return;
         set({ isHydrating: true });
         try {
-          // Use user-level notification inbox
           const res = await client.get("/auth/notifications/");
           const data = Array.isArray(res.data) ? res.data : res.data?.results ?? [];
           const serverItems: NotificationItem[] = data.map((n: ServerNotification) => fromServer(n));

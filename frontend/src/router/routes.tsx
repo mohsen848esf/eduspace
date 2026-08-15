@@ -97,6 +97,9 @@ const HomeworkPage = lazy(
 const StudentPaymentsPage = lazy(
   () => import("../features/dashboard/components/StudentPaymentsPage"),
 );
+const InboxPage = lazy(
+  () => import("../features/notifications/pages/InboxPage"),
+);
 
 export interface RouteConfig {
   path: string;
@@ -242,6 +245,16 @@ export const routes: RouteConfig[] = [
   {
     path: "/settings/profile",
     component: ProfileCompletionPage,
+    isPrivate: true,
+  },
+  {
+    path: "/inbox",
+    component: InboxPage,
+    isPrivate: true,
+  },
+  {
+    path: "/notifications",
+    component: InboxPage,
     isPrivate: true,
   },
   {

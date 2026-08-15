@@ -23,6 +23,7 @@ export interface NavItem {
 /** Items rendered in the desktop sidebar's MAIN section + tablet rail. */
 export const mainNavItems: NavItem[] = [
   { id: "dashboard", icon: Icons.home, labelKey: "nav.dashboard", to: "/dashboard" },
+  { id: "inbox", icon: Icons.bell, labelKey: "nav.inbox", to: "/inbox" },
   { id: "courses", icon: Icons.exam, labelKey: "nav.courses", to: "/academic/courses", permissions: ["can_manage_members", "can_teach_class"] },
   { id: "classes", icon: Icons.people, labelKey: "nav.classes", to: "/academic/classes", permissions: ["can_view_dashboard"] },
   { id: "sessions", icon: Icons.camera, labelKey: "nav.sessions", to: "/academic/sessions", permissions: ["can_view_sessions"] },

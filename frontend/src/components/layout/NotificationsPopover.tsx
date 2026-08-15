@@ -195,6 +195,21 @@ export default function NotificationsPopover({
           </ul>
         )}
       </div>
+
+      {/* Footer to Full Inbox Page */}
+      <div className="p-2 border-t border-[var(--b)] bg-[var(--s1)] flex items-center justify-center">
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            navigate("/inbox");
+          }}
+          className="w-full text-center text-xs font-bold text-[var(--brand-text)] hover:underline flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg hover:bg-[var(--s2)] transition-colors cursor-pointer"
+        >
+          <span>{t("notifications:inbox.viewAllInbox", { defaultValue: "مشاهده همه در صندوق پیام‌ها" })}</span>
+          <span>→</span>
+        </button>
+      </div>
     </div>
   );
 }
