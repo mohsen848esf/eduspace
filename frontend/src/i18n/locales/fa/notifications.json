@@ -19,6 +19,7 @@
   },
   "inbox": {
     "title": "صندوق پیام‌ها و اعلان‌ها",
+    "subtitle": "مدیریت متمرکز دعوت‌نامه‌ها، اعلانات کلاس‌ها، نمرات و فاکتورها",
     "empty": "اعلانی برای نمایش وجود ندارد",
     "emptyHint": "دعوت‌ها، نمرات ارزیابی، ویدیوهای جلسات و فاکتورها اینجا نمایش داده می‌شوند.",
     "unreadCount_one": "{{count}} خوانده‌نشده",
@@ -43,6 +44,25 @@
       "recordings": "ویدیوها و ضبط‌ها",
       "financial": "مالی و فاکتورها",
       "system": "سیستمی و اعلانات"
+    },
+    "detail": {
+      "read": "خوانده‌شده",
+      "unread": "خوانده‌نشده",
+      "sender": "فرستنده:",
+      "roomInfo": "اطلاعات اتاق آنلاین",
+      "roomCode": "کد اتاق:",
+      "assessmentResult": "نتیجه ارزیابی",
+      "finalScore": "نمره نهایی: {{score}} از {{total}}",
+      "financialInvoice": "صورتحساب مالی",
+      "amount": "مبلغ: ${{amount}}",
+      "openDestination": "مشاهده و باز کردن مقصد",
+      "markAsRead": "علامت به عنوان خوانده‌شده",
+      "markAsUnread": "علامت به عنوان خوانده‌نشده",
+      "systemAnnouncement": "اعلان سامانه",
+      "justNow": "هم‌اکنون",
+      "minutesAgo": "{{count}} دقیقه پیش",
+      "hoursAgo": "{{count}} ساعت پیش",
+      "daysAgo": "{{count}} روز پیش"
     }
   },
   "assessmentGraded": {

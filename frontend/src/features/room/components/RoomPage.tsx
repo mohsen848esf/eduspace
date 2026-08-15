@@ -126,10 +126,6 @@ function RoomContent({
         }
 
         controls.setIsCamOn(true);
-
-        if (preJoinSettings?.startWithScreenShare) {
-          controls.toggleScreenShare();
-        }
       } catch (err) {
         console.error("Camera setup error:", err);
         controls.setIsCamOn(true);

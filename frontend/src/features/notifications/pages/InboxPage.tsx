@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import AppShell from "@/components/layout/AppShell";
 import { useLocale } from "@/i18n/useLocale";
 import {
@@ -13,6 +14,7 @@ import InboxList from "../components/InboxList";
 import InboxDetailDrawer from "../components/InboxDetailDrawer";
 
 export default function InboxPage() {
+  const { t } = useTranslation(["notifications", "common"]);
   const { language } = useLocale();
   const navigate = useNavigate();
 
@@ -135,12 +137,10 @@ export default function InboxPage() {
 
   return (
     <AppShell
-      title={isFarsi ? "صندوق اعلان‌ها و پیام‌ها" : "Notification Inbox"}
-      subtitle={
-        isFarsi
-          ? "مدیریت متمرکز دعوت‌نامه‌ها، اعلانات کلاس‌ها، نمرات و فاکتورها"
-          : "Centralized inbox for invites, classes, grades, and invoices"
-      }
+      title={t("notifications:inbox.title", { defaultValue: "Notifications Inbox" })}
+      subtitle={t("notifications:inbox.subtitle", {
+        defaultValue: "Centralized inbox for invites, classes, grades, and invoices",
+      })}
       activeNav="inbox"
     >
       <div className="flex flex-col md:flex-row bg-[var(--s1)] border border-[var(--b)] rounded-2xl overflow-hidden shadow-sm min-h-[calc(100vh-200px)]">

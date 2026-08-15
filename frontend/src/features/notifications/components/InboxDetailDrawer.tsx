@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import {
   X,
   Calendar,
@@ -30,6 +31,8 @@ export const InboxDetailDrawer: React.FC<InboxDetailDrawerProps> = ({
   onPrimaryAction,
   localeTag = "fa-IR",
 }) => {
+  const { t } = useTranslation(["notifications", "common"]);
+
   if (!item) return null;
 
   const isUnread = item.readAt === null;
@@ -51,7 +54,9 @@ export const InboxDetailDrawer: React.FC<InboxDetailDrawerProps> = ({
         <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
           <div className="flex items-center gap-2">
             <Badge variant={isUnread ? "brand" : "neutral"} dot={isUnread}>
-              {isUnread ? "خوانده‌نشده" : "خوانده‌شده"}
+              {isUnread
+                ? t("notifications:inbox.detail.unread", { defaultValue: "Unread" })
+                : t("notifications:inbox.detail.read", { defaultValue: "Read" })}
             </Badge>
             <span className="text-xs text-[var(--t3)]">{kind}</span>
           </div>
@@ -76,7 +81,9 @@ export const InboxDetailDrawer: React.FC<InboxDetailDrawerProps> = ({
 
             {data.from !== undefined && (
               <div className="text-sm">
-                <span className="text-[var(--t3)]">فرستنده: </span>
+                <span className="text-[var(--t3)]">
+                  {t("notifications:inbox.detail.sender", { defaultValue: "Sender:" })}{" "}
+                </span>
                 <span className="font-bold text-[var(--t1)]">{String(data.from)}</span>
               </div>
             )}
@@ -85,7 +92,13 @@ export const InboxDetailDrawer: React.FC<InboxDetailDrawerProps> = ({
           {/* Detailed Message Section */}
           <div className="space-y-3">
             <h3 className="text-base font-bold text-[var(--t1)]">
-              {String(data.title || data.room_name || data.assessment_title || data.invoice_number || "اعلان سامانه")}
+              {String(
+                data.title ||
+                  data.room_name ||
+                  data.assessment_title ||
+                  data.invoice_number ||
+                  t("notifications:inbox.detail.systemAnnouncement", { defaultValue: "System Announcement" })
+              )}
             </h3>
 
             {data.message !== undefined && (
@@ -97,25 +110,41 @@ export const InboxDetailDrawer: React.FC<InboxDetailDrawerProps> = ({
             {/* Kind-specific visual helpers */}
             {kind === "ROOM_INVITE" && (
               <div className="p-4 rounded-xl bg-[var(--cyan)]/10 border border-[var(--cyan)]/20 space-y-2">
-                <div className="text-xs font-semibold text-[var(--cyan)]">اطلاعات اتاق آنلاین</div>
-                <div className="text-xs text-[var(--t2)]">کد اتاق: {String(data.room_code || "-")}</div>
+                <div className="text-xs font-semibold text-[var(--cyan)]">
+                  {t("notifications:inbox.detail.roomInfo", { defaultValue: "Live Room Info" })}
+                </div>
+                <div className="text-xs text-[var(--t2)]">
+                  {t("notifications:inbox.detail.roomCode", { defaultValue: "Room Code:" })}{" "}
+                  {String(data.room_code || "-")}
+                </div>
               </div>
             )}
 
             {kind === "ASSESSMENT_GRADED" && (
               <div className="p-4 rounded-xl bg-[var(--brand-soft)]/20 border border-[var(--brand)]/20 space-y-2">
-                <div className="text-xs font-semibold text-[var(--brand-text)]">نتیجه ارزیابی</div>
+                <div className="text-xs font-semibold text-[var(--brand-text)]">
+                  {t("notifications:inbox.detail.assessmentResult", { defaultValue: "Assessment Result" })}
+                </div>
                 <div className="text-sm font-extrabold text-[var(--t1)]">
-                  نمره نهایی: {String(data.score ?? "-")} از {String(data.total_points ?? "-")}
+                  {t("notifications:inbox.detail.finalScore", {
+                    score: data.score ?? "-",
+                    total: data.total_points ?? "-",
+                    defaultValue: `Final Score: ${data.score ?? "-"} / ${data.total_points ?? "-"}`,
+                  })}
                 </div>
               </div>
             )}
 
             {kind === "INVOICE_CREATED" && (
               <div className="p-4 rounded-xl bg-[var(--amber)]/10 border border-[var(--amber)]/20 space-y-2">
-                <div className="text-xs font-semibold text-[var(--amber)]">صورتحساب مالی</div>
+                <div className="text-xs font-semibold text-[var(--amber)]">
+                  {t("notifications:inbox.detail.financialInvoice", { defaultValue: "Tuition Invoice" })}
+                </div>
                 <div className="text-sm font-extrabold text-[var(--t1)]">
-                  مبلغ: ${String(data.amount ?? "0")}
+                  {t("notifications:inbox.detail.amount", {
+                    amount: data.amount ?? "0",
+                    defaultValue: `Amount: $${data.amount ?? "0"}`,
+                  })}
                 </div>
               </div>
             )}
@@ -129,7 +158,11 @@ export const InboxDetailDrawer: React.FC<InboxDetailDrawerProps> = ({
               onClick={() => onPrimaryAction(item)}
               className="font-bold flex items-center justify-center gap-2"
             >
-              <span>مشاهده و باز کردن مقصد</span>
+              <span>
+                {t("notifications:inbox.detail.openDestination", {
+                  defaultValue: "Open & View Destination",
+                })}
+              </span>
               <ExternalLink className="w-4 h-4" />
             </Button>
           </div>
@@ -145,7 +178,9 @@ export const InboxDetailDrawer: React.FC<InboxDetailDrawerProps> = ({
                 onClick={() => onMarkRead(item.id)}
               >
                 <MailCheck className="w-4 h-4 me-1.5" />
-                <span>علامت به عنوان خوانده‌شده</span>
+                <span>
+                  {t("notifications:inbox.detail.markAsRead", { defaultValue: "Mark as read" })}
+                </span>
               </Button>
             ) : (
               <Button
@@ -154,7 +189,9 @@ export const InboxDetailDrawer: React.FC<InboxDetailDrawerProps> = ({
                 onClick={() => onMarkUnread(item.id)}
               >
                 <Mail className="w-4 h-4 me-1.5" />
-                <span>علامت به عنوان خوانده‌نشده</span>
+                <span>
+                  {t("notifications:inbox.detail.markAsUnread", { defaultValue: "Mark as unread" })}
+                </span>
               </Button>
             )}
           </div>
@@ -169,7 +206,7 @@ export const InboxDetailDrawer: React.FC<InboxDetailDrawerProps> = ({
             className="text-[var(--red)] hover:bg-[var(--red)]/10"
           >
             <Trash2 className="w-4 h-4 me-1.5" />
-            <span>حذف</span>
+            <span>{t("notifications:inbox.remove", { defaultValue: "Delete" })}</span>
           </Button>
         </div>
       </div>
