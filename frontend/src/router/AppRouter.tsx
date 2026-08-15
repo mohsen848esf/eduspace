@@ -55,19 +55,33 @@ export default function AppRouter() {
             <Routes>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-              {routes.map(({ path, component: Page, isPrivate, requiredPermissions, isSuperUserOnly }) => (
-                <Route
-                  key={path}
-                  path={path}
-                  element={
-                    <RouteGuard isPrivate={isPrivate} requiredPermissions={requiredPermissions} isSuperUserOnly={isSuperUserOnly}>
-                      <ErrorBoundary>
-                        <Page />
-                      </ErrorBoundary>
-                    </RouteGuard>
-                  }
-                />
-              ))}
+              {routes.map(
+                ({
+                  path,
+                  component: Page,
+                  isPrivate,
+                  guestOnly,
+                  requiredPermissions,
+                  isSuperUserOnly,
+                }) => (
+                  <Route
+                    key={path}
+                    path={path}
+                    element={
+                      <RouteGuard
+                        isPrivate={isPrivate}
+                        guestOnly={guestOnly}
+                        requiredPermissions={requiredPermissions}
+                        isSuperUserOnly={isSuperUserOnly}
+                      >
+                        <ErrorBoundary>
+                          <Page />
+                        </ErrorBoundary>
+                      </RouteGuard>
+                    }
+                  />
+                ),
+              )}
 
               <Route path="/unauthorized" element={<UnauthorizedScreen />} />
               <Route path="*" element={<NotFoundScreen />} />
