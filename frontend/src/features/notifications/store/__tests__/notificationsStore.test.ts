@@ -32,7 +32,6 @@ describe("useNotificationsStore user isolation and actions", () => {
   });
 
   it("clears notifications when user ID changes (preventing cross-account leaks)", () => {
-    // User A receives a room invite
     useNotificationsStore.getState().setUserId(1);
     useNotificationsStore.getState().add("ROOM_INVITE", {
       room_code: "FGPZ6I",
@@ -40,7 +39,6 @@ describe("useNotificationsStore user isolation and actions", () => {
     });
     expect(useNotificationsStore.getState().items).toHaveLength(1);
 
-    // User B logs in on same browser
     useNotificationsStore.getState().setUserId(2);
     expect(useNotificationsStore.getState().items).toHaveLength(0);
     expect(useNotificationsStore.getState().unreadCount()).toBe(0);
@@ -61,6 +59,33 @@ describe("useNotificationsStore user isolation and actions", () => {
 
     expect(useNotificationsStore.getState().items[0].readAt).not.toBeNull();
     expect(client.post).toHaveBeenCalledWith("/auth/notifications/55/read/");
+  });
+
+  it("supports batch operations (markReadBatch, markUnreadBatch, deleteBatch)", async () => {
+    (client.post as any).mockResolvedValue({ data: { success: true } });
+    (client.delete as any).mockResolvedValue({ data: { success: true } });
+
+    useNotificationsStore.getState().setUserId(1);
+    useNotificationsStore.getState().add("ROOM_INVITE", { room_code: "A" }, { serverId: 10 });
+    useNotificationsStore.getState().add("INVOICE_CREATED", { invoice_number: "INV-1" }, { serverId: 20 });
+
+    const [item1, item2] = useNotificationsStore.getState().items;
+
+    // Batch mark read
+    useNotificationsStore.getState().markReadBatch([item1.id, item2.id]);
+    expect(useNotificationsStore.getState().unreadCount()).toBe(0);
+    expect(client.post).toHaveBeenCalledWith("/auth/notifications/10/read/");
+    expect(client.post).toHaveBeenCalledWith("/auth/notifications/20/read/");
+
+    // Batch mark unread
+    useNotificationsStore.getState().markUnreadBatch([item1.id]);
+    expect(useNotificationsStore.getState().unreadCount()).toBe(1);
+
+    // Batch delete
+    useNotificationsStore.getState().deleteBatch([item1.id, item2.id]);
+    expect(useNotificationsStore.getState().items).toHaveLength(0);
+    expect(client.delete).toHaveBeenCalledWith("/auth/notifications/10/");
+    expect(client.delete).toHaveBeenCalledWith("/auth/notifications/20/");
   });
 
   it("hydrates from /auth/notifications/ endpoint", async () => {
