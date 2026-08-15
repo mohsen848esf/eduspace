@@ -296,9 +296,9 @@ export default function TileView({
             )}
           >
             {kind === "screen"
-              ? `${name}${isLocal ? ` (${t("tile.you") || "You"})` : ""} · ${t("tile.presentation") || "Presentation"}`
+              ? `${name}${isLocal ? ` ${t("tile.you") || "(You)"}` : ""} · ${t("tile.presentation") || "Presentation"}`
               : isLocal
-              ? `${name} (${t("tile.you") || "You"})`
+              ? `${name} ${t("tile.you") || "(You)"}`
               : name}
           </span>
         </div>
