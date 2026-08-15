@@ -1,9 +1,12 @@
-import React, { useState } from "react";
+import React from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import { authApi } from "@/features/auth/api/auth.api";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { useOrgContextStore } from "@/features/auth/store/orgContextStore";
+import { joinOrgSchema, type JoinOrgFormData } from "@/features/auth/schemas/auth.schemas";
 import { toast } from "react-hot-toast";
 
 export interface JoinOrgModalProps {
@@ -19,42 +22,44 @@ export const JoinOrgModal: React.FC<JoinOrgModalProps> = ({
   onSuccess,
   isFarsi = false,
 }) => {
-  const [orgCodeOrSlug, setOrgCodeOrSlug] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+    setError,
+  } = useForm<JoinOrgFormData>({
+    resolver: zodResolver(joinOrgSchema),
+    defaultValues: { codeOrSlug: "" },
+  });
 
   if (!open) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!orgCodeOrSlug.trim()) return;
-    setIsSubmitting(true);
-    setErrorMsg("");
+  const onSubmit = async (data: JoinOrgFormData) => {
     try {
-      const res = await authApi.joinOrganization(orgCodeOrSlug);
+      const res = await authApi.joinOrganization(data.codeOrSlug);
       toast.success(
         res.message ||
           (isFarsi ? "درخواست عضویت ارسال شد." : "Join request submitted.")
       );
-      setOrgCodeOrSlug("");
+      reset();
       onClose();
 
       if (res.auto_joined) {
         await useAuthStore.getState().fetchMe();
         const { fetchOrgContext } = useOrgContextStore.getState();
-        await fetchOrgContext(orgCodeOrSlug);
+        await fetchOrgContext(data.codeOrSlug);
       } else {
         onSuccess?.();
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string; detail?: string } } };
-      setErrorMsg(
-        error.response?.data?.error ||
+      setError("codeOrSlug", {
+        message:
+          error.response?.data?.error ||
           error.response?.data?.detail ||
-          "Failed to join organization"
-      );
-    } finally {
-      setIsSubmitting(false);
+          "Failed to join organization",
+      });
     }
   };
 
@@ -69,28 +74,29 @@ export const JoinOrgModal: React.FC<JoinOrgModalProps> = ({
             ? "کد دعوت ۸ رقمی یا شناسه (Slug) سازمانی که می‌خواهید به آن ملحق شوید را وارد کنید."
             : "Enter the 8-digit invite code or the organization slug you wish to join."}
         </p>
-        {errorMsg && (
+        {errors.codeOrSlug?.message && (
           <div className="p-3 bg-[var(--red)]/10 border border-[var(--red)]/20 rounded-xl text-xs text-[var(--red)] flex items-center gap-1.5 animate-in fade-in">
             <span>⚠️</span>
-            <span>{errorMsg}</span>
+            <span>{errors.codeOrSlug.message}</span>
           </div>
         )}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <Input
             label={isFarsi ? "کد دعوت یا شناسه (Slug)" : "Invite Code or Slug"}
-            placeholder={isFarsi ? "مثال: EDU-1234 یا my-academy" : "e.g. EDU-1234 or my-academy"}
-            value={orgCodeOrSlug}
-            onChange={(e) => setOrgCodeOrSlug(e.target.value)}
-            required
+            placeholder={
+              isFarsi ? "مثال: EDU-1234 یا my-academy" : "e.g. EDU-1234 or my-academy"
+            }
+            error={errors.codeOrSlug?.message}
             autoFocus
+            {...register("codeOrSlug")}
           />
           <div className="flex gap-2 justify-end">
             <Button
               type="button"
               variant="secondary"
               onClick={() => {
+                reset();
                 onClose();
-                setErrorMsg("");
               }}
               disabled={isSubmitting}
             >

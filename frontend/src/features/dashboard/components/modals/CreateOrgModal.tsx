@@ -1,8 +1,11 @@
-import React, { useState } from "react";
+import React from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import { authApi } from "@/features/auth/api/auth.api";
 import { useOrgContextStore } from "@/features/auth/store/orgContextStore";
+import { createOrgSchema, type CreateOrgFormData } from "@/features/auth/schemas/auth.schemas";
 import { toast } from "react-hot-toast";
 
 export interface CreateOrgModalProps {
@@ -16,35 +19,37 @@ export const CreateOrgModal: React.FC<CreateOrgModalProps> = ({
   onClose,
   isFarsi = false,
 }) => {
-  const [orgName, setOrgName] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+    setError,
+  } = useForm<CreateOrgFormData>({
+    resolver: zodResolver(createOrgSchema),
+    defaultValues: { name: "" },
+  });
 
   if (!open) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!orgName.trim()) return;
-    setIsSubmitting(true);
-    setErrorMsg("");
+  const onSubmit = async (data: CreateOrgFormData) => {
     try {
-      const newOrg = await authApi.createOrganization(orgName);
+      const newOrg = await authApi.createOrganization(data.name);
       toast.success(
         isFarsi ? "سازمان با موفقیت ایجاد شد." : "Organization created successfully!"
       );
-      setOrgName("");
+      reset();
       onClose();
       const { fetchOrgContext } = useOrgContextStore.getState();
       await fetchOrgContext(newOrg.slug);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string; detail?: string } } };
-      setErrorMsg(
-        error.response?.data?.error ||
+      setError("name", {
+        message:
+          error.response?.data?.error ||
           error.response?.data?.detail ||
-          "Failed to create organization"
-      );
-    } finally {
-      setIsSubmitting(false);
+          "Failed to create organization",
+      });
     }
   };
 
@@ -54,28 +59,27 @@ export const CreateOrgModal: React.FC<CreateOrgModalProps> = ({
         <h3 className="text-lg font-bold text-[var(--t1)]">
           {isFarsi ? "ایجاد سازمان جدید" : "Create New Organization"}
         </h3>
-        {errorMsg && (
+        {errors.name?.message && (
           <div className="p-3 bg-[var(--red)]/10 border border-[var(--red)]/20 rounded-xl text-xs text-[var(--red)] flex items-center gap-1.5 animate-in fade-in">
             <span>⚠️</span>
-            <span>{errorMsg}</span>
+            <span>{errors.name.message}</span>
           </div>
         )}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <Input
             label={isFarsi ? "نام سازمان" : "Organization Name"}
             placeholder={isFarsi ? "آکادمی من" : "My Academy"}
-            value={orgName}
-            onChange={(e) => setOrgName(e.target.value)}
-            required
+            error={errors.name?.message}
             autoFocus
+            {...register("name")}
           />
           <div className="flex gap-2 justify-end">
             <Button
               type="button"
               variant="secondary"
               onClick={() => {
+                reset();
                 onClose();
-                setErrorMsg("");
               }}
               disabled={isSubmitting}
             >
