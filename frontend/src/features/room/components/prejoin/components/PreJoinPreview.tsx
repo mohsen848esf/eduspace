@@ -21,6 +21,7 @@ export interface PreJoinPreviewProps {
   videoRefCallback: (el: HTMLVideoElement | null) => void;
   camEnabled: boolean;
   micEnabled: boolean;
+  cameraError?: "busy" | "unavailable" | null;
   onToggleCam: () => void;
   onToggleMic: () => void;
   isMirrored: boolean;
@@ -40,6 +41,7 @@ export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
   videoRefCallback,
   camEnabled,
   micEnabled,
+  cameraError,
   onToggleCam,
   onToggleMic,
   isMirrored,
@@ -129,9 +131,13 @@ export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
             </div>
           </div>
 
-          <div className="mt-4 text-center">
+          <div className="mt-4 text-center max-w-xs px-2">
             <h4 className="text-sm font-bold text-[var(--t1)]">{displayName}</h4>
-            <p className="text-xs text-[var(--t3)] mt-0.5">{t("preJoin.cameraOff")}</p>
+            <p className="text-xs text-[var(--t3)] mt-0.5">
+              {cameraError === "busy"
+                ? t("preJoin.cameraBusy") || "دوربین توسط برنامه دیگری در حال استفاده است"
+                : t("preJoin.cameraOff")}
+            </p>
           </div>
         </div>
       )}

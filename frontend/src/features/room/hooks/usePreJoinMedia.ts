@@ -82,10 +82,8 @@ export function usePreJoinMedia(micEnabled: boolean) {
           return;
         }
 
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((t) => t.stop());
-        }
         streamRef.current = stream;
+        loadDevices();
 
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
         audioCtxRef.current = ctx;

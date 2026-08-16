@@ -8,6 +8,7 @@
     "tabAudio": "🎙 Audio & Mic",
     "tabEffects": "✨ Effects & Background",
     "cameraOff": "Camera is off",
+    "cameraBusy": "Camera is in use by another application (joining with microphone)",
     "muteMic": "Mute Microphone",
     "unmuteMic": "Unmute Microphone",
     "turnOffCamera": "Turn off Camera",

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePreJoinTrack } from "../../hooks/usePreJoinTrack";
 import { usePreJoinMedia } from "../../hooks/usePreJoinMedia";
 import { usePreJoinRoomInfo } from "../../hooks/usePreJoinRoomInfo";
@@ -46,7 +46,15 @@ export default function PreJoinScreen({
     attachToVideo,
     changeBackground,
     stopTrack,
+    cameraError,
   } = usePreJoinTrack();
+
+  // If camera is busy or unavailable, default camEnabled to false
+  useEffect(() => {
+    if (cameraError) {
+      setCamEnabled(false);
+    }
+  }, [cameraError]);
 
   // Hook 2: Media Devices & Audio Diagnostic
   const {
@@ -97,6 +105,7 @@ export default function PreJoinScreen({
               videoRefCallback={attachToVideo}
               camEnabled={camEnabled}
               micEnabled={micEnabled}
+              cameraError={cameraError}
               onToggleCam={() => setCamEnabled((prev) => !prev)}
               onToggleMic={() => setMicEnabled((prev) => !prev)}
               isMirrored={isMirrored}
