@@ -233,13 +233,7 @@ export default function RoomPage() {
         connect={true}
         video={preJoinSettings?.camEnabled ?? true}
         audio={preJoinSettings?.micEnabled ?? true}
-        options={{
-          adaptiveStream: false,
-          dynacast: false,
-          publishDefaults: {
-            simulcast: false,
-          },
-        }}
+        options={{ adaptiveStream: false }}
         onDisconnected={() => {
           useBackgroundStore.getState().setBackground("none");
           leaveRoom();
