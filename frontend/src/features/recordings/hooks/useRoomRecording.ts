@@ -98,8 +98,9 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
   }, [status.recording, isHost, setInFlight, setPendingEdit]);
 
   const refresh = useCallback(async () => {
-    // Skip status polling if local client-side recording is active
-    if (!roomCode || isClientRecording) return;
+    // Skip status polling if local client-side recording is active or user is an unauthenticated guest
+    const hasToken = typeof localStorage !== "undefined" && !!localStorage.getItem("access_token");
+    if (!roomCode || isClientRecording || !hasToken) return;
     try {
       const next = await recordingsApi.roomStatus(roomCode);
       if (!cancelled.current) setStatus(next);
@@ -109,7 +110,8 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
   }, [roomCode, isClientRecording]);
 
   const refreshPermission = useCallback(async () => {
-    if (!roomCode) return;
+    const hasToken = typeof localStorage !== "undefined" && !!localStorage.getItem("access_token");
+    if (!roomCode || !hasToken) return;
     try {
       const next = await recordingsApi.getRecordingPermission(roomCode);
       if (!cancelled.current) setPermission(next);
@@ -120,8 +122,9 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
 
   useEffect(() => {
     cancelled.current = false;
+    const hasToken = typeof localStorage !== "undefined" && !!localStorage.getItem("access_token");
+    if (!roomCode || !hasToken) return;
     refresh();
-    if (!roomCode) return;
     const interval = isHost ? POLL_MS : POLL_MS_PARTICIPANT;
     const id = window.setInterval(refresh, interval);
     return () => {
@@ -132,7 +135,8 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
 
   // Permission polling runs separately
   useEffect(() => {
-    if (!roomCode) return;
+    const hasToken = typeof localStorage !== "undefined" && !!localStorage.getItem("access_token");
+    if (!roomCode || !hasToken) return;
     refreshPermission();
     const id = window.setInterval(refreshPermission, POLL_MS_PERMISSION);
     return () => window.clearInterval(id);
