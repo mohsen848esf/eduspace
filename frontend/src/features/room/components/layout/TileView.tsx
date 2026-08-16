@@ -132,9 +132,9 @@ export default function TileView({
         "relative bg-[var(--s2)] rounded-2xl md:rounded-3xl overflow-hidden transition-all duration-200 w-full h-full tile-enter shadow-lg border border-white/5 select-none",
         isSpeaking &&
           kind === "camera" &&
-          "ring-2 ring-[#38bdf8] ring-offset-2 ring-offset-[var(--s0)] shadow-cyan-500/20",
+          "ring-2 ring-inset ring-[#38bdf8] shadow-[0_0_15px_rgba(56,189,248,0.35)]",
         pinned &&
-          "ring-2 ring-[var(--brand)] ring-offset-2 ring-offset-[var(--s0)]",
+          "ring-2 ring-inset ring-[var(--brand)]",
         className
       )}
       onMouseEnter={() => setHovered(true)}

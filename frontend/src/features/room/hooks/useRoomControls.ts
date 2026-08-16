@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocalParticipant, useRoomContext } from "@livekit/components-react";
-import { ParticipantEvent } from "livekit-client";
+import { ParticipantEvent, Track } from "livekit-client";
 import toast from "react-hot-toast";
 import client from "../../../lib/api/client";
 import { useRoomStore } from "../store/roomStore";
@@ -119,30 +119,44 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
   // PTT state — track if space is held
   const pttActive = useRef(false);
   const micBeforePTT = useRef(false);
-  // Sync local states with LiveKit's reactive participant state
-  useEffect(() => {
-    if (localParticipant) {
-      setIsCamOn(localParticipant.isCameraEnabled);
-      setIsMicOn(localParticipant.isMicrophoneEnabled);
-      setIsScreenSharing(localParticipant.isScreenShareEnabled);
-    }
-  }, [
-    localParticipant,
-    localParticipant?.isCameraEnabled,
-    localParticipant?.isMicrophoneEnabled,
-    localParticipant?.isScreenShareEnabled,
-  ]);
-
-  // Apply initial mute settings if preJoin requested camera/mic off
+  // Keep state in sync with LiveKit track changes
   useEffect(() => {
     if (!localParticipant) return;
-    if (!initialCamOn && localParticipant.isCameraEnabled) {
-      localParticipant.setCameraEnabled(false).catch(() => {});
-    }
-    if (!initialMicOn && localParticipant.isMicrophoneEnabled) {
-      localParticipant.setMicrophoneEnabled(false).catch(() => {});
-    }
-  }, [localParticipant, initialCamOn, initialMicOn]);
+    setIsCamOn(localParticipant.isCameraEnabled);
+    setIsMicOn(localParticipant.isMicrophoneEnabled);
+    setIsScreenSharing(localParticipant.isScreenShareEnabled);
+
+    const handleTrackMuted = (pub: any) => {
+      if (pub?.source === Track.Source.Camera) setIsCamOn(false);
+      if (pub?.source === Track.Source.Microphone) setIsMicOn(false);
+    };
+    const handleTrackUnmuted = (pub: any) => {
+      if (pub?.source === Track.Source.Camera) setIsCamOn(true);
+      if (pub?.source === Track.Source.Microphone) setIsMicOn(true);
+    };
+    const handleTrackPublished = (pub: any) => {
+      if (pub?.source === Track.Source.Camera) setIsCamOn(true);
+      if (pub?.source === Track.Source.Microphone) setIsMicOn(true);
+      if (pub?.source === Track.Source.ScreenShare) setIsScreenSharing(true);
+    };
+    const handleTrackUnpublished = (pub: any) => {
+      if (pub?.source === Track.Source.Camera) setIsCamOn(false);
+      if (pub?.source === Track.Source.Microphone) setIsMicOn(false);
+      if (pub?.source === Track.Source.ScreenShare) setIsScreenSharing(false);
+    };
+
+    localParticipant.on(ParticipantEvent.TrackMuted, handleTrackMuted);
+    localParticipant.on(ParticipantEvent.TrackUnmuted, handleTrackUnmuted);
+    localParticipant.on(ParticipantEvent.LocalTrackPublished, handleTrackPublished);
+    localParticipant.on(ParticipantEvent.LocalTrackUnpublished, handleTrackUnpublished);
+
+    return () => {
+      localParticipant.off(ParticipantEvent.TrackMuted, handleTrackMuted);
+      localParticipant.off(ParticipantEvent.TrackUnmuted, handleTrackUnmuted);
+      localParticipant.off(ParticipantEvent.LocalTrackPublished, handleTrackPublished);
+      localParticipant.off(ParticipantEvent.LocalTrackUnpublished, handleTrackUnpublished);
+    };
+  }, [localParticipant]);
 
   const toggleMic = useCallback(async () => {
     if (!localParticipant) return;

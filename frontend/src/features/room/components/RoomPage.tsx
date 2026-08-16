@@ -88,39 +88,18 @@ function RoomContent({
     };
   }, [disconnect]);
 
-  // Camera + background + microphone setup once the local participant is ready.
+  // Virtual background setup once the local participant camera is active.
   useEffect(() => {
     if (setupDone.current) return;
     if (!localParticipant) return;
-    setupDone.current = true;
-
-    const setup = async () => {
-      try {
-        const camEnabled = preJoinSettings?.camEnabled ?? true;
-        const micEnabled = preJoinSettings?.micEnabled ?? true;
-        const bg = preJoinSettings?.background || "none";
-
-        if (micEnabled) {
-          await localParticipant.setMicrophoneEnabled(true).catch((e) => {
-            console.warn("Could not enable microphone on join:", e);
-          });
-        }
-        if (camEnabled) {
-          await localParticipant.setCameraEnabled(true).catch((e) => {
-            console.warn("Could not enable camera on join:", e);
-          });
-          if (bg !== "none") {
-            await changeBackground(bg).catch(() => {});
-          }
-        }
-      } catch (err) {
-        console.error("Media setup error:", err);
-      }
-    };
-
-    // Small delay to ensure browser hardware driver (especially Firefox) released pre-join track
-    const timer = setTimeout(setup, 80);
-    return () => clearTimeout(timer);
+    const bg = preJoinSettings?.background || "none";
+    if (bg !== "none" && preJoinSettings?.camEnabled) {
+      setupDone.current = true;
+      const timer = setTimeout(() => {
+        changeBackground(bg).catch(() => {});
+      }, 300);
+      return () => clearTimeout(timer);
+    }
   }, [localParticipant, preJoinSettings, changeBackground]);
 
   const sharedShellProps = {
@@ -252,8 +231,8 @@ export default function RoomPage() {
         token={token}
         serverUrl={livekitUrl}
         connect={true}
-        video={false}
-        audio={false}
+        video={preJoinSettings?.camEnabled ?? true}
+        audio={preJoinSettings?.micEnabled ?? true}
         options={{
           adaptiveStream: false,
           dynacast: false,
