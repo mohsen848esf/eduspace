@@ -46,11 +46,25 @@ describe("calculateOptimalGrid", () => {
     expect(res.rowDistribution).toEqual([2, 3]);
   });
 
-  it("calculates 6-tile layout as 3x2 grid", () => {
+  it("calculates 5-tile layout for mobile portrait as 3 rows (2, 2, 1)", () => {
+    const res = calculateOptimalGrid(360, 740, 5, 12, 16 / 9);
+    expect(res.columns).toBe(2);
+    expect(res.rows).toBe(3);
+    expect(res.rowDistribution).toEqual([2, 2, 1]);
+  });
+
+  it("calculates 6-tile layout as 3x2 grid for landscape", () => {
     const res = calculateOptimalGrid(1200, 800, 6, 12, 16 / 9);
     expect(res.columns).toBe(3);
     expect(res.rows).toBe(2);
     expect(res.rowDistribution).toEqual([3, 3]);
+  });
+
+  it("calculates 6-tile layout for mobile portrait as 3 rows of 2 (Google Meet Screenshot 2)", () => {
+    const res = calculateOptimalGrid(360, 740, 6, 12, 16 / 9);
+    expect(res.columns).toBe(2);
+    expect(res.rows).toBe(3);
+    expect(res.rowDistribution).toEqual([2, 2, 2]);
   });
 
   it("gracefully handles zero or negative count", () => {

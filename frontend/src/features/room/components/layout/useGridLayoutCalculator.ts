@@ -150,7 +150,25 @@ export function calculateOptimalGrid(
   }
 
   if (count === 5) {
-    // 2 rows: 2 on top row, 3 on bottom row (Google Meet Screenshot 4)
+    if (!isLandscape) {
+      // Mobile portrait: 3 rows (2 on top, 2 middle, 1 bottom)
+      const availH = containerHeight - gap * 2;
+      let h = availH / 3;
+      let w = h * targetAspectRatio;
+      if (w * 2 + gap > containerWidth) {
+        w = (containerWidth - gap) / 2;
+        h = w / targetAspectRatio;
+      }
+      return {
+        columns: 2,
+        rows: 3,
+        tileWidth: Math.floor(w),
+        tileHeight: Math.floor(h),
+        rowDistribution: [2, 2, 1],
+      };
+    }
+
+    // Landscape 2 rows: 2 on top row, 3 on bottom row (Google Meet Screenshot 4)
     const availH = containerHeight - gap;
     let h = availH / 2;
     let w = h * targetAspectRatio;
@@ -168,7 +186,25 @@ export function calculateOptimalGrid(
   }
 
   if (count === 6) {
-    // 3x2 grid
+    if (!isLandscape) {
+      // Mobile portrait: 3 rows of 2 columns (Google Meet Screenshot 2)
+      const availH = containerHeight - gap * 2;
+      let h = availH / 3;
+      let w = h * targetAspectRatio;
+      if (w * 2 + gap > containerWidth) {
+        w = (containerWidth - gap) / 2;
+        h = w / targetAspectRatio;
+      }
+      return {
+        columns: 2,
+        rows: 3,
+        tileWidth: Math.floor(w),
+        tileHeight: Math.floor(h),
+        rowDistribution: [2, 2, 2],
+      };
+    }
+
+    // Landscape: 3 columns x 2 rows
     const availW = containerWidth - gap * 2;
     const availH = containerHeight - gap;
     let w = availW / 3;
