@@ -21,6 +21,7 @@ export function usePreJoinTrack() {
   const { language } = useLocale();
   const [track, setTrack] = useState<LocalVideoTrack | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [cameraError, setCameraError] = useState<"busy" | "unavailable" | null>(null);
   const { background, setBackground } = useBackgroundStore();
   const [isSupported] = useState(() => supportsBackgroundProcessors());
   const processorRef = useRef<any>(null);
@@ -32,6 +33,7 @@ export function usePreJoinTrack() {
 
     const init = async () => {
       try {
+        setCameraError(null);
         const t = await createLocalVideoTrack({ facingMode: "user" });
         if (cancelled) {
           t.stopProcessor().catch(() => {});
@@ -41,8 +43,15 @@ export function usePreJoinTrack() {
         }
         localTrack = t;
         setTrack(t);
-      } catch (err) {
-        console.error("Camera init error:", err);
+      } catch (err: any) {
+        console.warn("Camera init warning (prejoin):", err);
+        const isBusy =
+          err?.name === "NotReadableError" ||
+          err?.name === "AbortError" ||
+          err?.name === "TrackStartError" ||
+          err?.message?.toLowerCase?.()?.includes("in use") ||
+          err?.message?.toLowerCase?.()?.includes("could not start video source");
+        setCameraError(isBusy ? "busy" : "unavailable");
       }
     };
 
@@ -184,6 +193,7 @@ export function usePreJoinTrack() {
     background,
     isLoading,
     isSupported,
+    cameraError,
     attachToVideo,
     changeBackground,
     stopTrack,
