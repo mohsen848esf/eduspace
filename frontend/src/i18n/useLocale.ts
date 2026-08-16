@@ -5,7 +5,7 @@ import { SUPPORTED_LANGUAGES, type Language } from "./config";
 export function useLocale() {
   const { i18n } = useTranslation();
 
-  const language = (i18n.resolvedLanguage || i18n.language || "en") as Language;
+  const language = (i18n.resolvedLanguage || i18n.language || "fa") as Language;
   const isRTL = language === "fa";
   const dir: "rtl" | "ltr" = isRTL ? "rtl" : "ltr";
 

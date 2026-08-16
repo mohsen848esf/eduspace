@@ -41,7 +41,6 @@ export const mainNavItems: NavItem[] = [
 export const manageNavItems: NavItem[] = [
   { id: "members", icon: Icons.people, labelKey: "nav.members", to: "/crm/members", permissions: ["can_manage_members", "can_teach_class"] },
   { id: "ledger", icon: Icons.barChart, labelKey: "nav.ledger", to: "/finance/ledger", permissions: ["can_view_financials"] },
-  { id: "recordings", icon: Icons.film, labelKey: "nav.recordings", to: "/recordings" },
   { id: "templates", icon: Icons.settings, labelKey: "nav.templates", to: "/settings/templates", permissions: ["can_manage_members"] },
   { id: "organization", icon: Icons.settings, labelKey: "nav.orgSettings", to: "/settings/organization", permissions: ["can_manage_members"] },
   { id: "billing", icon: Icons.settings, labelKey: "nav.billing", to: "/settings/billing", permissions: ["can_manage_members"] },
@@ -55,7 +54,7 @@ export const bottomNavPrimary: NavItem[] = [
   { id: "dashboard", icon: Icons.home, labelKey: "nav.dashboard", to: "/dashboard" },
   { id: "courses", icon: Icons.exam, labelKey: "nav.courses", to: "/academic/courses", permissions: ["can_manage_members", "can_teach_class"] },
   { id: "sessions", icon: Icons.camera, labelKey: "nav.sessions", to: "/academic/sessions", permissions: ["can_view_sessions"] },
-  { id: "recordings", icon: Icons.film, labelKey: "nav.recordings", to: "/recordings" },
+  { id: "classes", icon: Icons.people, labelKey: "nav.classes", to: "/academic/classes", permissions: ["can_view_dashboard"] },
 ];
 
 /**

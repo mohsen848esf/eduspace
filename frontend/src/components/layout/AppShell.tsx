@@ -15,6 +15,9 @@ import { AlertTriangle } from "lucide-react";
 import { PageHelpProvider } from "../help/PageHelpProvider";
 
 
+import SubTopbar from "./SubTopbar";
+import { useOrgPermission } from "../../hooks/useOrgPermission";
+
 interface AppShellProps {
   children: React.ReactNode;
   title: string;
@@ -38,7 +41,6 @@ const NAV_ROUTES: Record<string, string> = {
   reports: "/academic/reports",
   members: "/crm/members",
   ledger: "/finance/ledger",
-  recordings: "/recordings",
   notificationsSettings: "/inbox?tab=settings",
   templates: "/settings/templates",
   organization: "/settings/organization",
@@ -50,17 +52,8 @@ const NAV_ROUTES: Record<string, string> = {
 };
 
 /**
- * Authenticated app shell. Renders three different chrome variants
- * depending on viewport:
- *
- *   desktop (>= 1024px) — full Sidebar (224px) + Topbar
- *   tablet  (768–1023)  — collapsed IconRail (56px) + Topbar
- *   mobile  (< 768px)   — Topbar (with hamburger) + BottomNav + Drawer
- *
- * Pages don't need to know which variant is active; they just pass their
- * title / subtitle / activeNav as before. The layout primitives all read
- * from the same `navItems` config so a destination added there shows up
- * everywhere.
+ * Authenticated app shell. Renders chrome variants depending on viewport
+ * and organization state.
  */
 export default function AppShell({
   children,
@@ -75,6 +68,8 @@ export default function AppShell({
   const breakpoint = useBreakpoint();
   const drawerOpen = useShellStore((s) => s.drawerOpen);
   const setDrawerOpen = useShellStore((s) => s.setDrawerOpen);
+  const { activeOrg } = useOrgPermission();
+  const hasOrg = !!activeOrg;
 
   useEffect(() => {
     document.documentElement.classList.toggle("light", !isDark);
@@ -111,23 +106,24 @@ export default function AppShell({
           "transition-colors duration-300",
         )}
       >
+        {hasOrg && breakpoint === "desktop" && (
+          <Sidebar activeId={resolvedActive} onNavigate={handleNavigate} />
+        )}
+        {hasOrg && breakpoint === "tablet" && (
+          <IconRail activeId={resolvedActive} onNavigate={handleNavigate} />
+        )}
 
-      {breakpoint === "desktop" && (
-        <Sidebar activeId={resolvedActive} onNavigate={handleNavigate} />
-      )}
-      {breakpoint === "tablet" && (
-        <IconRail activeId={resolvedActive} onNavigate={handleNavigate} />
-      )}
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+          <Topbar
+            title={title}
+            subtitle={subtitle}
+            isDark={isDark}
+            onToggleTheme={() => setIsDark(!isDark)}
+            showHamburger={hasOrg && breakpoint === "mobile"}
+            onHamburgerClick={() => setDrawerOpen(true)}
+          />
 
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <Topbar
-          title={title}
-          subtitle={subtitle}
-          isDark={isDark}
-          onToggleTheme={() => setIsDark(!isDark)}
-          showHamburger={breakpoint === "mobile"}
-          onHamburgerClick={() => setDrawerOpen(true)}
-        />
+          {hasOrg && <SubTopbar />}
         {isSuspended && (
           <div 
             style={{
@@ -178,26 +174,28 @@ export default function AppShell({
         >
           {children}
         </main>
-        {breakpoint === "mobile" && (
+        {hasOrg && breakpoint === "mobile" && (
           <BottomNav
             activeId={resolvedActive}
             onMoreClick={() => setDrawerOpen(true)}
           />
         )}
-      </div>
+        </div>
 
-      <Drawer
-        open={drawerOpen}
-        onOpenChange={setDrawerOpen}
-        side="start"
-        ariaLabel="Navigation"
-      >
-        <DrawerNavList
-          activeId={resolvedActive}
-          onNavigate={handleNavigate}
-          onClose={() => setDrawerOpen(false)}
-        />
-        </Drawer>
+        {hasOrg && (
+          <Drawer
+            open={drawerOpen}
+            onOpenChange={setDrawerOpen}
+            side="start"
+            ariaLabel="Navigation"
+          >
+            <DrawerNavList
+              activeId={resolvedActive}
+              onNavigate={handleNavigate}
+              onClose={() => setDrawerOpen(false)}
+            />
+          </Drawer>
+        )}
       </div>
     </PageHelpProvider>
   );
