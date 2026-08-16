@@ -101,12 +101,18 @@ export default function TileView({
 
   const camRef = getCamRef(participant, tracks);
   const screenRef = getScreenRef(participant, tracks);
+
+  const isLocalCamActive = isLocal && (participant as any).isCameraEnabled;
+  const isLocalScreenActive = isLocal && (participant as any).isScreenShareEnabled;
+
   const hasCam =
-    camRef && isTrackReference(camRef) && !camRef.publication.isMuted;
+    (camRef && isTrackReference(camRef) && !camRef.publication?.isMuted) ||
+    isLocalCamActive;
   const hasScreen =
-    screenRef &&
-    isTrackReference(screenRef) &&
-    !screenRef.publication.isMuted;
+    (screenRef &&
+      isTrackReference(screenRef) &&
+      !screenRef.publication?.isMuted) ||
+    isLocalScreenActive;
 
   // Decide which track to render
   const primaryTrack =
@@ -117,11 +123,11 @@ export default function TileView({
     kind === "screen" ? "object-contain bg-black" : "object-cover";
 
   // Local sharer PiP
-  const showLocalSharerPiP = kind === "screen" && isLocal && hasCam;
+  const showLocalSharerPiP = kind === "screen" && isLocal && hasCam && camRef;
 
   return (
     <div
-      style={style}
+      style={{ ...style, isolation: "isolate" }}
       className={cn(
         "relative bg-[var(--s2)] rounded-2xl md:rounded-3xl overflow-hidden transition-all duration-200 w-full h-full tile-enter shadow-lg border border-white/5 select-none",
         isSpeaking &&
@@ -136,13 +142,15 @@ export default function TileView({
     >
       {/* Video stream or Avatar */}
       {primaryTrack ? (
-        <VideoTrack
-          trackRef={primaryTrack}
-          className={cn("absolute inset-0 w-full h-full", fitClass)}
-          style={isLocal && kind === "camera" ? { transform: "scaleX(-1)" } : undefined}
-        />
+        <div className="absolute inset-0 w-full h-full rounded-[inherit] overflow-hidden bg-transparent [&_video]:w-full [&_video]:h-full [&_video]:rounded-[inherit] [&_video]:object-cover">
+          <VideoTrack
+            trackRef={primaryTrack}
+            className={cn("w-full h-full rounded-[inherit]", fitClass)}
+            style={isLocal && kind === "camera" ? { transform: "scaleX(-1)" } : undefined}
+          />
+        </div>
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-[var(--s1)]">
+        <div className="absolute inset-0 flex items-center justify-center bg-[var(--s1)] rounded-[inherit]">
           <div
             className={cn(
               "rounded-full flex items-center justify-center text-white font-bold bg-gradient-to-br shadow-inner transition-transform",
@@ -157,10 +165,10 @@ export default function TileView({
 
       {/* Local Sharer Picture-in-Picture */}
       {showLocalSharerPiP && (
-        <div className="absolute bottom-12 end-3 w-28 h-20 rounded-xl overflow-hidden border-2 border-white/20 shadow-2xl bg-black">
+        <div className="absolute bottom-12 end-3 w-28 h-20 rounded-xl overflow-hidden border-2 border-white/20 shadow-2xl bg-black [&_video]:w-full [&_video]:h-full [&_video]:rounded-[inherit] [&_video]:object-cover">
           <VideoTrack
             trackRef={camRef}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover rounded-[inherit]"
             style={{ transform: "scaleX(-1)" }}
           />
         </div>

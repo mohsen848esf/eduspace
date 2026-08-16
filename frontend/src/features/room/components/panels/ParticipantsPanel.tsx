@@ -44,9 +44,9 @@ export default function ParticipantsPanel() {
   // Hosts poll the recording-permission endpoint to keep the toggle
   // states honest if another host tab edits them. Non-hosts skip this
   // entirely — they don't need the grants list and the server would
-  // 200 with `grants: null` anyway.
   useEffect(() => {
-    if (!isHost || !roomCode) return;
+    const hasToken = typeof localStorage !== "undefined" && !!localStorage.getItem("access_token");
+    if (!isHost || !roomCode || !hasToken) return;
     let cancelled = false;
     const load = async () => {
       try {

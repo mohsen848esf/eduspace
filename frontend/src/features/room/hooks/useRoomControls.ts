@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocalParticipant, useRoomContext } from "@livekit/components-react";
-import { Track, ParticipantEvent } from "livekit-client";
+import { ParticipantEvent } from "livekit-client";
 import toast from "react-hot-toast";
 import client from "../../../lib/api/client";
 import { useRoomStore } from "../store/roomStore";
@@ -119,40 +119,65 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
   // PTT state — track if space is held
   const pttActive = useRef(false);
   const micBeforePTT = useRef(false);
-  // mute camera immediately if initialCamOn is false
+  // Sync local states with LiveKit's reactive participant state
+  useEffect(() => {
+    if (localParticipant) {
+      setIsCamOn(localParticipant.isCameraEnabled);
+      setIsMicOn(localParticipant.isMicrophoneEnabled);
+      setIsScreenSharing(localParticipant.isScreenShareEnabled);
+    }
+  }, [
+    localParticipant,
+    localParticipant?.isCameraEnabled,
+    localParticipant?.isMicrophoneEnabled,
+    localParticipant?.isScreenShareEnabled,
+  ]);
+
+  // Apply initial mute settings if preJoin requested camera/mic off
   useEffect(() => {
     if (!localParticipant) return;
-    if (!initialCamOn) {
-      const camPub = localParticipant.getTrackPublication(Track.Source.Camera);
-      if (camPub) {
-        camPub.mute();
-      } else {
-        const handler = () => {
-          const pub = localParticipant.getTrackPublication(Track.Source.Camera);
-          if (pub) {
-            pub.mute();
-            localParticipant.off("trackPublished", handler);
-          }
-        };
-        localParticipant.on("trackPublished", handler);
-        return () => {
-          localParticipant.off("trackPublished", handler);
-        };
-      }
+    if (!initialCamOn && localParticipant.isCameraEnabled) {
+      localParticipant.setCameraEnabled(false).catch(() => {});
     }
-  }, [localParticipant]);
+    if (!initialMicOn && localParticipant.isMicrophoneEnabled) {
+      localParticipant.setMicrophoneEnabled(false).catch(() => {});
+    }
+  }, [localParticipant, initialCamOn, initialMicOn]);
+
   const toggleMic = useCallback(async () => {
     if (!localParticipant) return;
-    const newState = !isMicOn;
-    await localParticipant.setMicrophoneEnabled(newState);
-    setIsMicOn(newState);
+    try {
+      const nextState = !localParticipant.isMicrophoneEnabled;
+      await localParticipant.setMicrophoneEnabled(nextState);
+      setIsMicOn(nextState);
+    } catch (err) {
+      console.error("Failed to toggle microphone:", err);
+      try {
+        const nextState = !isMicOn;
+        await localParticipant.setMicrophoneEnabled(nextState);
+        setIsMicOn(nextState);
+      } catch (retryErr) {
+        console.error("Retry toggle microphone failed:", retryErr);
+      }
+    }
   }, [localParticipant, isMicOn]);
 
   const toggleCam = useCallback(async () => {
     if (!localParticipant) return;
-    const newState = !isCamOn;
-    await localParticipant.setCameraEnabled(newState);
-    setIsCamOn(newState);
+    try {
+      const nextState = !localParticipant.isCameraEnabled;
+      await localParticipant.setCameraEnabled(nextState);
+      setIsCamOn(nextState);
+    } catch (err) {
+      console.error("Failed to toggle camera:", err);
+      try {
+        const nextState = !isCamOn;
+        await localParticipant.setCameraEnabled(nextState);
+        setIsCamOn(nextState);
+      } catch (retryErr) {
+        console.error("Retry toggle camera failed:", retryErr);
+      }
+    }
   }, [localParticipant, isCamOn]);
 
   const toggleScreenShare = useCallback(async () => {
