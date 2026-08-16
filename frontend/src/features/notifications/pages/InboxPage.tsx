@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import AppShell from "@/components/layout/AppShell";
 import { useLocale } from "@/i18n/useLocale";
@@ -12,11 +12,13 @@ import InboxSidebar from "../components/InboxSidebar";
 import InboxToolbar from "../components/InboxToolbar";
 import InboxList from "../components/InboxList";
 import InboxDetailDrawer from "../components/InboxDetailDrawer";
+import NotificationSettingsContent from "../components/NotificationSettingsContent";
 
 export default function InboxPage() {
   const { t } = useTranslation(["notifications", "common"]);
   const { language } = useLocale();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const isFarsi = language === "fa";
   const localeTag = isFarsi ? "fa-IR" : "en-US";
@@ -34,7 +36,9 @@ export default function InboxPage() {
   const deleteBatch = useNotificationsStore((s) => s.deleteBatch);
 
   // Local UI State
-  const [activeCategory, setActiveCategory] = useState<InboxCategory>("all");
+  const tabParam = searchParams.get("tab") as InboxCategory | null;
+  const [localCategory, setLocalCategory] = useState<InboxCategory>(tabParam || "all");
+  const activeCategory = tabParam || localCategory;
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedItemForDetail, setSelectedItemForDetail] = useState<NotificationItem | null>(null);
@@ -148,54 +152,71 @@ export default function InboxPage() {
         <InboxSidebar
           activeCategory={activeCategory}
           onSelectCategory={(cat) => {
-            setActiveCategory(cat);
+            setLocalCategory(cat);
             setSelectedIds(new Set());
+            if (cat === "settings") {
+              setSearchParams({ tab: "settings" });
+            } else if (cat === "all") {
+              setSearchParams({});
+            } else {
+              setSearchParams({ tab: cat });
+            }
           }}
           items={items}
         />
 
-        {/* Right: Main Content (Toolbar + List) */}
+        {/* Right: Main Content (Toolbar + List OR Notification Settings) */}
         <main className="flex-1 flex flex-col min-w-0 bg-[var(--s0)]">
-          <InboxToolbar
-            selectedCount={selectedIds.size}
-            totalVisibleCount={filteredItems.length}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onSelectAll={handleSelectAll}
-            onSelectNone={handleSelectNone}
-            onMarkReadBatch={handleMarkReadBatch}
-            onMarkUnreadBatch={handleMarkUnreadBatch}
-            onDeleteBatch={handleDeleteBatch}
-            onMarkAllRead={markAllRead}
-            onRefresh={hydrate}
-            isHydrating={isHydrating}
-          />
+          {activeCategory === "settings" ? (
+            <NotificationSettingsContent />
+          ) : (
+            <>
+              <InboxToolbar
+                selectedCount={selectedIds.size}
+                totalVisibleCount={filteredItems.length}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                onSelectAll={handleSelectAll}
+                onSelectNone={handleSelectNone}
+                onMarkReadBatch={handleMarkReadBatch}
+                onMarkUnreadBatch={handleMarkUnreadBatch}
+                onDeleteBatch={handleDeleteBatch}
+                onMarkAllRead={markAllRead}
+                onRefresh={hydrate}
+                isHydrating={isHydrating}
+                onOpenSettings={() => {
+                  setLocalCategory("settings");
+                  setSearchParams({ tab: "settings" });
+                }}
+              />
 
-          <div className="flex-1 overflow-y-auto">
-            <InboxList
-              items={filteredItems}
-              selectedIds={selectedIds}
-              onToggleSelect={handleToggleSelect}
-              onItemClick={(item) => {
-                markRead(item.id);
-                setSelectedItemForDetail(item);
-              }}
-              onMarkRead={(id, e) => {
-                e.stopPropagation();
-                markRead(id);
-              }}
-              onMarkUnread={(id, e) => {
-                e.stopPropagation();
-                markUnread(id);
-              }}
-              onDelete={(id, e) => {
-                e.stopPropagation();
-                remove(id);
-              }}
-              onActionClick={handleActionClick}
-              localeTag={localeTag}
-            />
-          </div>
+              <div className="flex-1 overflow-y-auto">
+                <InboxList
+                  items={filteredItems}
+                  selectedIds={selectedIds}
+                  onToggleSelect={handleToggleSelect}
+                  onItemClick={(item) => {
+                    markRead(item.id);
+                    setSelectedItemForDetail(item);
+                  }}
+                  onMarkRead={(id, e) => {
+                    e.stopPropagation();
+                    markRead(id);
+                  }}
+                  onMarkUnread={(id, e) => {
+                    e.stopPropagation();
+                    markUnread(id);
+                  }}
+                  onDelete={(id, e) => {
+                    e.stopPropagation();
+                    remove(id);
+                  }}
+                  onActionClick={handleActionClick}
+                  localeTag={localeTag}
+                />
+              </div>
+            </>
+          )}
         </main>
       </div>
 

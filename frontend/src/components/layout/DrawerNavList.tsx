@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Icons } from "../../lib/constants/icons";
 import { cn } from "../../lib/utils";
 import { useAuthStore } from "../../features/auth/store/authStore";
@@ -105,29 +105,52 @@ export default function DrawerNavList({
           }
           return items.map((item) => {
             const isActive = activeId === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleClick(item)}
-                aria-current={isActive ? "page" : undefined}
-                className={cn(
-                  "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg",
-                  "text-start border-none cursor-pointer min-h-11",
-                  "transition-colors duration-150",
-                  isActive
-                    ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
-                    : "bg-transparent text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
-                )}
-              >
+            const linkContent = (
+              <>
                 <span className="flex-shrink-0">{item.icon}</span>
                 <span className="text-sm font-medium flex-1">
                   {t(`dashboard:${item.labelKey}`)}
                 </span>
-                {item.badge && (
+                {Boolean(item.badge) && (
                   <span className="bg-[var(--red)] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                     {item.badge}
                   </span>
                 )}
+              </>
+            );
+
+            const itemClasses = cn(
+              "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg no-underline",
+              "text-start min-h-11",
+              "transition-colors duration-150 select-none",
+              isActive
+                ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-bold shadow-sm"
+                : "bg-transparent text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]"
+            );
+
+            if (item.to) {
+              return (
+                <Link
+                  key={item.id}
+                  to={item.to}
+                  onClick={onClose}
+                  aria-current={isActive ? "page" : undefined}
+                  className={itemClasses}
+                >
+                  {linkContent}
+                </Link>
+              );
+            }
+
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleClick(item)}
+                aria-current={isActive ? "page" : undefined}
+                className={cn(itemClasses, "border-none cursor-pointer")}
+              >
+                {linkContent}
               </button>
             );
           });

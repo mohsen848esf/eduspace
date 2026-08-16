@@ -30,7 +30,8 @@ export type InboxCategory =
   | "academic"
   | "recordings"
   | "financial"
-  | "system";
+  | "system"
+  | "settings";
 
 interface NotificationsState {
   userId: number | null;

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { Icons } from "../../lib/constants/icons";
 import { cn } from "../../lib/utils";
 import { bottomNavPrimary, type NavItem } from "./navItems";
@@ -32,7 +32,6 @@ export default function BottomNav({
 }: BottomNavProps) {
   const { t } = useTranslation("dashboard");
   const { hasAnyPermission, activeRole } = useOrgPermission();
-  const navigate = useNavigate();
   const location = useLocation();
 
   const visibleItems = items.filter((item) => {
@@ -64,24 +63,44 @@ export default function BottomNav({
     >
       {visibleItems.map((item) => {
         const isActive = item.id === resolvedActive;
-        return (
-          <button
-            key={item.id}
-            onClick={() => item.to && navigate(item.to)}
-            aria-current={isActive ? "page" : undefined}
-            className={cn(
-              "flex flex-col items-center justify-center gap-0.5 min-h-11",
-              "border-none bg-transparent cursor-pointer",
-              "transition-colors duration-150",
-              isActive
-                ? "text-[var(--brand-text)]"
-                : "text-[var(--t3)] hover:text-[var(--t1)]",
-            )}
-          >
+        const inner = (
+          <>
             <span className="leading-none">{item.icon}</span>
             <span className="text-[10px] font-medium leading-none">
               {t(item.labelKey)}
             </span>
+          </>
+        );
+
+        const itemClasses = cn(
+          "flex flex-col items-center justify-center gap-0.5 min-h-11 no-underline select-none",
+          "transition-colors duration-150",
+          isActive
+            ? "text-[var(--brand-text)]"
+            : "text-[var(--t3)] hover:text-[var(--t1)]",
+        );
+
+        if (item.to) {
+          return (
+            <Link
+              key={item.id}
+              to={item.to}
+              aria-current={isActive ? "page" : undefined}
+              className={itemClasses}
+            >
+              {inner}
+            </Link>
+          );
+        }
+
+        return (
+          <button
+            key={item.id}
+            type="button"
+            aria-current={isActive ? "page" : undefined}
+            className={cn(itemClasses, "border-none bg-transparent cursor-pointer")}
+          >
+            {inner}
           </button>
         );
       })}

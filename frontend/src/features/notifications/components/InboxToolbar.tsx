@@ -9,6 +9,7 @@ import {
   CheckSquare,
   Square,
   MinusSquare,
+  Settings,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 
@@ -25,6 +26,7 @@ export interface InboxToolbarProps {
   onMarkAllRead: () => void;
   onRefresh: () => void;
   isHydrating: boolean;
+  onOpenSettings?: () => void;
 }
 
 export const InboxToolbar: React.FC<InboxToolbarProps> = ({
@@ -40,6 +42,7 @@ export const InboxToolbar: React.FC<InboxToolbarProps> = ({
   onMarkAllRead,
   onRefresh,
   isHydrating,
+  onOpenSettings,
 }) => {
   const { t } = useTranslation(["notifications", "common"]);
 
@@ -125,16 +128,34 @@ export const InboxToolbar: React.FC<InboxToolbarProps> = ({
         )}
       </div>
 
-      {/* Right: Real-time Search Input */}
-      <div className="relative w-full sm:w-64">
-        <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--t3)] pointer-events-none" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder={t("notifications:inbox.searchPlaceholder", { defaultValue: "Search notifications..." })}
-          className="w-full bg-[var(--s2)] border border-[var(--b)] rounded-xl py-1.5 ps-9 pe-3 text-xs text-[var(--t1)] placeholder:text-[var(--t3)] focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] transition-all"
-        />
+      {/* Right: Real-time Search Input & Settings Button */}
+      <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="relative flex-1 sm:w-64">
+          <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-[var(--t3)] pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder={t("notifications:inbox.searchPlaceholder", {
+              defaultValue: "Search notifications...",
+            })}
+            className="w-full bg-[var(--s2)] border border-[var(--b)] rounded-xl py-1.5 ps-9 pe-3 text-xs text-[var(--t1)] placeholder:text-[var(--t3)] focus:outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)] transition-all"
+          />
+        </div>
+
+        {onOpenSettings && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onOpenSettings}
+            title={t("notifications:inbox.categories.settings", {
+              defaultValue: "Notification Settings",
+            })}
+            className="h-8 px-2.5 text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s2)]"
+          >
+            <Settings className="w-4 h-4" />
+          </Button>
+        )}
       </div>
     </div>
   );
