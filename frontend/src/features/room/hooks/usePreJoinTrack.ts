@@ -67,15 +67,38 @@ export function usePreJoinTrack() {
     };
   }, []);
 
+  const videoElRef = useRef<HTMLVideoElement | null>(null);
+
   // Attach track to video element
   const attachToVideo = useCallback(
     (el: HTMLVideoElement | null) => {
-      if (!el || !track) return;
-      track.attach(el);
-      return () => track.detach(el);
+      if (videoElRef.current && videoElRef.current !== el) {
+        try {
+          track?.detach(videoElRef.current);
+        } catch {}
+      }
+      videoElRef.current = el;
+      if (el && track) {
+        try {
+          track.attach(el);
+        } catch (e) {
+          console.warn("Could not attach track to video:", e);
+        }
+      }
     },
     [track],
   );
+
+  // Auto-attach whenever track instance becomes available
+  useEffect(() => {
+    if (videoElRef.current && track) {
+      try {
+        track.attach(videoElRef.current);
+      } catch (e) {
+        console.warn("Could not attach track in useEffect:", e);
+      }
+    }
+  }, [track]);
 
   // Change background
   const changeBackground = useCallback(
