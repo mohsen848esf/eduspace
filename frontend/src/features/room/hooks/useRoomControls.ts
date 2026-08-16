@@ -8,18 +8,18 @@ import { useRoomStore } from "../store/roomStore";
 
 function playChime() {
   try {
-    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const audioCtx = new AudioContextClass();
+    const audioCtx = new (window.AudioContext ||
+      (window as any).webkitAudioContext)();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.connect(gain);
     gain.connect(audioCtx.destination);
-    
     osc.type = "sine";
-    osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
-    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
-    
+    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+
     const osc2 = audioCtx.createOscillator();
     const gain2 = audioCtx.createGain();
     osc2.connect(gain2);
@@ -29,7 +29,7 @@ function playChime() {
     gain2.gain.setValueAtTime(0, audioCtx.currentTime);
     gain2.gain.setValueAtTime(0.3, audioCtx.currentTime + 0.1);
     gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
-    
+
     osc.start(audioCtx.currentTime);
     osc.stop(audioCtx.currentTime + 0.25);
     osc2.start(audioCtx.currentTime + 0.1);
@@ -119,79 +119,42 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
   // PTT state — track if space is held
   const pttActive = useRef(false);
   const micBeforePTT = useRef(false);
-  // Keep state in sync with LiveKit track changes
+
+  // mute camera immediately if initialCamOn is false
   useEffect(() => {
     if (!localParticipant) return;
-    setIsCamOn(localParticipant.isCameraEnabled);
-    setIsMicOn(localParticipant.isMicrophoneEnabled);
-    setIsScreenSharing(localParticipant.isScreenShareEnabled);
-
-    const handleTrackMuted = (pub: any) => {
-      if (pub?.source === Track.Source.Camera) setIsCamOn(false);
-      if (pub?.source === Track.Source.Microphone) setIsMicOn(false);
-    };
-    const handleTrackUnmuted = (pub: any) => {
-      if (pub?.source === Track.Source.Camera) setIsCamOn(true);
-      if (pub?.source === Track.Source.Microphone) setIsMicOn(true);
-    };
-    const handleTrackPublished = (pub: any) => {
-      if (pub?.source === Track.Source.Camera) setIsCamOn(true);
-      if (pub?.source === Track.Source.Microphone) setIsMicOn(true);
-      if (pub?.source === Track.Source.ScreenShare) setIsScreenSharing(true);
-    };
-    const handleTrackUnpublished = (pub: any) => {
-      if (pub?.source === Track.Source.Camera) setIsCamOn(false);
-      if (pub?.source === Track.Source.Microphone) setIsMicOn(false);
-      if (pub?.source === Track.Source.ScreenShare) setIsScreenSharing(false);
-    };
-
-    localParticipant.on(ParticipantEvent.TrackMuted, handleTrackMuted);
-    localParticipant.on(ParticipantEvent.TrackUnmuted, handleTrackUnmuted);
-    localParticipant.on(ParticipantEvent.LocalTrackPublished, handleTrackPublished);
-    localParticipant.on(ParticipantEvent.LocalTrackUnpublished, handleTrackUnpublished);
-
-    return () => {
-      localParticipant.off(ParticipantEvent.TrackMuted, handleTrackMuted);
-      localParticipant.off(ParticipantEvent.TrackUnmuted, handleTrackUnmuted);
-      localParticipant.off(ParticipantEvent.LocalTrackPublished, handleTrackPublished);
-      localParticipant.off(ParticipantEvent.LocalTrackUnpublished, handleTrackUnpublished);
-    };
-  }, [localParticipant]);
+    if (!initialCamOn) {
+      const camPub = localParticipant.getTrackPublication(Track.Source.Camera);
+      if (camPub) {
+        camPub.mute();
+      } else {
+        const handler = () => {
+          const pub = localParticipant.getTrackPublication(Track.Source.Camera);
+          if (pub) {
+            pub.mute();
+            localParticipant.off("trackPublished", handler);
+          }
+        };
+        localParticipant.on("trackPublished", handler);
+        return () => {
+          localParticipant.off("trackPublished", handler);
+        };
+      }
+    }
+  }, [localParticipant, initialCamOn]);
 
   const toggleMic = useCallback(async () => {
     if (!localParticipant) return;
-    try {
-      const nextState = !localParticipant.isMicrophoneEnabled;
-      await localParticipant.setMicrophoneEnabled(nextState);
-      setIsMicOn(nextState);
-    } catch (err) {
-      console.error("Failed to toggle microphone:", err);
-      try {
-        const nextState = !isMicOn;
-        await localParticipant.setMicrophoneEnabled(nextState);
-        setIsMicOn(nextState);
-      } catch (retryErr) {
-        console.error("Retry toggle microphone failed:", retryErr);
-      }
-    }
+    const newState = !isMicOn;
+    await localParticipant.setMicrophoneEnabled(newState);
+    setIsMicOn(newState);
   }, [localParticipant, isMicOn]);
 
   const toggleCam = useCallback(async () => {
     if (!localParticipant) return;
-    try {
-      const nextState = !localParticipant.isCameraEnabled;
-      await localParticipant.setCameraEnabled(nextState);
-      setIsCamOn(nextState);
-    } catch (err) {
-      console.error("Failed to toggle camera:", err);
-      try {
-        const nextState = !isCamOn;
-        await localParticipant.setCameraEnabled(nextState);
-        setIsCamOn(nextState);
-      } catch (retryErr) {
-        console.error("Retry toggle camera failed:", retryErr);
-      }
-    }
+    const newState = !isCamOn;
+    await localParticipant.setCameraEnabled(newState);
+    setIsCamOn(newState);
   }, [localParticipant, isCamOn]);
 
   const toggleScreenShare = useCallback(async () => {
