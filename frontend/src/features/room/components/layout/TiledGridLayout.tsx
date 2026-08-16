@@ -114,24 +114,36 @@ export default function TiledGridLayout({
   if (renderCount === 2) {
     rowDistribution = isLandscape ? [2] : [1, 1];
   } else if (renderCount === 3) {
-    rowDistribution = isLandscape ? [3] : [2, 1];
+    rowDistribution = isLandscape ? [3] : [1, 2];
   } else if (renderCount === 4) {
     rowDistribution = [2, 2];
   } else if (renderCount === 5) {
-    rowDistribution = [2, 3];
+    rowDistribution = isLandscape ? [2, 3] : [2, 2, 1];
   } else if (renderCount === 6) {
-    rowDistribution = [3, 3];
+    rowDistribution = isLandscape ? [3, 3] : [2, 2, 2];
   } else if (renderCount <= 8) {
-    const half = Math.ceil(renderCount / 2);
-    rowDistribution = [half, renderCount - half];
+    rowDistribution = isLandscape
+      ? [Math.ceil(renderCount / 2), Math.floor(renderCount / 2)]
+      : [2, 2, 2, renderCount - 6].filter((r) => r > 0);
   } else {
-    // 9+ items: 3 rows
-    const perRow = Math.ceil(renderCount / 3);
-    const row1 = perRow;
-    const remaining = renderCount - row1;
-    const row2 = Math.ceil(remaining / 2);
-    const row3 = remaining - row2;
-    rowDistribution = [row1, row2, row3].filter((r) => r > 0);
+    // 9+ items:
+    if (isLandscape) {
+      const perRow = Math.ceil(renderCount / 3);
+      const row1 = perRow;
+      const remaining = renderCount - row1;
+      const row2 = Math.ceil(remaining / 2);
+      const row3 = remaining - row2;
+      rowDistribution = [row1, row2, row3].filter((r) => r > 0);
+    } else {
+      // Mobile portrait: 2 columns per row
+      rowDistribution = [];
+      let rem = renderCount;
+      while (rem > 0) {
+        const take = Math.min(rem, 2);
+        rowDistribution.push(take);
+        rem -= take;
+      }
+    }
   }
 
   let currIndex = 0;
