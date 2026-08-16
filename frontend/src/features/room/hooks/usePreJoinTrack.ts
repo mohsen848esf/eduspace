@@ -165,6 +165,20 @@ export function usePreJoinTrack() {
       }
     };
   }, []);
+  // Explicitly release track before joining room
+  const stopTrack = useCallback(() => {
+    if (track) {
+      try {
+        track.stopProcessor().catch(() => {});
+        track.mediaStreamTrack?.stop();
+        track.stop();
+      } catch (e) {
+        console.warn("Error stopping pre-join track:", e);
+      }
+      setTrack(null);
+    }
+  }, [track]);
+
   return {
     track,
     background,
@@ -172,5 +186,6 @@ export function usePreJoinTrack() {
     isSupported,
     attachToVideo,
     changeBackground,
+    stopTrack,
   };
 }

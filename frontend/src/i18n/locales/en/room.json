@@ -181,7 +181,8 @@
   "sidebar": {
     "addPeople": "Add People",
     "host": "Host",
-    "students": "Students ({{count}})",
+    "members": "Members ({{count}})",
+    "students": "Members ({{count}})",
     "noMessages": "No messages yet",
     "messagePlaceholder": "Message...",
     "collapse": "Hide panel"

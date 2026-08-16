@@ -7,7 +7,6 @@ import {
   useLocalParticipant,
   useRoomContext,
 } from "@livekit/components-react";
-import { Track } from "livekit-client";
 import { useRoomStore } from "../store/roomStore";
 import { useRoom } from "../hooks/useRoom";
 import { useRoomControls } from "../hooks/useRoomControls";
@@ -89,7 +88,7 @@ function RoomContent({
     };
   }, [disconnect]);
 
-  // Camera + background setup once the local participant is ready.
+  // Camera + background + microphone setup once the local participant is ready.
   useEffect(() => {
     if (setupDone.current) return;
     if (!localParticipant) return;
@@ -98,42 +97,31 @@ function RoomContent({
     const setup = async () => {
       try {
         const camEnabled = preJoinSettings?.camEnabled ?? true;
+        const micEnabled = preJoinSettings?.micEnabled ?? true;
         const bg = preJoinSettings?.background || "none";
 
-        if (!camEnabled) return;
-
-        const waitForLive = async (attempts = 0): Promise<boolean> => {
-          const camPub = localParticipant.getTrackPublication(
-            Track.Source.Camera,
-          );
-          if (camPub?.track?.mediaStreamTrack?.readyState === "live")
-            return true;
-          if (attempts < 30) {
-            await new Promise((r) => setTimeout(r, 300));
-            return waitForLive(attempts + 1);
+        if (micEnabled) {
+          await localParticipant.setMicrophoneEnabled(true).catch((e) => {
+            console.warn("Could not enable microphone on join:", e);
+          });
+        }
+        if (camEnabled) {
+          await localParticipant.setCameraEnabled(true).catch((e) => {
+            console.warn("Could not enable camera on join:", e);
+          });
+          if (bg !== "none") {
+            await changeBackground(bg).catch(() => {});
           }
-          return false;
-        };
-
-        const ready = await waitForLive();
-        if (!ready) {
-          console.error("Track never became live");
-          return;
         }
-
-        if (bg !== "none") {
-          await changeBackground(bg);
-        }
-
-        controls.setIsCamOn(true);
       } catch (err) {
-        console.error("Camera setup error:", err);
-        controls.setIsCamOn(true);
+        console.error("Media setup error:", err);
       }
     };
 
-    setup();
-  }, [localParticipant]);
+    // Small delay to ensure browser hardware driver (especially Firefox) released pre-join track
+    const timer = setTimeout(setup, 80);
+    return () => clearTimeout(timer);
+  }, [localParticipant, preJoinSettings, changeBackground]);
 
   const sharedShellProps = {
     controls: {
@@ -264,9 +252,15 @@ export default function RoomPage() {
         token={token}
         serverUrl={livekitUrl}
         connect={true}
-        video={preJoinSettings?.camEnabled ?? true}
-        audio={preJoinSettings?.micEnabled ?? true}
-        options={{ adaptiveStream: false }}
+        video={false}
+        audio={false}
+        options={{
+          adaptiveStream: false,
+          dynacast: false,
+          publishDefaults: {
+            simulcast: false,
+          },
+        }}
         onDisconnected={() => {
           useBackgroundStore.getState().setBackground("none");
           leaveRoom();

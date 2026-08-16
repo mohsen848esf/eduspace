@@ -1,4 +1,5 @@
 import asyncio
+import json
 import random
 import secrets
 import string
@@ -43,6 +44,8 @@ def generate_livekit_token(
         name = (guest_name or "Guest").strip()
         token.with_identity(ident)
         token.with_name(name)
+
+    token.with_metadata(json.dumps({'is_host': bool(is_host)}))
 
     token.with_grants(api.VideoGrants(
         room_join=True,

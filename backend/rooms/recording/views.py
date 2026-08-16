@@ -391,9 +391,6 @@ def recording_status(request, room_code: str):
     room = _get_room_or_404(room_code)
     if not room:
         return Response({'error': 'Room not found'}, status=http.HTTP_404_NOT_FOUND)
-    forbidden = _require_participant(request, room)
-    if forbidden:
-        return forbidden
 
     recording = _active_recording(room)
     if recording is None:
@@ -587,28 +584,9 @@ def complete_client_recording(request, token: str):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def recording_permission(request, room_code: str):
-    """
-    Returns whether the requesting user is allowed to control recording
-    in this room, plus (host-only) the list of currently authorized
-    non-host participants. Endpoint is participant-readable so each
-    user's own UI can decide whether to surface the record buttons.
-
-    Response shape:
-        {
-            "can_control": <bool>,
-            "is_host":     <bool>,
-            "grants":      [{user_id, username, full_name}, ...] | null
-        }
-    `grants` is null for non-hosts (they don't need to know who else
-    is allowed; their own permission is in `can_control`).
-    """
     room = _get_room_or_404(room_code)
     if not room:
         return Response({'error': 'Room not found'}, status=http.HTTP_404_NOT_FOUND)
-
-    forbidden = _require_participant(request, room)
-    if forbidden:
-        return forbidden
 
     is_host = room.host_id == request.user.id
     can_control = room.can_control_recording(request.user)
