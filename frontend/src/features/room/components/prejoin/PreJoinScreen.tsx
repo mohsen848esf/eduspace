@@ -6,6 +6,7 @@ import { type BackgroundType } from "../../hooks/useBackgroundBlur";
 import PreJoinPreview from "./components/PreJoinPreview";
 import PreJoinMeetingInfo from "./components/PreJoinMeetingInfo";
 import PreJoinDeviceSettings from "./components/PreJoinDeviceSettings";
+import { useAuthStore } from "../../../auth/store/authStore";
 
 export interface PreJoinSettings {
   micEnabled: boolean;
@@ -34,8 +35,15 @@ export default function PreJoinScreen({
   const [camEnabled, setCamEnabled] = useState(true);
   const [isMirrored, setIsMirrored] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Auth state — determines whether we join as authenticated user or guest
+  const { user } = useAuthStore();
+  const isAuthenticated = Boolean(user);
+
+  // Guest display name: only pre-populate from localStorage for unauthenticated visitors.
+  // Authenticated users MUST NOT inherit a stale guest name from a previous session.
   const [guestName, setGuestName] = useState(
-    () => localStorage.getItem("eduspace_guest_name") || "",
+    () => isAuthenticated ? "" : (localStorage.getItem("eduspace_guest_name") || ""),
   );
 
   // Hook 1: LiveKit Video Track & Background Effects
@@ -74,7 +82,10 @@ export default function PreJoinScreen({
   // Handlers
   const handleJoinNow = async () => {
     await stopTrack();
-    if (guestName.trim()) {
+    // Only persist and pass guestName for unauthenticated users.
+    // Authenticated users always join via the authenticated API endpoint;
+    // passing a guestName would cause joinRoomGuest() to be called instead.
+    if (!isAuthenticated && guestName.trim()) {
       localStorage.setItem("eduspace_guest_name", guestName.trim());
     }
     onJoin({
@@ -84,7 +95,8 @@ export default function PreJoinScreen({
       selectedCam,
       selectedSpeaker,
       background: selectedBg,
-      guestName: guestName.trim(),
+      // Do NOT pass guestName for authenticated users
+      guestName: isAuthenticated ? undefined : guestName.trim(),
     });
   };
 
