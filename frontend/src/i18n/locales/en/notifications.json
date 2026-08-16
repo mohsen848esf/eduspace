@@ -43,7 +43,8 @@
       "academic": "Academic & Exams",
       "recordings": "Recordings",
       "financial": "Finance & Invoices",
-      "system": "System & Broadcasts"
+      "system": "System & Broadcasts",
+      "settings": "Notification Settings"
     },
     "detail": {
       "read": "Read",

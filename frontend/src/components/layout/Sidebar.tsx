@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { Tooltip } from "../ui/Tooltip";
 import { useOrgPermission } from "../../hooks/useOrgPermission";
@@ -111,21 +111,15 @@ export default function Sidebar({
     return true;
   };
 
+  const location = useLocation();
+
   const NavButton = ({ item }: { item: NavItem }) => {
-    const isActive = activeId === item.id;
+    const targetTo = item.to || (item.id === "inbox" ? "/inbox" : undefined);
+    const isActive = activeId === item.id || (targetTo ? location.pathname === targetTo || (targetTo !== "/dashboard" && location.pathname.startsWith(targetTo)) : false);
     const label = t(item.labelKey);
-    const btn = (
-      <button
-        onClick={() => onNavigate?.(item.id)}
-        className={cn(
-          "flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-xl transition-all duration-200",
-          "text-start border-none cursor-pointer my-0.5",
-          collapsed && "justify-center px-2",
-          isActive
-            ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-bold shadow-sm"
-            : "bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)]",
-        )}
-      >
+
+    const inner = (
+      <>
         <span className="text-base w-5 h-5 flex items-center justify-center flex-shrink-0">
           {item.icon}
         </span>
@@ -134,11 +128,38 @@ export default function Sidebar({
             {label}
           </span>
         )}
-        {!collapsed && item.badge && (
+        {!collapsed && Boolean(item.badge) && (
           <span className="bg-[var(--red)] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
             {item.badge}
           </span>
         )}
+      </>
+    );
+
+    const linkClasses = cn(
+      "flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-xl transition-all duration-200 no-underline select-none",
+      "text-start my-0.5",
+      collapsed && "justify-center px-2",
+      isActive
+        ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-bold shadow-sm"
+        : "bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)]"
+    );
+
+    const el = targetTo ? (
+      <Link
+        to={targetTo}
+        onClick={() => onNavigate?.(item.id)}
+        className={linkClasses}
+      >
+        {inner}
+      </Link>
+    ) : (
+      <button
+        type="button"
+        onClick={() => onNavigate?.(item.id)}
+        className={cn(linkClasses, "border-none cursor-pointer")}
+      >
+        {inner}
       </button>
     );
 
@@ -147,10 +168,10 @@ export default function Sidebar({
         content={item.badge ? `${label} · ${item.badge} new` : label}
         side="right"
       >
-        {btn}
+        {el}
       </Tooltip>
     ) : (
-      btn
+      el
     );
   };
 
@@ -290,12 +311,10 @@ export default function Sidebar({
                   </span>
                   
                   {/* Invite Members */}
-                  <button
-                    onClick={() => {
-                      setShowSwitcher(false);
-                      navigate("/crm/members");
-                    }}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-transparent border-none cursor-pointer text-start text-[11px] font-medium text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-colors"
+                  <Link
+                    to="/crm/members"
+                    onClick={() => setShowSwitcher(false)}
+                    className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-transparent no-underline text-start text-[11px] font-medium text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-colors"
                   >
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-shrink-0">
                       <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -304,49 +323,43 @@ export default function Sidebar({
                       <line x1="17" y1="11" x2="23" y2="11" />
                     </svg>
                     <span>{isFarsi ? "دعوت از اعضا" : "Invite Members"}</span>
-                  </button>
+                  </Link>
 
                   {/* Organization Settings */}
-                  <button
-                    onClick={() => {
-                      setShowSwitcher(false);
-                      navigate("/settings/organization");
-                    }}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-transparent border-none cursor-pointer text-start text-[11px] font-medium text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-colors"
+                  <Link
+                    to="/settings/organization"
+                    onClick={() => setShowSwitcher(false)}
+                    className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-transparent no-underline text-start text-[11px] font-medium text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-colors"
                   >
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-shrink-0">
                       <circle cx="12" cy="12" r="3" />
                       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                     </svg>
                     <span>{isFarsi ? "تنظیمات سازمان" : "Organization Settings"}</span>
-                  </button>
+                  </Link>
 
                   {/* Billing */}
-                  <button
-                    onClick={() => {
-                      setShowSwitcher(false);
-                      navigate("/settings/billing");
-                    }}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-transparent border-none cursor-pointer text-start text-[11px] font-medium text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-colors"
+                  <Link
+                    to="/settings/billing"
+                    onClick={() => setShowSwitcher(false)}
+                    className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-transparent no-underline text-start text-[11px] font-medium text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-colors"
                   >
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-shrink-0">
                       <rect x="2" y="5" width="20" height="14" rx="2" ry="2" />
                       <line x1="2" y1="10" x2="22" y2="10" />
                     </svg>
                     <span>{isFarsi ? "امور مالی و اشتراک" : "Billing"}</span>
-                  </button>
+                  </Link>
                 </div>
               )}
 
               {/* CREATE & JOIN */}
               <div className="flex flex-col gap-0.5 border-t border-[var(--b)] pt-1.5 mt-0.5">
                 {/* Create Org */}
-                <button
-                  onClick={() => {
-                    setShowSwitcher(false);
-                    navigate("/dashboard?action=create-org");
-                  }}
-                  className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-transparent border-none cursor-pointer text-start text-[11px] font-medium text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-colors"
+                <Link
+                  to="/dashboard?action=create-org"
+                  onClick={() => setShowSwitcher(false)}
+                  className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-transparent no-underline text-start text-[11px] font-medium text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-colors"
                 >
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-shrink-0 text-[var(--brand)]">
                     <circle cx="12" cy="12" r="10" />
@@ -354,22 +367,20 @@ export default function Sidebar({
                     <line x1="8" y1="12" x2="16" y2="12" />
                   </svg>
                   <span>{isFarsi ? "ایجاد سازمان جدید" : "Create Organization"}</span>
-                </button>
+                </Link>
 
                 {/* Join Org */}
-                <button
-                  onClick={() => {
-                    setShowSwitcher(false);
-                    navigate("/dashboard?action=join-org");
-                  }}
-                  className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-transparent border-none cursor-pointer text-start text-[11px] font-medium text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-colors"
+                <Link
+                  to="/dashboard?action=join-org"
+                  onClick={() => setShowSwitcher(false)}
+                  className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-transparent no-underline text-start text-[11px] font-medium text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-colors"
                 >
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-shrink-0 text-[var(--t3)]">
                     <circle cx="12" cy="12" r="10" />
                     <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
                   </svg>
                   <span>{isFarsi ? "پیوستن به سازمان" : "Join Organization"}</span>
-                </button>
+                </Link>
               </div>
             </div>
           )}
@@ -458,12 +469,12 @@ export default function Sidebar({
 
         {/* Support Center Capsule */}
         {!collapsed && (
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="w-full bg-[var(--s2)] text-[var(--t2)] border border-[var(--b)] transition-all font-semibold rounded-xl text-center py-2 px-4 text-xs mt-3 flex items-center justify-center cursor-pointer whitespace-nowrap hover:bg-[var(--s3)] hover:text-[var(--t1)]"
+          <Link
+            to="/dashboard"
+            className="w-full bg-[var(--s2)] text-[var(--t2)] border border-[var(--b)] transition-all font-semibold rounded-xl text-center py-2 px-4 text-xs mt-3 flex items-center justify-center no-underline whitespace-nowrap hover:bg-[var(--s3)] hover:text-[var(--t1)]"
           >
             {isFarsi ? "مرکز پشتیبانی" : "Support Center"}
-          </button>
+          </Link>
         )}
       </div>
     </aside>

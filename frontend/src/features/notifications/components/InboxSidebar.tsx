@@ -9,6 +9,7 @@ import {
   Film,
   CreditCard,
   Bell,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { InboxCategory, NotificationItem } from "../store/notificationsStore";
@@ -150,6 +151,33 @@ export const InboxSidebar: React.FC<InboxSidebarProps> = ({
           );
         })}
       </nav>
+
+      {/* Settings Section (Consolidated Hub) */}
+      <div className="mt-auto pt-2 border-t border-[var(--b)] flex flex-col gap-1">
+        <button
+          onClick={() => onSelectCategory("settings")}
+          className={cn(
+            "flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-start shrink-0 cursor-pointer",
+            activeCategory === "settings"
+              ? "bg-[var(--brand)] text-white font-semibold shadow-md shadow-[var(--brand)]/20"
+              : "text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)]"
+          )}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Settings
+              className={cn(
+                "w-4 h-4 shrink-0",
+                activeCategory === "settings" ? "text-white" : "text-[var(--t3)]"
+              )}
+            />
+            <span className="truncate">
+              {t("notifications:inbox.categories.settings", {
+                defaultValue: "تنظیمات اعلان‌ها",
+              })}
+            </span>
+          </div>
+        </button>
+      </div>
     </aside>
   );
 };

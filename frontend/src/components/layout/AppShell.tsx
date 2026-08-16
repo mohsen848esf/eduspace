@@ -27,6 +27,8 @@ interface AppShellProps {
 // Unmapped ids fall back to the parent's onNavigate if provided.
 const NAV_ROUTES: Record<string, string> = {
   dashboard: "/dashboard",
+  inbox: "/inbox",
+  notifications: "/inbox",
   courses: "/academic/courses",
   classes: "/academic/classes",
   sessions: "/academic/sessions",
@@ -37,7 +39,7 @@ const NAV_ROUTES: Record<string, string> = {
   members: "/crm/members",
   ledger: "/finance/ledger",
   recordings: "/recordings",
-  notificationsSettings: "/settings/notifications",
+  notificationsSettings: "/inbox?tab=settings",
   templates: "/settings/templates",
   organization: "/settings/organization",
   billing: "/settings/billing",
