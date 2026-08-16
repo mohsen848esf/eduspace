@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
@@ -17,6 +16,8 @@ import { PageHelpProvider } from "../help/PageHelpProvider";
 
 import SubTopbar from "./SubTopbar";
 import { useOrgPermission } from "../../hooks/useOrgPermission";
+
+import { useThemeStore } from "../../store/themeStore";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -62,7 +63,8 @@ export default function AppShell({
   activeNav,
   onNavigate,
 }: AppShellProps) {
-  const [isDark, setIsDark] = useState(true);
+  const isDark = useThemeStore((s) => s.isDark);
+  const toggleTheme = useThemeStore((s) => s.toggleTheme);
   const navigate = useNavigate();
   const location = useLocation();
   const breakpoint = useBreakpoint();
@@ -70,10 +72,6 @@ export default function AppShell({
   const setDrawerOpen = useShellStore((s) => s.setDrawerOpen);
   const { activeOrg } = useOrgPermission();
   const hasOrg = !!activeOrg;
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("light", !isDark);
-  }, [isDark]);
 
   // Fall back to route-based active id when the page didn't pin one.
   const resolvedActive =
@@ -118,7 +116,7 @@ export default function AppShell({
             title={title}
             subtitle={subtitle}
             isDark={isDark}
-            onToggleTheme={() => setIsDark(!isDark)}
+            onToggleTheme={toggleTheme}
             showHamburger={hasOrg && breakpoint === "mobile"}
             onHamburgerClick={() => setDrawerOpen(true)}
           />
