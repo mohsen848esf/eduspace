@@ -11,15 +11,15 @@ const RoomPage = lazy(() => import("../features/room/components/RoomPage"));
 const MiniAppsPage = lazy(
   () => import("../features/miniapps/components/MiniAppsPage"),
 );
-const RecordingsPage = lazy(
-  () => import("../features/recordings/components/RecordingsPage"),
-);
-const RecordingEditPage = lazy(
-  () => import("../features/recordings/components/RecordingEditPage"),
-);
-const RecordingViewPage = lazy(
-  () => import("../features/recordings/components/RecordingViewPage"),
-);
+// const RecordingsPage = lazy(
+//   () => import("../features/recordings/components/RecordingsPage"),
+// );
+// const RecordingEditPage = lazy(
+//   () => import("../features/recordings/components/RecordingEditPage"),
+// );
+// const RecordingViewPage = lazy(
+//   () => import("../features/recordings/components/RecordingViewPage"),
+// );
 const TakeAssessmentPage = lazy(
   () => import("../features/assessments/pages/TakeAssessmentPage"),
 );
@@ -287,21 +287,22 @@ export const routes: RouteConfig[] = [
     component: MiniAppsPage,
     isPrivate: true,
   },
-  {
-    path: "/recordings",
-    component: RecordingsPage,
-    isPrivate: true,
-  },
-  {
-    path: "/recordings/:token",
-    component: RecordingViewPage,
-    isPrivate: true,
-  },
-  {
-    path: "/recordings/:token/edit",
-    component: RecordingEditPage,
-    isPrivate: true,
-  },
+  // Temporarily disabled for enterprise rollout
+  // {
+  //   path: "/recordings",
+  //   component: RecordingsPage,
+  //   isPrivate: true,
+  // },
+  // {
+  //   path: "/recordings/:token",
+  //   component: RecordingViewPage,
+  //   isPrivate: true,
+  // },
+  // {
+  //   path: "/recordings/:token/edit",
+  //   component: RecordingEditPage,
+  //   isPrivate: true,
+  // },
   {
     path: "/assessments/take/:submissionId",
     component: TakeAssessmentPage,

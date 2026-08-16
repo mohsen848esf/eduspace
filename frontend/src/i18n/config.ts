@@ -22,7 +22,7 @@ import faRecordings from "./locales/fa/recordings.json";
 
 export const SUPPORTED_LANGUAGES = ["en", "fa"] as const;
 export type Language = (typeof SUPPORTED_LANGUAGES)[number];
-export const DEFAULT_LANGUAGE: Language = "en";
+export const DEFAULT_LANGUAGE: Language = "fa";
 export const STORAGE_KEY = "eduspace_lang";
 
 export const NAMESPACES = [

@@ -13,8 +13,6 @@ import { sessionsApi } from "@/features/sessions/api/sessions.api";
 import { crmApi } from "../api/crm.api";
 import { assessmentsApi } from "@/features/assessments/api/assessments.api";
 import recordingsApi from "@/features/recordings/api/recordings.api";
-import { authApi } from "@/features/auth/api/auth.api";
-import { useOrgContextStore } from "@/features/auth/store/orgContextStore";
 import { queryKeys } from "@/lib/query-keys";
 import type { AssignmentSubmission } from "@/features/assessments/types";
 
@@ -22,7 +20,7 @@ import type { AssignmentSubmission } from "@/features/assessments/types";
 import StudentDashboardView from "./shells/StudentDashboardView";
 import AdminDashboardView from "./shells/AdminDashboardView";
 import TeacherDashboardView from "./shells/TeacherDashboardView";
-import GuestDashboardView from "./shells/GuestDashboardView";
+import PersonalHomePage from "../pages/PersonalHomePage";
 import CreateOrgModal from "./modals/CreateOrgModal";
 import JoinOrgModal from "./modals/JoinOrgModal";
 
@@ -64,31 +62,6 @@ export default function DashboardPage() {
 
   const canManageCRM = hasPermission("can_manage_members") || hasPermission("can_teach_class");
   const canViewFinancials = hasPermission("can_view_financials");
-
-  // Guest Invitations Query
-  const { data: invitations = [], refetch: refetchInvitations } = useQuery({
-    queryKey: queryKeys.auth.invitations,
-    queryFn: authApi.getInvitations,
-    enabled: !activeOrg,
-  });
-
-  const handleRespondInvite = async (orgSlug: string, action: "accept" | "decline") => {
-    try {
-      await authApi.respondInvitation(orgSlug, action);
-      refetchInvitations();
-      if (action === "accept") {
-        const { fetchOrgContext } = useOrgContextStore.getState();
-        await fetchOrgContext(orgSlug);
-      }
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string; detail?: string } } };
-      alert(
-        error.response?.data?.error ||
-          error.response?.data?.detail ||
-          "Failed to respond to invitation"
-      );
-    }
-  };
 
   // Shared CRM Queries
   const { data: courses = [], isLoading: loadingCourses } = useQuery({
@@ -204,6 +177,10 @@ export default function DashboardPage() {
     loadingAllSessions ||
     ((activeRole === "teacher" || activeRole === "admin") && loadingSubmissions);
 
+  if (!activeOrg) {
+    return <PersonalHomePage />;
+  }
+
   return (
     <AppShell
       title={t("title")}
@@ -211,15 +188,7 @@ export default function DashboardPage() {
       activeNav={activeNav}
       onNavigate={setActiveNav}
     >
-      {!activeOrg ? (
-        <GuestDashboardView
-          isFarsi={isFarsi}
-          invitations={invitations}
-          onOpenCreateModal={() => setShowCreateModal(true)}
-          onOpenJoinModal={() => setShowJoinModal(true)}
-          onRespondInvite={handleRespondInvite}
-        />
-      ) : isDataLoading ? (
+      {isDataLoading ? (
         <div className="p-12 flex justify-center items-center min-h-[400px]">
           <Spinner size="lg" />
         </div>
@@ -271,7 +240,6 @@ export default function DashboardPage() {
       <JoinOrgModal
         open={showJoinModal}
         onClose={() => setShowJoinModal(false)}
-        onSuccess={refetchInvitations}
         isFarsi={isFarsi}
       />
     </AppShell>

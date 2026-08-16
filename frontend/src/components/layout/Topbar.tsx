@@ -1,269 +1,169 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Tooltip } from "../ui/Tooltip";
 import { useAuthStore } from "../../features/auth/store/authStore";
+import { useOrgPermission } from "../../hooks/useOrgPermission";
 import { useNotificationsStore } from "../../features/auth/store/notificationsStore";
-import { Icons } from "../../lib/constants/icons";
 import { useLocale } from "../../i18n/useLocale";
 import NotificationsPopover from "./NotificationsPopover";
-import GlobalSearchModal from "./GlobalSearchModal";
 import { useRoom } from "../../features/room/hooks/useRoom";
+import { usePageHelp } from "../help/PageHelpProvider";
+import {
+  HelpCircle,
+  Bell,
+  Video,
+  LogOut,
+  User,
+  Moon,
+  Sun,
+  Globe,
+  Plus,
+  Menu,
+} from "lucide-react";
+import { cn } from "../../lib/utils";
 
 interface TopbarProps {
   title: string;
   subtitle?: string;
   isDark: boolean;
   onToggleTheme: () => void;
-  /** When true, render a leading hamburger button on the start side. */
   showHamburger?: boolean;
-  /** Click handler for the hamburger; AppShell wires this to open the drawer. */
   onHamburgerClick?: () => void;
 }
 
-interface BreadcrumbItem {
-  name: string;
-  url?: string;
-}
-
-const VALID_PATHS = new Set([
-  "/dashboard",
-  "/academic/courses",
-  "/academic/classes",
-  "/academic/sessions",
-  "/academic/attendance",
-  "/academic/assessments",
-  "/leaderboard",
-  "/academic/reports",
-  "/crm/members",
-  "/finance/ledger",
-  "/recordings",
-  "/settings/notifications",
-  "/settings/templates",
-  "/settings/organization",
-  "/settings/billing",
-  "/settings/profile",
-  "/miniapps",
-  "/sys-admin",
-  "/academic/homework",
-  "/academic/payments",
-]);
-
 export default function Topbar({
   title,
+  subtitle,
   isDark,
   onToggleTheme,
   showHamburger = false,
   onHamburgerClick,
 }: TopbarProps) {
   const navigate = useNavigate();
-  const location = useLocation();
   const { t } = useTranslation(["dashboard", "common", "auth", "notifications"]);
   const { language, toggleLanguage } = useLocale();
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
+  const { activeOrg } = useOrgPermission();
   const { createRoom, isLoading: roomLoading } = useRoom();
+  const { triggerHelp } = usePageHelp();
+
+  const [quickCode, setQuickCode] = useState("");
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showInbox, setShowInbox] = useState(false);
+
+  const profileRef = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLButtonElement>(null);
 
   const unreadCount = useNotificationsStore((s) =>
     s.items.filter((it) => it.readAt === null).length,
   );
-  const bellRef = useRef<HTMLButtonElement>(null);
-  const [showInbox, setShowInbox] = useState(false);
-  const [showSearchModal, setShowSearchModal] = useState(false);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setShowSearchModal(true);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
-
-  const nextLanguageLabel =
-    language === "en" ? t("common:language.persian") : t("common:language.english");
 
   const isFarsi = language === "fa";
 
-  const getBreadcrumbItems = (): BreadcrumbItem[] => {
-    const items: BreadcrumbItem[] = [];
-    
-    // Parse pathname segments
-    const segments = location.pathname.split("/").filter(Boolean);
-    
-    const segmentNamesEn: Record<string, string> = {
-      dashboard: "Dashboard",
-      academic: "Academic",
-      courses: "Courses",
-      classes: "Classroom",
-      sessions: "Sessions",
-      attendance: "Attendance",
-      homework: "Homework",
-      payments: "Payments",
-      assessments: "Assessments",
-      leaderboard: "Leaderboard",
-      reports: "Reports",
-      crm: "CRM",
-      members: "Members",
-      finance: "Finance",
-      ledger: "Ledger",
-      recordings: "Recordings",
-      settings: "Settings",
-      profile: "Profile",
+  // Close profile dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setShowProfileMenu(false);
+      }
     };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-    const segmentNamesFa: Record<string, string> = {
-      dashboard: "داشبورد",
-      academic: "آموزش",
-      courses: "دوره‌ها",
-      classes: "کلاس درس",
-      sessions: "جلسات",
-      attendance: "حضور و غیاب",
-      homework: "تکالیف",
-      payments: "پرداخت‌ها",
-      assessments: "آزمون‌ها",
-      leaderboard: "امتیازات",
-      reports: "گزارش‌ها",
-      crm: "سی‌آرام",
-      members: "اعضا",
-      finance: "امور مالی",
-      ledger: "دفتر مالی",
-      recordings: "ویدیوها",
-      settings: "تنظیمات",
-      profile: "پروفایل",
-    };
-
-    let currentPath = "";
-    segments.forEach((seg) => {
-      currentPath += `/${seg}`;
-      
-      // Ignore if dynamic ID (numbers or UUIDs)
-      const isId = /^\d+$/.test(seg) || /^[0-9a-fA-F-]{8,}$/.test(seg);
-      if (isId) return;
-      
-      const label = isFarsi ? (segmentNamesFa[seg] || seg) : (segmentNamesEn[seg] || seg);
-      items.push({
-        name: label,
-        url: currentPath,
-      });
-    });
-    
-    return items;
+  const handleJoinWithCode = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleaned = quickCode.trim().replace(/^.*\/room\//, "");
+    if (cleaned) {
+      navigate(`/room/${cleaned}`);
+    }
   };
 
-  const breadcrumbs = getBreadcrumbItems();
-
-  const isPathValid = (path?: string) => {
-    if (!path) return false;
-    return VALID_PATHS.has(path);
+  const handleLogout = async () => {
+    setShowProfileMenu(false);
+    await logout();
+    navigate("/login");
   };
+
+  const hasOrg = !!activeOrg;
 
   return (
-    <header className="h-16 flex-shrink-0 flex items-center justify-between gap-4 px-4 md:px-5 bg-[var(--s1)] border-b border-[var(--b)] transition-colors duration-300">
-      {/* Left section: Hamburger / Breadcrumbs */}
+    <header className="h-16 flex-shrink-0 flex items-center justify-between gap-3 px-4 md:px-6 bg-[var(--s1)] border-b border-[var(--b)] transition-colors select-none z-30">
+      {/* 1. Start / Left: Brand or Page Title or Hamburger */}
       <div className="flex items-center gap-3 min-w-0">
         {showHamburger && (
-          <Tooltip content={t("dashboard:nav.openMenu")}>
+          <Tooltip content={t("dashboard:nav.openMenu", { defaultValue: "منو" })}>
             <button
+              type="button"
               onClick={onHamburgerClick}
-              aria-label={t("dashboard:nav.openMenu")}
-              className="w-10 h-10 -ms-1 rounded-lg bg-transparent border-none cursor-pointer text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] flex items-center justify-center transition-colors duration-150 flex-shrink-0"
+              className="w-9 h-9 rounded-xl bg-transparent border border-[var(--b)] cursor-pointer text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] flex items-center justify-center transition-colors flex-shrink-0"
             >
-              {Icons.menu}
+              <Menu className="w-5 h-5" />
             </button>
           </Tooltip>
         )}
-        
-        {/* Dynamic Breadcrumbs */}
-        {breadcrumbs.length > 0 && (
-          <div className="hidden lg:flex items-center gap-1.5 text-xs text-[var(--t3)] font-medium select-none">
-            {breadcrumbs.map((item, idx) => {
-              const isLast = idx === breadcrumbs.length - 1;
-              const canClick = !isLast && item.url && isPathValid(item.url);
-              return (
-                <React.Fragment key={idx}>
-                  {idx > 0 && <span className="text-[var(--t3)] mx-0.5">&gt;</span>}
-                  {isLast ? (
-                    <span className="text-[var(--brand-text)] font-semibold">{item.name}</span>
-                  ) : canClick ? (
-                    <Link to={item.url!} className="hover:text-[var(--brand-text)] text-[var(--t3)] no-underline transition-colors">
-                      {item.name}
-                    </Link>
-                  ) : (
-                    <span className="text-[var(--t3)]">{item.name}</span>
-                  )}
-                </React.Fragment>
-              );
-            })}
+
+        {!hasOrg ? (
+          <Link
+            to="/dashboard"
+            className="flex items-center gap-2.5 no-underline group focus:outline-none"
+          >
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--brand)] to-blue-600 flex items-center justify-center text-white shadow-md shadow-[var(--brand)]/20 transition-transform group-hover:scale-105">
+              <Video className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-base font-extrabold text-[var(--t1)] tracking-tight">
+                EduSpace
+              </span>
+              <span className="text-[10px] text-[var(--t3)] -mt-1 font-medium">
+                {isFarsi ? "جلسات و کلاس‌های آنلاین" : "Smart Video Platform"}
+              </span>
+            </div>
+          </Link>
+        ) : (
+          <div className="flex flex-col min-w-0">
+            <h1 className="text-sm md:text-base font-bold text-[var(--t1)] truncate">
+              {title}
+            </h1>
+            {subtitle && (
+              <span className="text-[11px] text-[var(--t3)] truncate hidden sm:inline">
+                {subtitle}
+              </span>
+            )}
           </div>
         )}
-
-        {/* Dynamic single title if breadcrumbs not visible on smaller screens */}
-        <div className="lg:hidden flex flex-col min-w-0">
-          <span className="text-[13px] font-semibold text-[var(--t1)] truncate">
-            {title}
-          </span>
-        </div>
       </div>
 
-      {/* Middle section: Search pill input */}
-      <div className="hidden md:flex items-center relative max-w-[240px] w-full mx-auto">
-        <span className="absolute start-3 text-[var(--t3)] text-[11px]">🔍</span>
-        <input
-          type="text"
-          placeholder={isFarsi ? "جستجوی دوره‌ها، فایل‌ها..." : "Search courses, docs..."}
-          readOnly
-          onClick={() => setShowSearchModal(true)}
-          className="w-full bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)] rounded-full py-1.5 ps-9 pe-4 text-xs cursor-pointer text-[var(--t1)] focus:outline-none transition-all placeholder-[var(--t3)]"
-        />
-      </div>
-
-      {/* Right section: Language, Theme, Notifications, New Meeting, Avatar */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <Tooltip content={t("common:language.switchTo", { language: nextLanguageLabel })}>
-          <button
-            onClick={toggleLanguage}
-            className="px-2 h-8 rounded-lg bg-transparent border-none text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] cursor-pointer flex items-center justify-center text-xs font-semibold uppercase tracking-wider transition-all duration-150"
-          >
-            {language === "en" ? "EN" : "FA"}
-          </button>
-        </Tooltip>
-
-        <Tooltip content={isDark ? t("topbar.switchToLight") : t("topbar.switchToDark")}>
-          <button
-            onClick={onToggleTheme}
-            className="w-8 h-8 rounded-lg bg-transparent border-none text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] cursor-pointer flex items-center justify-center text-base transition-all duration-150"
-          >
-            {isDark ? "🌙" : "☀️"}
-          </button>
-        </Tooltip>
-
-        {/* Notifications inbox with red dot */}
-        <div className="relative">
-          <Tooltip content={t("notifications:inbox.title")}>
-            <button
-              ref={bellRef}
-              onClick={() => setShowInbox((p) => !p)}
-              className="relative w-8 h-8 rounded-lg border-none cursor-pointer flex items-center justify-center bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-all [&>svg]:w-[18px] [&>svg]:h-[18px]"
-            >
-              {Icons.bell}
-              {unreadCount > 0 && (
-                <span className="absolute top-2.5 end-2.5 w-2 h-2 bg-red-500 rounded-full" />
-              )}
-            </button>
-          </Tooltip>
-          <NotificationsPopover
-            open={showInbox}
-            onClose={() => setShowInbox(false)}
-            anchorRef={bellRef}
+      {/* 2. Middle: Quick Room Join & New Meeting */}
+      <div className="flex items-center gap-2 max-w-md w-full justify-center">
+        <form
+          onSubmit={handleJoinWithCode}
+          className="hidden sm:flex items-center bg-[var(--s2)] border border-[var(--b)] rounded-full ps-3.5 pe-1 py-1 focus-within:border-[var(--brand)] focus-within:ring-1 focus-within:ring-[var(--brand)] transition-all w-full max-w-[280px]"
+        >
+          <input
+            type="text"
+            value={quickCode}
+            onChange={(e) => setQuickCode(e.target.value)}
+            placeholder={isFarsi ? "کد یا لینک جلسه..." : "Enter code or link"}
+            className="w-full bg-transparent border-none text-xs text-[var(--t1)] placeholder:text-[var(--t3)] focus:outline-none"
           />
-        </div>
+          <button
+            type="submit"
+            disabled={!quickCode.trim()}
+            className={cn(
+              "px-3 py-1 rounded-full text-xs font-semibold transition-all shrink-0 cursor-pointer border-none",
+              quickCode.trim()
+                ? "bg-[var(--brand)] text-white hover:opacity-90 shadow-sm"
+                : "bg-transparent text-[var(--t3)] opacity-60 cursor-not-allowed",
+            )}
+          >
+            {isFarsi ? "پیوستن" : "Join"}
+          </button>
+        </form>
 
-        {/* New Meeting button */}
         <button
+          type="button"
           onClick={() =>
             createRoom({
               name: t("dashboard:roomDefault", {
@@ -274,32 +174,143 @@ export default function Topbar({
             })
           }
           disabled={roomLoading}
-          className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[var(--brand-soft)] hover:opacity-95 text-[var(--brand-text)] font-bold text-xs cursor-pointer border-none transition-all active:scale-[0.98] disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[var(--brand)] hover:opacity-95 text-white font-bold text-xs cursor-pointer border-none shadow-md shadow-[var(--brand)]/20 transition-all active:scale-[0.98] disabled:opacity-50 shrink-0"
         >
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-shrink-0">
-            <polygon points="23 7 16 12 23 17 23 7" />
-            <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-            <path d="M8 9v6M5 12h6" />
-          </svg>
-          <span className="whitespace-nowrap">{isFarsi ? "جلسه جدید" : "New Meeting"}</span>
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" className="ms-0.5 opacity-80">
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
+          <Plus className="w-3.5 h-3.5" />
+          <span className="whitespace-nowrap font-medium">
+            {isFarsi ? "جلسه جدید" : "New Meeting"}
+          </span>
         </button>
-
-        {/* User avatar */}
-        <div
-          onClick={() => navigate("/settings/profile")}
-          className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--brand-soft)] to-[var(--brand)] flex items-center justify-center text-[var(--brand-text)] text-xs font-bold border-2 border-[var(--b)] hover:scale-105 transition-transform cursor-pointer flex-shrink-0"
-        >
-          {user?.full_name?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase() || "U"}
-        </div>
       </div>
 
-      <GlobalSearchModal
-        open={showSearchModal}
-        onClose={() => setShowSearchModal(false)}
-      />
+      {/* 3. End / Right: Help, Notifications, Profile Avatar Dropdown */}
+      <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
+        {/* Help Button */}
+        <Tooltip content={isFarsi ? "راهنما و پشتیبانی" : "Help & Guides"}>
+          <button
+            type="button"
+            onClick={triggerHelp}
+            aria-label="Help"
+            className="w-9 h-9 rounded-xl border border-transparent hover:border-[var(--b)] bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] flex items-center justify-center transition-all cursor-pointer"
+          >
+            <HelpCircle className="w-4 h-4" />
+          </button>
+        </Tooltip>
+
+        {/* Notifications Popover */}
+        <div className="relative">
+          <Tooltip content={t("notifications:inbox.title", { defaultValue: "صندوق پیام‌ها و اعلان‌ها" })}>
+            <button
+              ref={bellRef}
+              type="button"
+              onClick={() => setShowInbox((p) => !p)}
+              className="relative w-9 h-9 rounded-xl border border-transparent hover:border-[var(--b)] bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] flex items-center justify-center transition-all cursor-pointer"
+            >
+              <Bell className="w-4 h-4" />
+              {unreadCount > 0 && (
+                <span className="absolute top-2 end-2 w-2 h-2 bg-red-500 rounded-full ring-2 ring-[var(--s1)] animate-pulse" />
+              )}
+            </button>
+          </Tooltip>
+          <NotificationsPopover
+            open={showInbox}
+            onClose={() => setShowInbox(false)}
+            anchorRef={bellRef}
+          />
+        </div>
+
+        {/* User Profile Avatar Dropdown */}
+        <div className="relative" ref={profileRef}>
+          <button
+            type="button"
+            onClick={() => setShowProfileMenu((prev) => !prev)}
+            aria-label="User Profile"
+            className="w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--brand)] to-blue-700 text-white text-xs font-bold flex items-center justify-center border-2 border-[var(--b)] hover:ring-2 hover:ring-[var(--brand)]/40 transition-all cursor-pointer shadow-sm"
+          >
+            {user?.full_name?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase() || "U"}
+          </button>
+
+          {showProfileMenu && (
+            <div className="absolute end-0 top-full mt-2 w-64 bg-[var(--s1)] border border-[var(--b)] rounded-2xl shadow-xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+              {/* User Header */}
+              <div className="p-3 bg-[var(--s2)] rounded-xl mb-1 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[var(--brand)] text-white font-black flex items-center justify-center text-sm shadow-sm shrink-0">
+                  {user?.full_name?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase() || "U"}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-bold text-[var(--t1)] truncate">
+                    {user?.full_name || user?.username || "User"}
+                  </span>
+                  <span className="text-[10px] text-[var(--t3)] truncate">
+                    {user?.email || ""}
+                  </span>
+                  <span className="mt-1 inline-flex items-center text-[9px] font-semibold text-[var(--brand-text)] bg-[var(--brand-soft)] px-1.5 py-0.5 rounded w-fit">
+                    {activeOrg ? activeOrg.name : (isFarsi ? "کاربر شخصی" : "Personal")}
+                  </span>
+                </div>
+              </div>
+
+              {/* Profile Menu Actions */}
+              <div className="space-y-0.5">
+                <Link
+                  to="/settings/profile"
+                  onClick={() => setShowProfileMenu(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s2)] rounded-lg transition-colors no-underline"
+                >
+                  <User className="w-4 h-4 text-[var(--t3)]" />
+                  <span>{isFarsi ? "حساب کاربری و پروفایل" : "Account Profile"}</span>
+                </Link>
+
+                {/* Theme Switcher Toggle */}
+                <button
+                  type="button"
+                  onClick={onToggleTheme}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s2)] rounded-lg transition-colors border-none bg-transparent cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    {isDark ? (
+                      <Moon className="w-4 h-4 text-indigo-400" />
+                    ) : (
+                      <Sun className="w-4 h-4 text-amber-500" />
+                    )}
+                    <span>{isFarsi ? "حالت تاریک" : "Dark Mode"}</span>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--s3)] font-semibold text-[var(--t2)]">
+                    {isDark ? (isFarsi ? "روشن" : "On") : (isFarsi ? "خاموش" : "Off")}
+                  </span>
+                </button>
+
+                {/* Language Switcher Toggle */}
+                <button
+                  type="button"
+                  onClick={toggleLanguage}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s2)] rounded-lg transition-colors border-none bg-transparent cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Globe className="w-4 h-4 text-[var(--t3)]" />
+                    <span>{isFarsi ? "زبان برنامه" : "Language"}</span>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--s3)] font-semibold text-[var(--brand-text)]">
+                    {language === "fa" ? "فارسی (FA)" : "English (EN)"}
+                  </span>
+                </button>
+              </div>
+
+              {/* Logout Button */}
+              <div className="mt-1 pt-1 border-t border-[var(--b)]">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[var(--red)] hover:bg-[var(--red)]/10 rounded-lg transition-colors border-none bg-transparent cursor-pointer text-start"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>{isFarsi ? "خروج از حساب کاربری" : "Sign Out"}</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </header>
   );
 }
