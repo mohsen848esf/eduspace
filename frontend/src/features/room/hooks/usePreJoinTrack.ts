@@ -198,12 +198,17 @@ export function usePreJoinTrack() {
     };
   }, []);
   // Explicitly release track before joining room
-  const stopTrack = useCallback(() => {
+  const stopTrack = useCallback(async () => {
     if (track) {
       try {
-        track.stopProcessor().catch(() => {});
+        await Promise.race([
+          track.stopProcessor().catch(() => {}),
+          new Promise<void>((resolve) => setTimeout(resolve, 500)),
+        ]);
         track.mediaStreamTrack?.stop();
         track.stop();
+        // Wait a tick to let the OS camera hardware be released
+        await new Promise<void>((resolve) => setTimeout(resolve, 150));
       } catch (e) {
         console.warn("Error stopping pre-join track:", e);
       }

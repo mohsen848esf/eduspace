@@ -5,6 +5,11 @@ port: 7880
 rtc:
   tcp_port: 7881
   udp_port: 7882
+  # Advertise the host machine's LAN Wi-Fi IP so all browsers can reach
+  # LiveKit via the mapped UDP port (7882) instead of the Docker bridge IP
+  # (172.18.0.x) which is unreachable from Firefox/Edge on Windows.
+  # Change this if your Wi-Fi IP changes (ipconfig → Wi-Fi IPv4 address).
+  node_ip: 192.168.1.7
   use_external_ip: false
 
 keys:

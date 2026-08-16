@@ -72,8 +72,8 @@ export default function PreJoinScreen({
   const { roomInfo } = usePreJoinRoomInfo(roomCode);
 
   // Handlers
-  const handleJoinNow = () => {
-    stopTrack();
+  const handleJoinNow = async () => {
+    await stopTrack();
     if (guestName.trim()) {
       localStorage.setItem("eduspace_guest_name", guestName.trim());
     }
