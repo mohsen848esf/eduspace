@@ -45,6 +45,7 @@ export default function PreJoinScreen({
     isSupported: bgSupported,
     attachToVideo,
     changeBackground,
+    stopTrack,
   } = usePreJoinTrack();
 
   // Hook 2: Media Devices & Audio Diagnostic
@@ -70,6 +71,7 @@ export default function PreJoinScreen({
 
   // Handlers
   const handleJoinNow = () => {
+    stopTrack();
     if (guestName.trim()) {
       localStorage.setItem("eduspace_guest_name", guestName.trim());
     }

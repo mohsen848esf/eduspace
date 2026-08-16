@@ -181,7 +181,8 @@
   "sidebar": {
     "addPeople": "افزودن افراد",
     "host": "میزبان",
-    "students": "دانش‌آموزان ({{count}})",
+    "members": "اعضا ({{count}})",
+    "students": "اعضا ({{count}})",
     "noMessages": "هنوز پیامی نیست",
     "messagePlaceholder": "پیام...",
     "collapse": "بستن پنل"

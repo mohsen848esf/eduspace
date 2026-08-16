@@ -99,9 +99,28 @@ export default function ParticipantsPanel() {
     }
   };
 
-  const host =
-    participants.find((p) => p.permissions?.canPublish) || localParticipant;
-  const others = participants.filter((p) => p.identity !== host.identity);
+  const isParticipantHost = (p: any) => {
+    if (p.identity === localParticipant.identity) {
+      return isHost;
+    }
+    if (p.permissions?.roomAdmin) return true;
+    if (p.metadata) {
+      try {
+        const meta = JSON.parse(p.metadata);
+        if (meta.is_host || meta.role === "host") return true;
+      } catch {}
+    }
+    return false;
+  };
+
+  const hosts = useMemo(
+    () => participants.filter(isParticipantHost),
+    [participants, isHost, localParticipant.identity],
+  );
+  const others = useMemo(
+    () => participants.filter((p) => !isParticipantHost(p)),
+    [participants, isHost, localParticipant.identity],
+  );
 
   const getHandRaiseInfo = (p: any) => {
     if (!p.metadata) return { raised: false, at: 0 };
@@ -185,7 +204,7 @@ export default function ParticipantsPanel() {
           )}
         </div>
         <span className="text-xs font-medium text-[var(--t1)] truncate">
-          {isLocal ? `${name} ${t("tile.you")}` : name}
+          {isLocal ? `${name} (${t("tile.you") || "You"})` : name}
         </span>
         {handRaised && (
           <span className="text-amber-500 text-xs animate-pulse" title={t("controls.raiseHand")}>
@@ -193,9 +212,7 @@ export default function ParticipantsPanel() {
           </span>
         )}
         <div className="flex gap-1 items-center ms-auto">
-          {/* Host-only: toggle to grant/revoke recording control. The
-              host themselves is implicitly always allowed, so we only
-              show the toggle on the "others" rows. */}
+          {/* Host-only: toggle to grant/revoke recording control. */}
           {isHost && !isLocal && (
             <RecordingGrantToggle
               username={participant.identity}
@@ -248,16 +265,30 @@ export default function ParticipantsPanel() {
         <span>+</span>
         {t("sidebar.addPeople")}
       </button>
-      <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider px-2 py-1.5">
-        {t("sidebar.host")}
-      </div>
-      <ParticipantRow participant={localParticipant} isLocal />
 
+      {/* Host Section */}
+      {hosts.length > 0 && (
+        <>
+          <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider px-2 py-1.5">
+            {t("sidebar.host")}
+          </div>
+          {hosts.map((h) => (
+            <ParticipantRow
+              key={h.identity}
+              participant={h}
+              isLocal={h.identity === localParticipant.identity}
+            />
+          ))}
+        </>
+      )}
+
+      {/* Members Section */}
       {sortedOthers.length > 0 && (
         <>
           <div className="flex items-center justify-between px-2 py-1.5 mt-2">
             <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider">
-              {t("sidebar.students", { count: sortedOthers.length })}
+              {t("sidebar.members", { count: sortedOthers.length }) ||
+                t("sidebar.students", { count: sortedOthers.length })}
             </div>
             {isHost && hasHandsRaised && (
               <button
@@ -270,7 +301,11 @@ export default function ParticipantsPanel() {
             )}
           </div>
           {sortedOthers.map((p) => (
-            <ParticipantRow key={p.identity} participant={p} />
+            <ParticipantRow
+              key={p.identity}
+              participant={p}
+              isLocal={p.identity === localParticipant.identity}
+            />
           ))}
         </>
       )}
