@@ -178,23 +178,31 @@ export function useWhiteboard() {
 
         switch (type) {
           case WHITEBOARD_MESSAGES.WHITEBOARD_LAUNCH:
-            setWhiteboard({
-              isActive: true,
-              isMinimized: false,
-              hostIdentity: data.hostIdentity,
-              isDrawingAllowed: true,
+            setWhiteboard((prev) => {
+              if (!prev.isActive) {
+                toast("Whiteboard started by host", { id: "wb-launch-toast", icon: "✏️" });
+              }
+              return {
+                isActive: true,
+                isMinimized: false,
+                hostIdentity: data.hostIdentity,
+                isDrawingAllowed: data.isDrawingAllowed ?? true,
+              };
             });
-            toast("Whiteboard started by host", { icon: "✏️" });
             break;
 
           case WHITEBOARD_MESSAGES.WHITEBOARD_END:
-            setWhiteboard({
-              isActive: false,
-              isMinimized: false,
-              hostIdentity: null,
-              isDrawingAllowed: true,
+            setWhiteboard((prev) => {
+              if (prev.isActive) {
+                toast("Whiteboard closed by host", { id: "wb-end-toast", icon: "✏️" });
+              }
+              return {
+                isActive: false,
+                isMinimized: false,
+                hostIdentity: null,
+                isDrawingAllowed: true,
+              };
             });
-            toast("Whiteboard closed by host", { icon: "✏️" });
             break;
 
           case WHITEBOARD_MESSAGES.WHITEBOARD_RELAY: {
@@ -210,17 +218,22 @@ export function useWhiteboard() {
                 innerPayload?.allowed
                   ? "You are allowed to draw now"
                   : "Drawing is locked by host",
-                { icon: "✏️" }
+                { id: "wb-draw-permission", icon: "✏️" }
               );
             }
 
             if (innerType === "WHITEBOARD_SYNC") {
-              setWhiteboard((prev) => ({
-                ...prev,
-                isActive: true,
-                hostIdentity: innerPayload?.hostIdentity || identity,
-                isDrawingAllowed: innerPayload?.isDrawingAllowed ?? true,
-              }));
+              setWhiteboard((prev) => {
+                if (!prev.isActive) {
+                  toast("Whiteboard started by host", { id: "wb-launch-toast", icon: "✏️" });
+                }
+                return {
+                  ...prev,
+                  isActive: true,
+                  hostIdentity: innerPayload?.hostIdentity || identity,
+                  isDrawingAllowed: innerPayload?.isDrawingAllowed ?? true,
+                };
+              });
             }
 
             listenersRef.current.forEach((fn) => {
@@ -262,12 +275,17 @@ export function useWhiteboard() {
 
           case WHITEBOARD_MESSAGES.WHITEBOARD_SYNC: {
             // Late joiners receive the sync package
-            setWhiteboard((prev) => ({
-              ...prev,
-              isActive: true,
-              hostIdentity: data?.hostIdentity || identity,
-              isDrawingAllowed: data?.isDrawingAllowed ?? true,
-            }));
+            setWhiteboard((prev) => {
+              if (!prev.isActive) {
+                toast("Whiteboard started by host", { id: "wb-launch-toast", icon: "✏️" });
+              }
+              return {
+                ...prev,
+                isActive: true,
+                hostIdentity: data?.hostIdentity || identity,
+                isDrawingAllowed: data?.isDrawingAllowed ?? true,
+              };
+            });
 
             listenersRef.current.forEach((fn) => {
               try {

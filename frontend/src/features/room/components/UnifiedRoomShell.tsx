@@ -196,6 +196,7 @@ export default function UnifiedRoomShell({
             isPushToTalk={controls.isPushToTalk}
             sidebarTab={controls.sidebarTab}
             settingsOpen={controls.settingsOpen}
+            roomCode={activeRoomCode}
             layout={layout}
             onToggleMic={controls.toggleMic}
             onToggleCam={controls.toggleCam}
