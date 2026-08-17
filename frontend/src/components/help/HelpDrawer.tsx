@@ -1,8 +1,7 @@
 import { useLocation } from "react-router-dom";
 import { Drawer, DrawerHeader, DrawerTitle, DrawerBody } from "../layout/Drawer";
 import { useLocale } from "../../i18n/useLocale";
-import { useTour } from "../tours/useTour";
-import { BookOpen, Play, HelpCircle, X } from "lucide-react";
+import { BookOpen, HelpCircle, X } from "lucide-react";
 
 interface HelpDrawerProps {
   open: boolean;
@@ -124,7 +123,6 @@ const helpRegistry: Record<string, PageHelpItem> = {
 export default function HelpDrawer({ open, onOpenChange }: HelpDrawerProps) {
   const location = useLocation();
   const { isRTL } = useLocale();
-  const { startTour } = useTour();
 
   const currentPath = location.pathname;
   // Fallback if no exact match for child routes (e.g. nested detail pages)
@@ -133,14 +131,6 @@ export default function HelpDrawer({ open, onOpenChange }: HelpDrawerProps) {
   ) || "/dashboard";
 
   const helpData = helpRegistry[matchingKey];
-
-  const handleStartTour = () => {
-    onOpenChange(false);
-    // Give modal exit animation a small delay before launching tour overlay
-    setTimeout(() => {
-      startTour(matchingKey, true);
-    }, 250);
-  };
 
   const title = isRTL ? helpData.titleFa : helpData.titleEn;
   const description = isRTL ? helpData.descFa : helpData.descEn;
@@ -174,26 +164,7 @@ export default function HelpDrawer({ open, onOpenChange }: HelpDrawerProps) {
           <p className="text-xs text-[var(--t2)] leading-relaxed">{description}</p>
         </div>
 
-        {/* Quick tour action trigger */}
-        <div className="bg-[var(--s2)] border border-[var(--b)] rounded-xl p-4 flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <Play className="w-4 h-4 text-[var(--brand)]" />
-            <span className="text-xs font-semibold text-[var(--t1)]">
-              {isRTL ? "راهنمای تعاملی صفحه" : "Guided Page Tour"}
-            </span>
-          </div>
-          <p className="text-[11px] text-[var(--t2)]">
-            {isRTL
-              ? "یک راهنمای زنده برای آشنایی با دکمه‌ها و بخش‌های مختلف این صفحه آغاز کنید."
-              : "Start a live interactive walk-through highlighting features on this screen."}
-          </p>
-          <button
-            onClick={handleStartTour}
-            className="w-full bg-[var(--brand)] hover:bg-[var(--brand-h)] text-white text-xs font-semibold py-2 rounded-lg cursor-pointer transition-colors"
-          >
-            {isRTL ? "شروع تور تعاملی" : "Launch Guided Tour"}
-          </button>
-        </div>
+
 
         {/* Page Tips checklist */}
         <div className="flex flex-col gap-3">
