@@ -364,57 +364,66 @@ export default function Whiteboard({
       className="flex flex-1 flex-col overflow-hidden bg-[#0f172a] select-none touch-none relative"
     >
       {/* Topbar */}
-      <div className="h-12 bg-[#1e293b] border-b border-[#334155] flex items-center justify-between px-3 flex-shrink-0 z-10">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm" aria-hidden>
+      <div className="h-11 sm:h-12 bg-[#1e293b] border-b border-[#334155] flex items-center justify-between px-2 sm:px-3 flex-shrink-0 z-10 select-none">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+          <span className="text-sm shrink-0" aria-hidden>
             ✏️
           </span>
-          <span className="text-sm font-semibold text-white truncate">
+          <span className="text-sm font-semibold text-white truncate hidden sm:inline">
             {t("tools.whiteboard")}
           </span>
           {!canDraw && (
-            <span className="text-[10px] bg-red-500/20 text-red-400 font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
-              🔒 View Only
+            <span className="text-[10px] bg-red-500/20 text-red-400 font-bold px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0">
+              🔒 <span className="hidden sm:inline">View Only</span>
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 sm:gap-1.5">
           {isHost && (
             <>
               <Tooltip
                 content={
                   whiteboard.isDrawingAllowed
-                    ? "Lock drawing for participants"
-                    : "Allow participants to draw"
+                    ? t("whiteboard.lockDrawing", "قفل کردن نقاشی برای کاربران")
+                    : t("whiteboard.allowDrawing", "اجازه نقاشی به کاربران")
                 }
               >
                 <button
+                  type="button"
                   onClick={() => toggleDrawingPermission(!whiteboard.isDrawingAllowed)}
                   className={cn(
-                    "h-8 px-2.5 rounded-lg border-none cursor-pointer flex items-center gap-1.5 text-xs font-semibold transition-colors",
+                    "h-7 sm:h-8 px-2 sm:px-2.5 rounded-lg border-none cursor-pointer flex items-center gap-1 text-xs font-semibold transition-colors",
                     whiteboard.isDrawingAllowed
                       ? "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400"
                       : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-400"
                   )}
                 >
-                  {whiteboard.isDrawingAllowed ? "🔓 Collab On" : "🔒 Host Only"}
+                  <span>{whiteboard.isDrawingAllowed ? "🔓" : "🔒"}</span>
+                  <span className="hidden sm:inline">
+                    {whiteboard.isDrawingAllowed ? "Collab On" : "Host Only"}
+                  </span>
                 </button>
               </Tooltip>
 
-              <button
-                onClick={handleClear}
-                className="h-8 px-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold rounded-lg border-none cursor-pointer transition-colors flex items-center gap-1"
-              >
-                🧹 Clear Board
-              </button>
+              <Tooltip content={t("whiteboard.clearBoard", "پاک کردن کل صفحه")}>
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  className="h-7 sm:h-8 px-2 sm:px-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold rounded-lg border-none cursor-pointer transition-colors flex items-center gap-1"
+                >
+                  <span>🧹</span>
+                  <span className="hidden sm:inline">Clear Board</span>
+                </button>
+              </Tooltip>
             </>
           )}
 
           <Tooltip content={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}>
             <button
+              type="button"
               onClick={toggleFullscreen}
-              className="w-8 h-8 rounded-lg border-none cursor-pointer flex items-center justify-center bg-[#334155] text-white hover:bg-[#475569] transition-colors"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border-none cursor-pointer flex items-center justify-center bg-[#334155] text-white hover:bg-[#475569] transition-colors text-xs"
             >
               {isFullscreen ? "🗗" : "⛶"}
             </button>
@@ -425,7 +434,7 @@ export default function Whiteboard({
               <button
                 type="button"
                 onClick={onMinimize}
-                className="w-8 h-8 rounded-lg border-none cursor-pointer flex items-center justify-center bg-[#334155] text-white hover:bg-[#475569] transition-colors"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border-none cursor-pointer flex items-center justify-center bg-[#334155] text-white hover:bg-[#475569] transition-colors"
               >
                 <Minus className="w-4 h-4" />
               </button>
@@ -437,10 +446,10 @@ export default function Whiteboard({
               <button
                 type="button"
                 onClick={onEnd}
-                className="flex items-center gap-1.5 px-2.5 h-8 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg border-none cursor-pointer transition-colors shadow-xs"
+                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 h-7 sm:h-8 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg border-none cursor-pointer transition-colors shadow-xs"
               >
                 {Icons.leave}
-                <span>{t("whiteboard.endForEveryone", "پایان برای همه")}</span>
+                <span className="hidden sm:inline">{t("whiteboard.endForEveryone", "پایان برای همه")}</span>
               </button>
             </Tooltip>
           )}
@@ -530,58 +539,63 @@ export default function Whiteboard({
 
         {/* Floating Bottom Properties Bar */}
         {canDraw && (
-          <div className="absolute bottom-3 md:bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 md:gap-3 bg-[#1e293b]/95 backdrop-blur border border-[#334155] rounded-xl px-2.5 md:px-3 py-1.5 md:py-2 shadow-2xl z-30 max-w-[calc(100vw-3rem)] overflow-x-auto scrollbar-none touch-pan-x">
+          <div className="absolute bottom-3 md:bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 sm:gap-2.5 bg-[#1e293b]/95 backdrop-blur border border-[#334155] rounded-xl px-2 sm:px-3 py-1.5 md:py-2 shadow-2xl z-30 max-w-[calc(100vw-2.5rem)] overflow-x-auto scrollbar-none touch-pan-x">
             {/* Color choices */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 shrink-0">
               {COLORS.map((col) => (
                 <button
                   key={col.value}
+                  type="button"
                   onClick={() => setColor(col.value)}
                   className={cn(
-                    "w-5 h-5 rounded-full border cursor-pointer transition-transform",
+                    "w-6 h-6 rounded-full border cursor-pointer transition-transform shrink-0",
                     color === col.value
-                      ? "scale-125 border-white ring-2 ring-indigo-500/40"
+                      ? "scale-115 border-white ring-2 ring-indigo-500/50"
                       : "border-transparent hover:scale-110"
                   )}
                   style={{ backgroundColor: col.value }}
+                  title={col.label}
                 />
               ))}
             </div>
 
-            <div className="w-px h-5 bg-[#334155]" />
+            <div className="w-px h-5 bg-[#334155] shrink-0" />
 
             {/* Fill styles choice */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 shrink-0">
               {FILL_COLORS.map((col) => (
                 <button
                   key={col.value}
+                  type="button"
                   onClick={() => setFillColor(col.value)}
                   className={cn(
-                    "w-5 h-5 rounded border cursor-pointer transition-transform flex items-center justify-center text-[10px] text-white",
+                    "w-6 h-6 rounded border cursor-pointer transition-transform flex items-center justify-center text-[10px] text-white shrink-0",
                     fillColor === col.value
-                      ? "scale-125 border-white ring-2 ring-indigo-500/40"
+                      ? "scale-115 border-white ring-2 ring-indigo-500/50"
                       : "border-transparent hover:scale-110"
                   )}
                   style={{
                     backgroundColor: col.value === "transparent" ? "#0f172a" : col.value,
                     border: col.value === "transparent" ? "1px dashed rgba(255,255,255,0.4)" : "none",
                   }}
+                  title={col.label}
                 >
                   {col.value === "transparent" && "Ø"}
                 </button>
               ))}
             </div>
 
-            <div className="w-px h-5 bg-[#334155]" />
+            <div className="w-px h-5 bg-[#334155] shrink-0" />
 
             {/* Brush sizes */}
-            <div className="flex gap-1">
+            <div className="flex gap-1 shrink-0">
               {WIDTHS.map((w) => (
                 <button
                   key={w.value}
+                  type="button"
                   onClick={() => setLineWidth(w.value)}
                   className={cn(
-                    "px-2 h-6 rounded text-[9px] font-bold border cursor-pointer transition-colors",
+                    "px-2.5 h-7 rounded text-[10px] font-bold border cursor-pointer transition-colors shrink-0",
                     lineWidth === w.value
                       ? "bg-indigo-500/20 border-indigo-400 text-indigo-400"
                       : "bg-[#334155] border-transparent text-gray-300 hover:bg-[#475569]"
@@ -592,13 +606,14 @@ export default function Whiteboard({
               ))}
             </div>
 
-            <div className="w-px h-5 bg-[#334155]" />
+            <div className="w-px h-5 bg-[#334155] shrink-0" />
 
             {/* Embed Image and Video options */}
             <Tooltip content="Upload Image">
               <button
+                type="button"
                 onClick={handleAddImage}
-                className="h-6 w-6 rounded bg-[#334155] hover:bg-[#475569] text-white text-xs border-none cursor-pointer flex items-center justify-center"
+                className="h-7 w-7 rounded-lg bg-[#334155] hover:bg-[#475569] text-white text-xs border-none cursor-pointer flex items-center justify-center shrink-0"
               >
                 🖼️
               </button>
@@ -606,21 +621,23 @@ export default function Whiteboard({
 
             <Tooltip content="Embed YouTube / Vimeo">
               <button
+                type="button"
                 onClick={handleAddVideo}
-                className="h-6 w-6 rounded bg-[#334155] hover:bg-[#475569] text-white text-xs border-none cursor-pointer flex items-center justify-center"
+                className="h-7 w-7 rounded-lg bg-[#334155] hover:bg-[#475569] text-white text-xs border-none cursor-pointer flex items-center justify-center shrink-0"
               >
                 📺
               </button>
             </Tooltip>
 
-            <div className="w-px h-5 bg-[#334155]" />
+            <div className="w-px h-5 bg-[#334155] shrink-0" />
 
             {/* Grid Snapping Toggle */}
             <Tooltip content={snapToGrid ? "Disable Snap to Grid" : "Enable Snap to Grid"}>
               <button
+                type="button"
                 onClick={() => setSnapToGrid(!snapToGrid)}
                 className={cn(
-                  "w-6 h-6 rounded text-xs border-none cursor-pointer flex items-center justify-center transition-colors",
+                  "w-7 h-7 rounded-lg text-xs border-none cursor-pointer flex items-center justify-center transition-colors shrink-0",
                   snapToGrid ? "bg-indigo-500 text-white" : "bg-[#334155] text-gray-300 hover:bg-[#475569]"
                 )}
               >
@@ -631,8 +648,9 @@ export default function Whiteboard({
             {/* Undo / Redo */}
             <Tooltip content="Undo">
               <button
+                type="button"
                 onClick={handleUndo}
-                className="w-6 h-6 rounded text-xs border-none bg-[#334155] text-gray-300 hover:bg-[#475569] cursor-pointer flex items-center justify-center"
+                className="w-7 h-7 rounded-lg text-xs border-none bg-[#334155] text-gray-300 hover:bg-[#475569] cursor-pointer flex items-center justify-center shrink-0"
               >
                 ↶
               </button>
@@ -640,8 +658,9 @@ export default function Whiteboard({
 
             <Tooltip content="Redo">
               <button
+                type="button"
                 onClick={handleRedo}
-                className="w-6 h-6 rounded text-xs border-none bg-[#334155] text-gray-300 hover:bg-[#475569] cursor-pointer flex items-center justify-center"
+                className="w-7 h-7 rounded-lg text-xs border-none bg-[#334155] text-gray-300 hover:bg-[#475569] cursor-pointer flex items-center justify-center shrink-0"
               >
                 ↷
               </button>

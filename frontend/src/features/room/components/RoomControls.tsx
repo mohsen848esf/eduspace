@@ -611,7 +611,7 @@ export default function RoomControls({
   return (
     <div
       className={cn(
-        "relative bg-[color-mix(in_srgb,var(--s1)_85%,transparent)] backdrop-blur-xl border-t border-[var(--b)]",
+        "relative z-50 bg-[color-mix(in_srgb,var(--s1)_85%,transparent)] backdrop-blur-xl border-t border-[var(--b)]",
         "flex items-center justify-between gap-1.5 sm:gap-2 flex-shrink-0 shadow-2xl transition-all select-none px-2 sm:px-4 md:px-6",
         shellHeight,
       )}
