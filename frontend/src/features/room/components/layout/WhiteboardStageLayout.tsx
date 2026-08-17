@@ -110,8 +110,8 @@ export default function WhiteboardStageLayout({
           className={cn(
             "flex gap-2 min-w-0 min-h-0 animate-in fade-in duration-200",
             isLandscape
-              ? "flex-1 flex-col overflow-y-auto max-w-[280px]"
-              : "flex-row overflow-x-auto h-28 sm:h-36 shrink-0"
+              ? "flex-1 flex-col overflow-y-auto overflow-x-hidden max-w-[280px] scrollbar-none"
+              : "flex-row overflow-x-auto overflow-y-hidden h-28 sm:h-32 shrink-0 scrollbar-none touch-pan-x"
           )}
         >
           {visibleStripTiles.map((tile) => (
