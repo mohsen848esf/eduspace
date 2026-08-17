@@ -6,15 +6,13 @@ import { useBackgroundStore } from "../store/backgroundStore";
 import { useLocale } from "../../../i18n/useLocale";
 import { toast } from "react-hot-toast";
 
+// Self-hosted background images — no external CDN dependency.
+// Served from public/backgrounds/ by Vite / Nginx (works on internal servers).
 const BG_IMAGES: Partial<Record<BackgroundType, string>> = {
-  office:
-    "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1280&q=80",
-  nature:
-    "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=1280&q=80",
-  studio:
-    "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=1280&q=80",
-  minimal:
-    "https://images.unsplash.com/photo-1557683316-973673baf926?w=1280&q=80",
+  office:  "/backgrounds/office.jpg",
+  nature:  "/backgrounds/nature.jpg",
+  studio:  "/backgrounds/studio.jpg",
+  minimal: "/backgrounds/minimal.jpg",
 };
 
 export function usePreJoinTrack(camEnabled: boolean = true, selectedCam?: string) {

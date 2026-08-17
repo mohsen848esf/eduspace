@@ -2,15 +2,27 @@
 # Keys must match LIVEKIT_API_KEY / LIVEKIT_API_SECRET in backend/.env
 # (and the matching api_key/api_secret used by the egress worker).
 port: 7880
+
 rtc:
   tcp_port: 7881
   udp_port: 7882
-  # Advertise the host machine's LAN Wi-Fi IP so all browsers can reach
+
+  # UDP port range for media streams.
+  # Each participant track pair uses one port from this range.
+  # 1000 ports = ~500 simultaneous participants (2 ports per participant).
+  port_range_start: 50000
+  port_range_end:   51000
+
+  # DEV: Advertise the host machine's LAN Wi-Fi IP so all browsers can reach
   # LiveKit via the mapped UDP port (7882) instead of the Docker bridge IP
   # (172.18.0.x) which is unreachable from Firefox/Edge on Windows.
   # Change this if your Wi-Fi IP changes (ipconfig → Wi-Fi IPv4 address).
   node_ip: 192.168.1.7
   use_external_ip: false
+
+  # Packet loss recovery: allow the SFU to request retransmissions.
+  # This improves stability on lossy networks without adding latency overhead.
+  allow_tcp_fallback: true
 
 keys:
   devkey: devsecret
@@ -25,3 +37,30 @@ webhook:
   api_key: devkey
   urls:
     - http://host.docker.internal:8000/api/recordings/webhook/
+
+# ─── PRODUCTION OVERRIDES (uncomment and fill when deploying) ────────────────
+#
+# rtc:
+#   use_external_ip: true   # Let LiveKit auto-detect its public IP
+#   node_ip: ""             # Remove static IP — use external IP detection
+#
+# # TURN server: critical for users behind corporate firewalls or on restricted
+# # networks (e.g., mobile data) that block UDP. TLS port 443 mimics HTTPS,
+# # making it nearly impossible for firewalls to distinguish and block.
+# turn:
+#   enabled:      true
+#   domain:       turn.yourdomain.ir
+#   tls_port:     443     # Goes through almost all firewalls
+#   udp_port:     3478    # Standard TURN/UDP (may be blocked on restricted nets)
+#   external_tls: true    # SSL is terminated by Nginx upstream
+#
+# # For multi-node / Kubernetes deployments, Redis is required for shared state.
+# redis:
+#   address: redis-prod.yourdomain.ir:6379
+#   password: your-redis-password
+#   use_tls:  true
+#
+# webhook:
+#   api_key: your-production-api-key
+#   urls:
+#     - https://api.yourdomain.ir/api/recordings/webhook/

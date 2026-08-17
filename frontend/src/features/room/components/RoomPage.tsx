@@ -7,6 +7,12 @@ import {
   useLocalParticipant,
   useRoomContext,
 } from "@livekit/components-react";
+import {
+  VideoPresets,
+  AudioPresets,
+  ConnectionQuality,
+  RoomEvent,
+} from "livekit-client";
 import { useRoomStore } from "../store/roomStore";
 import { useRoom } from "../hooks/useRoom";
 import { useRoomControls } from "../hooks/useRoomControls";
@@ -83,6 +89,25 @@ function RoomContent({
       room.off("dataReceived", handler);
     };
   }, [room, game.handleDataMessage, whiteboard.handleDataMessage, reactions.handleDataMessage]);
+
+  // Monitor connection quality — auto-disable camera on poor networks.
+  // This keeps audio alive when bandwidth is critically low.
+  useEffect(() => {
+    if (!room) return;
+    const handleQuality = (quality: ConnectionQuality) => {
+      if (quality === ConnectionQuality.Poor) {
+        // If camera is on and quality is critically poor, mute video to save bandwidth.
+        // The user's mic stays active so they can still communicate.
+        if (room.localParticipant.isCameraEnabled) {
+          room.localParticipant.setCameraEnabled(false);
+        }
+      }
+    };
+    room.localParticipant.on(RoomEvent.ConnectionQualityChanged, handleQuality);
+    return () => {
+      room.localParticipant.off(RoomEvent.ConnectionQualityChanged, handleQuality);
+    };
+  }, [room]);
 
   // Clean up and release media devices when the room page is unmounted (navigating away)
   useEffect(() => {
@@ -237,7 +262,32 @@ export default function RoomPage() {
         connect={true}
         video={preJoinSettings?.camEnabled ?? true}
         audio={preJoinSettings?.micEnabled ?? true}
-        options={{ adaptiveStream: false }}
+        options={{
+          // Adaptive stream: downscale subscribed video to match the display
+          // element size — prevents wasting bandwidth on invisible high-res frames.
+          adaptiveStream: true,
+          // Dynacast: pause video layers that have zero subscribers — saves
+          // publisher upload bandwidth in multi-party calls.
+          dynacast: true,
+          publishDefaults: {
+            // Simulcast: publish 3 quality layers simultaneously.
+            // The SFU selects the best layer per subscriber on the fly.
+            simulcast: true,
+            videoSimulcastLayers: [
+              VideoPresets.h720, // ~1.5 Mbps — good network
+              VideoPresets.h360, // ~400 kbps — average network
+              VideoPresets.h180, // ~150 kbps — weak network / mobile data
+            ],
+            audioPreset: AudioPresets.speech, // 24 kbps Opus optimised for voice
+            // RED: redundant audio encoding — survives up to 30% packet loss
+            // without audible glitches. Enabled by default in livekit-client
+            // but declared explicitly for clarity.
+            red: true,
+            // DTX: discontinuous transmission — stops sending audio packets
+            // during silence. Cuts audio bandwidth by ~50% for typical calls.
+            dtx: true,
+          },
+        }}
         onDisconnected={() => {
           useBackgroundStore.getState().setBackground("none");
           leaveRoom();
