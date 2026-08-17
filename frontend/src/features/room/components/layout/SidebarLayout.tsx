@@ -23,12 +23,15 @@ export default function SidebarLayout(props: SidebarLayoutProps) {
   const { tiles, pinnedKey, onTogglePin } = props;
   const orientation = useOrientation();
   const [activeSpeakerOverride, setActiveSpeakerOverride] = useState<string | null>(null);
+  const screenTile = tiles.find((t) => t.kind === "screen");
 
   const focusKey =
-    activeSpeakerOverride && tiles.some((t) => t.key === activeSpeakerOverride)
-      ? activeSpeakerOverride
-      : pinnedKey && tiles.some((t) => t.key === pinnedKey)
+    pinnedKey && tiles.some((t) => t.key === pinnedKey)
       ? pinnedKey
+      : screenTile
+      ? screenTile.key
+      : activeSpeakerOverride && tiles.some((t) => t.key === activeSpeakerOverride)
+      ? activeSpeakerOverride
       : tiles[0]?.key;
 
   const focusTile = tiles.find((t) => t.key === focusKey) || tiles[0];

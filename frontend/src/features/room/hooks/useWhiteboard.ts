@@ -214,6 +214,15 @@ export function useWhiteboard() {
               );
             }
 
+            if (innerType === "WHITEBOARD_SYNC") {
+              setWhiteboard((prev) => ({
+                ...prev,
+                isActive: true,
+                hostIdentity: innerPayload?.hostIdentity || identity,
+                isDrawingAllowed: innerPayload?.isDrawingAllowed ?? true,
+              }));
+            }
+
             listenersRef.current.forEach((fn) => {
               try {
                 fn(innerType, innerPayload, identity);
@@ -228,9 +237,18 @@ export function useWhiteboard() {
             const currentWB = whiteboardRef.current;
             // Only the host responds to state sync request
             if (isHostRef.current && currentWB.isActive) {
+              // Proactively send LAUNCH message to the requesting participant
+              sendMessage(
+                WHITEBOARD_MESSAGES.WHITEBOARD_LAUNCH,
+                {
+                  hostIdentity: localParticipant.identity,
+                  isDrawingAllowed: currentWB.isDrawingAllowed,
+                },
+                identity ? [identity] : undefined,
+              ).catch(() => undefined);
+
               // The canvas component itself tracks the drawing history (paths).
               // It will listen for request events, draw them, and trigger sync.
-              // To handle this, we propagate request event to local listeners.
               listenersRef.current.forEach((fn) => {
                 try {
                   fn("WHITEBOARD_REQUEST_STATE", {}, identity);
@@ -247,8 +265,8 @@ export function useWhiteboard() {
             setWhiteboard((prev) => ({
               ...prev,
               isActive: true,
-              hostIdentity: data.hostIdentity,
-              isDrawingAllowed: data.isDrawingAllowed,
+              hostIdentity: data?.hostIdentity || identity,
+              isDrawingAllowed: data?.isDrawingAllowed ?? true,
             }));
 
             listenersRef.current.forEach((fn) => {
@@ -265,10 +283,69 @@ export function useWhiteboard() {
         /* ignore parsing errors */
       }
     },
-    [],
+    [localParticipant.identity, sendMessage],
   );
 
-  // Sync state request on mount if whiteboard is active
+  // 1. Proactive push to new participants when host has an active whiteboard
+  useEffect(() => {
+    if (!room) return;
+
+    const onParticipantConnected = (remotePart: any) => {
+      if (isHostRef.current && whiteboardRef.current.isActive) {
+        sendMessage(
+          WHITEBOARD_MESSAGES.WHITEBOARD_LAUNCH,
+          {
+            hostIdentity: localParticipant.identity,
+            isDrawingAllowed: whiteboardRef.current.isDrawingAllowed,
+          },
+          remotePart?.identity ? [remotePart.identity] : undefined,
+        ).catch(() => undefined);
+
+        listenersRef.current.forEach((fn) => {
+          try {
+            fn("WHITEBOARD_REQUEST_STATE", {}, remotePart?.identity);
+          } catch (e) {
+            console.warn("whiteboard listener threw", e);
+          }
+        });
+      }
+    };
+
+    room.on("participantConnected", onParticipantConnected);
+    return () => {
+      room.off("participantConnected", onParticipantConnected);
+    };
+  }, [room, sendMessage, localParticipant.identity]);
+
+  // 2. Late joiner automatic state request on connection
+  useEffect(() => {
+    if (!room || isHost) return;
+
+    const requestSync = async () => {
+      // Delay slightly to ensure host's listeners are fully wired
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      try {
+        await sendMessage(WHITEBOARD_MESSAGES.WHITEBOARD_REQUEST_STATE, {});
+      } catch (e) {
+        console.warn("failed to send WHITEBOARD_REQUEST_STATE", e);
+      }
+    };
+
+    if (room.state === "connected") {
+      requestSync();
+    }
+
+    const onConnected = () => {
+      requestSync();
+    };
+
+    room.on("connected", onConnected);
+    return () => {
+      room.off("connected", onConnected);
+    };
+  }, [room, isHost, sendMessage]);
+
+  // Sync state request manually
   const requestSyncState = useCallback(async () => {
     if (isHost) return;
     try {
