@@ -208,8 +208,12 @@
     "launchGameDesc": "Add a mini app to the session",
     "whiteboard": "Whiteboard",
     "whiteboardDesc": "Collaborative drawing",
-    "endWhiteboardLabel": "End Whiteboard",
-    "endWhiteboardDesc": "Close the collaborative whiteboard",
+    "endWhiteboardLabel": "End Whiteboard for All",
+    "endWhiteboardDesc": "Close the collaborative whiteboard session",
+    "viewWhiteboard": "View Active Whiteboard",
+    "viewWhiteboardDesc": "Restore board on your screen",
+    "hideWhiteboard": "Hide Whiteboard",
+    "hideWhiteboardDesc": "Hide locally (keeps active for others)",
     "quickExam": "Quick Exam",
     "quickExamDesc": "Start exam in session",
     "aiSummary": "AI Summary",
@@ -217,6 +221,17 @@
     "fileShare": "File Share",
     "fileShareDesc": "Share presentations",
     "ready": "Ready"
+  },
+  "whiteboard": {
+    "title": "Whiteboard",
+    "hideWebcams": "Hide Webcams Strip",
+    "showWebcams": "Show Webcams Strip",
+    "hideStrip": "Hide Webcams",
+    "showStrip": "Show Webcams",
+    "minimizeTooltip": "Hide from your screen (remains active for others)",
+    "endForEveryoneTooltip": "End whiteboard session for all participants",
+    "endForEveryone": "End for All",
+    "viewActiveBoard": "Whiteboard is active (View Board)"
   },
   "host": {
     "muted": "Muted {{name}}",

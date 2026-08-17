@@ -208,8 +208,12 @@
     "launchGameDesc": "افزودن میان‌برنامه به جلسه",
     "whiteboard": "وایت‌بورد",
     "whiteboardDesc": "نقاشی مشترک",
-    "endWhiteboardLabel": "پایان وایت‌بورد",
-    "endWhiteboardDesc": "بستن وایت‌بورد مشترک",
+    "endWhiteboardLabel": "پایان وایت‌بورد برای همه",
+    "endWhiteboardDesc": "بستن کامل وایت‌بورد در جلسه",
+    "viewWhiteboard": "مشاهده وایت‌بورد فعال",
+    "viewWhiteboardDesc": "نمایش مجدد تخته روی صفحه",
+    "hideWhiteboard": "بستن تخته از روی صفحه",
+    "hideWhiteboardDesc": "مخفی‌سازی محلی (برای دیگران باز می‌ماند)",
     "quickExam": "آزمون سریع",
     "quickExamDesc": "شروع آزمون در جلسه",
     "aiSummary": "خلاصه‌ی هوش مصنوعی",
@@ -217,6 +221,17 @@
     "fileShare": "اشتراک فایل",
     "fileShareDesc": "اشتراک ارائه‌ها",
     "ready": "آماده"
+  },
+  "whiteboard": {
+    "title": "وایت‌بورد",
+    "hideWebcams": "مخفی کردن نوار دوربین‌ها",
+    "showWebcams": "نمایش نوار دوربین‌ها",
+    "hideStrip": "مخفی کردن وب‌کم‌ها",
+    "showStrip": "نمایش وب‌کم‌ها",
+    "minimizeTooltip": "بستن از روی صفحه (تخته برای دیگران فعال می‌ماند)",
+    "endForEveryoneTooltip": "پایان دادن به وایت‌برد برای تمامی شرکت‌کنندگان",
+    "endForEveryone": "پایان برای همه",
+    "viewActiveBoard": "وایت‌برد فعال است (مشاهده تخته)"
   },
   "host": {
     "muted": "{{name}} بسته شد",
