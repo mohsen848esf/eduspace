@@ -43,12 +43,22 @@ export default function VideoGrid({ layout }: VideoGridProps) {
     onTogglePin,
   };
 
+  // If ANY participant (including local user) is sharing screen, force SidebarLayout
+  // so the shared screen is on the main stage and all participant cameras are in the filmstrip.
+  const screenShareTile = tiles.find((t) => t.kind === "screen");
+
   return (
     <div className="flex-1 relative flex w-full h-full overflow-hidden bg-[var(--s0)]">
-      {activeMode === "auto" && <AutoDynamicLayout {...commonProps} />}
-      {activeMode === "tiled" && <TiledGridLayout {...commonProps} />}
-      {activeMode === "spotlight" && <SpotlightLayout {...commonProps} />}
-      {activeMode === "sidebar" && <SidebarLayout {...commonProps} />}
+      {screenShareTile ? (
+        <SidebarLayout {...commonProps} pinnedKey={pinnedKey || screenShareTile.key} />
+      ) : (
+        <>
+          {activeMode === "auto" && <AutoDynamicLayout {...commonProps} />}
+          {activeMode === "tiled" && <TiledGridLayout {...commonProps} />}
+          {activeMode === "spotlight" && <SpotlightLayout {...commonProps} />}
+          {activeMode === "sidebar" && <SidebarLayout {...commonProps} />}
+        </>
+      )}
 
       {/* Adjust View Modal */}
       <AdjustViewModal

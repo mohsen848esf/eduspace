@@ -208,7 +208,7 @@ export default function Whiteboard({
 
         case "WHITEBOARD_REQUEST_STATE":
           // If we are host, respond to joiner request with current elements dictionary
-          if (isHost && fromIdentity) {
+          if (isHost) {
             broadcastWhiteboardEvent("WHITEBOARD_SYNC", {
               hostIdentity: localParticipant.identity,
               isDrawingAllowed: whiteboard.isDrawingAllowed,
