@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 
 export interface WhiteboardState {
   isActive: boolean;
+  isMinimized: boolean;
   hostIdentity: string | null;
   isDrawingAllowed: boolean;
 }
@@ -24,6 +25,7 @@ export function useWhiteboard() {
 
   const [whiteboard, setWhiteboard] = useState<WhiteboardState>({
     isActive: false,
+    isMinimized: false,
     hostIdentity: null,
     isDrawingAllowed: true, // Default to true so participants can collaborate
   });
@@ -67,6 +69,7 @@ export function useWhiteboard() {
 
     setWhiteboard({
       isActive: true,
+      isMinimized: false,
       hostIdentity: localParticipant.identity,
       isDrawingAllowed: true,
     });
@@ -83,6 +86,7 @@ export function useWhiteboard() {
 
     setWhiteboard({
       isActive: false,
+      isMinimized: false,
       hostIdentity: null,
       isDrawingAllowed: true,
     });
@@ -90,6 +94,20 @@ export function useWhiteboard() {
     await sendMessage(WHITEBOARD_MESSAGES.WHITEBOARD_END, {});
     toast("Whiteboard ended", { icon: "✏️" });
   }, [isHost, sendMessage]);
+
+  const minimizeWhiteboard = useCallback(() => {
+    setWhiteboard((prev) => ({
+      ...prev,
+      isMinimized: true,
+    }));
+  }, []);
+
+  const restoreWhiteboard = useCallback(() => {
+    setWhiteboard((prev) => ({
+      ...prev,
+      isMinimized: false,
+    }));
+  }, []);
 
   const toggleDrawingPermission = useCallback(
     async (allowed: boolean) => {
@@ -162,6 +180,7 @@ export function useWhiteboard() {
           case WHITEBOARD_MESSAGES.WHITEBOARD_LAUNCH:
             setWhiteboard({
               isActive: true,
+              isMinimized: false,
               hostIdentity: data.hostIdentity,
               isDrawingAllowed: true,
             });
@@ -171,6 +190,7 @@ export function useWhiteboard() {
           case WHITEBOARD_MESSAGES.WHITEBOARD_END:
             setWhiteboard({
               isActive: false,
+              isMinimized: false,
               hostIdentity: null,
               isDrawingAllowed: true,
             });
@@ -224,11 +244,12 @@ export function useWhiteboard() {
 
           case WHITEBOARD_MESSAGES.WHITEBOARD_SYNC: {
             // Late joiners receive the sync package
-            setWhiteboard({
+            setWhiteboard((prev) => ({
+              ...prev,
               isActive: true,
               hostIdentity: data.hostIdentity,
               isDrawingAllowed: data.isDrawingAllowed,
-            });
+            }));
 
             listenersRef.current.forEach((fn) => {
               try {
@@ -261,6 +282,8 @@ export function useWhiteboard() {
     whiteboard,
     launchWhiteboard,
     endWhiteboard,
+    minimizeWhiteboard,
+    restoreWhiteboard,
     toggleDrawingPermission,
     broadcastWhiteboardEvent,
     subscribeWhiteboardEvents,

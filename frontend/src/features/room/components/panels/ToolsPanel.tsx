@@ -21,12 +21,19 @@ import MiniAppSelectorModal from "../MiniAppSelectorModal";
 export default function ToolsPanel() {
   const { t } = useTranslation(["room", "common", "games"]);
   const { gameBoard, launchGame, endGame } = useRoomGame();
-  const { whiteboard: whiteboardState, launchWhiteboard, endWhiteboard } = useRoomWhiteboard();
+  const {
+    whiteboard: whiteboardState,
+    launchWhiteboard,
+    endWhiteboard,
+    minimizeWhiteboard,
+    restoreWhiteboard,
+  } = useRoomWhiteboard();
   const { isHost } = useRoomStore();
   const [showSelector, setShowSelector] = useState(false);
 
   const isGameActive = gameBoard.isActive;
   const isWhiteboardActive = whiteboardState.isActive;
+  const isWhiteboardMinimized = whiteboardState.isMinimized;
 
   const gameTool = isGameActive
     ? {
@@ -48,29 +55,56 @@ export default function ToolsPanel() {
         disabled: !isHost,
       };
 
-  const whiteboardTool = isWhiteboardActive
-    ? {
-        icon: "🛑",
-        name: t("tools.endWhiteboardLabel"),
-        desc: t("tools.endWhiteboardDesc"),
-        status: "ready" as const,
-        onClick: () => endWhiteboard(),
-        bg: "bg-[rgba(248,113,113,0.12)]",
-        disabled: !isHost,
-      }
-    : {
-        icon: "✏️",
-        name: t("tools.whiteboard"),
-        desc: t("tools.whiteboardDesc"),
-        status: "ready" as const,
-        onClick: () => launchWhiteboard(),
-        bg: "bg-[rgba(34,197,94,0.12)]",
-        disabled: !isHost,
-      };
+  const whiteboardTools = isWhiteboardActive
+    ? [
+        isWhiteboardMinimized
+          ? {
+              icon: "✏️",
+              name: t("tools.viewWhiteboard", "مشاهده وایت‌برد فعال"),
+              desc: t("tools.viewWhiteboardDesc", "نمایش مجدد تخته روی صفحه"),
+              status: "ready" as const,
+              onClick: () => restoreWhiteboard(),
+              bg: "bg-[rgba(34,197,94,0.15)]",
+              disabled: false,
+            }
+          : {
+              icon: "🗕",
+              name: t("tools.hideWhiteboard", "بستن تخته از روی صفحه"),
+              desc: t("tools.hideWhiteboardDesc", "مخفی‌سازی محلی (برای دیگران باز می‌ماند)"),
+              status: "ready" as const,
+              onClick: () => minimizeWhiteboard(),
+              bg: "bg-[rgba(148,163,184,0.15)]",
+              disabled: false,
+            },
+        ...(isHost
+          ? [
+              {
+                icon: "🛑",
+                name: t("tools.endWhiteboardLabel", "پایان وایت‌برد برای همه"),
+                desc: t("tools.endWhiteboardDesc", "بستن کامل تخته در جلسه"),
+                status: "ready" as const,
+                onClick: () => endWhiteboard(),
+                bg: "bg-[rgba(248,113,113,0.15)]",
+                disabled: false,
+              },
+            ]
+          : []),
+      ]
+    : [
+        {
+          icon: "✏️",
+          name: t("tools.whiteboard"),
+          desc: t("tools.whiteboardDesc"),
+          status: "ready" as const,
+          onClick: () => launchWhiteboard(),
+          bg: "bg-[rgba(34,197,94,0.12)]",
+          disabled: !isHost,
+        },
+      ];
 
   const tools = [
     gameTool,
-    whiteboardTool,
+    ...whiteboardTools,
     {
       icon: "🤖",
       name: t("tools.aiSummary"),

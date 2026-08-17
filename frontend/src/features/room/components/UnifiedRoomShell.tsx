@@ -6,7 +6,7 @@ import { type SidebarTab } from "../hooks/useRoomControls";
 import { useBreakpoint } from "../../../hooks/useBreakpoint";
 import VideoGrid from "./VideoGrid";
 import GameBoard from "./GameBoard";
-import Whiteboard from "./Whiteboard";
+import WhiteboardStageLayout from "./layout/WhiteboardStageLayout";
 import GameInviteToast from "./GameInviteToast";
 import RoomTopbar from "./RoomTopbar";
 import RoomMobileTopbar from "./RoomMobileTopbar";
@@ -143,22 +143,30 @@ export default function UnifiedRoomShell({
                 onBroadcastClassroom={game.broadcastClassroomEvent}
                 subscribeClassroomEvents={game.subscribeClassroomEvents}
               />
-            ) : whiteboard.whiteboard.isActive ? (
-              <Whiteboard
-                whiteboard={whiteboard.whiteboard}
-                onEnd={whiteboard.endWhiteboard}
-                toggleDrawingPermission={whiteboard.toggleDrawingPermission}
-                broadcastWhiteboardEvent={whiteboard.broadcastWhiteboardEvent}
-                subscribeWhiteboardEvents={whiteboard.subscribeWhiteboardEvents}
-                requestSyncState={whiteboard.requestSyncState}
-              />
+            ) : whiteboard.whiteboard.isActive && !whiteboard.whiteboard.isMinimized ? (
+              <WhiteboardStageLayout whiteboard={whiteboard} />
             ) : (
-              <VideoGrid layout={layout} onLayoutChange={onLayoutChange} />
+              <>
+                <VideoGrid layout={layout} onLayoutChange={onLayoutChange} />
+                {whiteboard.whiteboard.isActive && whiteboard.whiteboard.isMinimized && (
+                  <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 animate-in fade-in slide-in-from-top-2">
+                    <button
+                      type="button"
+                      onClick={whiteboard.restoreWhiteboard}
+                      className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-semibold shadow-2xl backdrop-blur-md border border-white/20 transition-all hover:scale-105 cursor-pointer"
+                    >
+                      <span className="text-sm">✏️</span>
+                      <span>{t("whiteboard.viewActiveBoard", "وایت‌برد فعال است (مشاهده تخته)")}</span>
+                    </button>
+                  </div>
+                )}
+              </>
             )}
             <RoomRecordingBadge
               className={
-                game.gameBoard.isActive || whiteboard.whiteboard.isActive
-                  ? "top-12 end-3"
+                game.gameBoard.isActive ||
+                (whiteboard.whiteboard.isActive && !whiteboard.whiteboard.isMinimized)
+                  ? "top-14 end-3"
                   : undefined
               }
             />

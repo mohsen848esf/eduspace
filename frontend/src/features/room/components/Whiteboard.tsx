@@ -9,13 +9,17 @@ import toast from "react-hot-toast";
 import { type CanvasElement } from "../types/whiteboard";
 import InfiniteCanvas from "./InfiniteCanvas";
 
+import { X } from "lucide-react";
+
 interface WhiteboardProps {
   whiteboard: {
     isActive: boolean;
+    isMinimized?: boolean;
     hostIdentity: string | null;
     isDrawingAllowed: boolean;
   };
   onEnd: () => void;
+  onMinimize?: () => void;
   toggleDrawingPermission: (allowed: boolean) => void;
   broadcastWhiteboardEvent: (type: string, payload: any, reliable?: boolean) => void;
   subscribeWhiteboardEvents: (fn: (type: string, payload: any, fromIdentity?: string) => void) => () => void;
@@ -55,6 +59,7 @@ const WIDTHS = [
 export default function Whiteboard({
   whiteboard,
   onEnd,
+  onMinimize,
   toggleDrawingPermission,
   broadcastWhiteboardEvent,
   subscribeWhiteboardEvents,
@@ -415,14 +420,29 @@ export default function Whiteboard({
             </button>
           </Tooltip>
 
+          {onMinimize && (
+            <Tooltip content={t("whiteboard.minimizeTooltip", "بستن از روی صفحه (تخته برای دیگران فعال می‌ماند)")}>
+              <button
+                type="button"
+                onClick={onMinimize}
+                className="w-8 h-8 rounded-lg border-none cursor-pointer flex items-center justify-center bg-[#334155] text-white hover:bg-[#475569] transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </Tooltip>
+          )}
+
           {isHost && (
-            <button
-              onClick={onEnd}
-              className="flex items-center gap-1 px-2.5 h-8 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg border-none cursor-pointer transition-colors"
-            >
-              {Icons.leave}
-              Close
-            </button>
+            <Tooltip content={t("whiteboard.endForEveryoneTooltip", "پایان دادن به وایت‌برد برای تمامی شرکت‌کنندگان")}>
+              <button
+                type="button"
+                onClick={onEnd}
+                className="flex items-center gap-1.5 px-2.5 h-8 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg border-none cursor-pointer transition-colors shadow-xs"
+              >
+                {Icons.leave}
+                <span>{t("whiteboard.endForEveryone", "پایان برای همه")}</span>
+              </button>
+            </Tooltip>
           )}
         </div>
       </div>
