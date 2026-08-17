@@ -19,16 +19,29 @@ export function RoomGameProvider({
   );
 }
 
-/**
- * Access the shared game state inside RoomContent.
- *
- * Calling this outside a RoomGameProvider throws — use it only inside
- * the room subtree (RoomTopbar / VideoGrid / RoomSidebar / GameBoard).
- */
+const defaultGameContext: RoomGameContextValue = {
+  gameBoard: {
+    isActive: false,
+    gameId: null,
+    gameUrl: null,
+    gameTitle: null,
+    hostIdentity: null,
+    acceptedParticipants: [],
+    scores: {},
+    classroomState: undefined,
+  },
+  pendingInvite: null,
+  launchGame: async () => {},
+  acceptGame: async () => {},
+  declineGame: () => {},
+  endGame: async () => {},
+  relayScore: async () => {},
+  broadcastClassroomEvent: async () => {},
+  subscribeClassroomEvents: () => () => {},
+  handleDataMessage: () => {},
+};
+
 export function useRoomGame(): RoomGameContextValue {
   const ctx = useContext(RoomGameContext);
-  if (!ctx) {
-    throw new Error("useRoomGame must be used within a RoomGameProvider");
-  }
-  return ctx;
+  return ctx || defaultGameContext;
 }

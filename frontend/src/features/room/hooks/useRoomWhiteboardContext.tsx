@@ -19,12 +19,27 @@ export function RoomWhiteboardProvider({
   );
 }
 
+const defaultWhiteboardState = {
+  isActive: false,
+  isMinimized: false,
+  hostIdentity: null,
+  isDrawingAllowed: true,
+};
+
+const defaultWhiteboardContext: RoomWhiteboardContextValue = {
+  whiteboard: defaultWhiteboardState,
+  launchWhiteboard: async () => {},
+  endWhiteboard: async () => {},
+  minimizeWhiteboard: () => {},
+  restoreWhiteboard: () => {},
+  toggleDrawingPermission: async () => {},
+  broadcastWhiteboardEvent: async () => {},
+  subscribeWhiteboardEvents: () => () => {},
+  handleDataMessage: () => {},
+  requestSyncState: async () => {},
+};
+
 export function useRoomWhiteboard(): RoomWhiteboardContextValue {
   const ctx = useContext(RoomWhiteboardContext);
-  if (!ctx) {
-    throw new Error(
-      "useRoomWhiteboard must be used within a RoomWhiteboardProvider"
-    );
-  }
-  return ctx;
+  return ctx || defaultWhiteboardContext;
 }
