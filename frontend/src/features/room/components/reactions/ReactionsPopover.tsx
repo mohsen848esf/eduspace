@@ -64,8 +64,9 @@ export default function ReactionsPopover({
     >
       <div
         className={cn(
-          "flex items-center gap-1.5 p-2 rounded-full backdrop-blur-2xl shadow-2xl border",
-          "bg-[#0f172a]/95 dark:bg-[#0f172a]/95 border-white/20 text-white"
+          "flex items-center gap-1.5 p-1.5 md:p-2 rounded-full backdrop-blur-2xl shadow-2xl border",
+          "bg-[#0f172a]/95 dark:bg-[#0f172a]/95 border-white/20 text-white",
+          "max-w-[calc(100vw-1.5rem)] overflow-x-auto scrollbar-none touch-pan-x"
         )}
         style={{
           boxShadow: "0 20px 40px -10px rgba(0,0,0,0.6), 0 0 20px rgba(99,102,241,0.25)",
