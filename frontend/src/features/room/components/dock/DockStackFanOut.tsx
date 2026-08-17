@@ -161,23 +161,27 @@ export default function DockStackFanOut({
       ? "w-11 h-11 min-w-11 rounded-xl text-lg"
       : "w-12 h-12 min-w-12 rounded-xl text-xl";
 
-  // Direction multiplier: RTL fans left (-1), LTR fans right (+1)
-  const dirFactor = isRtl ? -1 : 1;
+  // Inward direction multiplier:
+  // In RTL: dock is on bottom-left, so fan RIGHT (+1) into screen center
+  // In LTR: dock is on bottom-right, so fan LEFT (-1) into screen center
+  const dirFactor = isRtl ? 1 : -1;
 
-  // Slant rotation angle: RTL (+10deg), LTR (-10deg)
-  const rotationAngle = isRtl ? 10 : -10;
+  // Slant rotation angle:
+  // In RTL: fanning right -> -10deg
+  // In LTR: fanning left -> +10deg
+  const rotationAngle = isRtl ? -10 : 10;
 
   // Origin point of the SVG branches anchor
-  const originX = isRtl ? 260 : 60;
+  const originX = isRtl ? 20 : 265;
   const originY = 265;
 
   return (
     <div ref={containerRef} className="relative select-none inline-flex items-center">
-      {/* ── Slanted Fan-Out Container (Zero Viewport Clipping) ── */}
+      {/* ── Slanted Fan-Out Container (Inward In-Viewport Trajectory) ── */}
       <div
         className={cn(
           "absolute bottom-full mb-3 pointer-events-none z-50",
-          isRtl ? "right-0" : "left-0",
+          isRtl ? "left-0" : "right-0",
           isOpen ? "pointer-events-auto" : "invisible"
         )}
         style={{
@@ -191,7 +195,7 @@ export default function DockStackFanOut({
           <svg
             className={cn(
               "absolute bottom-0 w-[320px] h-[280px] overflow-visible pointer-events-none -z-10",
-              isRtl ? "-right-4" : "-left-4"
+              isRtl ? "-left-4" : "-right-4"
             )}
             style={{
               filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.15))",
@@ -202,13 +206,13 @@ export default function DockStackFanOut({
               // i = 0 is Top (Whiteboard), i = 4 is Bottom (All Tools)
               const cardOffsetY = 210 - i * 44;
               const cardOffsetX = isRtl
-                ? 135 - (4 - i) * 12
-                : 185 + (4 - i) * 12;
+                ? 175 + (4 - i) * 12
+                : 115 - (4 - i) * 12;
 
               // Control points for organic branch curve
-              const ctrl1X = originX + dirFactor * (20 + (4 - i) * 10);
-              const ctrl1Y = originY - (20 + (4 - i) * 20);
-              const ctrl2X = cardOffsetX - dirFactor * 30;
+              const ctrl1X = originX + dirFactor * (25 + (4 - i) * 10);
+              const ctrl1Y = originY - (30 + (4 - i) * 20);
+              const ctrl2X = cardOffsetX - dirFactor * 35;
               const ctrl2Y = cardOffsetY + 15;
 
               const isHovered = hoveredIdx === i;
@@ -239,7 +243,7 @@ export default function DockStackFanOut({
 
             // Geometry: i = 0 (top) down to i = 4 (bottom)
             const translateY = isOpen ? -(45 + (4 - i) * 44) : 0;
-            const translateX = isOpen ? dirFactor * (32 + (4 - i) * 14) : 0;
+            const translateX = isOpen ? dirFactor * (28 + (4 - i) * 12) : 0;
 
             const scale = isOpen ? (isHovered ? 1.06 : 1) : 0.4;
             const opacity = isOpen ? 1 : 0;
@@ -254,7 +258,7 @@ export default function DockStackFanOut({
                   transform: `translate3d(${translateX}px, ${translateY}px, ${
                     isHovered ? 25 : 0
                   }px) rotateZ(${rotationAngle}deg) scale(${scale})`,
-                  transformOrigin: isRtl ? "bottom right" : "bottom left",
+                  transformOrigin: isRtl ? "bottom left" : "bottom right",
                   transitionDuration: isOpen ? "340ms" : "220ms",
                   transitionTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)",
                   transitionDelay: delay,
