@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "../../../../lib/utils";
 import { Tooltip } from "../../../../components/ui/Tooltip";
+import { Icons } from "../../../../lib/constants/icons";
 import { useRoomWhiteboard } from "../../hooks/useRoomWhiteboardContext";
 import { useRoomStore } from "../../store/roomStore";
 
@@ -18,10 +19,11 @@ interface StackItem {
   id: string;
   labelKey: string;
   defaultLabel: string;
-  icon: string;
+  icon: string | React.ReactNode;
   badge?: string;
   color: string;
   bgGradient: string;
+  subLabel: string;
   action: () => void;
 }
 
@@ -36,6 +38,7 @@ export default function DockStackFanOut({
   const { t } = useTranslation("room");
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [isPeekHovered, setIsPeekHovered] = useState(false);
 
   const {
     whiteboard,
@@ -108,15 +111,21 @@ export default function DockStackFanOut({
     }
   }, [onOpenMiniApps, onOpenPanel, onClose]);
 
+  // Primary top tools + Summary card for remaining tools
   const stackItems: StackItem[] = [
     {
       id: "whiteboard",
       labelKey: "tools.whiteboard",
       defaultLabel: "تخته وایت‌برد هوشمند",
       icon: "✏️",
-      badge: whiteboard.isActive ? (whiteboard.isMinimized ? "فعال (کوچک)" : "در حال نمایش") : undefined,
+      badge: whiteboard.isActive
+        ? whiteboard.isMinimized
+          ? "فعال (کوچک)"
+          : "در حال نمایش"
+        : undefined,
       color: "#10b981",
       bgGradient: "from-emerald-500/30 to-teal-600/30",
+      subLabel: "تخته تعاملی و ترسیم",
       action: handleWhiteboardAction,
     },
     {
@@ -126,6 +135,7 @@ export default function DockStackFanOut({
       icon: "🎮",
       color: "#8b5cf6",
       bgGradient: "from-purple-500/30 to-indigo-600/30",
+      subLabel: "بازی‌های کلاسی و آموزشی",
       action: handleMiniAppsAction,
     },
     {
@@ -135,30 +145,20 @@ export default function DockStackFanOut({
       icon: "📊",
       color: "#f59e0b",
       bgGradient: "from-amber-500/30 to-orange-600/30",
+      subLabel: "سنجش و کوئیز لحظه‌ای",
       action: () => {
         onClose();
         onOpenPanel("tools");
       },
     },
     {
-      id: "timer",
-      labelKey: "tools.focusTimer",
-      defaultLabel: "تایمر و زمان‌سنج تمرکز",
-      icon: "⏱️",
-      color: "#38bdf8",
-      bgGradient: "from-sky-500/30 to-blue-600/30",
-      action: () => {
-        onClose();
-        onOpenPanel("tools");
-      },
-    },
-    {
-      id: "all_tools",
-      labelKey: "tools.allTools",
-      defaultLabel: "تمامی ابزارها و فعالیت‌ها",
+      id: "more_tools",
+      labelKey: "tools.moreToolsCount",
+      defaultLabel: "+۲ ابزار دیگر (مشاهده همه)",
       icon: "🧰",
       color: "#ec4899",
       bgGradient: "from-pink-500/30 to-rose-600/30",
+      subLabel: "تایمر، نظرسنجی و امکانات",
       action: () => {
         onClose();
         onOpenPanel("tools");
@@ -175,112 +175,85 @@ export default function DockStackFanOut({
       ? "w-11 h-11 min-w-11 rounded-xl text-lg"
       : "w-12 h-12 min-w-12 rounded-xl text-xl";
 
-  // Direction factor: In RTL curve right (+), In LTR curve left (-)
-  const dirFactor = isRtl ? 1 : -1;
-
   return (
     <div ref={containerRef} className="relative select-none inline-flex items-center">
-      {/* ── Active Whiteboard Floating Pill (when minimized) ── */}
+      {/* ── Active Whiteboard Semi-Open Peek Card (when minimized & stack closed) ── */}
       {whiteboard.isActive && whiteboard.isMinimized && !isOpen && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-30 animate-bounce-subtle pointer-events-auto">
-          <Tooltip content={t("whiteboard.viewActiveBoard", "وایت‌برد فعال (باز کردن)")}>
-            <button
-              type="button"
-              onClick={restoreWhiteboard}
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border shadow-lg cursor-pointer whitespace-nowrap transition-all",
-                "bg-emerald-950/90 hover:bg-emerald-900 border-emerald-500/60 text-emerald-200 shadow-emerald-500/20"
-              )}
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>✏️ {t("tools.whiteboard", "وایت‌برد")}</span>
-            </button>
-          </Tooltip>
+        <div
+          className={cn(
+            "absolute bottom-full mb-2 z-40 transition-all duration-300 ease-out cursor-pointer",
+            isRtl ? "right-0" : "left-0",
+            isPeekHovered
+              ? "transform -translate-y-2 scale-105"
+              : "transform translate-y-0 scale-100"
+          )}
+          onMouseEnter={() => setIsPeekHovered(true)}
+          onMouseLeave={() => setIsPeekHovered(false)}
+          onClick={restoreWhiteboard}
+        >
+          <div
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-2xl backdrop-blur-2xl border shadow-xl transition-all duration-300",
+              "bg-[#064e3b]/95 hover:bg-[#065f46] border-emerald-400/50 text-white",
+              isPeekHovered
+                ? "shadow-[0_0_20px_rgba(16,185,129,0.45)] ring-2 ring-emerald-400/40"
+                : "shadow-lg"
+            )}
+            style={{ minWidth: isPeekHovered ? "180px" : "140px" }}
+          >
+            <div className="relative flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-500/30 text-sm">
+              <span>✏️</span>
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            </div>
+
+            <div className="flex flex-col text-start overflow-hidden">
+              <span className="text-[11px] font-bold text-emerald-100 truncate">
+                {t("tools.whiteboard", "تخته وایت‌برد")}
+              </span>
+              <span className="text-[9px] text-emerald-300/80 truncate">
+                {isPeekHovered
+                  ? t("whiteboard.clickToOpen", "کلیک برای باز کردن")
+                  : t("whiteboard.activeBoard", "در حال اجرا")}
+              </span>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* ── 3D Arc Fan-out Container ── */}
+      {/* ── Vertical Clean-Anchored Stack Container (Zero Clipping) ── */}
       <div
         className={cn(
           "absolute bottom-full mb-3 pointer-events-none z-50",
-          isRtl ? "left-0" : "right-0",
+          isRtl ? "right-0" : "left-0",
           isOpen ? "pointer-events-auto" : "invisible"
         )}
-        style={{ perspective: "1000px" }}
+        style={{ perspective: "800px" }}
       >
-        {/* SVG Connecting Arc Trajectories */}
-        {isOpen && (
-          <svg
-            className={cn(
-              "absolute bottom-0 w-64 h-96 overflow-visible pointer-events-none -z-10",
-              isRtl ? "left-4" : "right-4"
-            )}
-            style={{ filter: "drop-shadow(0 0 8px rgba(99, 102, 241, 0.4))" }}
-          >
-            {stackItems.map((_, i) => {
-              const progress = (i + 1) / totalItems;
-              const endY = -(65 + i * 54);
-              const endX = dirFactor * Math.sin(progress * Math.PI * 0.45) * 32;
-              const ctrlX = endX * 0.4;
-              const ctrlY = endY * 0.6;
-
-              return (
-                <path
-                  key={i}
-                  d={`M ${isRtl ? 16 : 240} 384 Q ${
-                    (isRtl ? 16 : 240) + ctrlX
-                  } ${384 + ctrlY}, ${(isRtl ? 16 : 240) + endX} ${384 + endY}`}
-                  fill="none"
-                  stroke={
-                    hoveredIdx === i
-                      ? "rgba(99, 102, 241, 0.85)"
-                      : "rgba(255, 255, 255, 0.18)"
-                  }
-                  strokeWidth={hoveredIdx === i ? "2" : "1.2"}
-                  strokeDasharray={hoveredIdx === i ? "none" : "3 3"}
-                  className="transition-all duration-300"
-                />
-              );
-            })}
-          </svg>
-        )}
-
-        {/* Fanned Out Items */}
         <div
           className={cn(
             "relative flex flex-col",
-            isRtl ? "items-start" : "items-end"
+            isRtl ? "items-end" : "items-start"
           )}
         >
           {stackItems.map((item, i) => {
             const isHovered = hoveredIdx === i;
-            const progress = (i + 1) / totalItems;
-
-            // Physics calculations for inward curving 3D Arc:
-            const translateY = isOpen ? -(68 + i * 54) : 0;
-            const translateX = isOpen
-              ? dirFactor * Math.sin(progress * Math.PI * 0.45) * 30
-              : 0;
-            const rotateZ = isOpen
-              ? dirFactor * -Math.sin(progress * Math.PI * 0.45) * 5
-              : 0;
-            const rotateX = isOpen ? 8 - i * 1.5 : 0;
-            const rotateY = isOpen ? dirFactor * (-5 + i * 1.2) : 0;
-            const scale = isOpen ? (isHovered ? 1.12 : 1 - i * 0.015) : 0.4;
+            const translateY = isOpen ? -(58 + i * 52) : 0;
+            const scale = isOpen ? (isHovered ? 1.08 : 1 - i * 0.02) : 0.4;
+            const rotateX = isOpen ? 6 - i * 1.5 : 0;
             const opacity = isOpen ? 1 : 0;
             const zIndex = isHovered ? 60 : 50 - i;
-            const delay = isOpen ? `${i * 35}ms` : `${(totalItems - i) * 20}ms`;
+            const delay = isOpen ? `${i * 30}ms` : `${(totalItems - i) * 15}ms`;
 
             return (
               <div
                 key={item.id}
                 className="absolute bottom-0 transition-all cursor-pointer"
                 style={{
-                  transform: `translate3d(${translateX}px, ${translateY}px, ${
-                    isHovered ? 35 : 0
-                  }px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) rotateZ(${rotateZ}deg) scale(${scale})`,
-                  transformOrigin: isRtl ? "bottom left" : "bottom right",
-                  transitionDuration: isOpen ? "380ms" : "220ms",
+                  transform: `translate3d(0, ${translateY}px, ${
+                    isHovered ? 25 : 0
+                  }px) rotateX(${rotateX}deg) scale(${scale})`,
+                  transformOrigin: isRtl ? "bottom right" : "bottom left",
+                  transitionDuration: isOpen ? "320ms" : "200ms",
                   transitionTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)",
                   transitionDelay: delay,
                   opacity,
@@ -292,18 +265,18 @@ export default function DockStackFanOut({
               >
                 <div
                   className={cn(
-                    "flex items-center gap-3 p-1.5 pr-3 pl-2 rounded-2xl backdrop-blur-xl border transition-all duration-200 shadow-2xl group",
+                    "flex items-center gap-3 p-1.5 px-3 rounded-2xl backdrop-blur-2xl border transition-all duration-200 shadow-xl group",
                     "bg-[#0f172a]/95 hover:bg-[#1e293b] text-white",
                     isHovered
                       ? "border-indigo-400/80 shadow-[0_0_25px_rgba(99,102,241,0.5)] ring-2 ring-indigo-400/30"
                       : "border-white/15 hover:border-white/30"
                   )}
-                  style={{ minWidth: "185px", maxWidth: "220px" }}
+                  style={{ minWidth: "195px", maxWidth: "230px" }}
                 >
-                  {/* Icon with Glowing Gradient Frame */}
+                  {/* Icon */}
                   <div
                     className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center text-xl bg-gradient-to-br shadow-inner border border-white/10 transition-transform duration-200 flex-shrink-0",
+                      "w-9 h-9 rounded-xl flex items-center justify-center text-lg bg-gradient-to-br shadow-inner border border-white/10 transition-transform duration-200 flex-shrink-0",
                       item.bgGradient,
                       isHovered && "scale-110"
                     )}
@@ -317,20 +290,12 @@ export default function DockStackFanOut({
                       {t(item.labelKey, item.defaultLabel)}
                     </span>
                     {item.badge ? (
-                      <span className="text-[10px] font-semibold text-emerald-400 animate-pulse">
+                      <span className="text-[10px] font-semibold text-emerald-400 animate-pulse truncate">
                         {item.badge}
                       </span>
                     ) : (
                       <span className="text-[10px] text-gray-400 group-hover:text-gray-300 truncate">
-                        {item.id === "whiteboard"
-                          ? "تخته مشارکتی"
-                          : item.id === "miniapps"
-                          ? "بازی و ابزارک"
-                          : item.id === "quiz"
-                          ? "سنجش کلاسی"
-                          : item.id === "timer"
-                          ? "مدیریت زمان"
-                          : "امکانات تکمیلی"}
+                        {item.subLabel}
                       </span>
                     )}
                   </div>
@@ -341,7 +306,7 @@ export default function DockStackFanOut({
         </div>
       </div>
 
-      {/* ── Trigger Button in the Dock (Identical size & alignment to ControlButton) ── */}
+      {/* ── Trigger Button in the Dock (Standard Tools Icon & Exact Sizing) ── */}
       <Tooltip
         content={
           isOpen
@@ -362,25 +327,9 @@ export default function DockStackFanOut({
               : "bg-[var(--s2)] text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]"
           )}
         >
-          {/* Layered Stack Visual */}
-          <span className="relative flex items-center justify-center">
-            <span
-              className={cn(
-                "absolute -top-1.5 w-5 h-3 rounded-xs bg-white/20 border border-white/10 transition-transform duration-200",
-                isOpen
-                  ? "-translate-y-1 scale-90 rotate-[-6deg]"
-                  : "group-hover:-translate-y-0.5 group-hover:rotate-[-3deg]"
-              )}
-            />
-            <span
-              className={cn(
-                "absolute -top-0.5 w-6 h-3.5 rounded-xs bg-white/30 border border-white/15 transition-transform duration-200",
-                isOpen
-                  ? "-translate-y-0.5 scale-95 rotate-[-3deg]"
-                  : "group-hover:-translate-y-0.5"
-              )}
-            />
-            <span className="text-lg relative z-10">✦</span>
+          {/* Standard Clean Tools Icon */}
+          <span className="flex items-center justify-center">
+            {Icons.tools}
           </span>
 
           {/* Active Indicator Dot */}

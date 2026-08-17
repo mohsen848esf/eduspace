@@ -20,9 +20,10 @@ export function useReactions() {
   const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const spawnParticles = useCallback((emoji: string, senderName: string, senderIdentity: string) => {
-    // Generate a mini burst of 2 to 4 particles with slight variance
-    const count = 3;
-    const baseOriginX = 15 + Math.random() * 70; // 15% to 85% of screen width
+    // Google Meet style: 1-2 emojis per click in a continuous upward stream
+    const count = Math.random() > 0.6 ? 2 : 1;
+    // Anchor stream around center-bottom with organic spread (35% to 65%)
+    const baseOriginX = 40 + Math.random() * 20;
 
     const newParticles: ReactionParticle[] = Array.from({ length: count }, (_, idx) => {
       const id = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}-${idx}`;
@@ -31,22 +32,22 @@ export function useReactions() {
         emoji,
         senderName,
         senderIdentity,
-        x: Math.max(10, Math.min(90, baseOriginX + (Math.random() * 12 - 6))),
-        speed: 2.2 + Math.random() * 0.8,
-        scale: 0.85 + Math.random() * 0.45,
-        swayAmount: (Math.random() > 0.5 ? 1 : -1) * (15 + Math.random() * 25),
-        rotation: (Math.random() - 0.5) * 30,
+        x: Math.max(15, Math.min(85, baseOriginX + (Math.random() * 16 - 8))),
+        speed: 2.2 + Math.random() * 0.6,
+        scale: 0.9 + Math.random() * 0.35,
+        swayAmount: (Math.random() > 0.5 ? 1 : -1) * (18 + Math.random() * 22),
+        rotation: (Math.random() - 0.5) * 24,
       };
     });
 
-    setParticles((prev) => [...prev.slice(-30), ...newParticles]);
+    setParticles((prev) => [...prev.slice(-40), ...newParticles]);
 
-    // Schedule auto removal after animation finishes (~2800ms)
+    // Schedule auto removal after animation finishes (~2600ms)
     newParticles.forEach((p) => {
       const timeout = setTimeout(() => {
         setParticles((prev) => prev.filter((item) => item.id !== p.id));
         timeoutsRef.current.delete(p.id);
-      }, 2800);
+      }, 2600);
       timeoutsRef.current.set(p.id, timeout);
     });
   }, []);

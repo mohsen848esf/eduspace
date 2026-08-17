@@ -78,12 +78,11 @@ export default function ReactionsPopover({
             title={label}
             onClick={() => {
               onSelectEmoji(emoji);
-              onClose();
             }}
             className={cn(
               "w-10 h-10 rounded-full flex items-center justify-center text-2xl",
               "border-none bg-transparent cursor-pointer transition-all duration-150 transform-gpu",
-              "hover:scale-135 hover:-translate-y-1 hover:bg-white/15 active:scale-95",
+              "hover:scale-135 hover:-translate-y-1 hover:bg-white/15 active:scale-90",
               "focus:outline-hidden"
             )}
           >

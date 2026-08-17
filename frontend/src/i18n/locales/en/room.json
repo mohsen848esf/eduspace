@@ -233,7 +233,9 @@
     "minimizeTooltip": "Hide from your screen (remains active for others)",
     "endForEveryoneTooltip": "End whiteboard session for all participants",
     "endForEveryone": "End for All",
-    "viewActiveBoard": "Whiteboard is active (View Board)"
+    "viewActiveBoard": "Whiteboard is active (View Board)",
+    "clickToOpen": "Click to maximize",
+    "activeBoard": "Active in session"
   },
   "host": {
     "muted": "Muted {{name}}",
@@ -273,9 +275,10 @@
     "whiteboard": "Interactive Whiteboard",
     "miniApps": "Mini Apps & Games",
     "quickQuiz": "Quick Quiz & Poll",
+    "moreToolsCount": "+2 More Tools (View All)",
     "focusTimer": "Focus Timer & Clock",
     "allTools": "All Tools & Activities",
-    "stackTooltip": "Class Tools & Activities (macOS Stack View)",
+    "stackTooltip": "Class Tools & Activities",
     "closeStack": "Close Tools Stack"
   }
 }
