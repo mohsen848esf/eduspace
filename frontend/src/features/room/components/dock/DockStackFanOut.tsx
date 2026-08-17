@@ -34,6 +34,7 @@ export default function DockStackFanOut({
   const { t } = useTranslation("room");
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [isPinnedHovered, setIsPinnedHovered] = useState(false);
 
   const {
     whiteboard,
@@ -177,6 +178,85 @@ export default function DockStackFanOut({
 
   return (
     <div ref={containerRef} className="relative select-none inline-flex items-center">
+      {/* ── Pinned Active Whiteboard Card (when whiteboard is active & stack closed) ── */}
+      {whiteboard.isActive && !isOpen && (
+        <div
+          className={cn(
+            "absolute bottom-full mb-3 pointer-events-auto z-40 transition-all duration-300 cursor-pointer",
+            isRtl ? "left-0" : "right-0"
+          )}
+          style={{
+            transform: `translate3d(${dirFactor * 24}px, -6px, 0) rotateZ(${rotationAngle}deg) scale(${
+              isPinnedHovered ? 1.06 : 1
+            })`,
+            transformOrigin: isRtl ? "bottom left" : "bottom right",
+          }}
+          onMouseEnter={() => setIsPinnedHovered(true)}
+          onMouseLeave={() => setIsPinnedHovered(false)}
+          onClick={restoreWhiteboard}
+        >
+          {/* Connecting Mini Curved SVG Line */}
+          <svg
+            className={cn(
+              "absolute bottom-0 w-24 h-16 overflow-visible pointer-events-none -z-10",
+              isRtl ? "-left-2" : "-right-2"
+            )}
+          >
+            <path
+              d={`M ${isRtl ? 10 : 86} 60 Q ${isRtl ? 20 : 76} 30, ${
+                isRtl ? 50 : 46
+              } 10`}
+              fill="none"
+              stroke={
+                isPinnedHovered
+                  ? "rgba(16, 185, 129, 0.95)"
+                  : "rgba(16, 185, 129, 0.6)"
+              }
+              strokeWidth={isPinnedHovered ? "2.5" : "1.5"}
+              strokeLinecap="round"
+              className="transition-all duration-200"
+            />
+          </svg>
+
+          <Tooltip
+            content={
+              whiteboard.isMinimized
+                ? t("whiteboard.viewActiveBoard", "وایت‌برد در حال اجرا (کلیک برای باز کردن)")
+                : t("whiteboard.title", "تخته وایت‌برد فعال")
+            }
+          >
+            <div
+              className={cn(
+                "flex items-center gap-2.5 px-3.5 py-2 rounded-2xl transition-all duration-200 shadow-xl border select-none",
+                "bg-[#064e3b]/95 hover:bg-[#065f46] text-white border-emerald-500/60",
+                isPinnedHovered
+                  ? "shadow-[0_10px_28px_rgba(16,185,129,0.55)] ring-2 ring-emerald-400"
+                  : "shadow-lg shadow-emerald-950/40"
+              )}
+              style={{ minWidth: "185px", maxWidth: "230px" }}
+            >
+              {/* Pulsing Icon */}
+              <div className="relative flex items-center justify-center text-lg flex-shrink-0">
+                <span>✏️</span>
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              </div>
+
+              {/* Text & Active Badge */}
+              <div className="flex flex-col text-start overflow-hidden">
+                <span className="text-xs font-bold text-emerald-100 truncate">
+                  {t("tools.whiteboard", "تخته وایت‌برد")}
+                </span>
+                <span className="text-[10px] text-emerald-300 font-medium truncate">
+                  {whiteboard.isMinimized
+                    ? t("whiteboard.clickToOpen", "کلیک برای باز کردن")
+                    : t("whiteboard.activeBoard", "در حال اجرا")}
+                </span>
+              </div>
+            </div>
+          </Tooltip>
+        </div>
+      )}
+
       {/* ── Slanted Fan-Out Container (Inward In-Viewport Trajectory) ── */}
       <div
         className={cn(
