@@ -46,19 +46,7 @@ export default function PreJoinScreen({
     () => isAuthenticated ? "" : (localStorage.getItem("eduspace_guest_name") || ""),
   );
 
-  // Hook 1: LiveKit Video Track & Background Effects
-  const {
-    background: selectedBg,
-    isLoading: bgLoading,
-    isSupported: bgSupported,
-    attachToVideo,
-    changeBackground,
-    stopTrack,
-    cameraError,
-  } = usePreJoinTrack();
-
-
-  // Hook 2: Media Devices & Audio Diagnostic
+  // Hook 1: Media Devices & Audio Diagnostic
   const {
     microphones,
     cameras,
@@ -75,6 +63,17 @@ export default function PreJoinScreen({
     playSpeakerTestSound,
     isPlayingTestSound,
   } = usePreJoinMedia(micEnabled);
+
+  // Hook 2: LiveKit Video Track & Background Effects
+  const {
+    background: selectedBg,
+    isLoading: bgLoading,
+    isSupported: bgSupported,
+    attachToVideo,
+    changeBackground,
+    stopTrack,
+    cameraError,
+  } = usePreJoinTrack(camEnabled, selectedCam);
 
   // Hook 3: Room Info & Participants
   const { roomInfo } = usePreJoinRoomInfo(roomCode);

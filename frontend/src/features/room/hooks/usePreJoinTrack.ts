@@ -17,7 +17,7 @@ const BG_IMAGES: Partial<Record<BackgroundType, string>> = {
     "https://images.unsplash.com/photo-1557683316-973673baf926?w=1280&q=80",
 };
 
-export function usePreJoinTrack() {
+export function usePreJoinTrack(camEnabled: boolean = true, selectedCam?: string) {
   const { language } = useLocale();
   const [track, setTrack] = useState<LocalVideoTrack | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -25,16 +25,38 @@ export function usePreJoinTrack() {
   const { background, setBackground } = useBackgroundStore();
   const [isSupported] = useState(() => supportsBackgroundProcessors());
   const processorRef = useRef<any>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  // Create track on mount
+  const retryCamera = useCallback(() => {
+    setRetryCount((prev) => prev + 1);
+  }, []);
+
+  // Manage camera track lifecycle reactively
   useEffect(() => {
     let cancelled = false;
     let localTrack: LocalVideoTrack | null = null;
 
+    if (!camEnabled) {
+      setCameraError(null);
+      if (track) {
+        track.stopProcessor().catch(() => {});
+        track.mediaStreamTrack?.stop();
+        track.stop();
+        setTrack(null);
+      }
+      return;
+    }
+
     const init = async () => {
       try {
-        setCameraError(null);
-        const t = await createLocalVideoTrack({ facingMode: "user" });
+        const options: Parameters<typeof createLocalVideoTrack>[0] = {
+          facingMode: "user",
+        };
+        if (selectedCam) {
+          options.deviceId = selectedCam;
+        }
+
+        const t = await createLocalVideoTrack(options);
         if (cancelled) {
           t.stopProcessor().catch(() => {});
           t.mediaStreamTrack?.stop();
@@ -42,8 +64,10 @@ export function usePreJoinTrack() {
           return;
         }
         localTrack = t;
+        setCameraError(null);
         setTrack(t);
       } catch (err: any) {
+        if (cancelled) return;
         console.warn("Camera init warning (prejoin):", err);
         const isBusy =
           err?.name === "NotReadableError" ||
@@ -52,6 +76,7 @@ export function usePreJoinTrack() {
           err?.message?.toLowerCase?.()?.includes("in use") ||
           err?.message?.toLowerCase?.()?.includes("could not start video source");
         setCameraError(isBusy ? "busy" : "unavailable");
+        setTrack(null);
       }
     };
 
@@ -65,7 +90,22 @@ export function usePreJoinTrack() {
         localTrack.stop();
       }
     };
-  }, []);
+  }, [camEnabled, selectedCam, retryCount]);
+
+  // Auto-retry polling when camera is busy and user wants camera on
+  useEffect(() => {
+    if (!camEnabled || cameraError !== "busy" || track) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      retryCamera();
+    }, 2500);
+
+    return () => {
+      clearInterval(timer);
+    };
+  }, [camEnabled, cameraError, track, retryCamera]);
 
   const videoElRef = useRef<HTMLVideoElement | null>(null);
 
@@ -104,14 +144,8 @@ export function usePreJoinTrack() {
   const changeBackground = useCallback(
     async (bg: BackgroundType) => {
       if (!track || !isSupported) {
-        // console.log("No track or not supported:", {
-        //   track: !!track,
-        //   isSupported,
-        // });
         return;
       }
-      // console.log("Applying background:", bg);
-      // console.log("Track state:", track.mediaStreamTrack?.readyState);
 
       setBackground(bg);
       setIsLoading(true);
@@ -128,13 +162,11 @@ export function usePreJoinTrack() {
 
         // Check track is still live
         if (track.mediaStreamTrack.readyState !== "live") {
-          // console.error("Track not live:", track.mediaStreamTrack.readyState);
           return;
         }
 
         const { BackgroundProcessor } =
           await import("@livekit/track-processors");
-        // console.log("BackgroundProcessor imported");
 
         let processor;
         if (bg === "blur") {
@@ -144,8 +176,6 @@ export function usePreJoinTrack() {
           });
         } else {
           const imageUrl = BG_IMAGES[bg];
-          // console.log("Image URL:", imageUrl);
-
           if (!imageUrl) return;
           processor = BackgroundProcessor({
             mode: "virtual-background",
@@ -154,7 +184,6 @@ export function usePreJoinTrack() {
         }
 
         // Timeout to keep the processor swap from hanging the call.
-
         await Promise.race([
           track.setProcessor(processor),
           new Promise<void>((_, reject) =>
@@ -166,7 +195,6 @@ export function usePreJoinTrack() {
       } catch (err) {
         console.error("Background error:", err);
         processorRef.current = null;
-        // Reset to "none" if the processor swap failed.
         setBackground("none");
         
         const isFarsi = language === "fa";
@@ -179,8 +207,9 @@ export function usePreJoinTrack() {
         setIsLoading(false);
       }
     },
-    [track, isSupported, setBackground],
+    [track, isSupported, setBackground, language],
   );
+
   const trackRef = useRef<LocalVideoTrack | null>(null);
   useEffect(() => {
     trackRef.current = track;
@@ -197,6 +226,7 @@ export function usePreJoinTrack() {
       }
     };
   }, []);
+
   // Explicitly release track before joining room
   const stopTrack = useCallback(async () => {
     if (track) {
@@ -225,5 +255,6 @@ export function usePreJoinTrack() {
     attachToVideo,
     changeBackground,
     stopTrack,
+    retryCamera,
   };
 }
