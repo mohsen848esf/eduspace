@@ -9,6 +9,7 @@ import {
   Settings,
   FlipHorizontal,
   Volume2,
+  VideoOff as CameraOffIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Spinner from "@/components/ui/Spinner";
@@ -74,7 +75,7 @@ export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
     <div className="relative w-full aspect-video bg-[var(--s2)] rounded-3xl overflow-hidden border border-[var(--b)] shadow-2xl flex items-center justify-center group">
       {/* 1. Camera Active Feed */}
       {camEnabled ? (
-        <>
+              <>
           <video
             ref={videoRefCallback}
             autoPlay
@@ -82,9 +83,27 @@ export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
             playsInline
             className={cn(
               "absolute inset-0 w-full h-full object-cover transition-transform duration-300",
-              isMirrored ? "scale-x-[-1]" : "scale-x-100"
+              isMirrored ? "scale-x-[-1]" : "scale-x-100",
+              // Hide the black video element when we have a camera error
+              cameraError ? "opacity-0" : "opacity-100"
             )}
           />
+
+          {/* Camera Error Overlay — shown when track couldn't be acquired */}
+          {cameraError && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[var(--s3)] via-[var(--s2)] to-[var(--s1)] z-10 animate-in fade-in p-6">
+              <div className="flex flex-col items-center gap-3 text-center max-w-xs">
+                <div className="w-16 h-16 rounded-2xl bg-[var(--red)]/15 flex items-center justify-center">
+                  <CameraOffIcon className="w-8 h-8 text-[var(--red)]" />
+                </div>
+                <p className="text-sm font-semibold text-[var(--t1)]">
+                  {cameraError === "busy"
+                    ? t("preJoin.cameraBusy")
+                    : t("preJoin.cameraUnavailable") || t("preJoin.cameraBusy")}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Loading Background Processor Spinner */}
           {bgLoading && (
@@ -133,11 +152,18 @@ export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
 
           <div className="mt-4 text-center max-w-xs px-2">
             <h4 className="text-sm font-bold text-[var(--t1)]">{displayName}</h4>
-            <p className="text-xs text-[var(--t3)] mt-0.5">
-              {cameraError === "busy"
-                ? t("preJoin.cameraBusy") || "دوربین توسط برنامه دیگری در حال استفاده است"
-                : t("preJoin.cameraOff")}
-            </p>
+            {cameraError && (
+              <p className="text-xs text-[var(--t3)] mt-0.5">
+                {cameraError === "busy"
+                  ? t("preJoin.cameraBusy")
+                  : t("preJoin.cameraUnavailable") || t("preJoin.cameraBusy")}
+              </p>
+            )}
+            {!cameraError && (
+              <p className="text-xs text-[var(--t3)] mt-0.5">
+                {t("preJoin.cameraOff")}
+              </p>
+            )}
           </div>
         </div>
       )}

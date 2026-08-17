@@ -9,6 +9,7 @@
     "tabEffects": "✨ Effects & Background",
     "cameraOff": "Camera is off",
     "cameraBusy": "Camera is in use by another application (joining with microphone)",
+    "cameraUnavailable": "Camera not found or unavailable",
     "muteMic": "Mute Microphone",
     "unmuteMic": "Unmute Microphone",
     "turnOffCamera": "Turn off Camera",
