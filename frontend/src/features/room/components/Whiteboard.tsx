@@ -495,7 +495,7 @@ export default function Whiteboard({
 
         {/* Floating Left Toolbar (Miro-like) */}
         {canDraw && (
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 bg-[#1e293b]/95 backdrop-blur border border-[#334155] rounded-xl p-2 shadow-2xl z-50">
+          <div className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 md:gap-2 bg-[#1e293b]/95 backdrop-blur border border-[#334155] rounded-xl p-1.5 md:p-2 shadow-2xl z-30 max-h-[85%] overflow-y-auto scrollbar-none">
             {[
               { id: "select", icon: "↖", label: "Select (V)" },
               { id: "pencil", icon: "✏️", label: "Brush" },
@@ -530,7 +530,7 @@ export default function Whiteboard({
 
         {/* Floating Bottom Properties Bar */}
         {canDraw && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-[#1e293b]/95 backdrop-blur border border-[#334155] rounded-xl px-3 py-2 shadow-2xl z-50">
+          <div className="absolute bottom-3 md:bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 md:gap-3 bg-[#1e293b]/95 backdrop-blur border border-[#334155] rounded-xl px-2.5 md:px-3 py-1.5 md:py-2 shadow-2xl z-30 max-w-[calc(100vw-3rem)] overflow-x-auto scrollbar-none touch-pan-x">
             {/* Color choices */}
             <div className="flex items-center gap-1">
               {COLORS.map((col) => (
