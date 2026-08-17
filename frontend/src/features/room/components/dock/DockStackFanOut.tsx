@@ -45,6 +45,11 @@ export default function DockStackFanOut({
   } = useRoomWhiteboard();
   const { isHost } = useRoomStore();
 
+  const isRtl =
+    typeof document !== "undefined" &&
+    (document.documentElement.dir === "rtl" ||
+      document.body.getAttribute("dir") === "rtl");
+
   // Close on outside click or Escape
   useEffect(() => {
     if (!isOpen) return;
@@ -165,17 +170,40 @@ export default function DockStackFanOut({
 
   const buttonSizeClass =
     size === "sm"
-      ? "w-10 h-10 min-w-10 rounded-xl"
+      ? "w-10 h-10 min-w-10 rounded-xl text-base"
       : size === "md"
-      ? "w-11 h-11 min-w-11 rounded-xl"
-      : "w-12 h-12 min-w-12 rounded-xl";
+      ? "w-11 h-11 min-w-11 rounded-xl text-lg"
+      : "w-12 h-12 min-w-12 rounded-xl text-xl";
+
+  // Direction factor: In RTL curve right (+), In LTR curve left (-)
+  const dirFactor = isRtl ? 1 : -1;
 
   return (
-    <div ref={containerRef} className="relative select-none">
-      {/* 3D Arc Fan-out Container */}
+    <div ref={containerRef} className="relative select-none inline-flex items-center">
+      {/* ── Active Whiteboard Floating Pill (when minimized) ── */}
+      {whiteboard.isActive && whiteboard.isMinimized && !isOpen && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-30 animate-bounce-subtle pointer-events-auto">
+          <Tooltip content={t("whiteboard.viewActiveBoard", "وایت‌برد فعال (باز کردن)")}>
+            <button
+              type="button"
+              onClick={restoreWhiteboard}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border shadow-lg cursor-pointer whitespace-nowrap transition-all",
+                "bg-emerald-950/90 hover:bg-emerald-900 border-emerald-500/60 text-emerald-200 shadow-emerald-500/20"
+              )}
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>✏️ {t("tools.whiteboard", "وایت‌برد")}</span>
+            </button>
+          </Tooltip>
+        </div>
+      )}
+
+      {/* ── 3D Arc Fan-out Container ── */}
       <div
         className={cn(
-          "absolute bottom-full left-1/2 -translate-x-1/2 mb-4 pointer-events-none z-50",
+          "absolute bottom-full mb-3 pointer-events-none z-50",
+          isRtl ? "left-0" : "right-0",
           isOpen ? "pointer-events-auto" : "invisible"
         )}
         style={{ perspective: "1000px" }}
@@ -183,22 +211,31 @@ export default function DockStackFanOut({
         {/* SVG Connecting Arc Trajectories */}
         {isOpen && (
           <svg
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-64 h-96 overflow-visible pointer-events-none -z-10"
+            className={cn(
+              "absolute bottom-0 w-64 h-96 overflow-visible pointer-events-none -z-10",
+              isRtl ? "left-4" : "right-4"
+            )}
             style={{ filter: "drop-shadow(0 0 8px rgba(99, 102, 241, 0.4))" }}
           >
             {stackItems.map((_, i) => {
               const progress = (i + 1) / totalItems;
-              const endY = -(65 + i * 58);
-              const endX = -Math.sin(progress * Math.PI * 0.45) * 36;
+              const endY = -(65 + i * 54);
+              const endX = dirFactor * Math.sin(progress * Math.PI * 0.45) * 32;
               const ctrlX = endX * 0.4;
               const ctrlY = endY * 0.6;
 
               return (
                 <path
                   key={i}
-                  d={`M 128 384 Q ${128 + ctrlX} ${384 + ctrlY}, ${128 + endX} ${384 + endY}`}
+                  d={`M ${isRtl ? 16 : 240} 384 Q ${
+                    (isRtl ? 16 : 240) + ctrlX
+                  } ${384 + ctrlY}, ${(isRtl ? 16 : 240) + endX} ${384 + endY}`}
                   fill="none"
-                  stroke={hoveredIdx === i ? "rgba(99, 102, 241, 0.75)" : "rgba(255, 255, 255, 0.18)"}
+                  stroke={
+                    hoveredIdx === i
+                      ? "rgba(99, 102, 241, 0.85)"
+                      : "rgba(255, 255, 255, 0.18)"
+                  }
                   strokeWidth={hoveredIdx === i ? "2" : "1.2"}
                   strokeDasharray={hoveredIdx === i ? "none" : "3 3"}
                   className="transition-all duration-300"
@@ -209,18 +246,27 @@ export default function DockStackFanOut({
         )}
 
         {/* Fanned Out Items */}
-        <div className="relative flex flex-col items-center">
+        <div
+          className={cn(
+            "relative flex flex-col",
+            isRtl ? "items-start" : "items-end"
+          )}
+        >
           {stackItems.map((item, i) => {
             const isHovered = hoveredIdx === i;
             const progress = (i + 1) / totalItems;
-            
-            // Physics calculations for macOS curved 3D Arc Stack:
-            const translateY = isOpen ? -(70 + i * 56) : 0;
-            const translateX = isOpen ? -Math.sin(progress * Math.PI * 0.45) * 34 : 0;
-            const rotateZ = isOpen ? -Math.sin(progress * Math.PI * 0.45) * 6 : 0;
-            const rotateX = isOpen ? 10 - i * 2 : 0;
-            const rotateY = isOpen ? -6 + i * 1.5 : 0;
-            const scale = isOpen ? (isHovered ? 1.15 : 1 - i * 0.02) : 0.4;
+
+            // Physics calculations for inward curving 3D Arc:
+            const translateY = isOpen ? -(68 + i * 54) : 0;
+            const translateX = isOpen
+              ? dirFactor * Math.sin(progress * Math.PI * 0.45) * 30
+              : 0;
+            const rotateZ = isOpen
+              ? dirFactor * -Math.sin(progress * Math.PI * 0.45) * 5
+              : 0;
+            const rotateX = isOpen ? 8 - i * 1.5 : 0;
+            const rotateY = isOpen ? dirFactor * (-5 + i * 1.2) : 0;
+            const scale = isOpen ? (isHovered ? 1.12 : 1 - i * 0.015) : 0.4;
             const opacity = isOpen ? 1 : 0;
             const zIndex = isHovered ? 60 : 50 - i;
             const delay = isOpen ? `${i * 35}ms` : `${(totalItems - i) * 20}ms`;
@@ -230,9 +276,11 @@ export default function DockStackFanOut({
                 key={item.id}
                 className="absolute bottom-0 transition-all cursor-pointer"
                 style={{
-                  transform: `translate3d(${translateX}px, ${translateY}px, ${isHovered ? 35 : 0}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) rotateZ(${rotateZ}deg) scale(${scale})`,
-                  transformOrigin: "bottom center",
-                  transitionDuration: isOpen ? "400ms" : "250ms",
+                  transform: `translate3d(${translateX}px, ${translateY}px, ${
+                    isHovered ? 35 : 0
+                  }px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) rotateZ(${rotateZ}deg) scale(${scale})`,
+                  transformOrigin: isRtl ? "bottom left" : "bottom right",
+                  transitionDuration: isOpen ? "380ms" : "220ms",
                   transitionTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)",
                   transitionDelay: delay,
                   opacity,
@@ -244,18 +292,18 @@ export default function DockStackFanOut({
               >
                 <div
                   className={cn(
-                    "flex items-center gap-3 p-1.5 pr-4 pl-2 rounded-2xl backdrop-blur-xl border transition-all duration-200 shadow-2xl group",
-                    "bg-[#0f172a]/90 hover:bg-[#1e293b]/95 text-white",
+                    "flex items-center gap-3 p-1.5 pr-3 pl-2 rounded-2xl backdrop-blur-xl border transition-all duration-200 shadow-2xl group",
+                    "bg-[#0f172a]/95 hover:bg-[#1e293b] text-white",
                     isHovered
                       ? "border-indigo-400/80 shadow-[0_0_25px_rgba(99,102,241,0.5)] ring-2 ring-indigo-400/30"
                       : "border-white/15 hover:border-white/30"
                   )}
-                  style={{ minWidth: "190px" }}
+                  style={{ minWidth: "185px", maxWidth: "220px" }}
                 >
                   {/* Icon with Glowing Gradient Frame */}
                   <div
                     className={cn(
-                      "w-11 h-11 rounded-xl flex items-center justify-center text-xl bg-gradient-to-br shadow-inner border border-white/10 transition-transform duration-200",
+                      "w-10 h-10 rounded-xl flex items-center justify-center text-xl bg-gradient-to-br shadow-inner border border-white/10 transition-transform duration-200 flex-shrink-0",
                       item.bgGradient,
                       isHovered && "scale-110"
                     )}
@@ -264,8 +312,8 @@ export default function DockStackFanOut({
                   </div>
 
                   {/* Text Details */}
-                  <div className="flex flex-col text-right">
-                    <span className="text-xs font-bold text-gray-100 group-hover:text-indigo-200 transition-colors">
+                  <div className="flex flex-col text-start min-w-0 flex-1">
+                    <span className="text-xs font-bold text-gray-100 group-hover:text-indigo-200 transition-colors truncate">
                       {t(item.labelKey, item.defaultLabel)}
                     </span>
                     {item.badge ? (
@@ -273,15 +321,15 @@ export default function DockStackFanOut({
                         {item.badge}
                       </span>
                     ) : (
-                      <span className="text-[10px] text-gray-400 group-hover:text-gray-300">
+                      <span className="text-[10px] text-gray-400 group-hover:text-gray-300 truncate">
                         {item.id === "whiteboard"
                           ? "تخته مشارکتی"
                           : item.id === "miniapps"
                           ? "بازی و ابزارک"
                           : item.id === "quiz"
-                          ? "سنجش دانش‌آموزان"
+                          ? "سنجش کلاسی"
                           : item.id === "timer"
-                          ? "مدیریت زمان کلاس"
+                          ? "مدیریت زمان"
                           : "امکانات تکمیلی"}
                       </span>
                     )}
@@ -293,48 +341,46 @@ export default function DockStackFanOut({
         </div>
       </div>
 
-      {/* Trigger Button in the Dock */}
-      <Tooltip content={isOpen ? t("tools.closeStack", "بستن منوی ابزارها") : t("tools.stackTooltip", "ابزارها و فعالیت‌های کلاس (نمای دسته‌ای مک)")}>
+      {/* ── Trigger Button in the Dock (Identical size & alignment to ControlButton) ── */}
+      <Tooltip
+        content={
+          isOpen
+            ? t("tools.closeStack", "بستن منوی ابزارها")
+            : t("tools.stackTooltip", "ابزارها و فعالیت‌های کلاس")
+        }
+      >
         <button
           type="button"
           onClick={onToggle}
+          aria-label={t("controls.tools", "ابزارها")}
           className={cn(
-            "relative flex flex-col items-center justify-center gap-1 group",
-            "border-none cursor-pointer transition-all duration-200 ease-out",
-            "hover:-translate-y-1 hover:scale-105 hover:rotate-[-1.5deg] active:scale-95",
-            "py-1"
+            "relative flex items-center justify-center border border-[var(--b)] cursor-pointer transition-all duration-200 ease-out shadow-xs",
+            buttonSizeClass,
+            "hover:-translate-y-0.5 hover:scale-105 active:scale-95",
+            isOpen
+              ? "bg-[var(--brand-soft)] text-[var(--brand-text)] ring-2 ring-[var(--brand)] shadow-[0_0_15px_var(--brand)]"
+              : "bg-[var(--s2)] text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]"
           )}
         >
-          {/* macOS Dock Stack Icon representation */}
-          <span
-            className={cn(
-              "relative flex items-center justify-center transition-all duration-200 shadow-xs border border-[var(--b)]",
-              buttonSizeClass,
-              isOpen
-                ? "bg-[var(--brand-soft)] text-[var(--brand-text)] ring-2 ring-[var(--brand)] shadow-[0_0_15px_var(--brand)]"
-                : "bg-[var(--s2)] text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]"
-            )}
-          >
-            {/* Layered Stack Visual */}
-            <span className="relative flex items-center justify-center">
-              <span
-                className={cn(
-                  "absolute -top-1.5 w-6 h-3.5 rounded-sm bg-white/20 border border-white/10 transition-transform duration-200",
-                  isOpen ? "-translate-y-1.5 scale-90 rotate-[-6deg]" : "group-hover:-translate-y-0.5 group-hover:rotate-[-3deg]"
-                )}
-              />
-              <span
-                className={cn(
-                  "absolute -top-0.5 w-7 h-4 rounded-sm bg-white/30 border border-white/15 transition-transform duration-200",
-                  isOpen ? "-translate-y-0.5 scale-95 rotate-[-3deg]" : "group-hover:-translate-y-0.5"
-                )}
-              />
-              <span className="text-lg relative z-10">✦</span>
-            </span>
-          </span>
-
-          <span className="text-[11px] font-medium leading-none text-[var(--t2)] whitespace-nowrap group-hover:text-[var(--t1)]">
-            {t("controls.tools", "ابزارها")}
+          {/* Layered Stack Visual */}
+          <span className="relative flex items-center justify-center">
+            <span
+              className={cn(
+                "absolute -top-1.5 w-5 h-3 rounded-xs bg-white/20 border border-white/10 transition-transform duration-200",
+                isOpen
+                  ? "-translate-y-1 scale-90 rotate-[-6deg]"
+                  : "group-hover:-translate-y-0.5 group-hover:rotate-[-3deg]"
+              )}
+            />
+            <span
+              className={cn(
+                "absolute -top-0.5 w-6 h-3.5 rounded-xs bg-white/30 border border-white/15 transition-transform duration-200",
+                isOpen
+                  ? "-translate-y-0.5 scale-95 rotate-[-3deg]"
+                  : "group-hover:-translate-y-0.5"
+              )}
+            />
+            <span className="text-lg relative z-10">✦</span>
           </span>
 
           {/* Active Indicator Dot */}

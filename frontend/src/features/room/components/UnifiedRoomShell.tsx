@@ -22,6 +22,8 @@ import ChatPanel from "./panels/ChatPanel";
 import ToolsPanel from "./panels/ToolsPanel";
 import { type useGameBoard } from "../hooks/useGameBoard";
 import { type useWhiteboard } from "../hooks/useWhiteboard";
+import { type useReactions } from "../hooks/useReactions";
+import ReactionOverlay from "./reactions/ReactionOverlay";
 import { cn } from "../../../lib/utils";
 import { type LayoutMode } from "../store/roomLayoutStore";
 
@@ -51,6 +53,7 @@ interface UnifiedRoomShellProps {
   isLeaving: boolean;
   game: ReturnType<typeof useGameBoard>;
   whiteboard: ReturnType<typeof useWhiteboard>;
+  reactions: ReturnType<typeof useReactions>;
   roomCode: string;
 }
 
@@ -65,6 +68,7 @@ export default function UnifiedRoomShell({
   isLeaving,
   game,
   whiteboard,
+  reactions,
   roomCode,
 }: UnifiedRoomShellProps) {
   const { t } = useTranslation("recordings");
@@ -148,6 +152,9 @@ export default function UnifiedRoomShell({
             ) : (
               <VideoGrid layout={layout} onLayoutChange={onLayoutChange} />
             )}
+            {/* Floating Live Reactions Overlay */}
+            {reactions && <ReactionOverlay particles={reactions.particles} />}
+
             <RoomRecordingBadge
               className={
                 game.gameBoard.isActive ||
@@ -209,6 +216,7 @@ export default function UnifiedRoomShell({
             size={breakpoint === "tablet" ? "md" : "lg"}
             handRaised={controls.handRaised}
             onToggleHandRaise={controls.onToggleHandRaise}
+            onSendReaction={reactions?.sendReaction}
           />
         )}
 
