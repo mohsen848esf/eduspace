@@ -612,7 +612,7 @@ export default function RoomControls({
     <div
       className={cn(
         "relative bg-[color-mix(in_srgb,var(--s1)_85%,transparent)] backdrop-blur-xl border-t border-[var(--b)]",
-        "flex items-center justify-between gap-2 flex-shrink-0 shadow-2xl transition-all select-none px-4 md:px-6",
+        "flex items-center justify-between gap-1.5 sm:gap-2 flex-shrink-0 shadow-2xl transition-all select-none px-2 sm:px-4 md:px-6",
         shellHeight,
       )}
     >
@@ -624,34 +624,34 @@ export default function RoomControls({
       />
 
       {/* ── Section 1: Meeting Info (Time + Room Code) ── */}
-      <div className="flex items-center gap-3 min-w-[130px] md:min-w-[180px] text-xs font-medium text-[var(--t2)]">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 sm:min-w-[110px] md:min-w-[180px] text-xs font-medium text-[var(--t2)] flex-shrink">
         {currentTime && (
-          <span className="font-semibold text-[var(--t1)] hidden sm:inline-block force-ltr">
+          <span className="font-semibold text-[var(--t1)] hidden md:inline-block force-ltr">
             {currentTime}
           </span>
         )}
-        {currentTime && <span className="text-[var(--t3)] hidden sm:inline-block">|</span>}
+        {currentTime && <span className="text-[var(--t3)] hidden md:inline-block">|</span>}
         {activeRoomCode && (
           <Tooltip content={copied ? t("topbar.copied", "کپی شد!") : t("topbar.copy", "کپی لینک اتاق")}>
             <button
               type="button"
               onClick={copyRoomCode}
               className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1 rounded-lg border-none cursor-pointer transition-all font-mono force-ltr text-[11px]",
+                "flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg border-none cursor-pointer transition-all font-mono force-ltr text-[11px]",
                 copied
                   ? "bg-[var(--green)]/15 text-[var(--green)] font-semibold"
                   : "bg-[var(--s3)] text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s4)]"
               )}
             >
               <span>{copied ? "✓" : "📋"}</span>
-              <span className="truncate max-w-[90px] md:max-w-[130px]">{activeRoomCode}</span>
+              <span className="truncate max-w-[80px] sm:max-w-[100px] md:max-w-[130px]">{activeRoomCode}</span>
             </button>
           </Tooltip>
         )}
       </div>
 
       {/* ── Section 2: Center Floating Media Dock ── */}
-      <div className="flex items-center gap-2 md:gap-2.5 px-3 py-1 bg-[var(--s2)]/70 backdrop-blur-md border border-[var(--b)] rounded-2xl shadow-xl">
+      <div className="flex items-center gap-1.5 sm:gap-2 md:gap-2.5 px-2 sm:px-3 py-1 bg-[var(--s2)]/70 backdrop-blur-md border border-[var(--b)] rounded-2xl shadow-xl flex-shrink-0">
         <SplitBtn
           iconOn={Icons.mic}
           iconOff={Icons.micOff}

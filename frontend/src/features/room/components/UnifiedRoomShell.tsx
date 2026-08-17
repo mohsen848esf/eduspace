@@ -194,6 +194,7 @@ export default function UnifiedRoomShell({
             onLeave={onLeaveRequest}
             handRaised={controls.handRaised}
             onToggleHandRaise={controls.onToggleHandRaise}
+            onSendReaction={reactions?.sendReaction}
           />
         ) : (
           <RoomControls
