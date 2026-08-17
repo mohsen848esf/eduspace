@@ -764,8 +764,17 @@ export default function RoomControls({
         </Tooltip>
       </div>
 
-      {/* ── Section 3: End Utility Dock (Chat, People, Tools Stack Fan-Out) ── */}
+      {/* ── Section 3: End Utility Dock (Tools Stack Fan-Out, Chat, People) ── */}
       <div className="flex items-center gap-2 min-w-[130px] md:min-w-[180px] justify-end">
+        {/* macOS Dock Stack 3D Curved Fan-out for Tools */}
+        <DockStackFanOut
+          isOpen={toolsStackOpen}
+          onToggle={() => setToolsStackOpen((prev) => !prev)}
+          onClose={() => setToolsStackOpen(false)}
+          onOpenPanel={(p) => handlePanelClick(p)}
+          size={size}
+        />
+
         <CtrlBtn
           icon={Icons.chat}
           label={t("controls.chat")}
@@ -780,15 +789,6 @@ export default function RoomControls({
           tooltip={t("tooltips.participants")}
           onClick={() => handlePanelClick("people")}
           isOn={isPanelActive("people")}
-          size={size}
-        />
-
-        {/* macOS Dock Stack 3D Curved Fan-out for Tools */}
-        <DockStackFanOut
-          isOpen={toolsStackOpen}
-          onToggle={() => setToolsStackOpen((prev) => !prev)}
-          onClose={() => setToolsStackOpen(false)}
-          onOpenPanel={(p) => handlePanelClick(p)}
           size={size}
         />
       </div>
