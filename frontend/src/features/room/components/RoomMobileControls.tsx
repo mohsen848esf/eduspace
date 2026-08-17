@@ -2,7 +2,8 @@ import { useTranslation } from "react-i18next";
 import { Tooltip } from "../../../components/ui/Tooltip";
 import { Icons } from "../../../lib/constants/icons";
 import { cn } from "../../../lib/utils";
-import { type LayoutMode, useRoomLayoutStore } from "../store/roomLayoutStore";
+import { type LayoutMode } from "../store/roomLayoutStore";
+import { useRoomWhiteboard } from "../hooks/useRoomWhiteboardContext";
 
 type PanelId = "people" | "chat" | "tools";
 
@@ -42,7 +43,6 @@ export default function RoomMobileControls({
   isMicOn,
   isCamOn,
   isScreenSharing,
-  layout,
   settingsOpen,
   activePanel,
   onPanelClick,
@@ -55,25 +55,19 @@ export default function RoomMobileControls({
   onToggleHandRaise,
 }: RoomMobileControlsProps) {
   const { t } = useTranslation("room");
-  const storeLayout = useRoomLayoutStore((s) => s.layoutMode);
-  const setAdjustViewOpen = useRoomLayoutStore((s) => s.setAdjustViewOpen);
-  const isAdjustViewOpen = useRoomLayoutStore((s) => s.isAdjustViewOpen);
-  const currentLayout = layout || storeLayout;
-
-  const layoutIcon =
-    currentLayout === "auto"
-      ? "✦"
-      : currentLayout === "tiled"
-      ? "▦"
-      : currentLayout === "spotlight"
-      ? "□"
-      : "▤";
+  const {
+    whiteboard: whiteboardState,
+    restoreWhiteboard,
+    minimizeWhiteboard,
+  } = useRoomWhiteboard();
+  const isWhiteboardActive = whiteboardState?.isActive;
+  const isWhiteboardMinimized = whiteboardState?.isMinimized;
 
   return (
     <div
       className={cn(
         "relative flex-shrink-0 bg-[var(--s1)] border-t border-[var(--b)]",
-        "flex items-center justify-center gap-1 px-3 py-2",
+        "flex items-center justify-center gap-1.5 px-3 py-2",
         "pb-[max(env(safe-area-inset-bottom),0.5rem)]",
       )}
     >
@@ -95,6 +89,27 @@ export default function RoomMobileControls({
         onClick={onToggleScreenShare}
         variant={isScreenSharing ? "active" : "default"}
       />
+
+      {/* Active Whiteboard Button on Mobile */}
+      {isWhiteboardActive && (
+        <IconButton
+          tooltip={
+            isWhiteboardMinimized
+              ? t("whiteboard.viewActiveBoard", "وایت‌برد فعال (باز کردن)")
+              : t("whiteboard.minimizeTooltip", "بستن موقت از روی صفحه")
+          }
+          icon={<span className="text-base leading-none">✏️</span>}
+          onClick={() => {
+            if (isWhiteboardMinimized) {
+              restoreWhiteboard();
+            } else {
+              minimizeWhiteboard();
+            }
+          }}
+          variant={!isWhiteboardMinimized ? "active" : "default"}
+        />
+      )}
+
       <IconButton
         tooltip={handRaised ? t("tooltips.lowerHand") : t("tooltips.raiseHand")}
         icon={handRaised ? Icons.handFilled : Icons.hand}
@@ -125,12 +140,6 @@ export default function RoomMobileControls({
 
       <span className="w-px h-6 bg-[var(--b)] mx-0.5" aria-hidden />
 
-      <IconButton
-        tooltip={t("tooltips.layout")}
-        icon={<span className="text-base leading-none">{layoutIcon}</span>}
-        onClick={() => setAdjustViewOpen(true)}
-        variant={isAdjustViewOpen ? "active" : "default"}
-      />
       <IconButton
         tooltip={t("tooltips.settings")}
         icon={Icons.settings}
