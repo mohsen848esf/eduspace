@@ -14,10 +14,10 @@ import {
 } from "../hooks/useBackgroundBlur";
 import SettingsPanel from "./SettingsPanel";
 import { type LayoutMode } from "../store/roomLayoutStore";
-import { useRoomWhiteboard } from "../hooks/useRoomWhiteboardContext";
 import { useRoomStore } from "../store/roomStore";
 import toast from "react-hot-toast";
 import DockStackFanOut from "./dock/DockStackFanOut";
+import ReactionsPopover from "./reactions/ReactionsPopover";
 
 interface RoomControlsProps {
   isMicOn: boolean;
@@ -47,6 +47,7 @@ interface RoomControlsProps {
   isRecording?: boolean;
   handRaised?: boolean;
   onToggleHandRaise?: () => void;
+  onSendReaction?: (emoji: string) => void;
   onOpenGuestPassModal?: () => void;
   onOpenInviteModal?: () => void;
   /**
@@ -101,12 +102,12 @@ function CtrlBtn({
 }
 
 const splitSizes = {
-  sm: { height: "h-10", mainWidth: "min-w-[40px]", arrowWidth: "w-5" },
-  md: { height: "h-11", mainWidth: "min-w-[44px]", arrowWidth: "w-[22px]" },
-  lg: { height: "h-12", mainWidth: "min-w-[48px]", arrowWidth: "w-6" },
+  sm: { height: "h-10", mainWidth: "min-w-[40px]", arrowWidth: "w-6" },
+  md: { height: "h-11", mainWidth: "min-w-[44px]", arrowWidth: "w-7" },
+  lg: { height: "h-12", mainWidth: "min-w-[48px]", arrowWidth: "w-8" },
 };
 
-// ── Split Button (mic/cam with settings arrow) ──
+// ── Split Button (mic/cam with modern rotating chevron) ──
 function SplitBtn({
   iconOn,
   iconOff,
@@ -116,6 +117,7 @@ function SplitBtn({
   onMain,
   onArrow,
   isOn,
+  isArrowOpen = false,
   popover,
   size = "md",
 }: {
@@ -127,43 +129,54 @@ function SplitBtn({
   onMain: () => void;
   onArrow: () => void;
   isOn: boolean;
+  isArrowOpen?: boolean;
   popover?: React.ReactNode;
   size?: ControlButtonSize;
 }) {
-  const stateClass = isOn
-    ? "bg-[var(--brand-soft)] text-[var(--brand)]"
-    : "bg-[var(--red)]/10 text-[var(--red)]";
-
   const { height, mainWidth, arrowWidth } = splitSizes[size];
 
   return (
-    <div className={cn("relative flex border border-[var(--b)] rounded-xl", height)}>
+    <div
+      className={cn(
+        "relative flex items-center border rounded-2xl transition-all duration-200 shadow-sm group",
+        height,
+        isOn
+          ? "bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-400"
+          : "bg-rose-500/10 hover:bg-rose-500/20 border-rose-500/30 text-rose-400"
+      )}
+    >
       <Tooltip content={tooltipMain}>
         <button
+          type="button"
           onClick={onMain}
           className={cn(
-            "flex flex-col items-center justify-center",
-            "px-2 rounded-s-xl border-none cursor-pointer",
-            "transition-all duration-150 active:scale-[0.96]",
-            mainWidth,
-            stateClass,
+            "flex items-center justify-center h-full px-2.5 rounded-s-2xl border-none cursor-pointer text-base md:text-lg",
+            "transition-all duration-150 active:scale-95 bg-transparent text-inherit",
+            mainWidth
           )}
         >
           <span className="leading-none">{isOn ? iconOn : iconOff}</span>
         </button>
       </Tooltip>
+      <span className="w-px h-5 bg-current/20" aria-hidden />
       <Tooltip content={tooltipArrow} side="top">
         <button
+          type="button"
           onClick={onArrow}
           className={cn(
-            "border-none border-s border-[var(--b)]",
-            "cursor-pointer text-[10px] transition-all duration-150",
-            "flex items-center justify-center",
-            arrowWidth,
-            stateClass,
+            "h-full border-none rounded-e-2xl cursor-pointer text-xs transition-all duration-200",
+            "flex items-center justify-center bg-transparent text-inherit hover:bg-white/10 active:scale-95",
+            arrowWidth
           )}
         >
-          {Icons.chevronDown}
+          <span
+            className={cn(
+              "transform transition-transform duration-200 inline-flex items-center justify-center",
+              isArrowOpen && "rotate-180"
+            )}
+          >
+            {Icons.chevronDown}
+          </span>
         </button>
       </Tooltip>
       {popover}
@@ -549,10 +562,12 @@ export default function RoomControls({
   size = "md",
   handRaised,
   onToggleHandRaise,
+  onSendReaction,
 }: RoomControlsProps) {
   const { t } = useTranslation("room");
   const [micPopoverOpen, setMicPopoverOpen] = useState(false);
   const [camPopoverOpen, setCamPopoverOpen] = useState(false);
+  const [reactionsOpen, setReactionsOpen] = useState(false);
   const [toolsStackOpen, setToolsStackOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -569,14 +584,6 @@ export default function RoomControls({
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
-  const {
-    whiteboard: whiteboardState,
-    restoreWhiteboard,
-    minimizeWhiteboard,
-  } = useRoomWhiteboard();
-  const isWhiteboardActive = whiteboardState?.isActive;
-  const isWhiteboardMinimized = whiteboardState?.isMinimized;
 
   // When the parent provides a panel override (mobile shells), highlight
   // based on that. Otherwise fall back to the docked-panel sidebarTab.
@@ -655,8 +662,10 @@ export default function RoomControls({
           onArrow={() => {
             setMicPopoverOpen((p) => !p);
             setCamPopoverOpen(false);
+            setReactionsOpen(false);
           }}
           isOn={isMicOn}
+          isArrowOpen={micPopoverOpen}
           size={size}
           popover={
             micPopoverOpen && (
@@ -677,8 +686,10 @@ export default function RoomControls({
           onArrow={() => {
             setCamPopoverOpen((p) => !p);
             setMicPopoverOpen(false);
+            setReactionsOpen(false);
           }}
           isOn={isCamOn}
+          isArrowOpen={camPopoverOpen}
           size={size}
           popover={
             camPopoverOpen && (
@@ -696,27 +707,28 @@ export default function RoomControls({
           size={size}
         />
 
-        {/* Dedicated Active Whiteboard Dock Icon */}
-        {isWhiteboardActive && (
-          <CtrlBtn
-            icon={<span className="text-base leading-none">✏️</span>}
-            label={t("tools.whiteboard")}
-            tooltip={
-              isWhiteboardMinimized
-                ? t("whiteboard.viewActiveBoard", "وایت‌برد فعال (باز کردن)")
-                : t("whiteboard.minimizeTooltip", "بستن موقت از روی صفحه")
-            }
-            onClick={() => {
-              if (isWhiteboardMinimized) {
-                restoreWhiteboard();
-              } else {
-                minimizeWhiteboard();
-              }
+        {/* Reactions Button with Floating Emojis Popover */}
+        <div className="relative">
+          <ReactionsPopover
+            isOpen={reactionsOpen}
+            onClose={() => setReactionsOpen(false)}
+            onSelectEmoji={(emoji) => {
+              if (onSendReaction) onSendReaction(emoji);
             }}
-            isOn={!isWhiteboardMinimized}
+          />
+          <CtrlBtn
+            icon={<span className="text-lg leading-none">😊</span>}
+            label={t("controls.reactions", "واکنش")}
+            tooltip={t("controls.reactions", "ارسال واکنش و ایموجی")}
+            onClick={() => {
+              setReactionsOpen((prev) => !prev);
+              setMicPopoverOpen(false);
+              setCamPopoverOpen(false);
+            }}
+            isOn={reactionsOpen}
             size={size}
           />
-        )}
+        </div>
 
         <CtrlBtn
           icon={handRaised ? Icons.handFilled : Icons.hand}

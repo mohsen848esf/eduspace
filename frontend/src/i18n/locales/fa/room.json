@@ -87,7 +87,8 @@
     "leave": "خروج",
     "layout": "چیدمان",
     "raiseHand": "بالا بردن دست",
-    "lowerHand": "پایین آوردن دست"
+    "lowerHand": "پایین آوردن دست",
+    "reactions": "ارسال واکنش"
   },
   "tooltips": {
     "muteOn": "بستن میکروفون · Ctrl+D",
@@ -104,7 +105,8 @@
     "settings": "تنظیمات کلی",
     "leave": "خروج از جلسه",
     "raiseHand": "بالا بردن دست",
-    "lowerHand": "پایین آوردن دست"
+    "lowerHand": "پایین آوردن دست",
+    "reactions": "ارسال واکنش و ایموجی"
   },
   "layouts": {
     "title": "چیدمان",

@@ -87,7 +87,8 @@
     "leave": "Leave",
     "layout": "Layout",
     "raiseHand": "Raise Hand",
-    "lowerHand": "Lower Hand"
+    "lowerHand": "Lower Hand",
+    "reactions": "Send Reaction"
   },
   "tooltips": {
     "muteOn": "Mute · Ctrl+D",
@@ -104,7 +105,8 @@
     "settings": "General settings",
     "leave": "Leave session",
     "raiseHand": "Raise Hand",
-    "lowerHand": "Lower Hand"
+    "lowerHand": "Lower Hand",
+    "reactions": "Send reaction & emojis"
   },
   "layouts": {
     "title": "Layout",

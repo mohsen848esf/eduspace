@@ -20,6 +20,7 @@ import { useGameBoard } from "../hooks/useGameBoard";
 import { RoomGameProvider } from "../hooks/useRoomGameContext";
 import { useWhiteboard } from "../hooks/useWhiteboard";
 import { RoomWhiteboardProvider } from "../hooks/useRoomWhiteboardContext";
+import { useReactions } from "../hooks/useReactions";
 import UnifiedRoomShell from "./UnifiedRoomShell";
 import { useRoomLayoutStore } from "../store/roomLayoutStore";
 
@@ -63,23 +64,25 @@ function RoomContent({
     }
   }, [disconnect]);
 
-  // Game & Whiteboard state.
+  // Game, Whiteboard & Reactions state.
   const game = useGameBoard();
   const whiteboard = useWhiteboard();
+  const reactions = useReactions();
   const room = useRoomContext();
 
-  // Wire LiveKit data channel into the game and whiteboard hooks.
+  // Wire LiveKit data channel into the game, whiteboard, and reactions hooks.
   useEffect(() => {
     if (!room) return;
     const handler = (payload: Uint8Array, participant?: any) => {
       game.handleDataMessage(payload, participant);
       whiteboard.handleDataMessage(payload, participant);
+      reactions.handleDataMessage(payload, participant);
     };
     room.on("dataReceived", handler);
     return () => {
       room.off("dataReceived", handler);
     };
-  }, [room, game.handleDataMessage, whiteboard.handleDataMessage]);
+  }, [room, game.handleDataMessage, whiteboard.handleDataMessage, reactions.handleDataMessage]);
 
   // Clean up and release media devices when the room page is unmounted (navigating away)
   useEffect(() => {
@@ -129,6 +132,7 @@ function RoomContent({
     isLeaving,
     game,
     whiteboard,
+    reactions,
     roomCode: roomCode || "",
   };
 
