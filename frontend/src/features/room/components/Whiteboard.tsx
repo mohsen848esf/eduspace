@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 import { type CanvasElement } from "../types/whiteboard";
 import InfiniteCanvas from "./InfiniteCanvas";
 
-import { X } from "lucide-react";
+import { Minus } from "lucide-react";
 
 interface WhiteboardProps {
   whiteboard: {
@@ -427,7 +427,7 @@ export default function Whiteboard({
                 onClick={onMinimize}
                 className="w-8 h-8 rounded-lg border-none cursor-pointer flex items-center justify-center bg-[#334155] text-white hover:bg-[#475569] transition-colors"
               >
-                <X className="w-4 h-4" />
+                <Minus className="w-4 h-4" />
               </button>
             </Tooltip>
           )}

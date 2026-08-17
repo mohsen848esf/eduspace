@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "../../../lib/utils";
 
+import { useRoomLayoutStore } from "../store/roomLayoutStore";
+
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
@@ -36,6 +38,9 @@ export default function SettingsPanel({
 }: SettingsPanelProps) {
   const { t } = useTranslation("room");
   const popoverRef = useRef<HTMLDivElement>(null);
+  const layoutMode = useRoomLayoutStore((s) => s.layoutMode);
+  const setLayoutMode = useRoomLayoutStore((s) => s.setLayoutMode);
+  const setAdjustViewOpen = useRoomLayoutStore((s) => s.setAdjustViewOpen);
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -65,10 +70,52 @@ export default function SettingsPanel({
   ];
 
   return (
-    <div ref={popoverRef} className="absolute bottom-[76px] left-1/2 -translate-x-1/2 z-50 w-60 max-w-[calc(100vw-1.5rem)] bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 fade-in">
-      <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2 px-1">
+    <div ref={popoverRef} className="absolute bottom-[76px] left-1/2 -translate-x-1/2 z-50 w-64 max-w-[calc(100vw-1.5rem)] bg-[var(--s2)] border border-[var(--b)] rounded-2xl shadow-2xl p-3.5 fade-in">
+      <div className="text-[10px] font-bold text-[var(--t3)] uppercase tracking-wider mb-2.5 px-1">
         {t("settings.title")}
       </div>
+
+      {/* Layout Selection */}
+      <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-1.5 px-1">
+        {t("controls.layout", "چیدمان تصویر")}
+      </div>
+      <div className="grid grid-cols-2 gap-1.5 mb-2">
+        {[
+          { id: "auto" as const, label: t("layout.auto", "خودکار"), icon: "✦" },
+          { id: "tiled" as const, label: t("layout.tiled", "شبکه‌ای"), icon: "▦" },
+          { id: "spotlight" as const, label: t("layout.spotlight", "تمرکز"), icon: "□" },
+          { id: "sidebar" as const, label: t("layout.sidebar", "کناری"), icon: "▤" },
+        ].map((mode) => (
+          <button
+            key={mode.id}
+            type="button"
+            onClick={() => setLayoutMode(mode.id)}
+            className={cn(
+              "flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition-all",
+              layoutMode === mode.id
+                ? "bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm"
+                : "bg-[var(--s3)] text-[var(--t2)] border-[var(--b)] hover:bg-[var(--s4)] hover:text-[var(--t1)]"
+            )}
+          >
+            <span className="text-sm leading-none">{mode.icon}</span>
+            <span className="truncate">{mode.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => {
+          onClose();
+          setAdjustViewOpen(true);
+        }}
+        className="w-full py-1 mb-2.5 rounded-lg bg-[var(--s3)] hover:bg-[var(--s4)] text-[var(--brand-text)] hover:text-[var(--brand)] text-[11px] font-semibold border border-[var(--b)] transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+      >
+        <span>⚙️</span>
+        <span>{t("layout.adjustViewAdvanced", "تنظیمات پیشرفته چیدمان")}</span>
+      </button>
+
+      <div className="h-px bg-[var(--b)] my-1.5" />
 
         {/* Push to Talk */}
         <div className="flex items-center justify-between py-2 px-1 mb-1">

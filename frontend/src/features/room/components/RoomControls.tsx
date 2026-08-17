@@ -13,7 +13,8 @@ import {
   type BackgroundType,
 } from "../hooks/useBackgroundBlur";
 import SettingsPanel from "./SettingsPanel";
-import { type LayoutMode, useRoomLayoutStore } from "../store/roomLayoutStore";
+import { type LayoutMode } from "../store/roomLayoutStore";
+import { useRoomWhiteboard } from "../hooks/useRoomWhiteboardContext";
 
 interface RoomControlsProps {
   isMicOn: boolean;
@@ -515,7 +516,6 @@ export default function RoomControls({
   isScreenSharing,
   sidebarTab,
   settingsOpen,
-  layout,
   onToggleMic,
   onToggleCam,
   onToggleScreenShare,
@@ -534,10 +534,13 @@ export default function RoomControls({
   const [micPopoverOpen, setMicPopoverOpen] = useState(false);
   const [camPopoverOpen, setCamPopoverOpen] = useState(false);
 
-  const storeLayout = useRoomLayoutStore((s) => s.layoutMode);
-  const setAdjustViewOpen = useRoomLayoutStore((s) => s.setAdjustViewOpen);
-  const isAdjustViewOpen = useRoomLayoutStore((s) => s.isAdjustViewOpen);
-  const currentLayout = layout || storeLayout;
+  const {
+    whiteboard: whiteboardState,
+    restoreWhiteboard,
+    minimizeWhiteboard,
+  } = useRoomWhiteboard();
+  const isWhiteboardActive = whiteboardState?.isActive;
+  const isWhiteboardMinimized = whiteboardState?.isMinimized;
 
   // When the parent provides a panel override (mobile shells), highlight
   // based on that. Otherwise fall back to the docked-panel sidebarTab.
@@ -569,8 +572,8 @@ export default function RoomControls({
   return (
     <div
       className={cn(
-        "relative bg-[color-mix(in srgb,var(--s1)_75%,transparent)] backdrop-blur-md border-t border-[var(--b)]",
-        "flex items-center justify-center gap-3 flex-shrink-0 shadow-2xl",
+        "relative bg-[color-mix(in_srgb,var(--s1)_80%,transparent)] backdrop-blur-xl border-t border-[var(--b)]",
+        "flex items-center justify-center gap-3 flex-shrink-0 shadow-2xl transition-all",
         shellHeight,
         shellPadding,
       )}
@@ -630,8 +633,8 @@ export default function RoomControls({
         />
       </div>
 
-      {/* Center — Actions */}
-      <div className="flex items-center gap-3 px-4">
+      {/* Center — macOS Dock Actions */}
+      <div className="flex items-center gap-2.5 px-3">
         <CtrlBtn
           icon={Icons.screenShare}
           label={t("controls.share")}
@@ -640,6 +643,29 @@ export default function RoomControls({
           isOn={isScreenSharing}
           size={size}
         />
+
+        {/* Dedicated Active Whiteboard Dock Icon */}
+        {isWhiteboardActive && (
+          <CtrlBtn
+            icon={<span className="text-base leading-none">✏️</span>}
+            label={t("tools.whiteboard")}
+            tooltip={
+              isWhiteboardMinimized
+                ? t("whiteboard.viewActiveBoard", "وایت‌برد فعال (باز کردن)")
+                : t("whiteboard.minimizeTooltip", "بستن موقت از روی صفحه")
+            }
+            onClick={() => {
+              if (isWhiteboardMinimized) {
+                restoreWhiteboard();
+              } else {
+                minimizeWhiteboard();
+              }
+            }}
+            isOn={!isWhiteboardMinimized}
+            size={size}
+          />
+        )}
+
         <CtrlBtn
           icon={handRaised ? Icons.handFilled : Icons.hand}
           label={handRaised ? t("controls.lowerHand") : t("controls.raiseHand")}
@@ -672,24 +698,6 @@ export default function RoomControls({
           isOn={isPanelActive("tools")}
           size={size}
         />
-
-        {/* Layout Adjust View button */}
-        <div className="relative">
-          <CtrlBtn
-            icon={
-              <span className="text-base">
-                {currentLayout === "auto" ? "✦" : currentLayout === "tiled" ? "▦" : currentLayout === "spotlight" ? "□" : "▤"}
-              </span>
-            }
-            label={t("controls.layout")}
-            tooltip={t("tooltips.layout")}
-            onClick={() => {
-              setAdjustViewOpen(true);
-            }}
-            isOn={isAdjustViewOpen}
-            size={size}
-          />
-        </div>
 
         <CtrlBtn
           icon={Icons.settings}

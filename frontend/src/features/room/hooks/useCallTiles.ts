@@ -101,7 +101,6 @@ export function useCallTiles(): UseCallTilesResult {
   const tiles = useMemo<CallTile[]>(() => {
     const out: CallTile[] = [];
     for (const p of participants) {
-      const isLocal = p.identity === localParticipant.identity;
       const screenRef = tracks.find(
         (t) =>
           t.participant.identity === p.identity &&
@@ -112,17 +111,7 @@ export function useCallTiles(): UseCallTilesResult {
         isTrackReference(screenRef) &&
         !screenRef.publication.isMuted;
 
-      // For the local sharer we render only the screen tile (with their
-      // own camera as a corner PiP) so they don't see themselves twice.
-      // Remote sharers get split into two tiles so everyone else can
-      // place / pin them independently.
-      if (isSharing && isLocal) {
-        out.push({
-          key: `${p.identity}::screen`,
-          kind: "screen",
-          participant: p,
-        });
-      } else if (isSharing && !isLocal) {
+      if (isSharing) {
         out.push({
           key: `${p.identity}::camera`,
           kind: "camera",

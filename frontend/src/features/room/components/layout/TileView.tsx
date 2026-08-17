@@ -122,9 +122,6 @@ export default function TileView({
   const fitClass =
     kind === "screen" ? "object-contain bg-black" : "object-cover";
 
-  // Local sharer PiP
-  const showLocalSharerPiP = kind === "screen" && isLocal && hasCam && camRef;
-
   return (
     <div
       style={{ ...style, isolation: "isolate" }}
@@ -160,17 +157,6 @@ export default function TileView({
           >
             {getInitials(name)}
           </div>
-        </div>
-      )}
-
-      {/* Local Sharer Picture-in-Picture */}
-      {showLocalSharerPiP && (
-        <div className="absolute bottom-12 end-3 w-28 h-20 rounded-xl overflow-hidden border-2 border-white/20 shadow-2xl bg-black [&_video]:w-full [&_video]:h-full [&_video]:rounded-[inherit] [&_video]:object-cover">
-          <VideoTrack
-            trackRef={camRef}
-            className="w-full h-full object-cover rounded-[inherit]"
-            style={{ transform: "scaleX(-1)" }}
-          />
         </div>
       )}
 

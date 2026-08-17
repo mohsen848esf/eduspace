@@ -154,28 +154,74 @@ export default function InfiniteCanvas({
     [viewport],
   );
 
-  // Zooming via scrollwheel or pinch gestures
-  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
-    e.preventDefault();
-    const rect = svgRef.current?.getBoundingClientRect();
-    if (!rect) return;
+  // Native non-passive wheel & gesture listener to completely prevent browser page zoom
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
 
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    const onNativeWheel = (e: WheelEvent) => {
+      // Prevent browser default page zoom (Ctrl + wheel / Touchpad Pinch)
+      e.preventDefault();
+      e.stopPropagation();
 
-    // Point in canvas space under cursor
-    const canvasX = (mouseX - viewport.panX) / viewport.zoom;
-    const canvasY = (mouseY - viewport.panY) / viewport.zoom;
+      const rect = svgRef.current?.getBoundingClientRect();
+      if (!rect) return;
 
-    const zoomFactor = 1.08;
-    let newZoom = e.deltaY < 0 ? viewport.zoom * zoomFactor : viewport.zoom / zoomFactor;
-    newZoom = Math.min(Math.max(newZoom, 0.15), 10); // zoom limit 15% to 1000%
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
 
-    const newPanX = mouseX - canvasX * newZoom;
-    const newPanY = mouseY - canvasY * newZoom;
+      setViewport((prev) => {
+        const canvasX = (mouseX - prev.panX) / prev.zoom;
+        const canvasY = (mouseY - prev.panY) / prev.zoom;
 
-    setViewport({ panX: newPanX, panY: newPanY, zoom: newZoom });
-  };
+        // On trackpad pinch-to-zoom, e.ctrlKey is true and deltaY is fine-grained
+        if (e.ctrlKey) {
+          const zoomFactor = Math.pow(1.01, -e.deltaY);
+          let newZoom = prev.zoom * zoomFactor;
+          newZoom = Math.min(Math.max(newZoom, 0.15), 10);
+
+          const newPanX = mouseX - canvasX * newZoom;
+          const newPanY = mouseY - canvasY * newZoom;
+          return { panX: newPanX, panY: newPanY, zoom: newZoom };
+        } else if (e.shiftKey) {
+          // Horizontal scrolling with Shift + Wheel
+          return { ...prev, panX: prev.panX - e.deltaY };
+        } else if (Math.abs(e.deltaX) > 0 && Math.abs(e.deltaY) < 40) {
+          // Two-finger trackpad panning
+          return {
+            ...prev,
+            panX: prev.panX - e.deltaX,
+            panY: prev.panY - e.deltaY,
+          };
+        } else {
+          // Standard mouse wheel zooming
+          const zoomFactor = 1.08;
+          let newZoom = e.deltaY < 0 ? prev.zoom * zoomFactor : prev.zoom / zoomFactor;
+          newZoom = Math.min(Math.max(newZoom, 0.15), 10);
+
+          const newPanX = mouseX - canvasX * newZoom;
+          const newPanY = mouseY - canvasY * newZoom;
+          return { panX: newPanX, panY: newPanY, zoom: newZoom };
+        }
+      });
+    };
+
+    const preventGesture = (e: Event) => {
+      e.preventDefault();
+    };
+
+    container.addEventListener("wheel", onNativeWheel, { passive: false });
+    container.addEventListener("gesturestart", preventGesture, { passive: false });
+    container.addEventListener("gesturechange", preventGesture, { passive: false });
+    container.addEventListener("gestureend", preventGesture, { passive: false });
+
+    return () => {
+      container.removeEventListener("wheel", onNativeWheel);
+      container.removeEventListener("gesturestart", preventGesture);
+      container.removeEventListener("gesturechange", preventGesture);
+      container.removeEventListener("gestureend", preventGesture);
+    };
+  }, []);
 
   // Pointer Down events
   const handlePointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
@@ -817,7 +863,6 @@ export default function InfiniteCanvas({
       <svg
         ref={svgRef}
         className="w-full h-full"
-        onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

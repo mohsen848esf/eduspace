@@ -146,21 +146,7 @@ export default function UnifiedRoomShell({
             ) : whiteboard.whiteboard.isActive && !whiteboard.whiteboard.isMinimized ? (
               <WhiteboardStageLayout whiteboard={whiteboard} />
             ) : (
-              <>
-                <VideoGrid layout={layout} onLayoutChange={onLayoutChange} />
-                {whiteboard.whiteboard.isActive && whiteboard.whiteboard.isMinimized && (
-                  <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 animate-in fade-in slide-in-from-top-2">
-                    <button
-                      type="button"
-                      onClick={whiteboard.restoreWhiteboard}
-                      className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-semibold shadow-2xl backdrop-blur-md border border-white/20 transition-all hover:scale-105 cursor-pointer"
-                    >
-                      <span className="text-sm">✏️</span>
-                      <span>{t("whiteboard.viewActiveBoard", "وایت‌برد فعال است (مشاهده تخته)")}</span>
-                    </button>
-                  </div>
-                )}
-              </>
+              <VideoGrid layout={layout} onLayoutChange={onLayoutChange} />
             )}
             <RoomRecordingBadge
               className={
