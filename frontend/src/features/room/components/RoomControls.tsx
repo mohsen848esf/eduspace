@@ -15,6 +15,9 @@ import {
 import SettingsPanel from "./SettingsPanel";
 import { type LayoutMode } from "../store/roomLayoutStore";
 import { useRoomWhiteboard } from "../hooks/useRoomWhiteboardContext";
+import { useRoomStore } from "../store/roomStore";
+import toast from "react-hot-toast";
+import DockStackFanOut from "./dock/DockStackFanOut";
 
 interface RoomControlsProps {
   isMicOn: boolean;
@@ -509,6 +512,22 @@ function CamSettingsPopover({ onClose }: { onClose: () => void }) {
   );
 }
 
+function useCurrentTime() {
+  const [timeStr, setTimeStr] = useState("");
+  useEffect(() => {
+    const update = () => {
+      const now = new Date();
+      setTimeStr(
+        now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      );
+    };
+    update();
+    const interval = setInterval(update, 10000);
+    return () => clearInterval(interval);
+  }, []);
+  return timeStr;
+}
+
 // ── Main RoomControls ──
 export default function RoomControls({
   isMicOn,
@@ -516,6 +535,7 @@ export default function RoomControls({
   isScreenSharing,
   sidebarTab,
   settingsOpen,
+  roomCode,
   onToggleMic,
   onToggleCam,
   onToggleScreenShare,
@@ -533,6 +553,22 @@ export default function RoomControls({
   const { t } = useTranslation("room");
   const [micPopoverOpen, setMicPopoverOpen] = useState(false);
   const [camPopoverOpen, setCamPopoverOpen] = useState(false);
+  const [toolsStackOpen, setToolsStackOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const currentTime = useCurrentTime();
+  const { roomCode: storeRoomCode } = useRoomStore();
+  const activeRoomCode = roomCode || storeRoomCode || "";
+
+  const copyRoomCode = async () => {
+    if (!activeRoomCode) return;
+    await navigator.clipboard.writeText(
+      `${window.location.origin}/room/${activeRoomCode}`
+    );
+    toast.success(t("topbar.copiedToast", "کد اتاق کپی شد"));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const {
     whiteboard: whiteboardState,
@@ -562,20 +598,15 @@ export default function RoomControls({
     onToggleSidebar(panel === "people" ? "participants" : panel);
   };
 
-  // Ambient shell padding tightens on small sizes so the bar doesn't
-  // overflow on a 320px viewport.
-  const shellPadding =
-    size === "sm" ? "px-2" : size === "md" ? "px-3" : "px-4";
   const shellHeight =
-    size === "sm" ? "h-[64px]" : size === "md" ? "h-[68px]" : "h-[72px]";
+    size === "sm" ? "h-[64px]" : size === "md" ? "h-[70px]" : "h-[76px]";
 
   return (
     <div
       className={cn(
-        "relative bg-[color-mix(in_srgb,var(--s1)_80%,transparent)] backdrop-blur-xl border-t border-[var(--b)]",
-        "flex items-center justify-center gap-3 flex-shrink-0 shadow-2xl transition-all",
+        "relative bg-[color-mix(in_srgb,var(--s1)_85%,transparent)] backdrop-blur-xl border-t border-[var(--b)]",
+        "flex items-center justify-between gap-2 flex-shrink-0 shadow-2xl transition-all select-none px-4 md:px-6",
         shellHeight,
-        shellPadding,
       )}
     >
       <SettingsPanel
@@ -584,15 +615,41 @@ export default function RoomControls({
         isPushToTalk={!!isPushToTalk}
         onTogglePushToTalk={onTogglePushToTalk || (() => {})}
       />
-      {/* Left — mic, camera */}
-      <div className="flex items-center gap-2 pr-4 border-r border-[var(--b)]">
+
+      {/* ── Section 1: Meeting Info (Time + Room Code) ── */}
+      <div className="flex items-center gap-3 min-w-[130px] md:min-w-[180px] text-xs font-medium text-[var(--t2)]">
+        {currentTime && (
+          <span className="font-semibold text-[var(--t1)] hidden sm:inline-block force-ltr">
+            {currentTime}
+          </span>
+        )}
+        {currentTime && <span className="text-[var(--t3)] hidden sm:inline-block">|</span>}
+        {activeRoomCode && (
+          <Tooltip content={copied ? t("topbar.copied", "کپی شد!") : t("topbar.copy", "کپی لینک اتاق")}>
+            <button
+              type="button"
+              onClick={copyRoomCode}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-lg border-none cursor-pointer transition-all font-mono force-ltr text-[11px]",
+                copied
+                  ? "bg-[var(--green)]/15 text-[var(--green)] font-semibold"
+                  : "bg-[var(--s3)] text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s4)]"
+              )}
+            >
+              <span>{copied ? "✓" : "📋"}</span>
+              <span className="truncate max-w-[90px] md:max-w-[130px]">{activeRoomCode}</span>
+            </button>
+          </Tooltip>
+        )}
+      </div>
+
+      {/* ── Section 2: Center Floating Media Dock ── */}
+      <div className="flex items-center gap-2 md:gap-2.5 px-3 py-1 bg-[var(--s2)]/70 backdrop-blur-md border border-[var(--b)] rounded-2xl shadow-xl">
         <SplitBtn
           iconOn={Icons.mic}
           iconOff={Icons.micOff}
           label={t("controls.mic")}
-          tooltipMain={
-            isMicOn ? t("tooltips.muteOn") : t("tooltips.muteOff")
-          }
+          tooltipMain={isMicOn ? t("tooltips.muteOn") : t("tooltips.muteOff")}
           tooltipArrow={t("tooltips.micSettings")}
           onMain={onToggleMic}
           onArrow={() => {
@@ -614,9 +671,7 @@ export default function RoomControls({
           iconOn={Icons.camera}
           iconOff={Icons.cameraOff}
           label={t("controls.camera")}
-          tooltipMain={
-            isCamOn ? t("tooltips.cameraOn") : t("tooltips.cameraOff")
-          }
+          tooltipMain={isCamOn ? t("tooltips.cameraOn") : t("tooltips.cameraOff")}
           tooltipArrow={t("tooltips.camSettings")}
           onMain={onToggleCam}
           onArrow={() => {
@@ -631,10 +686,7 @@ export default function RoomControls({
             )
           }
         />
-      </div>
 
-      {/* Center — macOS Dock Actions */}
-      <div className="flex items-center gap-2.5 px-3">
         <CtrlBtn
           icon={Icons.screenShare}
           label={t("controls.share")}
@@ -674,30 +726,6 @@ export default function RoomControls({
           isOn={handRaised}
           size={size}
         />
-        <CtrlBtn
-          icon={Icons.people}
-          label={t("controls.people")}
-          tooltip={t("tooltips.participants")}
-          onClick={() => handlePanelClick("people")}
-          isOn={isPanelActive("people")}
-          size={size}
-        />
-        <CtrlBtn
-          icon={Icons.chat}
-          label={t("controls.chat")}
-          tooltip={t("tooltips.chat")}
-          onClick={() => handlePanelClick("chat")}
-          isOn={isPanelActive("chat")}
-          size={size}
-        />
-        <CtrlBtn
-          icon={Icons.tools}
-          label={t("controls.tools")}
-          tooltip={t("tooltips.tools")}
-          onClick={() => handlePanelClick("tools")}
-          isOn={isPanelActive("tools")}
-          size={size}
-        />
 
         <CtrlBtn
           icon={Icons.settings}
@@ -707,22 +735,50 @@ export default function RoomControls({
           isOn={settingsOpen}
           size={size}
         />
+
+        {/* Leave Session Button */}
+        <Tooltip content={t("tooltips.leave")}>
+          <button
+            type="button"
+            onClick={onLeave}
+            className={cn(
+              "px-4 flex items-center justify-center rounded-xl border-none cursor-pointer font-bold transition-all active:scale-[0.96] duration-150 shadow-md",
+              size === "sm" ? "h-10 text-xs" : size === "md" ? "h-11 text-sm" : "h-12 text-sm",
+              "bg-[var(--red)] hover:bg-[var(--red)]/90 text-white shadow-[var(--red)]/20"
+            )}
+          >
+            {Icons.leave}
+          </button>
+        </Tooltip>
       </div>
 
-      {/* Right — Leave Session */}
-      <div className="flex items-center pl-4 border-l border-[var(--b)]">
-        <button
-          type="button"
-          onClick={onLeave}
-          className={cn(
-            "px-5 flex items-center justify-center rounded-xl border-none cursor-pointer font-bold transition-all active:scale-[0.96] duration-150 shadow-md",
-            size === "sm" ? "h-10 text-xs" : size === "md" ? "h-11 text-sm" : "h-12 text-sm",
-            "bg-[var(--red)] hover:bg-[var(--red)]/90 text-white shadow-[var(--red)]/20"
-          )}
-          title={t("tooltips.leave")}
-        >
-          {t("controls.leave")}
-        </button>
+      {/* ── Section 3: End Utility Dock (Chat, People, Tools Stack Fan-Out) ── */}
+      <div className="flex items-center gap-2 min-w-[130px] md:min-w-[180px] justify-end">
+        <CtrlBtn
+          icon={Icons.chat}
+          label={t("controls.chat")}
+          tooltip={t("tooltips.chat")}
+          onClick={() => handlePanelClick("chat")}
+          isOn={isPanelActive("chat")}
+          size={size}
+        />
+        <CtrlBtn
+          icon={Icons.people}
+          label={t("controls.people")}
+          tooltip={t("tooltips.participants")}
+          onClick={() => handlePanelClick("people")}
+          isOn={isPanelActive("people")}
+          size={size}
+        />
+
+        {/* macOS Dock Stack 3D Curved Fan-out for Tools */}
+        <DockStackFanOut
+          isOpen={toolsStackOpen}
+          onToggle={() => setToolsStackOpen((prev) => !prev)}
+          onClose={() => setToolsStackOpen(false)}
+          onOpenPanel={(p) => handlePanelClick(p)}
+          size={size}
+        />
       </div>
     </div>
   );
