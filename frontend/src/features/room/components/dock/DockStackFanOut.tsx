@@ -20,10 +20,6 @@ interface StackItem {
   labelKey: string;
   defaultLabel: string;
   icon: string | React.ReactNode;
-  badge?: string;
-  color: string;
-  bgGradient: string;
-  subLabel: string;
   action: () => void;
 }
 
@@ -38,13 +34,12 @@ export default function DockStackFanOut({
   const { t } = useTranslation("room");
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-  const [isPeekHovered, setIsPeekHovered] = useState(false);
 
   const {
     whiteboard,
-    launchWhiteboard,
     restoreWhiteboard,
     minimizeWhiteboard,
+    launchWhiteboard,
   } = useRoomWhiteboard();
   const { isHost } = useRoomStore();
 
@@ -111,21 +106,13 @@ export default function DockStackFanOut({
     }
   }, [onOpenMiniApps, onOpenPanel, onClose]);
 
-  // Primary top tools + Summary card for remaining tools
+  // 5 Classroom Tools Items
   const stackItems: StackItem[] = [
     {
       id: "whiteboard",
       labelKey: "tools.whiteboard",
       defaultLabel: "تخته وایت‌برد هوشمند",
       icon: "✏️",
-      badge: whiteboard.isActive
-        ? whiteboard.isMinimized
-          ? "فعال (کوچک)"
-          : "در حال نمایش"
-        : undefined,
-      color: "#10b981",
-      bgGradient: "from-emerald-500/30 to-teal-600/30",
-      subLabel: "تخته تعاملی و ترسیم",
       action: handleWhiteboardAction,
     },
     {
@@ -133,9 +120,6 @@ export default function DockStackFanOut({
       labelKey: "tools.miniApps",
       defaultLabel: "مینی‌اپ‌ها و بازی‌ها",
       icon: "🎮",
-      color: "#8b5cf6",
-      bgGradient: "from-purple-500/30 to-indigo-600/30",
-      subLabel: "بازی‌های کلاسی و آموزشی",
       action: handleMiniAppsAction,
     },
     {
@@ -143,30 +127,32 @@ export default function DockStackFanOut({
       labelKey: "tools.quickQuiz",
       defaultLabel: "آزمون سریع و پرسش",
       icon: "📊",
-      color: "#f59e0b",
-      bgGradient: "from-amber-500/30 to-orange-600/30",
-      subLabel: "سنجش و کوئیز لحظه‌ای",
       action: () => {
         onClose();
         onOpenPanel("tools");
       },
     },
     {
-      id: "more_tools",
-      labelKey: "tools.moreToolsCount",
-      defaultLabel: "+۲ ابزار دیگر (مشاهده همه)",
+      id: "timer",
+      labelKey: "tools.focusTimer",
+      defaultLabel: "تایمر و زمان‌سنج تمرکز",
+      icon: "⏱️",
+      action: () => {
+        onClose();
+        onOpenPanel("tools");
+      },
+    },
+    {
+      id: "all_tools",
+      labelKey: "tools.allTools",
+      defaultLabel: "تمامی ابزارها و فعالیت‌ها",
       icon: "🧰",
-      color: "#ec4899",
-      bgGradient: "from-pink-500/30 to-rose-600/30",
-      subLabel: "تایمر، نظرسنجی و امکانات",
       action: () => {
         onClose();
         onOpenPanel("tools");
       },
     },
   ];
-
-  const totalItems = stackItems.length;
 
   const buttonSizeClass =
     size === "sm"
@@ -175,85 +161,101 @@ export default function DockStackFanOut({
       ? "w-11 h-11 min-w-11 rounded-xl text-lg"
       : "w-12 h-12 min-w-12 rounded-xl text-xl";
 
+  // Direction multiplier: RTL fans left (-1), LTR fans right (+1)
+  const dirFactor = isRtl ? -1 : 1;
+
+  // Slant rotation angle: RTL (+10deg), LTR (-10deg)
+  const rotationAngle = isRtl ? 10 : -10;
+
+  // Origin point of the SVG branches anchor
+  const originX = isRtl ? 260 : 60;
+  const originY = 265;
+
   return (
     <div ref={containerRef} className="relative select-none inline-flex items-center">
-      {/* ── Active Whiteboard Semi-Open Peek Card (when minimized & stack closed) ── */}
-      {whiteboard.isActive && whiteboard.isMinimized && !isOpen && (
-        <div
-          className={cn(
-            "absolute bottom-full mb-2 z-40 transition-all duration-300 ease-out cursor-pointer",
-            isRtl ? "right-0" : "left-0",
-            isPeekHovered
-              ? "transform -translate-y-2 scale-105"
-              : "transform translate-y-0 scale-100"
-          )}
-          onMouseEnter={() => setIsPeekHovered(true)}
-          onMouseLeave={() => setIsPeekHovered(false)}
-          onClick={restoreWhiteboard}
-        >
-          <div
-            className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-2xl backdrop-blur-2xl border shadow-xl transition-all duration-300",
-              "bg-[#064e3b]/95 hover:bg-[#065f46] border-emerald-400/50 text-white",
-              isPeekHovered
-                ? "shadow-[0_0_20px_rgba(16,185,129,0.45)] ring-2 ring-emerald-400/40"
-                : "shadow-lg"
-            )}
-            style={{ minWidth: isPeekHovered ? "180px" : "140px" }}
-          >
-            <div className="relative flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-500/30 text-sm">
-              <span>✏️</span>
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            </div>
-
-            <div className="flex flex-col text-start overflow-hidden">
-              <span className="text-[11px] font-bold text-emerald-100 truncate">
-                {t("tools.whiteboard", "تخته وایت‌برد")}
-              </span>
-              <span className="text-[9px] text-emerald-300/80 truncate">
-                {isPeekHovered
-                  ? t("whiteboard.clickToOpen", "کلیک برای باز کردن")
-                  : t("whiteboard.activeBoard", "در حال اجرا")}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Vertical Clean-Anchored Stack Container (Zero Clipping) ── */}
+      {/* ── Slanted Fan-Out Container (Zero Viewport Clipping) ── */}
       <div
         className={cn(
           "absolute bottom-full mb-3 pointer-events-none z-50",
           isRtl ? "right-0" : "left-0",
           isOpen ? "pointer-events-auto" : "invisible"
         )}
-        style={{ perspective: "800px" }}
+        style={{
+          perspective: "1000px",
+          width: "290px",
+          height: "260px",
+        }}
       >
-        <div
-          className={cn(
-            "relative flex flex-col",
-            isRtl ? "items-end" : "items-start"
-          )}
-        >
+        {/* ── Connecting Curved SVG Branch Lines ── */}
+        {isOpen && (
+          <svg
+            className={cn(
+              "absolute bottom-0 w-[320px] h-[280px] overflow-visible pointer-events-none -z-10",
+              isRtl ? "-right-4" : "-left-4"
+            )}
+            style={{
+              filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.15))",
+            }}
+          >
+            {stackItems.map((_, i) => {
+              // Target connection coordinate on card:
+              // i = 0 is Top (Whiteboard), i = 4 is Bottom (All Tools)
+              const cardOffsetY = 210 - i * 44;
+              const cardOffsetX = isRtl
+                ? 135 - (4 - i) * 12
+                : 185 + (4 - i) * 12;
+
+              // Control points for organic branch curve
+              const ctrl1X = originX + dirFactor * (20 + (4 - i) * 10);
+              const ctrl1Y = originY - (20 + (4 - i) * 20);
+              const ctrl2X = cardOffsetX - dirFactor * 30;
+              const ctrl2Y = cardOffsetY + 15;
+
+              const isHovered = hoveredIdx === i;
+
+              return (
+                <path
+                  key={i}
+                  d={`M ${originX} ${originY} C ${ctrl1X} ${ctrl1Y}, ${ctrl2X} ${ctrl2Y}, ${cardOffsetX} ${cardOffsetY}`}
+                  fill="none"
+                  stroke={
+                    isHovered
+                      ? "rgba(59, 130, 246, 0.95)"
+                      : "rgba(148, 163, 184, 0.4)"
+                  }
+                  strokeWidth={isHovered ? "2.5" : "1.5"}
+                  strokeLinecap="round"
+                  className="transition-all duration-200"
+                />
+              );
+            })}
+          </svg>
+        )}
+
+        {/* ── Stacked Slanted Cards ── */}
+        <div className="relative w-full h-full">
           {stackItems.map((item, i) => {
             const isHovered = hoveredIdx === i;
-            const translateY = isOpen ? -(58 + i * 52) : 0;
-            const scale = isOpen ? (isHovered ? 1.08 : 1 - i * 0.02) : 0.4;
-            const rotateX = isOpen ? 6 - i * 1.5 : 0;
+
+            // Geometry: i = 0 (top) down to i = 4 (bottom)
+            const translateY = isOpen ? -(45 + (4 - i) * 44) : 0;
+            const translateX = isOpen ? dirFactor * (32 + (4 - i) * 14) : 0;
+
+            const scale = isOpen ? (isHovered ? 1.06 : 1) : 0.4;
             const opacity = isOpen ? 1 : 0;
-            const zIndex = isHovered ? 60 : 50 - i;
-            const delay = isOpen ? `${i * 30}ms` : `${(totalItems - i) * 15}ms`;
+            const zIndex = isHovered ? 60 : 40 + i;
+            const delay = isOpen ? `${(4 - i) * 35}ms` : `${i * 20}ms`;
 
             return (
               <div
                 key={item.id}
                 className="absolute bottom-0 transition-all cursor-pointer"
                 style={{
-                  transform: `translate3d(0, ${translateY}px, ${
+                  transform: `translate3d(${translateX}px, ${translateY}px, ${
                     isHovered ? 25 : 0
-                  }px) rotateX(${rotateX}deg) scale(${scale})`,
+                  }px) rotateZ(${rotationAngle}deg) scale(${scale})`,
                   transformOrigin: isRtl ? "bottom right" : "bottom left",
-                  transitionDuration: isOpen ? "320ms" : "200ms",
+                  transitionDuration: isOpen ? "340ms" : "220ms",
                   transitionTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)",
                   transitionDelay: delay,
                   opacity,
@@ -265,40 +267,32 @@ export default function DockStackFanOut({
               >
                 <div
                   className={cn(
-                    "flex items-center gap-3 p-1.5 px-3 rounded-2xl backdrop-blur-2xl border transition-all duration-200 shadow-xl group",
-                    "bg-[#0f172a]/95 hover:bg-[#1e293b] text-white",
+                    "flex items-center gap-3 px-4 py-2.5 rounded-2xl transition-all duration-200 shadow-xl border",
                     isHovered
-                      ? "border-indigo-400/80 shadow-[0_0_25px_rgba(99,102,241,0.5)] ring-2 ring-indigo-400/30"
-                      : "border-white/15 hover:border-white/30"
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-400/80 shadow-[0_10px_28px_rgba(37,99,235,0.5)] ring-2 ring-blue-400"
+                      : "bg-[#1e293b]/95 text-slate-100 border-white/10 hover:border-white/25 hover:bg-[#283548]"
                   )}
-                  style={{ minWidth: "195px", maxWidth: "230px" }}
+                  style={{ minWidth: "185px", maxWidth: "230px" }}
                 >
                   {/* Icon */}
                   <div
                     className={cn(
-                      "w-9 h-9 rounded-xl flex items-center justify-center text-lg bg-gradient-to-br shadow-inner border border-white/10 transition-transform duration-200 flex-shrink-0",
-                      item.bgGradient,
-                      isHovered && "scale-110"
+                      "flex items-center justify-center text-lg transition-transform duration-200 flex-shrink-0",
+                      isHovered ? "scale-115" : ""
                     )}
                   >
                     {item.icon}
                   </div>
 
-                  {/* Text Details */}
-                  <div className="flex flex-col text-start min-w-0 flex-1">
-                    <span className="text-xs font-bold text-gray-100 group-hover:text-indigo-200 transition-colors truncate">
-                      {t(item.labelKey, item.defaultLabel)}
-                    </span>
-                    {item.badge ? (
-                      <span className="text-[10px] font-semibold text-emerald-400 animate-pulse truncate">
-                        {item.badge}
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-gray-400 group-hover:text-gray-300 truncate">
-                        {item.subLabel}
-                      </span>
+                  {/* Label */}
+                  <span
+                    className={cn(
+                      "text-xs font-semibold tracking-tight truncate",
+                      isHovered ? "text-white" : "text-slate-100"
                     )}
-                  </div>
+                  >
+                    {t(item.labelKey, item.defaultLabel)}
+                  </span>
                 </div>
               </div>
             );
@@ -306,7 +300,7 @@ export default function DockStackFanOut({
         </div>
       </div>
 
-      {/* ── Trigger Button in the Dock (Standard Tools Icon & Exact Sizing) ── */}
+      {/* ── Trigger Button in the Dock ── */}
       <Tooltip
         content={
           isOpen
@@ -327,7 +321,6 @@ export default function DockStackFanOut({
               : "bg-[var(--s2)] text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]"
           )}
         >
-          {/* Standard Clean Tools Icon */}
           <span className="flex items-center justify-center">
             {Icons.tools}
           </span>
