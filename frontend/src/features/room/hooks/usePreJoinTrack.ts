@@ -1,19 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createLocalVideoTrack, LocalVideoTrack } from "livekit-client";
 import { supportsBackgroundProcessors } from "@livekit/track-processors";
-import type { BackgroundType } from "./useBackgroundBlur";
+import { type BackgroundType, BG_IMAGES } from "./useBackgroundBlur";
 import { useBackgroundStore } from "../store/backgroundStore";
 import { useLocale } from "../../../i18n/useLocale";
 import { toast } from "react-hot-toast";
-
-// Self-hosted background images — no external CDN dependency.
-// Served from public/backgrounds/ by Vite / Nginx (works on internal servers).
-const BG_IMAGES: Partial<Record<BackgroundType, string>> = {
-  office:  "/backgrounds/office.jpg",
-  nature:  "/backgrounds/nature.jpg",
-  studio:  "/backgrounds/studio.jpg",
-  minimal: "/backgrounds/minimal.jpg",
-};
 
 export function usePreJoinTrack(camEnabled: boolean = true, selectedCam?: string) {
   const { language } = useLocale();

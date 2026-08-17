@@ -1,7 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { Sparkles, Ban, Droplets, Check, X } from "lucide-react";
-import { type BackgroundType } from "../../../hooks/useBackgroundBlur";
+import { type BackgroundType, BG_IMAGES } from "../../../hooks/useBackgroundBlur";
 import Spinner from "@/components/ui/Spinner";
 import { cn } from "@/lib/utils";
 
@@ -34,22 +34,22 @@ export const BG_PRESETS: {
   {
     id: "office",
     labelKey: "preJoin.effectsPresets.office",
-    previewUrl: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=320&q=70",
+    previewUrl: BG_IMAGES.office || "/backgrounds/office.jpg",
   },
   {
     id: "studio",
     labelKey: "preJoin.effectsPresets.studio",
-    previewUrl: "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=320&q=70",
+    previewUrl: BG_IMAGES.studio || "/backgrounds/studio.jpg",
   },
   {
     id: "nature",
     labelKey: "preJoin.effectsPresets.nature",
-    previewUrl: "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=320&q=70",
+    previewUrl: BG_IMAGES.nature || "/backgrounds/nature.jpg",
   },
   {
     id: "minimal",
     labelKey: "preJoin.effectsPresets.minimal",
-    previewUrl: "https://images.unsplash.com/photo-1557683316-973673baf926?w=320&q=70",
+    previewUrl: BG_IMAGES.minimal || "/backgrounds/minimal.jpg",
   },
 ];
 

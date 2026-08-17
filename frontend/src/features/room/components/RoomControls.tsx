@@ -11,6 +11,7 @@ import { cn } from "../../../lib/utils";
 import {
   useBackgroundBlur,
   type BackgroundType,
+  BG_IMAGES,
 } from "../hooks/useBackgroundBlur";
 import SettingsPanel from "./SettingsPanel";
 import { type LayoutMode } from "../store/roomLayoutStore";
@@ -428,26 +429,22 @@ function CamSettingsPopover({ onClose }: { onClose: () => void }) {
       {
         id: "office",
         label: "Office",
-        preview:
-          "https://images.unsplash.com/photo-1497366216548-37526070297c?w=120&q=60",
+        preview: BG_IMAGES.office || "/backgrounds/office.jpg",
       },
       {
         id: "nature",
         label: "Nature",
-        preview:
-          "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=120&q=60",
+        preview: BG_IMAGES.nature || "/backgrounds/nature.jpg",
       },
       {
         id: "studio",
         label: "Studio",
-        preview:
-          "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=120&q=60",
+        preview: BG_IMAGES.studio || "/backgrounds/studio.jpg",
       },
       {
         id: "minimal",
         label: "Minimal",
-        preview:
-          "https://images.unsplash.com/photo-1557683316-973673baf926?w=120&q=60",
+        preview: BG_IMAGES.minimal || "/backgrounds/minimal.jpg",
       },
     ];
 

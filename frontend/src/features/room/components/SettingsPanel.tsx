@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useRoomContext } from "@livekit/components-react";
 import { cn } from "../../../lib/utils";
-import { useRoomLayoutStore } from "../store/roomLayoutStore";
-import { useBackgroundBlur, type BackgroundType } from "../hooks/useBackgroundBlur";
+import { useBackgroundBlur, type BackgroundType, BG_IMAGES } from "../hooks/useBackgroundBlur";
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -119,22 +118,22 @@ export default function SettingsPanel({
     {
       id: "office",
       label: "Office",
-      preview: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=120&q=60",
+      preview: BG_IMAGES.office || "/backgrounds/office.jpg",
     },
     {
       id: "nature",
       label: "Nature",
-      preview: "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=120&q=60",
+      preview: BG_IMAGES.nature || "/backgrounds/nature.jpg",
     },
     {
       id: "studio",
       label: "Studio",
-      preview: "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=120&q=60",
+      preview: BG_IMAGES.studio || "/backgrounds/studio.jpg",
     },
     {
       id: "minimal",
       label: "Minimal",
-      preview: "https://images.unsplash.com/photo-1557683316-973673baf926?w=120&q=60",
+      preview: BG_IMAGES.minimal || "/backgrounds/minimal.jpg",
     },
   ];
 
