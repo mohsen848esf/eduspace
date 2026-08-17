@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useRoomContext } from "@livekit/components-react";
 import { cn } from "../../../lib/utils";
+import { useRoomLayoutStore } from "../store/roomLayoutStore";
 import { useBackgroundBlur, type BackgroundType, BG_IMAGES } from "../hooks/useBackgroundBlur";
 
 interface SettingsPanelProps {
