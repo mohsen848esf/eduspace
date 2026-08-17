@@ -925,8 +925,9 @@ export default function InfiniteCanvas({
       </svg>
 
       {/* Floating Zoom Navigation Indicator */}
-      <div className="absolute bottom-4 left-4 bg-[#1e293b]/95 backdrop-blur border border-[#334155] rounded-xl flex items-center p-1.5 shadow-xl select-none gap-2 z-50">
+      <div className="absolute bottom-3 end-3 bg-[#1e293b]/95 backdrop-blur border border-[#334155] rounded-xl flex items-center p-1 sm:p-1.5 shadow-xl select-none gap-1 sm:gap-1.5 z-30">
         <button
+          type="button"
           onClick={() =>
             setViewport((prev) => ({
               ...prev,
@@ -934,13 +935,15 @@ export default function InfiniteCanvas({
             }))
           }
           className="w-7 h-7 bg-[#334155] hover:bg-[#475569] text-white border-none rounded-lg font-bold text-sm flex items-center justify-center cursor-pointer transition-colors"
+          title="Zoom In"
         >
           ＋
         </button>
-        <span className="text-[11px] font-bold text-gray-300 w-12 text-center">
+        <span className="text-[11px] font-bold text-gray-300 w-10 sm:w-12 text-center">
           {Math.round(viewport.zoom * 100)}%
         </span>
         <button
+          type="button"
           onClick={() =>
             setViewport((prev) => ({
               ...prev,
@@ -948,15 +951,19 @@ export default function InfiniteCanvas({
             }))
           }
           className="w-7 h-7 bg-[#334155] hover:bg-[#475569] text-white border-none rounded-lg font-bold text-sm flex items-center justify-center cursor-pointer transition-colors"
+          title="Zoom Out"
         >
           －
         </button>
-        <div className="w-px h-5 bg-[#334155]" />
+        <div className="w-px h-4 sm:h-5 bg-[#334155]" />
         <button
+          type="button"
           onClick={() => setViewport({ panX: 0, panY: 0, zoom: 1 })}
-          className="px-2 h-7 bg-[#334155] hover:bg-[#475569] text-gray-300 text-[10px] font-bold border-none rounded-lg cursor-pointer transition-colors flex items-center justify-center"
+          className="px-2 h-7 bg-[#334155] hover:bg-[#475569] text-gray-300 text-[10px] font-bold border-none rounded-lg cursor-pointer transition-colors flex items-center justify-center gap-1"
+          title="Reset View (100%)"
         >
-          Reset View
+          <span className="text-xs">⟲</span>
+          <span className="hidden sm:inline">Reset</span>
         </button>
       </div>
     </div>

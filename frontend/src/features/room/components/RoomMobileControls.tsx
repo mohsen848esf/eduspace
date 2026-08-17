@@ -87,8 +87,8 @@ export default function RoomMobileControls({
       {/* ── Floating Glassmorphic Mobile Controls Dock ── */}
       <div
         className={cn(
-          "w-full max-w-[460px] flex items-center justify-between gap-1 p-1.5 rounded-2xl border shadow-2xl backdrop-blur-2xl",
-          "bg-[#0f172a]/95 dark:bg-[#0f172a]/95 border-white/15 text-white shadow-[0_10px_30px_rgba(0,0,0,0.6)]"
+          "w-full max-w-[480px] flex items-center justify-between gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-2xl border shadow-2xl backdrop-blur-2xl",
+          "bg-[#0f172a]/95 dark:bg-[#0f172a]/95 border-white/15 text-white shadow-[0_10px_30px_rgba(0,0,0,0.6)] overflow-x-auto scrollbar-none"
         )}
       >
         {/* Mic Toggle */}
@@ -112,22 +112,20 @@ export default function RoomMobileControls({
         {/* Live Reactions */}
         <MobileDockBtn
           tooltip={t("controls.reactions", "واکنش")}
-          icon={<span className="text-lg leading-none">😊</span>}
+          icon={<span className="text-base sm:text-lg leading-none">😊</span>}
           onClick={() => setReactionsOpen((prev) => !prev)}
           variant={reactionsOpen ? "active" : "default"}
           ariaLabel={t("controls.reactions")}
         />
 
-        {/* Screen Share (shown when active or on wider mobile screens) */}
-        {isScreenSharing && (
-          <MobileDockBtn
-            tooltip={t("tooltips.screenShare")}
-            icon={Icons.screenShare}
-            onClick={onToggleScreenShare}
-            variant="active"
-            ariaLabel={t("controls.share")}
-          />
-        )}
+        {/* Screen Share */}
+        <MobileDockBtn
+          tooltip={t("tooltips.screenShare")}
+          icon={Icons.screenShare}
+          onClick={onToggleScreenShare}
+          variant={isScreenSharing ? "active" : "default"}
+          ariaLabel={t("controls.share")}
+        />
 
         {/* Raise Hand */}
         <MobileDockBtn
@@ -181,7 +179,7 @@ export default function RoomMobileControls({
             onClick={onLeave}
             aria-label={t("tooltips.leave")}
             className={cn(
-              "w-10 h-10 min-w-10 rounded-xl flex items-center justify-center border-none cursor-pointer",
+              "w-8.5 h-8.5 sm:w-10 sm:h-10 min-w-8.5 sm:min-w-10 rounded-xl flex items-center justify-center border-none cursor-pointer shrink-0",
               "bg-rose-600 hover:bg-rose-700 active:scale-90 text-white shadow-md shadow-rose-600/40 transition-transform duration-150"
             )}
           >
@@ -215,8 +213,8 @@ function MobileDockBtn({
         onClick={onClick}
         aria-label={ariaLabel || tooltip}
         className={cn(
-          "w-10 h-10 min-w-10 rounded-xl flex items-center justify-center border transition-all duration-150 cursor-pointer",
-          "active:scale-90 select-none",
+          "w-8.5 h-8.5 sm:w-10 sm:h-10 min-w-8.5 sm:min-w-10 rounded-xl flex items-center justify-center border transition-all duration-150 cursor-pointer shrink-0",
+          "active:scale-90 select-none [&>svg]:w-4 [&>svg]:h-4 sm:[&>svg]:w-5 sm:[&>svg]:h-5",
           variant === "default" &&
             "bg-white/10 hover:bg-white/15 border-white/10 text-gray-200",
           variant === "active" &&
