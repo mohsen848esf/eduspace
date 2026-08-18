@@ -13,6 +13,7 @@ import { useOrgContextStore } from "../../auth/store/orgContextStore";
 
 import { Modal, ModalHeader, ModalTitle, ModalBody, ModalFooter } from "../../../components/ui/Modal";
 import Spinner from "../../../components/ui/Spinner";
+import { Switch } from "../../../components/ui";
 import ReportsExportWidget from "./ReportsExportWidget";
 
 const parseUA = (ua: string) => {
@@ -853,17 +854,12 @@ export default function OrgSettingsPage() {
                           })}
                         </td>
                         <td className="py-3 px-2 text-center">
-                          <button
-                            onClick={() => toggleMemberActive(member)}
+                          <Switch
+                            checked={member.is_active}
+                            onChange={() => toggleMemberActive(member)}
                             disabled={!canManageMembers || updateMemberMutation.isPending}
-                            className={`w-10 h-5 rounded-full p-0.5 border-none cursor-pointer transition-colors relative flex items-center ${member.is_active ? "bg-[var(--brand-text)]" : "bg-[var(--s3)] border border-[var(--b)]"
-                              } ${!canManageMembers ? "cursor-not-allowed opacity-60" : ""}`}
-                          >
-                            <span
-                              className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-150 absolute ${member.is_active ? (isFarsi ? "translate-x-1" : "translate-x-5") : (isFarsi ? "translate-x-5" : "translate-x-0")
-                                }`}
-                            />
-                          </button>
+                            variant="brand"
+                          />
                         </td>
                         {canManageMembers && (
                           <td className="py-3 px-2 text-end flex justify-end gap-1.5">

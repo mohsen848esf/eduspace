@@ -14,3 +14,4 @@ export * from "./ShimmerLoader";
 export * from "./Tooltip";
 export * from "./TableRowActions";
 export * from "./ErrorBoundary";
+export * from "./Switch";

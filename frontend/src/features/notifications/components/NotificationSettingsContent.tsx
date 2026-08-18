@@ -4,6 +4,7 @@ import client from "../../../lib/api/client";
 import { toast } from "react-hot-toast";
 import { useLocale } from "../../../i18n/useLocale";
 import Spinner from "../../../components/ui/Spinner";
+import { Switch } from "../../../components/ui";
 import { useAuthStore } from "../../auth/store/authStore";
 import { Bell, Mail, MessageSquare, ShieldCheck, AlertTriangle } from "lucide-react";
 
@@ -189,15 +190,11 @@ export default function NotificationSettingsContent() {
 
                 {/* Email Channel */}
                 <div className="col-span-4 md:col-span-2 flex justify-center">
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={pref.email_enabled}
-                      onChange={() => handleToggle(pref.category, "email_enabled")}
-                      className="sr-only peer"
-                    />
-                    <div className="w-9 h-5 bg-[var(--s3)] rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--brand)]"></div>
-                  </label>
+                  <Switch
+                    checked={pref.email_enabled}
+                    onChange={() => handleToggle(pref.category, "email_enabled")}
+                    variant="brand"
+                  />
                 </div>
 
                 {/* SMS Channel */}
@@ -206,35 +203,23 @@ export default function NotificationSettingsContent() {
                     !hasPhoneNumber ? "opacity-40 cursor-not-allowed" : ""
                   }`}
                 >
-                  <label
-                    className={`relative inline-flex items-center ${
-                      !hasPhoneNumber ? "pointer-events-none" : "cursor-pointer"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={pref.sms_enabled && hasPhoneNumber}
-                      onChange={() =>
-                        hasPhoneNumber && handleToggle(pref.category, "sms_enabled")
-                      }
-                      disabled={!hasPhoneNumber}
-                      className="sr-only peer"
-                    />
-                    <div className="w-9 h-5 bg-[var(--s3)] rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--brand)]"></div>
-                  </label>
+                  <Switch
+                    checked={pref.sms_enabled && hasPhoneNumber}
+                    onChange={() =>
+                      hasPhoneNumber && handleToggle(pref.category, "sms_enabled")
+                    }
+                    disabled={!hasPhoneNumber}
+                    variant="brand"
+                  />
                 </div>
 
                 {/* In-App Channel */}
                 <div className="col-span-4 md:col-span-2 flex justify-center">
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={pref.in_app_enabled}
-                      onChange={() => handleToggle(pref.category, "in_app_enabled")}
-                      className="sr-only peer"
-                    />
-                    <div className="w-9 h-5 bg-[var(--s3)] rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--brand)]"></div>
-                  </label>
+                  <Switch
+                    checked={pref.in_app_enabled}
+                    onChange={() => handleToggle(pref.category, "in_app_enabled")}
+                    variant="brand"
+                  />
                 </div>
               </div>
             );
