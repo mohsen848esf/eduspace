@@ -14,6 +14,8 @@ import {
   BG_IMAGES,
 } from "../hooks/useBackgroundBlur";
 import SettingsPanel from "./SettingsPanel";
+import { LobbyPanel } from "./LobbyPanel";
+import { useLobbyHost } from "../hooks/useLobbyHost";
 import { type LayoutMode } from "../store/roomLayoutStore";
 import { useRoomStore } from "../store/roomStore";
 import toast from "react-hot-toast";
@@ -569,8 +571,11 @@ export default function RoomControls({
   const [copied, setCopied] = useState(false);
 
   const currentTime = useCurrentTime();
-  const { roomCode: storeRoomCode } = useRoomStore();
+  const { roomCode: storeRoomCode, isHost } = useRoomStore();
   const activeRoomCode = roomCode || storeRoomCode || "";
+
+  const [lobbyPanelOpen, setLobbyPanelOpen] = useState(false);
+  const lobby = useLobbyHost({ roomCode: activeRoomCode, isHost });
 
   const copyRoomCode = async () => {
     if (!activeRoomCode) return;
@@ -761,8 +766,60 @@ export default function RoomControls({
         </Tooltip>
       </div>
 
-      {/* ── Section 3: End Utility Dock (Tools Stack Fan-Out, Chat, People) ── */}
+      {/* ── Section 3: End Utility Dock (Tools Stack Fan-Out, Chat, People, Host Lobby) ── */}
       <div className="flex items-center gap-2 min-w-[130px] md:min-w-[180px] justify-end">
+        {/* Host Lobby Button */}
+        {isHost && (
+          <div className="relative">
+            <Tooltip
+              content={
+                lobby.count > 0
+                  ? t("lobby.waitingCount", {
+                      count: lobby.count,
+                      defaultValue: `${lobby.count} نفر در انتظار ورود`,
+                    })
+                  : t("lobby.hostPanelTitle", "افراد در انتظار ورود")
+              }
+            >
+              <button
+                type="button"
+                onClick={() => setLobbyPanelOpen((prev) => !prev)}
+                className={cn(
+                  "relative flex items-center justify-center rounded-xl border transition-all cursor-pointer",
+                  size === "sm"
+                    ? "w-10 h-10"
+                    : size === "md"
+                      ? "w-11 h-11"
+                      : "w-12 h-12",
+                  lobby.count > 0
+                    ? "bg-indigo-600/20 border-indigo-500/50 text-indigo-300 hover:bg-indigo-600/30"
+                    : "bg-[var(--s3)] border-transparent text-[var(--t2)] hover:bg-[var(--s4)] hover:text-[var(--t1)]",
+                )}
+              >
+                <span className="scale-90">{Icons.shield}</span>
+                {lobby.count > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center animate-bounce shadow-md">
+                    {lobby.count}
+                  </span>
+                )}
+              </button>
+            </Tooltip>
+
+            <LobbyPanel
+              isOpen={lobbyPanelOpen}
+              onClose={() => setLobbyPanelOpen(false)}
+              requests={lobby.requests}
+              admittingId={lobby.admittingId}
+              denyingId={lobby.denyingId}
+              isBatchAction={lobby.isBatchAction}
+              onAdmit={lobby.admit}
+              onDeny={lobby.deny}
+              onAdmitAll={lobby.admitAll}
+              onDenyAll={lobby.denyAll}
+            />
+          </div>
+        )}
+
         {/* macOS Dock Stack 3D Curved Fan-out for Tools */}
         <DockStackFanOut
           isOpen={toolsStackOpen}

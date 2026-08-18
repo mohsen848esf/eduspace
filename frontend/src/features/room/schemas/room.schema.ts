@@ -24,6 +24,8 @@ export interface RoomResponse {
   is_host?: boolean;
   is_guest?: boolean;
   guest_identity?: string;
+  require_approval?: boolean;
+  is_locked?: boolean;
 }
 
 export interface RoomInfo {

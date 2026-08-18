@@ -404,4 +404,81 @@ export const Icons = {
       <path d="M400 224h-24c-13.25 0-24 10.75-24 24v112c0 8.84-7.16 16-16 16s-16-7.16-16-16V88c0-13.25-10.75-24-24-24s-24 10.75-24 24v208c0 8.84-7.16 16-16 16s-16-7.16-16-16V40c0-13.25-10.75-24-24-24s-24 10.75-24 24v208c0 8.84-7.16 16-16 16s-16-7.16-16-16V88c0-13.25-10.75-24-24-24s-24 10.75-24 24v176c0 8.84-7.16 16-16 16s-16-7.16-16-16v-64c0-13.25-10.75-24-24-24s-24 10.75-24 24v225.8c0 53 21.1 103.8 58.6 141.4l18.8 18.8c4.7 4.7 12.3 4.7 17 0l161.4-161.4c37.5-37.5 58.6-88.4 58.6-141.4V248c0-13.25-10.75-24-24-24z" />
     </svg>
   ),
+  lock: (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  ),
+  unlock: (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+    </svg>
+  ),
+  userCheck: (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="8.5" cy="7" r="4" />
+      <polyline points="17 11 19 13 23 9" />
+    </svg>
+  ),
+  userX: (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="8.5" cy="7" r="4" />
+      <line x1="18" y1="8" x2="23" y2="13" />
+      <line x1="23" y1="8" x2="18" y2="13" />
+    </svg>
+  ),
+  clock: (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  ),
+  shield: (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  ),
+  wifiOff: (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="1" y1="1" x2="23" y2="23" />
+      <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />
+      <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" />
+      <path d="M10.71 5.05A16 16 0 0 1 22.56 9" />
+      <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88" />
+      <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+      <circle cx="12" cy="20" r="1" fill="currentColor" />
+    </svg>
+  ),
+  phoneOff: (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07" />
+      <path d="M14.83 9.17a12.84 12.84 0 0 0-.7-2.81 2 2 0 0 1 .45-2.11L15.85 3a2 2 0 0 1 2.12.44 15.37 15.37 0 0 1 .49.49" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+      <path d="M5 5a16 16 0 0 0 3.07 8.63 19.79 19.79 0 0 0 3.07 3.07" />
+    </svg>
+  ),
+  users: (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  ),
+  check: (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  ),
+  x: (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  ),
 } as const;
+

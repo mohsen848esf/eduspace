@@ -8,8 +8,14 @@ interface RoomState {
   isHost: boolean;
   isGuest: boolean;
   guestIdentity: string | null;
+  requireApproval: boolean;
+  isLocked: boolean;
   mutedByHost: Set<string>;
   setMutedByHost: (identity: string, muted: boolean) => void;
+  setRoomSettings: (settings: {
+    requireApproval?: boolean;
+    isLocked?: boolean;
+  }) => void;
 
   setRoom: (data: {
     token: string;
@@ -19,6 +25,8 @@ interface RoomState {
     isHost: boolean;
     isGuest?: boolean;
     guestIdentity?: string | null;
+    requireApproval?: boolean;
+    isLocked?: boolean;
   }) => void;
   clearRoom: () => void;
 }
@@ -31,6 +39,8 @@ export const useRoomStore = create<RoomState>((set) => ({
   isHost: false,
   isGuest: false,
   guestIdentity: null,
+  requireApproval: false,
+  isLocked: false,
   mutedByHost: new Set<string>(),
   setMutedByHost: (identity, muted) =>
     set((state) => {
@@ -39,6 +49,15 @@ export const useRoomStore = create<RoomState>((set) => ({
       else updated.delete(identity);
       return { mutedByHost: updated };
     }),
+  setRoomSettings: (settings) =>
+    set((state) => ({
+      requireApproval:
+        settings.requireApproval !== undefined
+          ? settings.requireApproval
+          : state.requireApproval,
+      isLocked:
+        settings.isLocked !== undefined ? settings.isLocked : state.isLocked,
+    })),
   setRoom: (data) =>
     set({
       token: data.token,
@@ -48,6 +67,8 @@ export const useRoomStore = create<RoomState>((set) => ({
       isHost: data.isHost,
       isGuest: data.isGuest || false,
       guestIdentity: data.guestIdentity || null,
+      requireApproval: data.requireApproval || false,
+      isLocked: data.isLocked || false,
     }),
   clearRoom: () =>
     set({
@@ -58,5 +79,8 @@ export const useRoomStore = create<RoomState>((set) => ({
       isHost: false,
       isGuest: false,
       guestIdentity: null,
+      requireApproval: false,
+      isLocked: false,
     }),
 }));
+

@@ -43,22 +43,35 @@ export function useRoom() {
       setError(null);
       try {
         const res = await roomApi.join(room_code);
-        setRoom({
-          token: res.token,
-          livekitUrl: res.livekit_url,
-          roomCode: res.room_code,
-          roomName: res.name,
-          isHost: res.is_host || false,
-          isGuest: false,
-        });
-        navigate(`/room/${res.room_code}`);
+        if ("waiting" in res && res.waiting) {
+          return res;
+        }
+        if ("token" in res) {
+          setRoom({
+            token: res.token,
+            livekitUrl: res.livekit_url,
+            roomCode: res.room_code,
+            roomName: res.name,
+            isHost: res.is_host || false,
+            isGuest: false,
+            requireApproval: res.require_approval,
+            isLocked: res.is_locked,
+          });
+        }
+        return res;
       } catch (err: any) {
-        setError(err.response?.data?.error || t("join.joinFailed"));
+        const errorCode = err.response?.data?.code;
+        const msg = err.response?.data?.error || t("join.joinFailed");
+        setError(msg);
+        throw Object.assign(new Error(msg), {
+          code: errorCode,
+          status: err.response?.status,
+        });
       } finally {
         setIsLoading(false);
       }
     },
-    [navigate, setRoom, t],
+    [setRoom, t],
   );
 
   const joinRoomGuest = useCallback(
@@ -67,23 +80,36 @@ export function useRoom() {
       setError(null);
       try {
         const res = await roomApi.guestJoin(room_code, display_name);
-        setRoom({
-          token: res.token,
-          livekitUrl: res.livekit_url,
-          roomCode: res.room_code,
-          roomName: res.name,
-          isHost: false,
-          isGuest: true,
-          guestIdentity: res.guest_identity,
-        });
-        navigate(`/room/${res.room_code}`);
+        if ("waiting" in res && res.waiting) {
+          return res;
+        }
+        if ("token" in res) {
+          setRoom({
+            token: res.token,
+            livekitUrl: res.livekit_url,
+            roomCode: res.room_code,
+            roomName: res.name,
+            isHost: false,
+            isGuest: true,
+            guestIdentity: res.guest_identity,
+            requireApproval: res.require_approval,
+            isLocked: res.is_locked,
+          });
+        }
+        return res;
       } catch (err: any) {
-        setError(err.response?.data?.error || t("join.joinFailed"));
+        const errorCode = err.response?.data?.code;
+        const msg = err.response?.data?.error || t("join.joinFailed");
+        setError(msg);
+        throw Object.assign(new Error(msg), {
+          code: errorCode,
+          status: err.response?.status,
+        });
       } finally {
         setIsLoading(false);
       }
     },
-    [navigate, setRoom, t],
+    [setRoom, t],
   );
 
   const leaveRoom = useCallback(
