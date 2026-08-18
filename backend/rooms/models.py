@@ -59,6 +59,20 @@ class Room(models.Model):
         ),
     )
 
+    # --- Lobby / Access Control ---
+    # When True, any participant joining via invite link must wait in the
+    # lobby until the host explicitly admits them. Users invited directly
+    # by the host (via InviteModal search) bypass this requirement.
+    require_approval = models.BooleanField(
+        default=False,
+        help_text='Joining via invite link requires host approval.',
+    )
+    # When True, no new participants can join the room at all.
+    is_locked = models.BooleanField(
+        default=False,
+        help_text='Completely block new participants from joining.',
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
@@ -77,6 +91,84 @@ class Room(models.Model):
         if user.id == self.host_id:
             return True
         return self.recording_grants.filter(pk=user.pk).exists()
+
+
+class LobbyRequest(models.Model):
+    """
+    Represents a pending request to join a room that has `require_approval=True`.
+
+    Lifecycle:
+      PENDING  → host sees it in the lobby panel
+      ADMITTED → host clicked "Admit"; the guest can now exchange the request_id
+                 for a real LiveKit token via the join endpoint
+      DENIED   → host clicked "Deny"; guest receives a rejection message
+      EXPIRED  → the request was not acted upon within EXPIRE_MINUTES minutes
+
+    Identity fields:
+      - For authenticated users: `user` is set, `guest_*` are null.
+      - For unauthenticated guests: `user` is null, `guest_identity` and
+        `guest_name` are set.
+    """
+
+    EXPIRE_MINUTES = 5
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        ADMITTED = 'admitted', 'Admitted'
+        DENIED = 'denied', 'Denied'
+        EXPIRED = 'expired', 'Expired'
+
+    room = models.ForeignKey(
+        Room,
+        on_delete=models.CASCADE,
+        related_name='lobby_requests',
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='lobby_requests',
+    )
+    # For guest (unauthenticated) participants
+    guest_identity = models.CharField(max_length=100, null=True, blank=True)
+    guest_name = models.CharField(max_length=100, null=True, blank=True)
+
+    # Resolved display name for the host UI (full_name or guest_name)
+    display_name = models.CharField(max_length=150)
+    # Whether this is a guest (unauthenticated) request
+    is_guest = models.BooleanField(default=False)
+
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+
+    # Once admitted, this token is minted and returned to the waiting client.
+    # Stored here so the polling endpoint can return it without minting again.
+    livekit_token = models.TextField(blank=True, default='')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['room', 'status']),
+        ]
+
+    def __str__(self):
+        return f'LobbyRequest({self.display_name}) → {self.room.room_code} [{self.status}]'
+
+    @property
+    def is_expired(self) -> bool:
+        from django.utils import timezone
+        from datetime import timedelta
+        return (
+            self.status == self.Status.PENDING
+            and timezone.now() > self.created_at + timedelta(minutes=self.EXPIRE_MINUTES)
+        )
 
 
 class RoomParticipant(models.Model):

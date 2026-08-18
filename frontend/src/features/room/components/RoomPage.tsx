@@ -29,6 +29,8 @@ import { RoomWhiteboardProvider } from "../hooks/useRoomWhiteboardContext";
 import { useReactions } from "../hooks/useReactions";
 import UnifiedRoomShell from "./UnifiedRoomShell";
 import { useRoomLayoutStore } from "../store/roomLayoutStore";
+import { LobbyWaitingScreen } from "./LobbyWaitingScreen";
+import { useLobbyWaiting } from "../hooks/useLobbyWaiting";
 
 function RoomContent({
   preJoinSettings,
@@ -181,7 +183,34 @@ export default function RoomPage() {
   const [preJoinSettings, setPreJoinSettings] =
     useState<PreJoinSettings | null>(null);
 
+  const [lobbyRequestId, setLobbyRequestId] = useState<number | null>(null);
+  const [isWaitingInLobby, setIsWaitingInLobby] = useState(false);
+  const [roomAccessError, setRoomAccessError] = useState<
+    "locked" | "room_ended" | null
+  >(null);
+
   const joinedRef = useRef(false);
+
+  const handleJoinAttempt = useCallback(async () => {
+    if (!roomCode) return;
+    const guestName = preJoinSettings?.guestName;
+    try {
+      const res = guestName
+        ? await joinRoomGuest(roomCode, guestName)
+        : await joinRoom(roomCode);
+
+      if (res && "waiting" in res && res.waiting) {
+        setLobbyRequestId(res.request_id);
+        setIsWaitingInLobby(true);
+      }
+    } catch (err: any) {
+      if (err.code === "ROOM_LOCKED" || err.status === 423) {
+        setRoomAccessError("locked");
+      } else if (err.status === 410) {
+        setRoomAccessError("room_ended");
+      }
+    }
+  }, [roomCode, preJoinSettings?.guestName, joinRoom, joinRoomGuest]);
 
   useEffect(() => {
     if (preJoinDone) {
@@ -190,15 +219,29 @@ export default function RoomPage() {
   }, [preJoinDone]);
 
   useEffect(() => {
-    if (!token && roomCode && preJoinDone) {
-      const guestName = preJoinSettings?.guestName;
-      if (guestName) {
-        joinRoomGuest(roomCode, guestName);
-      } else {
-        joinRoom(roomCode);
-      }
+    if (!token && roomCode && preJoinDone && !isWaitingInLobby) {
+      handleJoinAttempt();
     }
-  }, [roomCode, preJoinDone, preJoinSettings?.guestName]);
+  }, [roomCode, preJoinDone, token, isWaitingInLobby, handleJoinAttempt]);
+
+  // Polling when waiting in lobby
+  const { status: lobbyStatus, elapsedSeconds } = useLobbyWaiting({
+    roomCode: roomCode || "",
+    requestId: lobbyRequestId,
+    enabled: isWaitingInLobby,
+    onAdmitted: (admittedData) => {
+      useRoomStore.getState().setRoom({
+        token: admittedData.token,
+        livekitUrl: admittedData.livekitUrl,
+        roomCode: admittedData.roomCode,
+        roomName: admittedData.name,
+        isHost: false,
+        isGuest: admittedData.isGuest || false,
+        guestIdentity: admittedData.guestIdentity || null,
+      });
+      setIsWaitingInLobby(false);
+    },
+  });
 
   useEffect(() => {
     return () => {
@@ -207,6 +250,40 @@ export default function RoomPage() {
       }
     };
   }, [leaveRoom]);
+
+  // Access Error (Room Locked or Room Ended)
+  if (roomAccessError) {
+    return (
+      <LobbyWaitingScreen
+        status={roomAccessError}
+        roomCode={roomCode || ""}
+        roomName={roomName || ""}
+        onLeave={() => leaveRoom()}
+      />
+    );
+  }
+
+  // Waiting in Lobby State
+  if (isWaitingInLobby) {
+    return (
+      <LobbyWaitingScreen
+        status={lobbyStatus}
+        roomCode={roomCode || ""}
+        roomName={roomName || ""}
+        elapsedSeconds={elapsedSeconds}
+        displayName={preJoinSettings?.guestName}
+        onRetry={() => {
+          setIsWaitingInLobby(false);
+          setLobbyRequestId(null);
+          handleJoinAttempt();
+        }}
+        onLeave={() => {
+          setIsWaitingInLobby(false);
+          leaveRoom();
+        }}
+      />
+    );
+  }
 
   if (isLoading) {
     return (
@@ -217,7 +294,7 @@ export default function RoomPage() {
     );
   }
 
-  if (error) {
+  if (error && !roomAccessError && !isWaitingInLobby) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--s0)] gap-4">
         <span className="text-4xl">⚠️</span>

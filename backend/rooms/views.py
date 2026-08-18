@@ -12,7 +12,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Room, RoomParticipant
+from .models import Room, RoomParticipant, LobbyRequest
 
 
 def generate_room_code():
@@ -132,17 +132,58 @@ def create_room(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def join_room(request, room_code):
+    """
+    Authenticated join. If the room has require_approval=True and the caller
+    is not the host, a LobbyRequest is created and 202 is returned.
+    The client polls /lobby/status/{request_id}/ until admitted or denied.
+    """
     try:
         room = Room.objects.get(room_code=room_code)
     except Room.DoesNotExist:
         return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
 
     if room.status == Room.Status.ENDED:
-        return Response({'error': 'Room has ended'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Room has ended'}, status=status.HTTP_410_GONE)
+
+    # Room is completely locked — no new joins.
+    if room.is_locked:
+        return Response(
+            {'error': 'Room is locked', 'code': 'ROOM_LOCKED'},
+            status=status.HTTP_423_LOCKED,
+        )
 
     active_count = room.participants.filter(is_active=True).count()
     if active_count >= room.max_participants:
         return Response({'error': 'Room is full'}, status=status.HTTP_400_BAD_REQUEST)
+
+    is_host = room.host == request.user
+
+    # Host always bypasses the lobby.
+    if not is_host and room.require_approval:
+        # Check if there's already a pending/admitted request for this user.
+        existing = LobbyRequest.objects.filter(
+            room=room,
+            user=request.user,
+            status__in=[LobbyRequest.Status.PENDING, LobbyRequest.Status.ADMITTED],
+        ).first()
+        if not existing:
+            display_name = request.user.full_name or request.user.username
+            existing = LobbyRequest.objects.create(
+                room=room,
+                user=request.user,
+                display_name=display_name,
+                is_guest=False,
+                status=LobbyRequest.Status.PENDING,
+            )
+        return Response(
+            {
+                'waiting': True,
+                'request_id': existing.id,
+                'room_code': room.room_code,
+                'name': room.name,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
 
     participant, created = RoomParticipant.objects.get_or_create(
         room=room,
@@ -155,7 +196,6 @@ def join_room(request, room_code):
         participant.left_at = None
         participant.save()
 
-    is_host = room.host == request.user
     token = generate_livekit_token(room_code, request.user, is_host=is_host)
 
     return Response({
@@ -173,7 +213,8 @@ def join_room(request, room_code):
 def guest_join_room(request, room_code):
     """
     Allow unauthenticated guests to join an active room by specifying
-    a display name. Mints a non-admin LiveKit token with a unique guest identity.
+    a display name. If the room has require_approval=True, a LobbyRequest
+    is created and 202 is returned; the client polls for the result.
     """
     try:
         room = Room.objects.get(room_code=room_code)
@@ -181,7 +222,13 @@ def guest_join_room(request, room_code):
         return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
 
     if room.status == Room.Status.ENDED:
-        return Response({'error': 'Room has ended'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Room has ended'}, status=status.HTTP_410_GONE)
+
+    if room.is_locked:
+        return Response(
+            {'error': 'Room is locked', 'code': 'ROOM_LOCKED'},
+            status=status.HTTP_423_LOCKED,
+        )
 
     active_count = room.participants.filter(is_active=True).count()
     if active_count >= room.max_participants:
@@ -200,6 +247,28 @@ def guest_join_room(request, room_code):
         )
 
     guest_identity = f"guest_{secrets.token_hex(6)}"
+
+    # If approval required, create a lobby request and wait.
+    if room.require_approval:
+        lobby_req = LobbyRequest.objects.create(
+            room=room,
+            user=None,
+            guest_identity=guest_identity,
+            guest_name=display_name,
+            display_name=display_name,
+            is_guest=True,
+            status=LobbyRequest.Status.PENDING,
+        )
+        return Response(
+            {
+                'waiting': True,
+                'request_id': lobby_req.id,
+                'guest_identity': guest_identity,
+                'room_code': room.room_code,
+                'name': room.name,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
 
     RoomParticipant.objects.create(
         room=room,
@@ -314,6 +383,8 @@ def get_room(request, room_code):
         'participants': participants,
         'max_participants': room.max_participants,
         'is_recorded': room.is_recorded,
+        'require_approval': room.require_approval,
+        'is_locked': room.is_locked,
     })
 
 
@@ -582,3 +653,287 @@ def lower_all_hands(request, room_code):
         print('LOWER ALL HANDS ERROR:', traceback.format_exc())
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+# ---------------------------------------------------------------------------
+# Lobby / Admit System
+# ---------------------------------------------------------------------------
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def lobby_list(request, room_code):
+    """
+    Returns pending lobby requests for the room. Host-only.
+    Also expires stale requests so the host sees a clean list.
+    """
+    try:
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if room.host_id != request.user.id:
+        return Response({'error': 'Only host can view lobby'}, status=status.HTTP_403_FORBIDDEN)
+
+    # Expire stale pending requests.
+    from datetime import timedelta
+    cutoff = timezone.now() - timedelta(minutes=LobbyRequest.EXPIRE_MINUTES)
+    LobbyRequest.objects.filter(
+        room=room,
+        status=LobbyRequest.Status.PENDING,
+        created_at__lt=cutoff,
+    ).update(status=LobbyRequest.Status.EXPIRED)
+
+    pending = LobbyRequest.objects.filter(
+        room=room,
+        status=LobbyRequest.Status.PENDING,
+    ).select_related('user')
+
+    results = []
+    for req in pending:
+        results.append({
+            'id': req.id,
+            'display_name': req.display_name,
+            'is_guest': req.is_guest,
+            'waiting_since': req.created_at.isoformat(),
+        })
+
+    return Response({'count': len(results), 'requests': results})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def lobby_admit(request, room_code, request_id):
+    """Admit a single lobby request. Host-only."""
+    try:
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if room.host_id != request.user.id:
+        return Response({'error': 'Only host can admit'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        lobby_req = LobbyRequest.objects.get(id=request_id, room=room)
+    except LobbyRequest.DoesNotExist:
+        return Response({'error': 'Request not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if lobby_req.status != LobbyRequest.Status.PENDING:
+        return Response({'error': f'Request is already {lobby_req.status}'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Mint the token and store it so the polling endpoint can return it.
+    if lobby_req.is_guest:
+        token = generate_livekit_token(
+            room_code,
+            user=None,
+            is_host=False,
+            guest_identity=lobby_req.guest_identity,
+            guest_name=lobby_req.guest_name,
+        )
+        # Create participant record now that they're admitted.
+        RoomParticipant.objects.get_or_create(
+            room=room,
+            guest_identity=lobby_req.guest_identity,
+            defaults={
+                'user': None,
+                'guest_name': lobby_req.guest_name,
+                'is_guest': True,
+                'role': RoomParticipant.Role.GUEST,
+                'is_active': True,
+            },
+        )
+    else:
+        token = generate_livekit_token(room_code, lobby_req.user, is_host=False)
+        RoomParticipant.objects.get_or_create(
+            room=room,
+            user=lobby_req.user,
+            defaults={'role': RoomParticipant.Role.PARTICIPANT, 'is_active': True},
+        )
+
+    lobby_req.status = LobbyRequest.Status.ADMITTED
+    lobby_req.livekit_token = token
+    lobby_req.responded_at = timezone.now()
+    lobby_req.save()
+
+    return Response({'message': f'Admitted {lobby_req.display_name}'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def lobby_deny(request, room_code, request_id):
+    """Deny a single lobby request. Host-only."""
+    try:
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if room.host_id != request.user.id:
+        return Response({'error': 'Only host can deny'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        lobby_req = LobbyRequest.objects.get(id=request_id, room=room)
+    except LobbyRequest.DoesNotExist:
+        return Response({'error': 'Request not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if lobby_req.status != LobbyRequest.Status.PENDING:
+        return Response({'error': f'Request is already {lobby_req.status}'}, status=status.HTTP_400_BAD_REQUEST)
+
+    lobby_req.status = LobbyRequest.Status.DENIED
+    lobby_req.responded_at = timezone.now()
+    lobby_req.save()
+
+    return Response({'message': f'Denied {lobby_req.display_name}'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def lobby_admit_all(request, room_code):
+    """Admit all pending lobby requests at once. Host-only."""
+    try:
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if room.host_id != request.user.id:
+        return Response({'error': 'Only host can admit all'}, status=status.HTTP_403_FORBIDDEN)
+
+    pending = LobbyRequest.objects.filter(room=room, status=LobbyRequest.Status.PENDING)
+    count = 0
+    for lobby_req in pending:
+        if lobby_req.is_guest:
+            token = generate_livekit_token(
+                room_code,
+                user=None,
+                is_host=False,
+                guest_identity=lobby_req.guest_identity,
+                guest_name=lobby_req.guest_name,
+            )
+            RoomParticipant.objects.get_or_create(
+                room=room,
+                guest_identity=lobby_req.guest_identity,
+                defaults={
+                    'user': None,
+                    'guest_name': lobby_req.guest_name,
+                    'is_guest': True,
+                    'role': RoomParticipant.Role.GUEST,
+                    'is_active': True,
+                },
+            )
+        else:
+            token = generate_livekit_token(room_code, lobby_req.user, is_host=False)
+            RoomParticipant.objects.get_or_create(
+                room=room,
+                user=lobby_req.user,
+                defaults={'role': RoomParticipant.Role.PARTICIPANT, 'is_active': True},
+            )
+
+        lobby_req.status = LobbyRequest.Status.ADMITTED
+        lobby_req.livekit_token = token
+        lobby_req.responded_at = timezone.now()
+        lobby_req.save()
+        count += 1
+
+    return Response({'message': f'Admitted {count} participants'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def lobby_deny_all(request, room_code):
+    """Deny all pending lobby requests at once. Host-only."""
+    try:
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if room.host_id != request.user.id:
+        return Response({'error': 'Only host can deny all'}, status=status.HTTP_403_FORBIDDEN)
+
+    count = LobbyRequest.objects.filter(
+        room=room,
+        status=LobbyRequest.Status.PENDING,
+    ).update(
+        status=LobbyRequest.Status.DENIED,
+        responded_at=timezone.now(),
+    )
+
+    return Response({'message': f'Denied {count} participants'})
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def lobby_status(request, room_code, request_id):
+    """
+    Polling endpoint for a waiting participant.
+    Returns the current status of their lobby request.
+    When admitted, includes the LiveKit token so they can connect.
+    No authentication required (guests are unauthenticated).
+    """
+    try:
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Check if the room ended while they were waiting.
+    if room.status == Room.Status.ENDED:
+        return Response({'status': 'room_ended'}, status=status.HTTP_200_OK)
+
+    try:
+        lobby_req = LobbyRequest.objects.get(id=request_id, room=room)
+    except LobbyRequest.DoesNotExist:
+        return Response({'error': 'Request not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Auto-expire if too old.
+    if lobby_req.is_expired:
+        lobby_req.status = LobbyRequest.Status.EXPIRED
+        lobby_req.save()
+
+    response_data = {
+        'status': lobby_req.status,
+        'room_code': room.room_code,
+        'name': room.name,
+    }
+
+    if lobby_req.status == LobbyRequest.Status.ADMITTED:
+        response_data['token'] = lobby_req.livekit_token
+        response_data['livekit_url'] = settings.LIVEKIT_WS_URL
+        response_data['is_guest'] = lobby_req.is_guest
+        if lobby_req.is_guest:
+            response_data['guest_identity'] = lobby_req.guest_identity
+
+    return Response(response_data)
+
+
+# ---------------------------------------------------------------------------
+# Room Access Settings
+# ---------------------------------------------------------------------------
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def room_settings(request, room_code):
+    """
+    Allows the host to toggle access control settings:
+      - require_approval: bool
+      - is_locked: bool
+    """
+    try:
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if room.host_id != request.user.id:
+        return Response({'error': 'Only host can change room settings'}, status=status.HTTP_403_FORBIDDEN)
+
+    updated = []
+    if 'require_approval' in request.data:
+        room.require_approval = bool(request.data['require_approval'])
+        updated.append('require_approval')
+    if 'is_locked' in request.data:
+        room.is_locked = bool(request.data['is_locked'])
+        updated.append('is_locked')
+
+    if updated:
+        room.save(update_fields=updated)
+
+    return Response({
+        'room_code': room.room_code,
+        'require_approval': room.require_approval,
+        'is_locked': room.is_locked,
+    })
