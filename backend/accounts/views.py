@@ -181,20 +181,11 @@ def search_users(request):
             results.append(user_data)
             
         return Response(results)
-    users = User.objects.filter(
-        models.Q(username__icontains=q) | 
-        models.Q(full_name__icontains=q)
-    ).exclude(id=request.user.id).prefetch_related(
-        'org_memberships__organization',
-        'org_memberships__role'
-    )
-    
-    results = []
-    for u in users[:10]:
-        user_data = UserSerializer(u, context={'request': request}).data
-        results.append(user_data)
-        
-    return Response(results)
+    # SECURITY: No org context → return empty list.
+    # Falling back to a global user search is a multi-tenancy data-leakage
+    # vulnerability: a standalone user (not part of any org) must NOT be
+    # able to enumerate all platform users.
+    return Response([])
 from rest_framework.pagination import PageNumberPagination
 from collections import OrderedDict
 
