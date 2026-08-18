@@ -6,6 +6,7 @@ import {
   MAX_TILES_OPTIONS,
 } from "../../store/roomLayoutStore";
 import { cn } from "../../../../lib/utils";
+import { Switch } from "../../../../components/ui";
 
 interface AdjustViewModalProps {
   isOpen: boolean;
@@ -275,23 +276,11 @@ export default function AdjustViewModal({
               {t("adjustView.hideNoVideo") || "Hide tiles without video"}
             </span>
 
-            <button
-              type="button"
-              role="switch"
-              aria-checked={hideNoVideo}
-              onClick={() => setHideNoVideo(!hideNoVideo)}
-              className={cn(
-                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                hideNoVideo ? "bg-[var(--brand)]" : "bg-white/15"
-              )}
-            >
-              <span
-                className={cn(
-                  "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
-                  hideNoVideo ? "ltr:translate-x-5 rtl:-translate-x-5" : "translate-x-0"
-                )}
-              />
-            </button>
+            <Switch
+              checked={hideNoVideo}
+              onChange={setHideNoVideo}
+              variant="brand"
+            />
           </label>
         </div>
 

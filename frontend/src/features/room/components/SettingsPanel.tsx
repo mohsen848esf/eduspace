@@ -12,40 +12,13 @@ import {
   BG_IMAGES,
 } from "../hooks/useBackgroundBlur";
 
+import { Switch } from "../../../components/ui";
+
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
   isPushToTalk: boolean;
   onTogglePushToTalk: () => void;
-}
-
-function Toggle({
-  on,
-  onClick,
-  disabled = false,
-}: {
-  on: boolean;
-  onClick: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={cn(
-        "w-10 h-5 rounded-full relative transition-colors duration-200 border-none cursor-pointer flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed",
-        on ? "bg-indigo-600" : "bg-white/20",
-      )}
-    >
-      <span
-        className={cn(
-          "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform duration-200 block shadow-sm",
-          on ? "translate-x-5" : "translate-x-0.5",
-        )}
-      />
-    </button>
-  );
 }
 
 export default function SettingsPanel({
@@ -502,10 +475,10 @@ export default function SettingsPanel({
                 )}
               </p>
             </div>
-            <Toggle
-              on={requireApproval}
+            <Switch
+              checked={requireApproval}
               disabled={!isHost || isUpdatingSettings}
-              onClick={handleToggleApproval}
+              onChange={handleToggleApproval}
             />
           </div>
 
@@ -523,10 +496,10 @@ export default function SettingsPanel({
                 )}
               </p>
             </div>
-            <Toggle
-              on={isLocked}
+            <Switch
+              checked={isLocked}
               disabled={!isHost || isUpdatingSettings}
-              onClick={handleToggleLock}
+              onChange={handleToggleLock}
             />
           </div>
 
@@ -556,7 +529,10 @@ export default function SettingsPanel({
                   : t("settings.pttDisabled", "غیرفعال")}
               </div>
             </div>
-            <Toggle on={isPushToTalk} onClick={onTogglePushToTalk} />
+            <Switch
+              checked={isPushToTalk}
+              onChange={onTogglePushToTalk}
+            />
           </div>
 
           {/* Noise Cancellation */}
@@ -572,7 +548,7 @@ export default function SettingsPanel({
                 )}
               </span>
             </div>
-            <Toggle on={true} onClick={() => {}} />
+            <Switch checked={true} onChange={() => {}} />
           </div>
 
           {/* HD Video */}
@@ -585,7 +561,7 @@ export default function SettingsPanel({
                 {t("settings.hdDesc", "ارسال تصویر با وضوح بالا 720p/1080p")}
               </span>
             </div>
-            <Toggle on={true} onClick={() => {}} />
+            <Switch checked={true} onChange={() => {}} />
           </div>
         </div>
       )}
