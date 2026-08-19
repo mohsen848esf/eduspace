@@ -100,15 +100,25 @@ export default function IconRail({ activeId, onNavigate }: IconRailProps) {
       <div className="h-px w-8 bg-[var(--b)] my-1" />
 
       {(() => {
-        const { hasAnyPermission } = useOrgPermission();
+        const { hasAnyPermission, activeRole } = useOrgPermission();
+
+        const filterNavItem = (item: NavItem): boolean => {
+          if (item.permissions && !hasAnyPermission(item.permissions)) return false;
+          if (item.roles) {
+            const normActiveRole = (activeRole || "").toLowerCase();
+            return item.roles.some((r) => r.toLowerCase() === normActiveRole);
+          }
+          return true;
+        };
+
         return (
           <nav className="flex flex-col gap-1 p-1 flex-1 overflow-y-auto">
             {mainNavItems
-              .filter((item) => !item.permissions || hasAnyPermission(item.permissions))
+              .filter(filterNavItem)
               .map(renderItem)}
             <div className="h-px w-8 bg-[var(--b)] my-2 self-center" />
             {manageNavItems
-              .filter((item) => !item.permissions || hasAnyPermission(item.permissions))
+              .filter(filterNavItem)
               .map(renderItem)}
             {user?.is_superuser && renderItem({
               id: "sysAdmin",

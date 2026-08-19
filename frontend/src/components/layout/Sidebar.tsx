@@ -4,7 +4,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { Tooltip } from "../ui/Tooltip";
 import { useOrgPermission } from "../../hooks/useOrgPermission";
-import { mainNavItems, manageNavItems, type NavItem } from "./navItems";
+import { primaryNavItems, categoryNavItems, type NavItem } from "./navItems";
 import { useAuthStore } from "../../features/auth/store/authStore";
 import { Icons } from "../../lib/constants/icons";
 import { useLocale } from "../../i18n/useLocale";
@@ -23,6 +23,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const { t } = useTranslation(["dashboard", "common"]);
   const navigate = useNavigate();
+  const location = useLocation();
   const { language } = useLocale();
   const isFarsi = language === "fa";
   const { triggerHelp } = usePageHelp();
@@ -34,6 +35,46 @@ export default function Sidebar({
   const { activeSlug, fetchOrgContext, setActiveSlug } = useOrgContextStore();
   const [showSwitcher, setShowSwitcher] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
+
+  // Track expanded/collapsed state for categories
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    categoryNavItems.forEach((cat) => {
+      const hasActiveChild = cat.children?.some(
+        (child) =>
+          child.to &&
+          (window.location.pathname === child.to ||
+            (child.to !== "/dashboard" && window.location.pathname.startsWith(child.to)))
+      );
+      initial[cat.id] = hasActiveChild !== undefined ? hasActiveChild : true;
+    });
+    return initial;
+  });
+
+  // Auto-expand group when active child route changes
+  useEffect(() => {
+    categoryNavItems.forEach((cat) => {
+      const hasActiveChild = cat.children?.some(
+        (child) =>
+          child.to &&
+          (location.pathname === child.to ||
+            (child.to !== "/dashboard" && location.pathname.startsWith(child.to)))
+      );
+      if (hasActiveChild) {
+        setExpandedGroups((prev) => ({
+          ...prev,
+          [cat.id]: true,
+        }));
+      }
+    });
+  }, [location.pathname]);
+
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupId]: !prev[groupId],
+    }));
+  };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -102,7 +143,7 @@ export default function Sidebar({
 
   const canManage = hasAnyPermission(["can_manage_members"]) || activeOrgRole?.toLowerCase() === "owner" || activeOrgRole?.toLowerCase() === "admin";
 
-  const filterNavItem = (item: NavItem) => {
+  const filterNavItem = (item: NavItem): boolean => {
     if (item.permissions && !hasAnyPermission(item.permissions)) return false;
     if (item.roles) {
       const normActiveRole = (activeRole || "").toLowerCase();
@@ -111,20 +152,34 @@ export default function Sidebar({
     return true;
   };
 
-  const location = useLocation();
+  // Filter categories and their visible children
+  const visibleCategories = categoryNavItems
+    .filter((cat) => {
+      if (cat.permissions && !hasAnyPermission(cat.permissions)) return false;
+      if (cat.roles) {
+        const normActiveRole = (activeRole || "").toLowerCase();
+        if (!cat.roles.some((r) => r.toLowerCase() === normActiveRole)) return false;
+      }
+      const visibleChildren = (cat.children || []).filter(filterNavItem);
+      return visibleChildren.length > 0;
+    })
+    .map((cat) => ({
+      ...cat,
+      visibleChildren: (cat.children || []).filter(filterNavItem),
+    }));
 
-  const NavButton = ({ item }: { item: NavItem }) => {
+  const renderSingleNavButton = (item: NavItem, isSubItem = false) => {
     const targetTo = item.to || (item.id === "inbox" ? "/inbox" : undefined);
     const isActive = activeId === item.id || (targetTo ? location.pathname === targetTo || (targetTo !== "/dashboard" && location.pathname.startsWith(targetTo)) : false);
     const label = t(item.labelKey);
 
     const inner = (
       <>
-        <span className="text-base w-5 h-5 flex items-center justify-center flex-shrink-0">
+        <span className={cn("w-5 h-5 flex items-center justify-center flex-shrink-0 text-base", isSubItem && "w-4 h-4 text-sm")}>
           {item.icon}
         </span>
         {!collapsed && (
-          <span className="text-[13px] font-medium flex-1 whitespace-nowrap">
+          <span className={cn("text-[13px] font-medium flex-1 whitespace-nowrap", isSubItem && "text-[12px]")}>
             {label}
           </span>
         )}
@@ -137,8 +192,9 @@ export default function Sidebar({
     );
 
     const linkClasses = cn(
-      "flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-xl transition-all duration-200 no-underline select-none",
+      "flex items-center gap-2.5 w-full rounded-xl transition-all duration-200 no-underline select-none",
       "text-start my-0.5",
+      isSubItem ? "px-2.5 py-2 rounded-lg" : "px-3.5 py-2.5",
       collapsed && "justify-center px-2",
       isActive
         ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-bold shadow-sm"
@@ -165,13 +221,14 @@ export default function Sidebar({
 
     return collapsed ? (
       <Tooltip
+        key={item.id}
         content={item.badge ? `${label} · ${item.badge} new` : label}
         side="right"
       >
         {el}
       </Tooltip>
     ) : (
-      el
+      <div key={item.id}>{el}</div>
     );
   };
 
@@ -181,7 +238,7 @@ export default function Sidebar({
         "flex flex-col flex-shrink-0 h-full",
         "bg-[var(--s1)] border-e border-[var(--b)]",
         "transition-all duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
-        collapsed ? "w-14" : "w-[220px]",
+        collapsed ? "w-14" : "w-[236px]",
       )}
     >
       {/* Logo */}
@@ -224,17 +281,17 @@ export default function Sidebar({
 
       {/* Workspace Switcher Panel */}
       {!collapsed && (
-        <div ref={switcherRef} className="px-3 pt-4 pb-2 flex flex-col gap-1.5 flex-shrink-0 select-none relative">
+        <div ref={switcherRef} className="px-3 pt-3.5 pb-2 flex flex-col gap-1.5 flex-shrink-0 select-none relative">
           <span className="text-[10px] font-bold text-[var(--t3)] uppercase tracking-wider px-1">
             {isFarsi ? "فضای کاری فعلی" : "Current Workspace"}
           </span>
           <button
             onClick={() => setShowSwitcher((p) => !p)}
-            className="w-full flex items-center justify-between gap-3 p-3 bg-[var(--s2)] hover:bg-[var(--s3)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl cursor-pointer transition-all duration-200 text-start"
+            className="w-full flex items-center justify-between gap-3 p-2.5 bg-[var(--s2)] hover:bg-[var(--s3)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl cursor-pointer transition-all duration-200 text-start"
           >
             {activeOrg ? (
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center text-white flex-shrink-0 shadow-sm", activeTheme.bg)}>
+                <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center text-white flex-shrink-0 shadow-sm", activeTheme.bg)}>
                   {activeTheme.icon}
                 </div>
                 <div className="flex flex-col min-w-0">
@@ -244,7 +301,7 @@ export default function Sidebar({
               </div>
             ) : (
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-[var(--s3)] border border-[var(--b)] flex items-center justify-center text-[var(--t3)] flex-shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-[var(--s3)] border border-[var(--b)] flex items-center justify-center text-[var(--t3)] flex-shrink-0">
                   🏢
                 </div>
                 <div className="flex flex-col min-w-0">
@@ -387,61 +444,193 @@ export default function Sidebar({
         </div>
       )}
 
-      {/* Nav */}
-      <nav className="flex-1 p-2 flex flex-col overflow-y-auto pt-2 scrollbar-thin scrollbar-thumb-[var(--b)]">
-        {!collapsed && (
-          <span className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-[0.8px] px-3.5 py-1.5">
-            {t("nav.main")}
-          </span>
-        )}
-        {mainNavItems
-          .filter(filterNavItem)
-          .map((item) => (
-            <NavButton key={item.id} item={item} />
-          ))}
+      {/* Nav Section */}
+      <nav className="flex-1 p-2 flex flex-col overflow-y-auto pt-2 scrollbar-thin scrollbar-thumb-[var(--b)] gap-1">
+        {/* 1. Primary Direct Links (Dashboard, Inbox) */}
+        <div className="flex flex-col gap-0.5">
+          {primaryNavItems
+            .filter(filterNavItem)
+            .map((item) => renderSingleNavButton(item))}
+        </div>
 
-        {!collapsed && (
-          <span className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-[0.8px] px-3.5 py-1.5 mt-3">
-            {t("nav.manage")}
-          </span>
-        )}
-        {manageNavItems
-          .filter(filterNavItem)
-          .map((item) => (
-            <NavButton key={item.id} item={item} />
-          ))}
+        <div className="h-px w-full bg-[var(--b)] my-1.5" />
+
+        {/* 2. Categorized Accordion Navigation */}
+        <div className="flex flex-col gap-1">
+          {visibleCategories.map((cat) => {
+            const isGroupExpanded = !!expandedGroups[cat.id];
+            const hasActiveChild = cat.visibleChildren.some(
+              (c) =>
+                c.to &&
+                (location.pathname === c.to ||
+                  (c.to !== "/dashboard" && location.pathname.startsWith(c.to)))
+            );
+
+            if (collapsed) {
+              // Collapsed mode: render category icon or first child with tooltip
+              return (
+                <Tooltip key={cat.id} content={t(cat.labelKey)} side="right">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (cat.visibleChildren[0]?.to) {
+                        navigate(cat.visibleChildren[0].to);
+                      }
+                    }}
+                    className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 border-none cursor-pointer mx-auto my-0.5",
+                      hasActiveChild
+                        ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-bold shadow-sm"
+                        : "bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)]"
+                    )}
+                  >
+                    <span className="text-base">{cat.icon}</span>
+                  </button>
+                </Tooltip>
+              );
+            }
+
+            return (
+              <div key={cat.id} className="flex flex-col">
+                {/* Category Accordion Header */}
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(cat.id)}
+                  className={cn(
+                    "flex items-center justify-between w-full px-3 py-2 rounded-xl transition-all duration-150 border-none cursor-pointer select-none text-start my-0.5",
+                    hasActiveChild
+                      ? "text-[var(--brand-text)] font-bold bg-[var(--brand-soft)]/20"
+                      : "text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] bg-transparent font-semibold"
+                  )}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className={cn("w-5 h-5 flex items-center justify-center flex-shrink-0 text-base", hasActiveChild ? "text-[var(--brand)]" : "text-[var(--t3)]")}>
+                      {cat.icon}
+                    </span>
+                    <span className="text-[12.5px] truncate leading-tight">
+                      {t(cat.labelKey)}
+                    </span>
+                  </div>
+                  <span
+                    className={cn(
+                      "text-[var(--t3)] transition-transform duration-200 flex-shrink-0 inline-flex items-center justify-center w-4 h-4",
+                      isGroupExpanded ? "rotate-180" : "rotate-0"
+                    )}
+                  >
+                    {Icons.chevronDown}
+                  </span>
+                </button>
+
+                {/* Submenu Children */}
+                {isGroupExpanded && (
+                  <div className="flex flex-col ms-4 ps-2 my-0.5 border-s border-[var(--b)] gap-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                    {cat.visibleChildren.map((child) => {
+                      const targetTo = child.to;
+                      const isChildActive = targetTo
+                        ? location.pathname === targetTo ||
+                          (targetTo !== "/dashboard" && location.pathname.startsWith(targetTo))
+                        : activeId === child.id;
+                      const childLabel = t(child.labelKey);
+
+                      const childClasses = cn(
+                        "flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg transition-all duration-150 no-underline select-none text-start text-[12px]",
+                        isChildActive
+                          ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-bold shadow-xs"
+                          : "bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] font-medium"
+                      );
+
+                      const content = (
+                        <>
+                          <span className="truncate">{childLabel}</span>
+                          {Boolean(child.badge) && (
+                            <span className="bg-[var(--red)] text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full">
+                              {child.badge}
+                            </span>
+                          )}
+                        </>
+                      );
+
+                      if (targetTo) {
+                        return (
+                          <Link
+                            key={child.id}
+                            to={targetTo}
+                            onClick={() => onNavigate?.(child.id)}
+                            className={childClasses}
+                          >
+                            {content}
+                          </Link>
+                        );
+                      }
+
+                      return (
+                        <button
+                          key={child.id}
+                          type="button"
+                          onClick={() => onNavigate?.(child.id)}
+                          className={cn(childClasses, "border-none cursor-pointer")}
+                        >
+                          {content}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 3. Platform Governance (Super Admin Isolated Context) */}
         {user?.is_superuser && (
-          <NavButton
-            key="sysAdmin"
-            item={{
-              id: "sysAdmin",
-              icon: Icons.tools,
-              labelKey: "nav.sysAdmin",
-              to: "/sys-admin",
-            }}
-          />
+          <div className="pt-2 mt-auto border-t border-[var(--b)]">
+            {!collapsed && (
+              <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider px-2 py-0.5 block">
+                {isFarsi ? "حاکمیت پلتفرم" : "Platform Context"}
+              </span>
+            )}
+            <Link
+              to="/sys-admin"
+              className={cn(
+                "flex items-center gap-2.5 w-full px-3 py-2 rounded-xl transition-all duration-200 no-underline select-none my-1",
+                location.pathname.startsWith("/sys-admin")
+                  ? "bg-indigo-600 text-white font-bold shadow-md"
+                  : "bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300 font-semibold border border-indigo-500/20",
+                collapsed && "justify-center px-2"
+              )}
+            >
+              <span className="w-5 h-5 flex items-center justify-center flex-shrink-0 text-base">
+                {Icons.tools}
+              </span>
+              {!collapsed && (
+                <span className="text-[12px] truncate flex-1 font-bold">
+                  {isFarsi ? "پنل حاکمیت سامانه" : "Platform Governance"}
+                </span>
+              )}
+            </Link>
+          </div>
         )}
       </nav>
 
       {/* Bottom Actions */}
-      <div className="p-3 border-t border-[var(--b)] flex flex-col gap-1">
+      <div className="p-3 border-t border-[var(--b)] flex flex-col gap-1 flex-shrink-0">
         {/* Help */}
         <button
           onClick={triggerHelp}
           className={cn(
-            "flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-xl text-start border-none cursor-pointer bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-all",
+            "flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-start border-none cursor-pointer bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-all",
             collapsed && "justify-center px-2",
           )}
         >
           <span className="text-base w-5 h-5 flex items-center justify-center flex-shrink-0">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="10" />
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
               <line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
           </span>
           {!collapsed && (
-            <span className="text-[13px] font-medium">
+            <span className="text-[12.5px] font-medium">
               {isFarsi ? "راهنما" : "Help"}
             </span>
           )}
@@ -451,17 +640,17 @@ export default function Sidebar({
         <button
           onClick={handleLogout}
           className={cn(
-            "flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-xl text-start border-none cursor-pointer bg-transparent text-[var(--t2)] hover:bg-[var(--red)]/10 hover:text-[var(--red)] transition-all",
+            "flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-start border-none cursor-pointer bg-transparent text-[var(--t2)] hover:bg-[var(--red)]/10 hover:text-[var(--red)] transition-all",
             collapsed && "justify-center px-2",
           )}
         >
           <span className="text-base w-5 h-5 flex items-center justify-center flex-shrink-0">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
             </svg>
           </span>
           {!collapsed && (
-            <span className="text-[13px] font-medium">
+            <span className="text-[12.5px] font-medium">
               {isFarsi ? "خروج" : "Logout"}
             </span>
           )}
@@ -471,7 +660,7 @@ export default function Sidebar({
         {!collapsed && (
           <Link
             to="/dashboard"
-            className="w-full bg-[var(--s2)] text-[var(--t2)] border border-[var(--b)] transition-all font-semibold rounded-xl text-center py-2 px-4 text-xs mt-3 flex items-center justify-center no-underline whitespace-nowrap hover:bg-[var(--s3)] hover:text-[var(--t1)]"
+            className="w-full bg-[var(--s2)] text-[var(--t2)] border border-[var(--b)] transition-all font-semibold rounded-xl text-center py-1.5 px-3 text-[11px] mt-2 flex items-center justify-center no-underline whitespace-nowrap hover:bg-[var(--s3)] hover:text-[var(--t1)]"
           >
             {isFarsi ? "مرکز پشتیبانی" : "Support Center"}
           </Link>
@@ -480,3 +669,4 @@ export default function Sidebar({
     </aside>
   );
 }
+
