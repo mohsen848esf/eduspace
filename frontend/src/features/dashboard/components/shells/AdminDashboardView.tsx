@@ -73,30 +73,35 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
   return (
     <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 md:px-6 py-4 flex flex-col gap-6 fade-in text-[var(--t1)]">
-      {/* 1. Welcome Banner */}
-      <div className="w-full relative overflow-hidden rounded-3xl p-5 md:p-6 bg-gradient-to-l from-[var(--brand)]/15 via-[var(--s2)] to-[var(--s2)] border border-[var(--b)] shadow-lg shadow-[var(--brand)]/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4 min-w-0">
-          <div className="w-12 h-12 rounded-2xl bg-[var(--brand)] flex items-center justify-center text-white text-xl font-black shadow-lg shadow-[var(--brand)]/30 flex-shrink-0">
-            {orgName.charAt(0).toUpperCase()}
+      {/* 1. Welcome Banner (Box 4) */}
+      <div className="w-full relative overflow-hidden rounded-2xl p-5 md:p-6 bg-gradient-to-l from-emerald-950/80 via-[var(--s2)] to-[var(--s2)] border border-emerald-900/40 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        {/* Right in RTL: Welcome Greeting & Message */}
+        <div className="flex flex-col min-w-0 text-start">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg md:text-xl font-black text-white truncate">
+              {isFarsi ? `خوش آمدید، ${userName}` : `Welcome back, ${userName}`}
+            </h2>
+            <span className="text-xl">👋</span>
           </div>
-          <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg md:text-xl font-extrabold text-[var(--t1)] truncate">
-                {isFarsi ? `خوش آمدید، ${userName} 👋` : `Welcome back, ${userName} 👋`}
-              </h2>
-            </div>
-            <p className="text-xs text-[var(--t2)] mt-1 font-medium truncate">
-              {isFarsi
-                ? "امروز یک روز عالی برای یادگیری و ساختن آینده‌ای بهتر است."
-                : "Today is a great day to inspire learning and build a better future."}
-            </p>
-          </div>
+          <p className="text-xs text-slate-300 mt-1.5 font-medium truncate">
+            {isFarsi
+              ? "امروز یک روز عالی برای یادگیری و ساختن آینده‌ای بهتر است."
+              : "Today is a great day to inspire learning and build a better future."}
+          </p>
         </div>
 
-        <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
-          <div className="px-3 py-1.5 rounded-xl bg-[var(--s3)] border border-[var(--b)] text-xs text-[var(--t2)] font-semibold flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[var(--brand)] animate-pulse" />
-            <span className="font-bold">{orgName}</span>
+        {/* Left in RTL: Academy Logo, Name, and Slogan */}
+        <div className="flex items-center gap-3.5 self-stretch md:self-auto justify-end">
+          <div className="w-12 h-12 rounded-2xl bg-[var(--brand)] flex items-center justify-center text-[#071712] font-black text-2xl shadow-lg shadow-[var(--brand)]/25 flex-shrink-0">
+            {orgName.charAt(0).toUpperCase()}
+          </div>
+          <div className="flex flex-col min-w-0 text-start">
+            <span className="text-base md:text-[17px] font-extrabold text-white leading-tight truncate">
+              {orgName}
+            </span>
+            <span className="text-xs text-slate-300 font-medium mt-1 leading-none truncate">
+              English for Better Opportunities
+            </span>
           </div>
         </div>
       </div>
