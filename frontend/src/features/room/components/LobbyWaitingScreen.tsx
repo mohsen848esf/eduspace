@@ -41,7 +41,7 @@ export const LobbyWaitingScreen: React.FC<LobbyWaitingScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 flex flex-col items-center justify-center p-4 text-white relative overflow-hidden select-none font-sans">
+    <div className="min-h-screen w-full bg-[#0b111e] flex flex-col items-center justify-center p-4 text-[#f8fafc] relative overflow-hidden select-none font-sans platform-theme">
       {/* Background ambient glowing gradient orbs */}
       <div className="absolute top-1/4 -left-20 w-80 h-80 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-violet-600/15 rounded-full blur-3xl pointer-events-none" />

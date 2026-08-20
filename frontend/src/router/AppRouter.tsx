@@ -9,6 +9,7 @@ import { useNotifications } from "../features/auth/hooks/useNotifications";
 import { useAuthStore } from "../features/auth/store/authStore";
 import { useOrgContextStore } from "../features/auth/store/orgContextStore";
 import Spinner from "../components/ui/Spinner";
+import ThemeScopeController from "./ThemeScopeController";
 
 function NotificationProvider() {
   useNotifications();
@@ -48,6 +49,7 @@ export default function AppRouter() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
+        <ThemeScopeController />
         <AppInitializer>
           <NotificationProvider />
 

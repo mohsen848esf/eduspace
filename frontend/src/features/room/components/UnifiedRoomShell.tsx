@@ -124,7 +124,7 @@ export default function UnifiedRoomShell({
 
   return (
     <>
-      <div className="relative flex flex-col w-full h-full">
+      <div className="relative flex flex-col w-full h-full platform-theme text-[var(--t1)]">
         {/* Topbar */}
         {isMobile ? <RoomMobileTopbar /> : <RoomTopbar />}
 

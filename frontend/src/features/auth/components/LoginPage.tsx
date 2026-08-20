@@ -20,7 +20,7 @@ export default function LoginPage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--s0)] px-4 py-6 md:p-4">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--s0)] text-[var(--t1)] platform-theme px-4 py-6 md:p-4">
       <div className="w-full max-w-sm fade-in">
         {/* Logo */}
         <div className="flex flex-col items-center mb-6 md:mb-8 gap-3">
