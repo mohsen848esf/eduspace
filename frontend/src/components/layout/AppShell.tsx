@@ -115,7 +115,7 @@ export default function AppShell({
         />
 
         {/* Content body with Sidebar + Main View */}
-        <div className="flex flex-1 w-full min-h-0 overflow-hidden">
+        <div className="flex flex-1 w-full min-h-0 overflow-hidden p-2.5 sm:p-3 gap-3">
           {hasOrg && breakpoint === "desktop" && (
             <Sidebar activeId={resolvedActive} onNavigate={handleNavigate} />
           )}
@@ -123,7 +123,7 @@ export default function AppShell({
             <IconRail activeId={resolvedActive} onNavigate={handleNavigate} />
           )}
 
-          <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+          <div className="flex flex-col flex-1 min-w-0 overflow-hidden rounded-2xl bg-[var(--s0)]">
             {hasOrg && location.pathname !== "/dashboard" && <SubTopbar />}
             {isSuspended && (
               <div 

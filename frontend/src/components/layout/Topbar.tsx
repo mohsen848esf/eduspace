@@ -165,12 +165,12 @@ export default function Topbar({
             })
           }
           disabled={roomLoading}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#00e676] hover:bg-[#00c853] text-[#071712] font-black text-xs cursor-pointer border-none shadow-md shadow-[#00e676]/25 transition-all active:scale-[0.98] disabled:opacity-50 flex-shrink-0"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#00e676] hover:bg-[#00c853] text-white font-extrabold text-xs cursor-pointer border-none shadow-md shadow-[#00e676]/25 transition-all active:scale-[0.98] disabled:opacity-50 flex-shrink-0"
         >
-          <Plus className="w-4 h-4 stroke-[3]" />
-          <span className="whitespace-nowrap font-black">
+          <span className="whitespace-nowrap text-white font-black text-xs">
             {isFarsi ? "جلسه جدید" : "New Meeting"}
           </span>
+          <Plus className="w-3.5 h-3.5 text-white stroke-[3]" />
         </button>
 
         {/* Global Search Bar */}

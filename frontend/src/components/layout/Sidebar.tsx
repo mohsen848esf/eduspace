@@ -8,7 +8,6 @@ import { primaryNavItems, categoryNavItems, type NavItem } from "./navItems";
 import { useAuthStore } from "../../features/auth/store/authStore";
 import { Icons } from "../../lib/constants/icons";
 import { useLocale } from "../../i18n/useLocale";
-import { usePageHelp } from "../help/PageHelpProvider";
 import { useOrgContextStore } from "../../features/auth/store/orgContextStore";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -26,8 +25,7 @@ export default function Sidebar({
   const location = useLocation();
   const { language } = useLocale();
   const isFarsi = language === "fa";
-  const { triggerHelp } = usePageHelp();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed] = useState(false);
   const { logout, user } = useAuthStore();
   const { activeRole, hasAnyPermission } = useOrgPermission();
 
@@ -137,11 +135,7 @@ export default function Sidebar({
   };
 
   const activeOrg = user?.organizations?.find((o) => o.slug === activeSlug);
-  const activeOrgIndex = user?.organizations?.findIndex((o) => o.slug === activeSlug) ?? 0;
   const activeOrgRole = activeOrg?.role || activeRole || (isFarsi ? "عضو" : "Member");
-  const activeTheme = getOrgTheme(activeOrgIndex >= 0 ? activeOrgIndex : 0);
-
-  const canManage = hasAnyPermission(["can_manage_members"]) || activeOrgRole?.toLowerCase() === "owner" || activeOrgRole?.toLowerCase() === "admin";
 
   const filterNavItem = (item: NavItem): boolean => {
     if (item.permissions && !hasAnyPermission(item.permissions)) return false;
@@ -236,221 +230,40 @@ export default function Sidebar({
     <aside
       className={cn(
         "flex flex-col flex-shrink-0 h-full",
-        "bg-[var(--s1)] border-e border-[var(--b)]",
+        "bg-[var(--s1)] border border-[var(--b)] rounded-2xl shadow-sm overflow-hidden",
         "transition-all duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
-        collapsed ? "w-14" : "w-[280px]",
+        collapsed ? "w-14" : "w-[260px]",
       )}
     >
-      {/* Logo / Org Header */}
+      {/* Logo / Org Header (Box 2) */}
       <div
         className={cn(
-          "flex items-center h-16 px-4 border-b border-[var(--b)] flex-shrink-0",
-          collapsed && "justify-center",
+          "flex items-center h-18 px-4 border-b border-[var(--b)] flex-shrink-0 bg-[var(--s1)]",
+          collapsed && "justify-center h-14 px-2",
         )}
       >
-        <Tooltip
-          content={collapsed ? t("nav.expandSidebar") : t("nav.collapseSidebar")}
-          side="right"
-        >
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className={cn(
-              "flex items-center gap-3 cursor-pointer bg-transparent border-none p-0 w-full text-start",
-              collapsed && "justify-center",
-            )}
-          >
-            <div className="w-10 h-10 bg-[var(--brand)] rounded-xl flex items-center justify-center text-white text-base font-black flex-shrink-0 shadow-lg shadow-[var(--brand)]/25">
-              {activeOrg ? (
-                <span className="text-base uppercase tracking-tighter">
-                  {activeOrg.name.charAt(0)}
-                </span>
-              ) : (
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white">
-                  <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-                  <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
-                </svg>
-              )}
-            </div>
-            {!collapsed && (
-              <div className="flex flex-col min-w-0">
-                <span className="text-[14px] font-extrabold text-[var(--t1)] leading-tight truncate">
-                  {activeOrg ? activeOrg.name : "EduSpace"}
-                </span>
-                <span className="text-[10.5px] text-[var(--brand)] font-medium truncate">
-                  {activeOrg ? (isFarsi ? "آکادمی سازمانی" : "Academy") : "Enterprise LMS"}
-                </span>
-              </div>
-            )}
-          </button>
-        </Tooltip>
-      </div>
-
-      {/* Workspace Switcher Panel */}
-      {!collapsed && (
-        <div ref={switcherRef} className="px-3 pt-3.5 pb-2 flex flex-col gap-1.5 flex-shrink-0 select-none relative">
-          <span className="text-[10px] font-bold text-[var(--t3)] uppercase tracking-wider px-1">
-            {isFarsi ? "فضای کاری فعلی" : "Current Workspace"}
-          </span>
-          <button
-            onClick={() => setShowSwitcher((p) => !p)}
-            className="w-full flex items-center justify-between gap-3 p-2.5 bg-[var(--s2)] hover:bg-[var(--s3)] border border-[var(--b)] hover:border-[var(--brand)]/40 rounded-2xl cursor-pointer transition-all duration-200 text-start group"
-          >
+        <div className="flex items-center gap-3 w-full">
+          <div className="w-10 h-10 bg-[var(--brand)] rounded-xl flex items-center justify-center text-[#071712] font-black text-xl flex-shrink-0 shadow-md shadow-[var(--brand)]/20">
             {activeOrg ? (
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center text-white flex-shrink-0 shadow-sm font-bold", activeTheme.bg)}>
-                  {activeOrg.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-bold text-[var(--t1)] truncate leading-snug">{activeOrg.name}</span>
-                  <span className="text-[10px] text-[var(--t3)] capitalize mt-0.5">{activeOrgRole}</span>
-                </div>
-              </div>
+              <span className="uppercase">{activeOrg.name.charAt(0)}</span>
             ) : (
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-[var(--s3)] border border-[var(--b)] flex items-center justify-center text-[var(--t3)] flex-shrink-0">
-                  🏢
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-bold text-[var(--t1)] leading-snug">{isFarsi ? "انتخاب فضای کاری" : "Select Workspace"}</span>
-                  <span className="text-[10px] text-[var(--t3)] mt-0.5">{isFarsi ? "بدون سازمان" : "No active org"}</span>
-                </div>
-              </div>
+              <span>J</span>
             )}
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-[var(--t3)] group-hover:text-[var(--brand)] flex-shrink-0 transition-colors">
-              <path d="M17 11l-5-5-5 5M17 13l-5 5-5-5" />
-            </svg>
-          </button>
-
-          {/* Switcher Dropdown Popover */}
-          {showSwitcher && (
-            <div className="absolute top-[calc(100%-4px)] start-3 end-3 mt-1 bg-[var(--s1)] border border-[var(--b)] rounded-2xl p-2 z-50 shadow-2xl flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
-              {/* CURRENT WORKSPACES */}
-              {user?.organizations && user.organizations.length > 0 && (
-                <div className="flex flex-col gap-1">
-                  <span className="text-[9px] font-bold text-[var(--t3)] uppercase tracking-wider px-2 py-1">
-                    {isFarsi ? "فضاهای کاری من" : "Current Workspaces"}
-                  </span>
-                  <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5 scrollbar-thin scrollbar-thumb-[var(--b)]">
-                    {user.organizations.map((org, index) => {
-                      const isActive = org.slug === activeSlug;
-                      const theme = getOrgTheme(index);
-                      return (
-                        <button
-                          key={org.id}
-                          onClick={() => handleOrgSwitch(org.slug)}
-                          className={cn(
-                            "w-full flex items-center justify-between gap-3 p-2 rounded-xl border-none cursor-pointer text-start transition-colors",
-                            isActive
-                              ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-semibold"
-                              : "bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)]"
-                          )}
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className={cn("w-7.5 h-7.5 rounded-lg flex items-center justify-center text-white flex-shrink-0 font-bold", theme.bg)}>
-                              {org.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="flex flex-col min-w-0">
-                              <span className="text-[11px] font-bold truncate leading-tight">{org.name}</span>
-                              <span className="text-[9px] text-[var(--t3)] capitalize mt-0.5">{org.role || (isFarsi ? "عضو" : "Member")}</span>
-                            </div>
-                          </div>
-                          {isActive && (
-                            <div className="w-5 h-5 rounded-full bg-[var(--brand-soft)] border border-[var(--brand)] text-[var(--brand)] flex items-center justify-center flex-shrink-0 text-xs">
-                              ✓
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* MANAGEMENT */}
-              {activeOrg && canManage && (
-                <div className="flex flex-col gap-0.5 border-t border-[var(--b)] pt-1.5 mt-0.5">
-                  <span className="text-[9px] font-bold text-[var(--t3)] uppercase tracking-wider px-2 py-1">
-                    {isFarsi ? "مدیریت سازمان" : "Management"}
-                  </span>
-                  
-                  {/* Invite Members */}
-                  <Link
-                    to="/crm/members"
-                    onClick={() => setShowSwitcher(false)}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-transparent no-underline text-start text-[11px] font-medium text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-colors"
-                  >
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-shrink-0">
-                      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                      <circle cx="8.5" cy="7" r="4" />
-                      <line x1="20" y1="8" x2="20" y2="14" />
-                      <line x1="17" y1="11" x2="23" y2="11" />
-                    </svg>
-                    <span>{isFarsi ? "دعوت از اعضا" : "Invite Members"}</span>
-                  </Link>
-
-                  {/* Organization Settings */}
-                  <Link
-                    to="/settings/organization"
-                    onClick={() => setShowSwitcher(false)}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-transparent no-underline text-start text-[11px] font-medium text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-colors"
-                  >
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-shrink-0">
-                      <circle cx="12" cy="12" r="3" />
-                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                    </svg>
-                    <span>{isFarsi ? "تنظیمات سازمان" : "Organization Settings"}</span>
-                  </Link>
-
-                  {/* Billing */}
-                  <Link
-                    to="/settings/billing"
-                    onClick={() => setShowSwitcher(false)}
-                    className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-transparent no-underline text-start text-[11px] font-medium text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-colors"
-                  >
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-shrink-0">
-                      <rect x="2" y="5" width="20" height="14" rx="2" ry="2" />
-                      <line x1="2" y1="10" x2="22" y2="10" />
-                    </svg>
-                    <span>{isFarsi ? "امور مالی و اشتراک" : "Billing"}</span>
-                  </Link>
-                </div>
-              )}
-
-              {/* CREATE & JOIN */}
-              <div className="flex flex-col gap-0.5 border-t border-[var(--b)] pt-1.5 mt-0.5">
-                {/* Create Org */}
-                <Link
-                  to="/dashboard?action=create-org"
-                  onClick={() => setShowSwitcher(false)}
-                  className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-transparent no-underline text-start text-[11px] font-medium text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-colors"
-                >
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-shrink-0 text-[var(--brand)]">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="16" />
-                    <line x1="8" y1="12" x2="16" y2="12" />
-                  </svg>
-                  <span>{isFarsi ? "ایجاد سازمان جدید" : "Create Organization"}</span>
-                </Link>
-
-                {/* Join Org */}
-                <Link
-                  to="/dashboard?action=join-org"
-                  onClick={() => setShowSwitcher(false)}
-                  className="w-full flex items-center gap-2.5 p-2 rounded-xl bg-transparent no-underline text-start text-[11px] font-medium text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-colors"
-                >
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-shrink-0 text-[var(--t3)]">
-                    <circle cx="12" cy="12" r="10" />
-                    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
-                  </svg>
-                  <span>{isFarsi ? "پیوستن به سازمان" : "Join Organization"}</span>
-                </Link>
-              </div>
+          </div>
+          {!collapsed && (
+            <div className="flex flex-col min-w-0">
+              <span className="text-[15px] font-black text-white leading-snug truncate">
+                {activeOrg ? activeOrg.name : "JobzLingo"}
+              </span>
+              <span className="text-[11px] text-slate-400 font-medium truncate mt-0.5">
+                {isFarsi ? "آکادمی" : "Academy"}
+              </span>
             </div>
           )}
         </div>
-      )}
+      </div>
 
-      {/* Nav Section */}
+      {/* Main Navigation Scroll Area */}
       <nav className="flex-1 p-2 flex flex-col overflow-y-auto pt-2 scrollbar-thin scrollbar-thumb-[var(--b)] gap-1">
         {/* 1. Primary Direct Links (Dashboard, Inbox) */}
         <div className="flex flex-col gap-0.5">
@@ -617,36 +430,42 @@ export default function Sidebar({
         )}
       </nav>
 
-      {/* Bottom Organization & Actions Section */}
-      <div className="p-3 border-t border-[var(--b)] flex flex-col gap-2 flex-shrink-0">
-        {!collapsed && activeOrg && (
-          <div className="bg-[var(--s2)]/80 border border-[var(--b)] rounded-2xl p-3 flex flex-col gap-2.5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col min-w-0">
-                <span className="text-[12px] font-bold text-[var(--t1)] truncate leading-tight">
-                  {activeOrg.name}
-                </span>
-                <span className="text-[10px] text-[var(--brand)] font-semibold mt-0.5">
-                  {activeOrgRole}
-                </span>
+      {/* Bottom Organization & Actions Section (Box 3) */}
+      <div className="p-3 border-t border-[var(--b)] flex flex-col gap-2 flex-shrink-0 relative" ref={switcherRef}>
+        {!collapsed && (
+          <div className="bg-[var(--s2)]/90 border border-[var(--b)] rounded-2xl p-3 flex flex-col gap-2 shadow-sm">
+            <div className="flex flex-col">
+              <span className="text-[13px] font-bold text-white truncate leading-tight">
+                {activeOrg ? `${activeOrg.name} Academy` : "JobzLingo Academy"}
+              </span>
+              <span className="text-[11px] text-slate-400 font-medium mt-0.5">
+                {activeOrgRole || (isFarsi ? "مدیریت سازمان" : "Organization Management")}
+              </span>
+            </div>
+
+            {/* 4 Overlapping Avatars */}
+            <div className="flex -space-x-2 rtl:space-x-reverse my-1">
+              <div className="w-6 h-6 rounded-full bg-emerald-600 text-white text-[9px] font-black flex items-center justify-center border-2 border-[var(--s2)] shadow-sm">
+                {user?.username?.charAt(0).toUpperCase() || "A"}
               </div>
-              <div className="flex -space-x-1.5 rtl:space-x-reverse">
-                <div className="w-6 h-6 rounded-full bg-[var(--brand)] text-white text-[10px] font-bold flex items-center justify-center border border-[var(--s2)]">
-                  {user?.username?.charAt(0).toUpperCase() || "A"}
-                </div>
-                <div className="w-6 h-6 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center border border-[var(--s2)]">
-                  T
-                </div>
-                <div className="w-6 h-6 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center border border-[var(--s2)]">
-                  S
-                </div>
+              <div className="w-6 h-6 rounded-full bg-indigo-600 text-white text-[9px] font-black flex items-center justify-center border-2 border-[var(--s2)] shadow-sm">
+                Z
+              </div>
+              <div className="w-6 h-6 rounded-full bg-amber-500 text-white text-[9px] font-black flex items-center justify-center border-2 border-[var(--s2)] shadow-sm">
+                R
+              </div>
+              <div className="w-6 h-6 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center border-2 border-[var(--s2)] shadow-sm">
+                M
               </div>
             </div>
+
+            {/* Switch Org Button */}
             <button
-              onClick={() => setShowSwitcher(true)}
-              className="w-full bg-[var(--s3)] hover:bg-[var(--brand-soft)] text-[var(--t1)] hover:text-[var(--brand)] border border-[var(--b)] rounded-xl py-1.5 px-3 text-[11px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1.5"
+              type="button"
+              onClick={() => setShowSwitcher((p) => !p)}
+              className="w-full bg-[var(--s3)] hover:bg-[var(--brand-soft)] text-slate-200 hover:text-[var(--brand-text)] border border-[var(--b)] rounded-xl py-1.5 px-3 text-xs font-bold cursor-pointer transition-all flex items-center justify-center gap-2 shadow-sm"
             >
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M17 11l-5-5-5 5M17 13l-5 5-5-5" />
               </svg>
               <span>{isFarsi ? "تغییر سازمان" : "Switch Workspace"}</span>
@@ -654,40 +473,66 @@ export default function Sidebar({
           </div>
         )}
 
-        <div className="flex items-center gap-1">
-          {/* Help */}
-          <button
-            onClick={triggerHelp}
-            className={cn(
-              "flex items-center gap-2 flex-1 px-2.5 py-2 rounded-xl text-start border-none cursor-pointer bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-all",
-              collapsed && "justify-center px-2",
+        {/* Switcher Dropdown Popover */}
+        {showSwitcher && (
+          <div className="absolute bottom-full start-3 end-3 mb-2 bg-[var(--s1)] border border-[var(--b)] rounded-2xl p-2 z-50 shadow-2xl flex flex-col gap-1.5 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            {user?.organizations && user.organizations.length > 0 && (
+              <div className="flex flex-col gap-1">
+                <span className="text-[9px] font-bold text-[var(--t3)] uppercase tracking-wider px-2 py-1">
+                  {isFarsi ? "فضاهای کاری من" : "Current Workspaces"}
+                </span>
+                <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5 scrollbar-thin scrollbar-thumb-[var(--b)]">
+                  {user.organizations.map((org, index) => {
+                    const isActive = org.slug === activeSlug;
+                    const theme = getOrgTheme(index);
+                    return (
+                      <button
+                        key={org.id}
+                        onClick={() => handleOrgSwitch(org.slug)}
+                        className={cn(
+                          "w-full flex items-center justify-between gap-3 p-2 rounded-xl border-none cursor-pointer text-start transition-colors",
+                          isActive
+                            ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-semibold"
+                            : "bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)]"
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={cn("w-7.5 h-7.5 rounded-lg flex items-center justify-center text-white flex-shrink-0 font-bold", theme.bg)}>
+                            {org.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-[11px] font-bold truncate leading-tight">{org.name}</span>
+                            <span className="text-[9px] text-[var(--t3)] capitalize mt-0.5">{org.role || (isFarsi ? "عضو" : "Member")}</span>
+                          </div>
+                        </div>
+                        {isActive && (
+                          <div className="w-5 h-5 rounded-full bg-[var(--brand-soft)] border border-[var(--brand)] text-[var(--brand)] flex items-center justify-center flex-shrink-0 text-xs">
+                            ✓
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             )}
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-            {!collapsed && (
-              <span className="text-[11.5px] font-medium">
-                {isFarsi ? "راهنما" : "Help"}
-              </span>
-            )}
-          </button>
+          </div>
+        )}
 
+        <div className="flex items-center gap-1">
           {/* Logout */}
           <button
             onClick={handleLogout}
             className={cn(
-              "flex items-center gap-2 px-2.5 py-2 rounded-xl text-start border-none cursor-pointer bg-transparent text-[var(--t2)] hover:bg-[var(--red)]/10 hover:text-[var(--red)] transition-all",
+              "flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-start border-none cursor-pointer bg-transparent text-[var(--t2)] hover:bg-[var(--red)]/10 hover:text-[var(--red)] transition-all",
               collapsed && "justify-center px-2",
             )}
           >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
             </svg>
             {!collapsed && (
-              <span className="text-[11.5px] font-medium">
+              <span className="text-[11px] font-medium">
                 {isFarsi ? "خروج" : "Logout"}
               </span>
             )}
