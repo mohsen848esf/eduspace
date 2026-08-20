@@ -78,10 +78,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         {/* Right in RTL: Welcome Greeting & Message */}
         <div className="flex flex-col min-w-0 text-start">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg md:text-xl font-black text-white truncate">
-              {isFarsi ? `خوش آمدید، ${userName}` : `Welcome back, ${userName}`}
+            <h2 className="text-lg md:text-xl font-black text-white flex items-center gap-2">
+              <span>{isFarsi ? "خوش آمدید" : "Welcome back"}</span>
+              <span className="text-xl">✋</span>
+              <span>{isFarsi ? `، ${userName}` : `, ${userName}`}</span>
             </h2>
-            <span className="text-xl">👋</span>
           </div>
           <p className="text-xs text-slate-300 mt-1.5 font-medium truncate">
             {isFarsi
@@ -90,12 +91,12 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           </p>
         </div>
 
-        {/* Left in RTL: Academy Logo, Name, and Slogan */}
-        <div className="flex items-center gap-3.5 self-stretch md:self-auto justify-end">
+        {/* Left in RTL: Academy Logo on left, Name & Slogan to its right */}
+        <div className="flex items-center gap-3.5 self-stretch md:self-auto justify-end" dir="ltr">
           <div className="w-12 h-12 rounded-2xl bg-[var(--brand)] flex items-center justify-center text-[#071712] font-black text-2xl shadow-lg shadow-[var(--brand)]/25 flex-shrink-0">
             {orgName.charAt(0).toUpperCase()}
           </div>
-          <div className="flex flex-col min-w-0 text-start">
+          <div className="flex flex-col text-left">
             <span className="text-base md:text-[17px] font-extrabold text-white leading-tight truncate">
               {orgName}
             </span>
@@ -109,105 +110,113 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       {/* 2. Row of 5 KPI Metric Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
         {/* Card 1: Active Classes */}
-        <div className="bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl p-4 flex flex-col justify-between transition-all duration-200 shadow-sm group">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[var(--t3)] uppercase tracking-wider">
+        <div className="bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl p-4 flex flex-col justify-between items-center text-center transition-all duration-200 shadow-sm group">
+          <div className="w-full flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-300">
               {isFarsi ? "کلاس‌های فعال" : "Active Classes"}
             </span>
-            <div className="w-8 h-8 rounded-xl bg-[var(--cyan)]/10 text-[var(--cyan)] flex items-center justify-center text-sm">
+            <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center text-sm shadow-sm">
               <BookOpen className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <span className="text-2xl font-black text-[var(--t1)] font-mono">
+          <div className="my-2">
+            <span className="text-2xl md:text-3xl font-black text-white font-mono">
               {classesCount}
             </span>
-            <div className="flex items-center gap-1 text-[10px] text-[var(--brand)] font-bold mt-1">
-              <span>↑</span>
-              <span>{isFarsi ? "۲ عدد از هفته قبل" : "+2 from last week"}</span>
-            </div>
+          </div>
+          <div className="flex items-center justify-center gap-1 text-[11px] text-emerald-400 font-bold">
+            <span>↑</span>
+            <span>{isFarsi ? "۲ عدد از هفته قبل" : "+2 from last week"}</span>
           </div>
         </div>
 
         {/* Card 2: Unread Notifications */}
-        <div className="bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl p-4 flex flex-col justify-between transition-all duration-200 shadow-sm group">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[var(--t3)] uppercase tracking-wider">
-              {isFarsi ? "اطلاعیه‌ها" : "Notifications"}
+        <div className="bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl p-4 flex flex-col justify-between items-center text-center transition-all duration-200 shadow-sm group">
+          <div className="w-full flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-300">
+              {isFarsi ? "اعلان‌های خوانده نشده" : "Unread Notifications"}
             </span>
-            <div className="w-8 h-8 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center text-sm">
+            <div className="w-8 h-8 rounded-xl bg-red-500/15 text-red-400 flex items-center justify-center text-sm shadow-sm">
               <FileText className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <span className="text-2xl font-black text-[var(--t1)] font-mono">
+          <div className="my-2">
+            <span className="text-2xl md:text-3xl font-black text-white font-mono">
               {unreadNotificationsCount}
             </span>
-            <div className="flex items-center gap-1 text-[10px] text-[var(--t2)] font-semibold mt-1">
-              <span>{isFarsi ? "خوانده‌نشده" : "unread items"}</span>
-            </div>
           </div>
+          <Link
+            to="/inbox"
+            className="text-[11px] text-cyan-400 hover:text-cyan-300 font-bold no-underline transition-colors"
+          >
+            {isFarsi ? "مشاهده همه" : "View All"}
+          </Link>
         </div>
 
-        {/* Card 3: Pending Homework */}
-        <div className="bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl p-4 flex flex-col justify-between transition-all duration-200 shadow-sm group">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[var(--t3)] uppercase tracking-wider">
-              {isFarsi ? "تکالیف بررسی" : "Pending Tasks"}
+        {/* Card 3: Pending Tasks */}
+        <div className="bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl p-4 flex flex-col justify-between items-center text-center transition-all duration-200 shadow-sm group">
+          <div className="w-full flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-300">
+              {isFarsi ? "تکالیف در انتظار بررسی" : "Pending Reviews"}
             </span>
-            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-sm shadow-sm">
               <FileText className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <span className="text-2xl font-black text-[var(--t1)] font-mono">
+          <div className="my-2">
+            <span className="text-2xl md:text-3xl font-black text-white font-mono">
               {pendingHomeworkCount}
             </span>
-            <div className="flex items-center gap-1 text-[10px] text-amber-400 font-semibold mt-1">
-              <span>{isFarsi ? "نیاز به بررسی" : "awaiting review"}</span>
-            </div>
           </div>
+          <Link
+            to="/academic/homework"
+            className="text-[11px] text-cyan-400 hover:text-cyan-300 font-bold no-underline transition-colors"
+          >
+            {isFarsi ? "مشاهده همه" : "View All"}
+          </Link>
         </div>
 
         {/* Card 4: Sessions */}
-        <div className="bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl p-4 flex flex-col justify-between transition-all duration-200 shadow-sm group">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[var(--t3)] uppercase tracking-wider">
+        <div className="bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl p-4 flex flex-col justify-between items-center text-center transition-all duration-200 shadow-sm group">
+          <div className="w-full flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-300">
               {isFarsi ? "جلسات" : "Sessions"}
             </span>
-            <div className="w-8 h-8 rounded-xl bg-[var(--cyan)]/10 text-[var(--cyan)] flex items-center justify-center text-sm">
+            <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center text-sm shadow-sm">
               <Calendar className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <span className="text-2xl font-black text-[var(--t1)] font-mono">
+          <div className="my-2">
+            <span className="text-2xl md:text-3xl font-black text-white font-mono">
               {activeSessionsCount}
             </span>
-            <div className="flex items-center gap-1 text-[10px] text-[var(--brand)] font-bold mt-1">
-              <span>●</span>
-              <span>{isFarsi ? "برنامه امروز" : "scheduled today"}</span>
-            </div>
           </div>
+          <Link
+            to="/academic/sessions"
+            className="text-[11px] text-cyan-400 hover:text-cyan-300 font-bold no-underline transition-colors"
+          >
+            {isFarsi ? "مشاهده برنامه امروز" : "Today's Schedule"}
+          </Link>
         </div>
 
         {/* Card 5: Total Students */}
-        <div className="bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl p-4 flex flex-col justify-between transition-all duration-200 shadow-sm col-span-2 sm:col-span-1 group">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[var(--t3)] uppercase tracking-wider">
+        <div className="bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl p-4 flex flex-col justify-between items-center text-center transition-all duration-200 shadow-sm col-span-2 sm:col-span-1 group">
+          <div className="w-full flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-300">
               {isFarsi ? "دانشجویان کل" : "Total Students"}
             </span>
-            <div className="w-8 h-8 rounded-xl bg-[var(--brand)]/10 text-[var(--brand)] flex items-center justify-center text-sm">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-sm shadow-sm">
               <Users className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3">
-            <span className="text-2xl font-black text-[var(--t1)] font-mono">
+          <div className="my-2">
+            <span className="text-2xl md:text-3xl font-black text-white font-mono">
               {activeMembersCount}
             </span>
-            <div className="flex items-center gap-1 text-[10px] text-[var(--brand)] font-bold mt-1">
-              <span>↑</span>
-              <span>{isFarsi ? "۱۶٪ نسبت به ماه قبل" : "+16% this month"}</span>
-            </div>
+          </div>
+          <div className="flex items-center justify-center gap-1 text-[11px] text-emerald-400 font-bold">
+            <span>↑</span>
+            <span>{isFarsi ? "۱۸٪ نسبت به ماه قبل" : "+18% this month"}</span>
           </div>
         </div>
       </div>
