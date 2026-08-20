@@ -121,7 +121,7 @@ export default function AppShell({
             onHamburgerClick={() => setDrawerOpen(true)}
           />
 
-          {hasOrg && <SubTopbar />}
+          {hasOrg && location.pathname !== "/dashboard" && <SubTopbar />}
         {isSuspended && (
           <div 
             style={{
