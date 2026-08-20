@@ -219,6 +219,8 @@ export default function DashboardPage() {
         />
       ) : (
         <AdminDashboardView
+          user={user}
+          activeOrg={activeOrg}
           isFarsi={isFarsi}
           localeTag={localeTag}
           totalPendingRevenue={summaryData?.outstanding || 0}

@@ -36,6 +36,62 @@
   --brand-text: #4f46e5;
 }
 
+/* ──────────────────────────────────────────────────────────────────
+ * Organization Theming & White-Label Design Tokens
+ * ──────────────────────────────────────────────────────────────── */
+
+/* Dark-Tinted (Forest Emerald & Glowing Gold/Amber) */
+.dark-tinted,
+[data-theme="dark-tinted"] {
+  --brand: #00e676;
+  --brand-h: #00c853;
+  --brand-soft: rgba(0, 230, 118, 0.12);
+  --brand-text: #00e676;
+
+  --s0: #071712;
+  --s1: #0c231b;
+  --s2: #112d23;
+  --s3: #183e30;
+
+  --b: rgba(0, 230, 118, 0.09);
+  --bh: rgba(0, 230, 118, 0.35);
+
+  --t1: #e8f5e9;
+  --t2: #81c784;
+  --t3: #388e3c;
+
+  --green: #00e676;
+  --amber: #ffb300;
+  --cyan: #26c6da;
+  --red: #ef4444;
+}
+
+/* Light-Tinted (Jade / Soft Mint) */
+.light-tinted,
+[data-theme="light-tinted"] {
+  --brand: #059669;
+  --brand-h: #047857;
+  --brand-soft: rgba(5, 150, 105, 0.1);
+  --brand-text: #047857;
+
+  --s0: #f0f7f4;
+  --s1: #ffffff;
+  --s2: #e8f4ef;
+  --s3: #dcf0e7;
+
+  --b: rgba(5, 150, 105, 0.12);
+  --bh: rgba(5, 150, 105, 0.35);
+
+  --t1: #064e3b;
+  --t2: #047857;
+  --t3: #6ee7b7;
+
+  --green: #059669;
+  --amber: #d97706;
+  --cyan: #0891b2;
+  --red: #dc2626;
+}
+
 
 /* ──────────────────────────────────────────────────────────────────
  * Animations

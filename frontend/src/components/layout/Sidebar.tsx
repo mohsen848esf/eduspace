@@ -238,10 +238,10 @@ export default function Sidebar({
         "flex flex-col flex-shrink-0 h-full",
         "bg-[var(--s1)] border-e border-[var(--b)]",
         "transition-all duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
-        collapsed ? "w-14" : "w-[236px]",
+        collapsed ? "w-14" : "w-[280px]",
       )}
     >
-      {/* Logo */}
+      {/* Logo / Org Header */}
       <div
         className={cn(
           "flex items-center h-16 px-4 border-b border-[var(--b)] flex-shrink-0",
@@ -259,19 +259,25 @@ export default function Sidebar({
               collapsed && "justify-center",
             )}
           >
-            <div className="w-9 h-9 bg-[var(--brand)] rounded-[10px] flex items-center justify-center text-white text-base font-bold flex-shrink-0 shadow-md">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white">
-                <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-                <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
-              </svg>
+            <div className="w-10 h-10 bg-[var(--brand)] rounded-xl flex items-center justify-center text-white text-base font-black flex-shrink-0 shadow-lg shadow-[var(--brand)]/25">
+              {activeOrg ? (
+                <span className="text-base uppercase tracking-tighter">
+                  {activeOrg.name.charAt(0)}
+                </span>
+              ) : (
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-white">
+                  <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                  <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
+                </svg>
+              )}
             </div>
             {!collapsed && (
-              <div className="flex flex-col">
-                <span className="text-[14px] font-bold text-[var(--t1)] leading-tight">
-                  EduSpace
+              <div className="flex flex-col min-w-0">
+                <span className="text-[14px] font-extrabold text-[var(--t1)] leading-tight truncate">
+                  {activeOrg ? activeOrg.name : "EduSpace"}
                 </span>
-                <span className="text-[10px] text-[var(--t3)]">
-                  Enterprise LMS
+                <span className="text-[10.5px] text-[var(--brand)] font-medium truncate">
+                  {activeOrg ? (isFarsi ? "آکادمی سازمانی" : "Academy") : "Enterprise LMS"}
                 </span>
               </div>
             )}
@@ -287,12 +293,12 @@ export default function Sidebar({
           </span>
           <button
             onClick={() => setShowSwitcher((p) => !p)}
-            className="w-full flex items-center justify-between gap-3 p-2.5 bg-[var(--s2)] hover:bg-[var(--s3)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl cursor-pointer transition-all duration-200 text-start"
+            className="w-full flex items-center justify-between gap-3 p-2.5 bg-[var(--s2)] hover:bg-[var(--s3)] border border-[var(--b)] hover:border-[var(--brand)]/40 rounded-2xl cursor-pointer transition-all duration-200 text-start group"
           >
             {activeOrg ? (
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center text-white flex-shrink-0 shadow-sm", activeTheme.bg)}>
-                  {activeTheme.icon}
+                <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center text-white flex-shrink-0 shadow-sm font-bold", activeTheme.bg)}>
+                  {activeOrg.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex flex-col min-w-0">
                   <span className="text-xs font-bold text-[var(--t1)] truncate leading-snug">{activeOrg.name}</span>
@@ -310,7 +316,7 @@ export default function Sidebar({
                 </div>
               </div>
             )}
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-[var(--t3)] flex-shrink-0">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-[var(--t3)] group-hover:text-[var(--brand)] flex-shrink-0 transition-colors">
               <path d="M17 11l-5-5-5 5M17 13l-5 5-5-5" />
             </svg>
           </button>
@@ -340,8 +346,8 @@ export default function Sidebar({
                           )}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className={cn("w-7.5 h-7.5 rounded-lg flex items-center justify-center text-white flex-shrink-0", theme.bg)}>
-                              {theme.icon}
+                            <div className={cn("w-7.5 h-7.5 rounded-lg flex items-center justify-center text-white flex-shrink-0 font-bold", theme.bg)}>
+                              {org.name.charAt(0).toUpperCase()}
                             </div>
                             <div className="flex flex-col min-w-0">
                               <span className="text-[11px] font-bold truncate leading-tight">{org.name}</span>
@@ -349,7 +355,7 @@ export default function Sidebar({
                             </div>
                           </div>
                           {isActive && (
-                            <div className="w-5 h-5 rounded-full bg-[var(--brand-soft)] border border-[var(--brand)] text-[var(--brand)] flex items-center justify-center flex-shrink-0">
+                            <div className="w-5 h-5 rounded-full bg-[var(--brand-soft)] border border-[var(--brand)] text-[var(--brand)] flex items-center justify-center flex-shrink-0 text-xs">
                               ✓
                             </div>
                           )}
@@ -467,7 +473,6 @@ export default function Sidebar({
             );
 
             if (collapsed) {
-              // Collapsed mode: render category icon or first child with tooltip
               return (
                 <Tooltip key={cat.id} content={t(cat.labelKey)} side="right">
                   <button
@@ -497,7 +502,7 @@ export default function Sidebar({
                   type="button"
                   onClick={() => toggleGroup(cat.id)}
                   className={cn(
-                    "flex items-center justify-between w-full px-3 py-2 rounded-xl transition-all duration-150 border-none cursor-pointer select-none text-start my-0.5",
+                    "flex items-center justify-between w-full px-3 py-2.5 rounded-xl transition-all duration-150 border-none cursor-pointer select-none text-start my-0.5",
                     hasActiveChild
                       ? "text-[var(--brand-text)] font-bold bg-[var(--brand-soft)]/20"
                       : "text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] bg-transparent font-semibold"
@@ -507,7 +512,7 @@ export default function Sidebar({
                     <span className={cn("w-5 h-5 flex items-center justify-center flex-shrink-0 text-base", hasActiveChild ? "text-[var(--brand)]" : "text-[var(--t3)]")}>
                       {cat.icon}
                     </span>
-                    <span className="text-[12.5px] truncate leading-tight">
+                    <span className="text-[13px] truncate leading-tight">
                       {t(cat.labelKey)}
                     </span>
                   </div>
@@ -523,7 +528,7 @@ export default function Sidebar({
 
                 {/* Submenu Children */}
                 {isGroupExpanded && (
-                  <div className="flex flex-col ms-4 ps-2 my-0.5 border-s border-[var(--b)] gap-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <div className="flex flex-col ms-4 ps-2.5 my-0.5 border-s border-[var(--b)] gap-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
                     {cat.visibleChildren.map((child) => {
                       const targetTo = child.to;
                       const isChildActive = targetTo
@@ -533,9 +538,9 @@ export default function Sidebar({
                       const childLabel = t(child.labelKey);
 
                       const childClasses = cn(
-                        "flex items-center justify-between w-full px-2.5 py-1.5 rounded-lg transition-all duration-150 no-underline select-none text-start text-[12px]",
+                        "flex items-center justify-between w-full px-3 py-2 rounded-lg transition-all duration-150 no-underline select-none text-start text-[12.5px]",
                         isChildActive
-                          ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-bold shadow-xs"
+                          ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-bold shadow-xs ring-1 ring-[var(--brand)]/25"
                           : "bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] font-medium"
                       );
 
@@ -612,59 +617,82 @@ export default function Sidebar({
         )}
       </nav>
 
-      {/* Bottom Actions */}
-      <div className="p-3 border-t border-[var(--b)] flex flex-col gap-1 flex-shrink-0">
-        {/* Help */}
-        <button
-          onClick={triggerHelp}
-          className={cn(
-            "flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-start border-none cursor-pointer bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-all",
-            collapsed && "justify-center px-2",
-          )}
-        >
-          <span className="text-base w-5 h-5 flex items-center justify-center flex-shrink-0">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+      {/* Bottom Organization & Actions Section */}
+      <div className="p-3 border-t border-[var(--b)] flex flex-col gap-2 flex-shrink-0">
+        {!collapsed && activeOrg && (
+          <div className="bg-[var(--s2)]/80 border border-[var(--b)] rounded-2xl p-3 flex flex-col gap-2.5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col min-w-0">
+                <span className="text-[12px] font-bold text-[var(--t1)] truncate leading-tight">
+                  {activeOrg.name}
+                </span>
+                <span className="text-[10px] text-[var(--brand)] font-semibold mt-0.5">
+                  {activeOrgRole}
+                </span>
+              </div>
+              <div className="flex -space-x-1.5 rtl:space-x-reverse">
+                <div className="w-6 h-6 rounded-full bg-[var(--brand)] text-white text-[10px] font-bold flex items-center justify-center border border-[var(--s2)]">
+                  {user?.username?.charAt(0).toUpperCase() || "A"}
+                </div>
+                <div className="w-6 h-6 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center border border-[var(--s2)]">
+                  T
+                </div>
+                <div className="w-6 h-6 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center border border-[var(--s2)]">
+                  S
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowSwitcher(true)}
+              className="w-full bg-[var(--s3)] hover:bg-[var(--brand-soft)] text-[var(--t1)] hover:text-[var(--brand)] border border-[var(--b)] rounded-xl py-1.5 px-3 text-[11px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1.5"
+            >
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M17 11l-5-5-5 5M17 13l-5 5-5-5" />
+              </svg>
+              <span>{isFarsi ? "تغییر سازمان" : "Switch Workspace"}</span>
+            </button>
+          </div>
+        )}
+
+        <div className="flex items-center gap-1">
+          {/* Help */}
+          <button
+            onClick={triggerHelp}
+            className={cn(
+              "flex items-center gap-2 flex-1 px-2.5 py-2 rounded-xl text-start border-none cursor-pointer bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] transition-all",
+              collapsed && "justify-center px-2",
+            )}
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0">
               <circle cx="12" cy="12" r="10" />
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
               <line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
-          </span>
-          {!collapsed && (
-            <span className="text-[12.5px] font-medium">
-              {isFarsi ? "راهنما" : "Help"}
-            </span>
-          )}
-        </button>
+            {!collapsed && (
+              <span className="text-[11.5px] font-medium">
+                {isFarsi ? "راهنما" : "Help"}
+              </span>
+            )}
+          </button>
 
-        {/* Logout */}
-        <button
-          onClick={handleLogout}
-          className={cn(
-            "flex items-center gap-2.5 w-full px-3 py-2 rounded-xl text-start border-none cursor-pointer bg-transparent text-[var(--t2)] hover:bg-[var(--red)]/10 hover:text-[var(--red)] transition-all",
-            collapsed && "justify-center px-2",
-          )}
-        >
-          <span className="text-base w-5 h-5 flex items-center justify-center flex-shrink-0">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+          {/* Logout */}
+          <button
+            onClick={handleLogout}
+            className={cn(
+              "flex items-center gap-2 px-2.5 py-2 rounded-xl text-start border-none cursor-pointer bg-transparent text-[var(--t2)] hover:bg-[var(--red)]/10 hover:text-[var(--red)] transition-all",
+              collapsed && "justify-center px-2",
+            )}
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
             </svg>
-          </span>
-          {!collapsed && (
-            <span className="text-[12.5px] font-medium">
-              {isFarsi ? "خروج" : "Logout"}
-            </span>
-          )}
-        </button>
-
-        {/* Support Center Capsule */}
-        {!collapsed && (
-          <Link
-            to="/dashboard"
-            className="w-full bg-[var(--s2)] text-[var(--t2)] border border-[var(--b)] transition-all font-semibold rounded-xl text-center py-1.5 px-3 text-[11px] mt-2 flex items-center justify-center no-underline whitespace-nowrap hover:bg-[var(--s3)] hover:text-[var(--t1)]"
-          >
-            {isFarsi ? "مرکز پشتیبانی" : "Support Center"}
-          </Link>
-        )}
+            {!collapsed && (
+              <span className="text-[11.5px] font-medium">
+                {isFarsi ? "خروج" : "Logout"}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
     </aside>
   );
