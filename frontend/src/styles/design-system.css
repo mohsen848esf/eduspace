@@ -1,24 +1,26 @@
-:root {
+:root,
+.platform-theme,
+[data-theme="platform"] {
   --brand: #6366f1;
   --brand-h: #4f46e5;
-  --brand-soft: rgba(99, 102, 241, 0.1);
+  --brand-soft: rgba(99, 102, 241, 0.12);
   --brand-text: #818cf8;
 
-  --s0: #0f0f17;
-  --s1: #16161f;
-  --s2: #1e1e2a;
-  --s3: #272735;
+  --s0: #0b111e;
+  --s1: #10192a;
+  --s2: #162238;
+  --s3: #1e2c46;
 
-  --b: rgba(255, 255, 255, 0.07);
-  --bh: rgba(99, 102, 241, 0.3);
+  --b: rgba(255, 255, 255, 0.08);
+  --bh: rgba(99, 102, 241, 0.35);
 
-  --t1: #f0f0f8;
-  --t2: #8888a8;
-  --t3: #4a4a6a;
+  --t1: #f8fafc;
+  --t2: #94a3b8;
+  --t3: #64748b;
 
-  --green: #22c55e;
+  --green: #10b981;
   --amber: #f59e0b;
-  --red: #f87171;
+  --red: #ef4444;
   --cyan: #38bdf8;
 }
 

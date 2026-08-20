@@ -11,7 +11,14 @@ interface ThemeState {
   toggleTheme: () => void;
 }
 
-const applyThemeToDOM = (theme: ThemeMode) => {
+export const applyPlatformThemeToDOM = () => {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  root.classList.remove("light", "dark-tinted", "light-tinted");
+  root.setAttribute("data-theme", "platform");
+};
+
+export const applyThemeToDOM = (theme: ThemeMode) => {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
   root.classList.remove("light", "dark-tinted", "light-tinted");
@@ -26,6 +33,8 @@ const applyThemeToDOM = (theme: ThemeMode) => {
   } else if (theme === "light-tinted") {
     root.classList.add("light-tinted");
     root.setAttribute("data-theme", "light-tinted");
+  } else {
+    root.setAttribute("data-theme", "dark");
   }
 };
 

@@ -31,6 +31,7 @@ import UnifiedRoomShell from "./UnifiedRoomShell";
 import { useRoomLayoutStore } from "../store/roomLayoutStore";
 import { LobbyWaitingScreen } from "./LobbyWaitingScreen";
 import { useLobbyWaiting } from "../hooks/useLobbyWaiting";
+import CallEndedScreen from "./CallEndedScreen";
 
 function RoomContent({
   preJoinSettings,
@@ -178,8 +179,9 @@ export default function RoomPage() {
   const { t } = useTranslation(["room", "common"]);
   const { roomCode } = useParams<{ roomCode: string }>();
   const { token, livekitUrl, roomName } = useRoomStore();
-  const { joinRoom, joinRoomGuest, leaveRoom, isLoading, error } = useRoom();
+  const { joinRoom, joinRoomGuest, leaveRoom, isLoading, error, clearError } = useRoom();
   const [preJoinDone, setPreJoinDone] = useState(false);
+  const [callEnded, setCallEnded] = useState(false);
   const [preJoinSettings, setPreJoinSettings] =
     useState<PreJoinSettings | null>(null);
 
@@ -285,9 +287,26 @@ export default function RoomPage() {
     );
   }
 
+  if (callEnded) {
+    return (
+      <CallEndedScreen
+        roomCode={roomCode || ""}
+        roomName={roomName || ""}
+        onRejoin={() => {
+          setCallEnded(false);
+          setPreJoinDone(false);
+          clearError();
+        }}
+        onExit={() => {
+          leaveRoom();
+        }}
+      />
+    );
+  }
+
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--s0)] gap-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--s0)] text-[var(--t1)] platform-theme gap-4">
         <Spinner size="lg" />
         <p className="text-sm text-[var(--t2)]">{t("join.joining")}</p>
       </div>
@@ -296,7 +315,7 @@ export default function RoomPage() {
 
   if (error && !roomAccessError && !isWaitingInLobby) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--s0)] gap-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--s0)] text-[var(--t1)] platform-theme gap-4">
         <span className="text-4xl">⚠️</span>
         <p className="text-[var(--red)] text-sm">{error}</p>
         <button
@@ -318,21 +337,23 @@ export default function RoomPage() {
           setPreJoinSettings(settings);
           setPreJoinDone(true);
         }}
-        onCancel={leaveRoom}
+        onCancel={() => {
+          setCallEnded(true);
+        }}
       />
     );
   }
 
   if (!token || !livekitUrl) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--s0)]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--s0)] text-[var(--t1)] platform-theme">
         <Spinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="w-screen h-screen bg-[var(--s0)] overflow-hidden">
+    <div className="w-screen h-screen bg-[var(--s0)] text-[var(--t1)] platform-theme overflow-hidden">
       <LiveKitRoom
         token={token}
         serverUrl={livekitUrl}
@@ -340,34 +361,24 @@ export default function RoomPage() {
         video={preJoinSettings?.camEnabled ?? true}
         audio={preJoinSettings?.micEnabled ?? true}
         options={{
-          // Adaptive stream: downscale subscribed video to match the display
-          // element size — prevents wasting bandwidth on invisible high-res frames.
           adaptiveStream: true,
-          // Dynacast: pause video layers that have zero subscribers — saves
-          // publisher upload bandwidth in multi-party calls.
           dynacast: true,
           publishDefaults: {
-            // Simulcast: publish 3 quality layers simultaneously.
-            // The SFU selects the best layer per subscriber on the fly.
             simulcast: true,
             videoSimulcastLayers: [
-              VideoPresets.h720, // ~1.5 Mbps — good network
-              VideoPresets.h360, // ~400 kbps — average network
-              VideoPresets.h180, // ~150 kbps — weak network / mobile data
+              VideoPresets.h720,
+              VideoPresets.h360,
+              VideoPresets.h180,
             ],
-            audioPreset: AudioPresets.speech, // 24 kbps Opus optimised for voice
-            // RED: redundant audio encoding — survives up to 30% packet loss
-            // without audible glitches. Enabled by default in livekit-client
-            // but declared explicitly for clarity.
+            audioPreset: AudioPresets.speech,
             red: true,
-            // DTX: discontinuous transmission — stops sending audio packets
-            // during silence. Cuts audio bandwidth by ~50% for typical calls.
             dtx: true,
           },
         }}
         onDisconnected={() => {
           useBackgroundStore.getState().setBackground("none");
-          leaveRoom();
+          setCallEnded(true);
+          leaveRoom({ redirectTo: null });
         }}
         style={{ height: "100vh", display: "flex", flexDirection: "column" }}
       >
