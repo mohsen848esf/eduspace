@@ -1,16 +1,19 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { CreditCard, FileText } from "lucide-react";
-import { toast } from "react-hot-toast";
-import { cn } from "@/lib/utils";
-import Card, { CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
-import StatCard from "@/components/ui/StatCard";
+import { Link } from "react-router-dom";
+import {
+  FileText,
+  Calendar,
+  Users,
+  BookOpen,
+} from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import { getBezierPath } from "../../utils/chart.utils";
 import type { Course, AcademyClass, Enrollment } from "../../types/crm.types";
 import type { Session } from "@/features/sessions/types";
 
 export interface AdminDashboardViewProps {
+  user?: any;
+  activeOrg?: any;
   isFarsi: boolean;
   localeTag: string;
   totalPendingRevenue: number;
@@ -23,230 +26,336 @@ export interface AdminDashboardViewProps {
 }
 
 export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
+  user,
+  activeOrg,
   isFarsi,
-  localeTag,
   totalPendingRevenue,
   pendingReviewsCount,
   enrollments,
-  courses,
   classes,
   liveSessions,
-  recentInvoicesData,
 }) => {
-  const navigate = useNavigate();
+  const activeMembersCount = enrollments.length || 248;
+  const classesCount = classes.length || 14;
+  const activeSessionsCount = liveSessions.length || 3;
+  const pendingHomeworkCount = pendingReviewsCount || 8;
+  const unreadNotificationsCount = 12;
 
-  const outstandingInvoicesVal = totalPendingRevenue > 0 ? totalPendingRevenue : 142580.0;
-  const formattedOutstanding = new Intl.NumberFormat(localeTag, {
+  const revenueTotal = totalPendingRevenue > 0 ? totalPendingRevenue : 24860;
+  const formattedRevenue = new Intl.NumberFormat(isFarsi ? "fa-IR" : "en-US", {
     style: "currency",
     currency: "USD",
-    minimumFractionDigits: 2,
-  }).format(outstandingInvoicesVal);
+    maximumFractionDigits: 0,
+  }).format(revenueTotal);
 
-  const activeMembersCount = enrollments.filter((e) => e.is_active).length || 86;
-  const seatOccupancyPercentage = Math.min(100, Math.round((activeMembersCount / 100) * 100)) || 86;
-
-  const coursesCount = courses.length || 24;
-  const classesCount = classes.length || 112;
-  const activeSessionsCount = liveSessions.length || 18;
-
-  // Line Chart Points
+  // Bezier Line Chart Points
   const revenuePoints = [
-    { x: 20, y: 140 },
-    { x: 80, y: 110 },
-    { x: 140, y: 60 },
-    { x: 200, y: 80 },
-    { x: 260, y: 40 },
-    { x: 320, y: 50 },
+    { x: 25, y: 135 },
+    { x: 80, y: 95 },
+    { x: 140, y: 80 },
+    { x: 200, y: 65 },
+    { x: 260, y: 55 },
+    { x: 320, y: 40 },
   ];
   const expensePoints = [
-    { x: 20, y: 160 },
-    { x: 80, y: 140 },
+    { x: 25, y: 145 },
+    { x: 80, y: 120 },
     { x: 140, y: 110 },
-    { x: 200, y: 130 },
-    { x: 260, y: 90 },
-    { x: 320, y: 100 },
+    { x: 200, y: 115 },
+    { x: 260, y: 95 },
+    { x: 320, y: 85 },
   ];
   const revPath = getBezierPath(revenuePoints);
   const expPath = getBezierPath(expensePoints);
 
-  const ledgerItems = recentInvoicesData?.results?.length
-    ? recentInvoicesData.results
-    : [
-        {
-          id: 1,
-          invoice_number: "#INV-8821",
-          created_at: "2023-10-24",
-          student_full_name: "Jameson Global Academy",
-          status: "paid",
-          amount: "12400.00",
-        },
-        {
-          id: 2,
-          invoice_number: "#INV-8819",
-          created_at: "2023-10-22",
-          student_full_name: "Summit School District",
-          status: "unpaid",
-          amount: "42150.00",
-        },
-        {
-          id: 3,
-          invoice_number: "#INV-8815",
-          created_at: "2023-10-20",
-          student_full_name: "Elite Tutoring Co.",
-          status: "overdue",
-          amount: "8900.00",
-        },
-      ];
+  const orgName = activeOrg?.name || "JobzLingo Academy";
+  const userName = user?.full_name || user?.username || (isFarsi ? "علی رضایی" : "Ali Rezaei");
 
   return (
-    <div className="flex flex-col gap-6 fade-in text-[var(--t1)]">
-      {/* Header Row */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-[var(--t1)] tracking-tight">
-            {isFarsi ? "نمای کلی مدیریت" : "Admin Overview"}
-          </h1>
-          <p className="text-xs md:text-sm text-[var(--t3)] mt-1 font-medium">
-            {isFarsi
-              ? "وضعیت سلامت کاری و معیارهای زیرساختی به صورت زنده."
-              : "Real-time workspace health and infrastructure metrics."}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--s2)] border border-[var(--b)] text-xs text-[var(--t2)] font-semibold shadow-sm select-none">
-            <span>📅</span>
-            <span>{isFarsi ? "۳۰ روز گذشته" : "Last 30 Days"}</span>
+    <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 md:px-6 py-4 flex flex-col gap-6 fade-in text-[var(--t1)]">
+      {/* 1. Welcome Banner */}
+      <div className="w-full relative overflow-hidden rounded-3xl p-5 md:p-6 bg-gradient-to-l from-[var(--brand)]/15 via-[var(--s2)] to-[var(--s2)] border border-[var(--b)] shadow-lg shadow-[var(--brand)]/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="w-12 h-12 rounded-2xl bg-[var(--brand)] flex items-center justify-center text-white text-xl font-black shadow-lg shadow-[var(--brand)]/30 flex-shrink-0">
+            {orgName.charAt(0).toUpperCase()}
           </div>
-          <button
-            onClick={() =>
-              toast.success(
-                isFarsi ? "گزارش PDF در حال آماده‌سازی است..." : "Exporting PDF report..."
-              )
-            }
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--s2)] hover:bg-[var(--s3)] border border-[var(--b)] text-xs text-[var(--t1)] font-bold shadow-sm transition-all active:scale-[0.98]"
-          >
-            <span>📥</span>
-            <span>{isFarsi ? "خروجی PDF" : "Export PDF"}</span>
-          </button>
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg md:text-xl font-extrabold text-[var(--t1)] truncate">
+                {isFarsi ? `خوش آمدید، ${userName} 👋` : `Welcome back, ${userName} 👋`}
+              </h2>
+            </div>
+            <p className="text-xs text-[var(--t2)] mt-1 font-medium truncate">
+              {isFarsi
+                ? "امروز یک روز عالی برای یادگیری و ساختن آینده‌ای بهتر است."
+                : "Today is a great day to inspire learning and build a better future."}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
+          <div className="px-3 py-1.5 rounded-xl bg-[var(--s3)] border border-[var(--b)] text-xs text-[var(--t2)] font-semibold flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[var(--brand)] animate-pulse" />
+            <span className="font-bold">{orgName}</span>
+          </div>
         </div>
       </div>
 
-      {/* 4 KPIs Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Outstanding Invoices */}
-        <StatCard
-          title={isFarsi ? "فاکتورهای معوق" : "Outstanding Invoices"}
-          value={formattedOutstanding}
-          icon={<CreditCard className="w-5 h-5" />}
-          variant="brand"
-          trend={{
-            value: "+4.2%",
-            direction: "up",
-            label: isFarsi ? "از ماه گذشته" : "from last month",
-          }}
-        />
+      {/* 2. Row of 5 KPI Metric Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+        {/* Card 1: Active Classes */}
+        <div className="bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl p-4 flex flex-col justify-between transition-all duration-200 shadow-sm group">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[var(--t3)] uppercase tracking-wider">
+              {isFarsi ? "کلاس‌های فعال" : "Active Classes"}
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-[var(--cyan)]/10 text-[var(--cyan)] flex items-center justify-center text-sm">
+              <BookOpen className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl font-black text-[var(--t1)] font-mono">
+              {classesCount}
+            </span>
+            <div className="flex items-center gap-1 text-[10px] text-[var(--brand)] font-bold mt-1">
+              <span>↑</span>
+              <span>{isFarsi ? "۲ عدد از هفته قبل" : "+2 from last week"}</span>
+            </div>
+          </div>
+        </div>
 
-        {/* Needs Attention */}
-        <StatCard
-          title={isFarsi ? "اقدام لازم" : "Needs Attention"}
-          value={pendingReviewsCount}
-          icon={<FileText className="w-5 h-5 text-amber-500" />}
-          variant="warning"
-          subtitle={isFarsi ? "تکالیف در انتظار نمره‌دهی" : "Assignments awaiting grading"}
-        />
+        {/* Card 2: Unread Notifications */}
+        <div className="bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl p-4 flex flex-col justify-between transition-all duration-200 shadow-sm group">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[var(--t3)] uppercase tracking-wider">
+              {isFarsi ? "اطلاعیه‌ها" : "Notifications"}
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center text-sm">
+              <FileText className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl font-black text-[var(--t1)] font-mono">
+              {unreadNotificationsCount}
+            </span>
+            <div className="flex items-center gap-1 text-[10px] text-[var(--t2)] font-semibold mt-1">
+              <span>{isFarsi ? "خوانده‌نشده" : "unread items"}</span>
+            </div>
+          </div>
+        </div>
 
-        {/* Seat Occupancy */}
-        <Card className="flex items-center gap-4 p-5">
-          <div className="relative w-14 h-14 flex items-center justify-center flex-shrink-0">
-            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
-              <circle cx="40" cy="40" r="30" fill="transparent" stroke="var(--s3)" strokeWidth="6" />
+        {/* Card 3: Pending Homework */}
+        <div className="bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl p-4 flex flex-col justify-between transition-all duration-200 shadow-sm group">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[var(--t3)] uppercase tracking-wider">
+              {isFarsi ? "تکالیف بررسی" : "Pending Tasks"}
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm">
+              <FileText className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl font-black text-[var(--t1)] font-mono">
+              {pendingHomeworkCount}
+            </span>
+            <div className="flex items-center gap-1 text-[10px] text-amber-400 font-semibold mt-1">
+              <span>{isFarsi ? "نیاز به بررسی" : "awaiting review"}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 4: Sessions */}
+        <div className="bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl p-4 flex flex-col justify-between transition-all duration-200 shadow-sm group">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[var(--t3)] uppercase tracking-wider">
+              {isFarsi ? "جلسات" : "Sessions"}
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-[var(--cyan)]/10 text-[var(--cyan)] flex items-center justify-center text-sm">
+              <Calendar className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl font-black text-[var(--t1)] font-mono">
+              {activeSessionsCount}
+            </span>
+            <div className="flex items-center gap-1 text-[10px] text-[var(--brand)] font-bold mt-1">
+              <span>●</span>
+              <span>{isFarsi ? "برنامه امروز" : "scheduled today"}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 5: Total Students */}
+        <div className="bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl p-4 flex flex-col justify-between transition-all duration-200 shadow-sm col-span-2 sm:col-span-1 group">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[var(--t3)] uppercase tracking-wider">
+              {isFarsi ? "دانشجویان کل" : "Total Students"}
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-[var(--brand)]/10 text-[var(--brand)] flex items-center justify-center text-sm">
+              <Users className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl font-black text-[var(--t1)] font-mono">
+              {activeMembersCount}
+            </span>
+            <div className="flex items-center gap-1 text-[10px] text-[var(--brand)] font-bold mt-1">
+              <span>↑</span>
+              <span>{isFarsi ? "۱۶٪ نسبت به ماه قبل" : "+16% this month"}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Row of 2 Analytics & Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left: Product / Category Distribution Donut Chart */}
+        <div className="lg:col-span-5 bg-[var(--s2)] border border-[var(--b)] rounded-3xl p-5 md:p-6 flex flex-col justify-between shadow-md">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-extrabold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
+                <span>⭕</span>
+                <span>{isFarsi ? "توزیع محصولات" : "Category Breakdown"}</span>
+              </h3>
+              <p className="text-[11px] text-[var(--t3)] font-semibold mt-0.5">
+                {isFarsi ? "درآمد بر اساس دسته‌بندی" : "Revenue by categories"}
+              </p>
+            </div>
+            <div className="w-8 h-8 rounded-xl bg-[var(--s3)] border border-[var(--b)] flex items-center justify-center text-xs text-[var(--t3)]">
+              📊
+            </div>
+          </div>
+
+          <div className="relative w-40 h-40 flex items-center justify-center flex-shrink-0 self-center my-4">
+            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="45" fill="transparent" stroke="var(--s3)" strokeWidth="12" />
+              {/* Green slice (52%) */}
               <circle
-                cx="40"
-                cy="40"
-                r="30"
+                cx="60"
+                cy="60"
+                r="45"
                 fill="transparent"
                 stroke="var(--brand)"
-                strokeWidth="6"
-                strokeDasharray="188.5"
-                strokeDashoffset={188.5 - (188.5 * seatOccupancyPercentage) / 100}
+                strokeWidth="12"
+                strokeDasharray="147 282.7"
+                strokeDashoffset="0"
+              />
+              {/* Amber slice (27%) */}
+              <circle
+                cx="60"
+                cy="60"
+                r="45"
+                fill="transparent"
+                stroke="#ffb300"
+                strokeWidth="12"
+                strokeDasharray="76.3 282.7"
+                strokeDashoffset="-147"
+              />
+              {/* Orange slice (16%) */}
+              <circle
+                cx="60"
+                cy="60"
+                r="45"
+                fill="transparent"
+                stroke="#f97316"
+                strokeWidth="12"
+                strokeDasharray="45.2 282.7"
+                strokeDashoffset="-223.3"
+              />
+              {/* Red slice (5%) */}
+              <circle
+                cx="60"
+                cy="60"
+                r="45"
+                fill="transparent"
+                stroke="#ef4444"
+                strokeWidth="12"
+                strokeDasharray="14.2 282.7"
+                strokeDashoffset="-268.5"
               />
             </svg>
-            <span className="absolute text-xs font-black text-[var(--t1)] font-mono">
-              {seatOccupancyPercentage}%
-            </span>
-          </div>
-          <div className="flex flex-col gap-1 min-w-0">
-            <span className="text-[10px] font-bold text-[var(--t3)] uppercase tracking-wider">
-              {isFarsi ? "ظرفیت اعضا" : "Seat Occupancy"}
-            </span>
-            <span className="text-xs font-extrabold text-[var(--t1)]">
-              {activeMembersCount} / 100 {isFarsi ? "صندلی پر شده" : "Seats Occupied"}
-            </span>
-            <Badge variant="success" size="sm" className="mt-0.5 self-start text-[8px]">
-              {isFarsi ? "لایسنس: فعال" : "LICENSE STATUS: ACTIVE"}
-            </Badge>
-          </div>
-        </Card>
-
-        {/* Infrastructure Grid */}
-        <Card className="p-4 flex flex-col gap-2 justify-center">
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-[var(--s3)] border border-[var(--b)] rounded-xl p-2 flex flex-col items-center justify-center text-center">
-              <span className="text-sm font-black text-[var(--t1)] font-mono">{coursesCount}</span>
-              <span className="text-[8px] text-[var(--t3)] font-bold uppercase mt-0.5">
-                {isFarsi ? "دوره" : "Courses"}
+            <div className="absolute flex flex-col items-center justify-center text-center">
+              <span className="text-[9px] text-[var(--t3)] font-bold uppercase tracking-wider">
+                {isFarsi ? "کل درآمد" : "Total"}
               </span>
-            </div>
-            <div className="bg-[var(--s3)] border border-[var(--b)] rounded-xl p-2 flex flex-col items-center justify-center text-center">
-              <span className="text-sm font-black text-[var(--t1)] font-mono">{classesCount}</span>
-              <span className="text-[8px] text-[var(--t3)] font-bold uppercase mt-0.5">
-                {isFarsi ? "کلاس" : "Classes"}
+              <span className="text-xl font-black text-[var(--t1)] font-mono leading-tight mt-0.5">
+                $24.8k
               </span>
             </div>
           </div>
-          <div className="bg-[var(--s3)] border border-[var(--b)] rounded-xl p-2 flex items-center justify-center gap-2 text-center">
-            <span className="text-sm font-black text-[var(--t1)] font-mono">{activeSessionsCount}</span>
-            <span className="text-[8px] text-[var(--t3)] font-bold uppercase">
-              {isFarsi ? "جلسه فعال" : "Active Sessions"}
-            </span>
-          </div>
-        </Card>
-      </div>
 
-      {/* Row 1: Financial Health & AR Aging Ring */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Financial Health Chart */}
-        <Card className="lg:col-span-2 flex flex-col gap-4">
-          <CardHeader
-            action={
-              <div className="flex gap-4 text-xs font-bold">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[var(--brand)]" />
-                  <span className="text-[var(--t2)]">{isFarsi ? "درآمد: ۸۴۲ هزار دلار" : "Revenue: $842k"}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#ffedd5] border border-[#f97316]" />
-                  <span className="text-[var(--t2)]">{isFarsi ? "هزینه‌ها: ۶۹۹ هزار دلار" : "Expenses: $699k"}</span>
-                </div>
+          <div className="grid grid-cols-2 gap-2.5 border-t border-[var(--b)] pt-3.5 text-xs font-bold">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[var(--brand)] shadow-sm shadow-[var(--brand)]/50" />
+                <span className="text-[var(--t2)] text-[11px] truncate">{isFarsi ? "دوره‌های برنامه‌نویسی" : "Coding"}</span>
               </div>
-            }
-          >
-            <CardTitle className="text-sm font-bold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
-              <span>📊</span>
-              <span>{isFarsi ? "سلامت مالی" : "Financial Health"}</span>
-            </CardTitle>
-          </CardHeader>
+              <span className="font-mono text-[var(--t1)] text-[11px]">52%</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#ffb300] shadow-sm" />
+                <span className="text-[var(--t2)] text-[11px] truncate">{isFarsi ? "دوره‌های طراحی" : "Design"}</span>
+              </div>
+              <span className="font-mono text-[var(--t1)] text-[11px]">27%</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#f97316]" />
+                <span className="text-[var(--t2)] text-[11px] truncate">{isFarsi ? "محتوای آموزشی" : "Content"}</span>
+              </div>
+              <span className="font-mono text-[var(--t1)] text-[11px]">16%</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#ef4444]" />
+                <span className="text-[var(--t2)] text-[11px] truncate">{isFarsi ? "سایر" : "Other"}</span>
+              </div>
+              <span className="font-mono text-[var(--t1)] text-[11px]">5%</span>
+            </div>
+          </div>
+        </div>
 
-          {/* Bezier Chart Area */}
-          <div className="w-full h-[200px] relative overflow-hidden">
-            <svg className="w-full h-full" viewBox="0 0 340 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Right: Financial Performance Line Chart */}
+        <div className="lg:col-span-7 bg-[var(--s2)] border border-[var(--b)] rounded-3xl p-5 md:p-6 flex flex-col justify-between shadow-md">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h3 className="text-sm font-extrabold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
+                <span>📈</span>
+                <span>{isFarsi ? "عملکرد مالی" : "Financial Performance"}</span>
+              </h3>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xl md:text-2xl font-black text-[var(--t1)] font-mono">
+                  {formattedRevenue}
+                </span>
+                <Badge variant="success" size="sm" className="font-bold">
+                  +12.5%
+                </Badge>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 text-xs font-bold">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[var(--brand)] shadow-sm shadow-[var(--brand)]/50" />
+                <span className="text-[var(--t2)]">{isFarsi ? "درآمد کل" : "Revenue"}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#ffb300]" />
+                <span className="text-[var(--t2)]">{isFarsi ? "هزینه‌ها" : "Expenses"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Glowing Bezier Line Chart */}
+          <div className="w-full h-[180px] relative overflow-hidden mt-3">
+            <svg className="w-full h-full" viewBox="0 0 340 160" fill="none" xmlns="http://www.w3.org/2000/svg">
               <defs>
-                <linearGradient id="revGradAdmin" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--brand)" stopOpacity="0.15" />
-                  <stop offset="100%" stopColor="var(--brand)" stopOpacity="0" />
+                <linearGradient id="emeraldGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--brand)" stopOpacity="0.25" />
+                  <stop offset="100%" stopColor="var(--brand)" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
-              {[0, 50, 100, 150].map((y) => (
+              {[0, 40, 80, 120].map((y) => (
                 <line
                   key={y}
                   x1="20"
@@ -258,353 +367,189 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   strokeDasharray="3 3"
                 />
               ))}
-              <path d={revPath} stroke="var(--brand)" strokeWidth="2.5" strokeLinecap="round" />
-              <path d={`${revPath} L 320 170 L 20 170 Z`} fill="url(#revGradAdmin)" />
-              <path d={expPath} stroke="#f97316" strokeWidth="2" strokeLinecap="round" strokeDasharray="1 0" />
+              <path d={revPath} stroke="var(--brand)" strokeWidth="3" strokeLinecap="round" />
+              <path d={`${revPath} L 320 150 L 25 150 Z`} fill="url(#emeraldGrad)" />
+              <path d={expPath} stroke="#ffb300" strokeWidth="2.5" strokeLinecap="round" />
 
               {revenuePoints.map((p, idx) => (
-                <circle key={idx} cx={p.x} cy={p.y} r="3" fill="var(--s2)" stroke="var(--brand)" strokeWidth="1.8" />
+                <circle key={idx} cx={p.x} cy={p.y} r="3.5" fill="var(--s1)" stroke="var(--brand)" strokeWidth="2" />
               ))}
               {expensePoints.map((p, idx) => (
-                <circle key={idx} cx={p.x} cy={p.y} r="2.5" fill="var(--s2)" stroke="#f97316" strokeWidth="1.8" />
+                <circle key={idx} cx={p.x} cy={p.y} r="3" fill="var(--s1)" stroke="#ffb300" strokeWidth="2" />
               ))}
-              {["Jan", "Feb", "Mar", "Apr", "May", "Jun"].map((m, idx) => {
-                const x = 20 + idx * 60;
+              {["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور"].map((m, idx) => {
+                const x = 25 + idx * 59;
                 return (
-                  <text key={idx} x={x} y="174" fill="var(--t3)" fontSize="8" textAnchor="middle" fontWeight="bold">
-                    {m}
+                  <text key={idx} x={x} y="156" fill="var(--t3)" fontSize="8" textAnchor="middle" fontWeight="bold">
+                    {isFarsi ? m : ["Apr", "May", "Jun", "Jul", "Aug", "Sep"][idx]}
                   </text>
                 );
               })}
             </svg>
           </div>
-        </Card>
-
-        {/* AR Aging Ring */}
-        <Card className="flex flex-col justify-between min-h-[300px]">
-          <div>
-            <h2 className="text-xs font-bold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
-              <span>⭕</span>
-              <span>{isFarsi ? "توزیع معوقات" : "AR Aging Ring"}</span>
-            </h2>
-            <p className="text-[10px] text-[var(--t3)] font-semibold mt-0.5">
-              {isFarsi ? "وضعیت معوقات بر اساس سن فاکتور" : "Receivable distribution"}
-            </p>
-          </div>
-
-          <div className="relative w-36 h-36 flex items-center justify-center flex-shrink-0 self-center my-3">
-            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
-              <circle cx="60" cy="60" r="45" fill="transparent" stroke="var(--s3)" strokeWidth="11" />
-              <circle
-                cx="60"
-                cy="60"
-                r="45"
-                fill="transparent"
-                stroke="var(--brand)"
-                strokeWidth="11"
-                strokeDasharray="169.6 282.7"
-                strokeDashoffset="0"
-              />
-              <circle
-                cx="60"
-                cy="60"
-                r="45"
-                fill="transparent"
-                stroke="#f59e0b"
-                strokeWidth="11"
-                strokeDasharray="70.7 282.7"
-                strokeDashoffset="-169.6"
-              />
-              <circle
-                cx="60"
-                cy="60"
-                r="45"
-                fill="transparent"
-                stroke="#ef4444"
-                strokeWidth="11"
-                strokeDasharray="42.4 282.7"
-                strokeDashoffset="-240.3"
-              />
-            </svg>
-            <div className="absolute flex flex-col items-center justify-center text-center">
-              <span className="text-[9px] text-[var(--t3)] font-black uppercase tracking-wider">
-                {isFarsi ? "معوق" : "Overdue"}
-              </span>
-              <span className="text-lg font-black text-[var(--t1)] font-mono leading-tight mt-0.5">
-                $24.8k
-              </span>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2.5 border-t border-[var(--b)] pt-3 text-[10px] font-bold">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[var(--brand)]" />
-                <span className="text-[var(--t2)]">{isFarsi ? "۰ تا ۳۰ روز" : "0-30 Days"}</span>
-              </div>
-              <span className="font-mono text-[var(--t1)]">$14,880</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#f59e0b]" />
-                <span className="text-[var(--t2)]">{isFarsi ? "۳۱ تا ۶۰ روز" : "31-60 Days"}</span>
-              </div>
-              <span className="font-mono text-[var(--t1)]">$6,200</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#ef4444]" />
-                <span className="text-[var(--t2)]">{isFarsi ? "۶۱ روز به بالا" : "61+ Days"}</span>
-              </div>
-              <span className="font-mono text-[var(--t1)]">$3,720</span>
-            </div>
-          </div>
-        </Card>
+        </div>
       </div>
 
-      {/* Row 2: Security Audit & Command Center */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Security Audit */}
-        <Card className="flex flex-col gap-4">
-          <CardHeader
-            action={
-              <Badge variant="success" size="sm" dot>
-                {isFarsi ? "بروزرسانی زنده" : "Live Feed"}
-              </Badge>
-            }
-          >
-            <CardTitle className="text-xs font-bold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
-              <span>🛡️</span>
-              <span>{isFarsi ? "پایش امنیت" : "Security Audit"}</span>
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent className="flex flex-col gap-3">
-            <div className="bg-[var(--s3)] border border-[var(--b)] rounded-2xl p-3.5 flex items-start gap-3 shadow-inner">
-              <div className="w-8 h-8 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center text-sm flex-shrink-0 font-bold">
-                👤
-              </div>
-              <div className="flex flex-col min-w-0">
-                <Badge variant="danger" size="sm" className="self-start text-[8px]">
-                  SENSITIVE
-                </Badge>
-                <span className="text-[11px] font-bold text-[var(--t1)] mt-1.5">
-                  {isFarsi ? "تغییر دسترسی ادمین برای Elena V." : "Admin role changed for Elena V."}
-                </span>
-                <span className="text-[8px] text-[var(--t3)] font-semibold mt-1">
-                  2 mins ago • IP: 192.168.1.42
-                </span>
-              </div>
-            </div>
-
-            <div className="bg-[var(--s3)] border border-[var(--b)] rounded-2xl p-3.5 flex items-start gap-3 shadow-inner">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center text-sm flex-shrink-0 font-bold">
-                ⚠️
-              </div>
-              <div className="flex flex-col min-w-0">
-                <Badge variant="warning" size="sm" className="self-start text-[8px]">
-                  WARNING
-                </Badge>
-                <span className="text-[11px] font-bold text-[var(--t1)] mt-1.5">
-                  {isFarsi ? "فاکتور شماره ۴۰۲ حذف شد توسط Alex J." : "Invoice #402 deleted by Alex J."}
-                </span>
-                <span className="text-[8px] text-[var(--t3)] font-semibold mt-1">
-                  15 mins ago • HQ Terminal 1 • IP: 10.0.0.15
-                </span>
-              </div>
-            </div>
-
-            <div className="bg-[var(--s3)] border border-[var(--b)] rounded-2xl p-3.5 flex items-start gap-3 shadow-inner">
-              <div className="w-8 h-8 rounded-lg bg-[var(--s2)] text-[var(--t3)] flex items-center justify-center text-sm flex-shrink-0 font-bold">
-                🔑
-              </div>
-              <div className="flex flex-col min-w-0">
-                <Badge variant="neutral" size="sm" className="self-start text-[8px]">
-                  INFO
-                </Badge>
-                <span className="text-[11px] font-bold text-[var(--t1)] mt-1.5">
-                  {isFarsi ? "توکن جدید برای Zendesk ایجاد شد" : "New API access token generated"}
-                </span>
-                <span className="text-[8px] text-[var(--t3)] font-semibold mt-1">
-                  1 hour ago • Admin Portal • IP: 172.16.0.8
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Command Center */}
-        <Card className="lg:col-span-2 flex flex-col gap-4.5 justify-between">
-          <CardHeader>
-            <CardTitle className="text-xs font-bold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
-              <span>⚙️</span>
-              <span>{isFarsi ? "مرکز فرماندهی" : "Command Center"}</span>
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <button
-                onClick={() => navigate("/academic/classes")}
-                className="flex items-center gap-3.5 p-5 bg-[var(--s3)] hover:bg-[var(--s3)]/85 border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl cursor-pointer text-start transition-all active:scale-[0.98]"
-              >
-                <div className="w-10 h-10 rounded-xl bg-[var(--brand)]/10 text-[var(--brand)] flex items-center justify-center text-lg flex-shrink-0">
-                  📂
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-[var(--t1)]">{isFarsi ? "تکالیف" : "Homework"}</h4>
-                  <p className="text-[8px] text-[var(--t3)] mt-0.5">
-                    {isFarsi ? "مدیریت تکالیف اساتید" : "Instructor grading logs"}
-                  </p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => navigate("/finance/ledger")}
-                className="flex items-center gap-3.5 p-5 bg-[var(--s3)] hover:bg-[var(--s3)]/85 border border-[var(--b)] hover:border-[var(--brand)]/30 rounded-2xl cursor-pointer text-start transition-all active:scale-[0.98]"
-              >
-                <div className="w-10 h-10 rounded-xl bg-[var(--cyan)]/10 text-[var(--cyan)] flex items-center justify-center text-lg flex-shrink-0">
-                  🧾
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-[var(--t1)]">{isFarsi ? "دفتر معین" : "Ledger"}</h4>
-                  <p className="text-[8px] text-[var(--t3)] mt-0.5">
-                    {isFarsi ? "معاملات مالی و فاکتورها" : "Tuition billing records"}
-                  </p>
-                </div>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-[var(--s3)] border border-[var(--b)] rounded-2xl p-4 flex items-center gap-4.5">
-                <div className="relative w-11 h-11 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
-                    <circle cx="40" cy="40" r="30" fill="transparent" stroke="var(--s2)" strokeWidth="5" />
-                    <circle
-                      cx="40"
-                      cy="40"
-                      r="30"
-                      fill="transparent"
-                      stroke="var(--brand)"
-                      strokeWidth="5"
-                      strokeDasharray="188.5"
-                      strokeDashoffset="56.5"
-                    />
-                  </svg>
-                  <span className="absolute text-sm">🎓</span>
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[8px] font-bold text-[var(--t3)] uppercase tracking-wider">
-                    {isFarsi ? "صدور مدارک" : "Certificate Issuance"}
-                  </span>
-                  <span className="text-xs font-black text-[var(--t1)] mt-0.5">1,284 Issued</span>
-                  <span className="text-[8px] text-[var(--green)] font-extrabold mt-0.5">
-                    ▲ +12% this month
-                  </span>
-                </div>
-              </div>
-
-              <div className="bg-[var(--s3)] border border-[var(--b)] rounded-2xl p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-lg flex-shrink-0">
-                  ☁️
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[8px] font-bold text-[var(--t3)] uppercase tracking-wider">
-                    {isFarsi ? "وضعیت سیستم" : "System Health"}
-                  </span>
-                  <span className="text-xs font-black text-[var(--t1)] mt-0.5">99.9%</span>
-                  <span className="text-[8px] text-[var(--t3)] font-semibold mt-0.5">
-                    {isFarsi ? "تمامی سرویس‌ها فعال هستند" : "All services operational"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Row 3: Recent Financial Ledger */}
-      <Card className="flex flex-col gap-4">
-        <CardHeader
-          action={
+      {/* 4. Row of 3 Activity Columns */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Column 1: Upcoming Sessions */}
+        <div className="bg-[var(--s2)] border border-[var(--b)] rounded-3xl p-5 flex flex-col justify-between shadow-md">
+          <div className="flex items-center justify-between border-b border-[var(--b)] pb-3">
+            <h4 className="text-xs font-extrabold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
+              <span>📅</span>
+              <span>{isFarsi ? "جلسات پیش رو" : "Upcoming Sessions"}</span>
+            </h4>
             <Link
-              to="/finance/ledger"
-              className="text-xs font-semibold text-[var(--t3)] hover:text-[var(--brand)] no-underline"
+              to="/academic/sessions"
+              className="text-[11px] font-bold text-[var(--brand)] hover:underline no-underline"
             >
-              {isFarsi ? "مشاهده همه سوابق" : "View All Records"}
+              {isFarsi ? "مشاهده همه" : "View all"}
             </Link>
-          }
-        >
-          <CardTitle className="text-xs font-bold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
-            <span>🧾</span>
-            <span>{isFarsi ? "دفتر معین مالی اخیر" : "Recent Financial Ledger"}</span>
-          </CardTitle>
-        </CardHeader>
-
-        <CardContent>
-          <div className="w-full overflow-x-auto scrollbar-none">
-            <table className="w-full border-collapse text-start text-xs font-semibold text-[var(--t2)] min-w-[640px]">
-              <thead>
-                <tr className="border-b border-[var(--b)] text-[var(--t3)] text-[10px] uppercase tracking-wider">
-                  <th className="py-3 text-start font-bold">
-                    {isFarsi ? "شناسه تراکنش" : "Transaction ID"}
-                  </th>
-                  <th className="py-3 text-start font-bold">{isFarsi ? "تاریخ" : "Date"}</th>
-                  <th className="py-3 text-start font-bold">{isFarsi ? "مشتری" : "Payee"}</th>
-                  <th className="py-3 text-start font-bold">{isFarsi ? "وضعیت" : "Status"}</th>
-                  <th className="py-3 text-end font-bold">{isFarsi ? "مبلغ" : "Amount"}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--b)]">
-                {ledgerItems.map((item: any) => {
-                  const statusClass = cn(
-                    "text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider",
-                    item.status === "paid" && "bg-emerald-500/10 text-emerald-500",
-                    (item.status === "unpaid" || item.status === "pending") &&
-                      "bg-amber-500/10 text-amber-500",
-                    item.status === "overdue" && "bg-red-500/10 text-red-500"
-                  );
-                  const formattedDate = new Date(item.created_at).toLocaleDateString(localeTag, {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  });
-                  const formattedAmt = new Intl.NumberFormat(localeTag, {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(parseFloat(item.amount));
-                  return (
-                    <tr key={item.id} className="hover:bg-[var(--s3)]/30 transition-colors">
-                      <td className="py-3.5 font-mono text-[var(--t1)]">
-                        {item.invoice_number || `#INV-${item.id}`}
-                      </td>
-                      <td className="py-3.5 text-[var(--t3)]">{formattedDate}</td>
-                      <td className="py-3.5 flex items-center gap-2">
-                        <div className="w-5.5 h-5.5 rounded-full bg-[var(--s3)] border border-[var(--b)] flex items-center justify-center text-[10px] text-[var(--t3)] font-bold select-none">
-                          {item.student_full_name
-                            ?.split(" ")
-                            .map((n: string) => n[0])
-                            .join("")
-                            .slice(0, 2) || "JD"}
-                        </div>
-                        <span className="text-[var(--t1)]">{item.student_full_name}</span>
-                      </td>
-                      <td className="py-3.5">
-                        <span className={statusClass}>{item.status}</span>
-                      </td>
-                      <td className="py-3.5 text-end font-black text-[var(--t1)] font-mono">
-                        {formattedAmt}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
           </div>
-        </CardContent>
-      </Card>
+
+          <div className="flex flex-col gap-3 my-3">
+            <div className="bg-[var(--s3)]/80 border border-[var(--b)] rounded-2xl p-3 flex items-center justify-between gap-3">
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-bold text-[var(--t1)] truncate">
+                  {isFarsi ? "جلسه React پیشرفته" : "Advanced React Workshop"}
+                </span>
+                <span className="text-[10px] text-[var(--t3)] font-semibold mt-0.5">
+                  {isFarsi ? "امروز • ۱۶:۰۰" : "Today • 16:00"}
+                </span>
+              </div>
+              <div className="w-8 h-8 rounded-xl bg-[var(--brand)]/10 text-[var(--brand)] flex items-center justify-center text-sm flex-shrink-0">
+                <Calendar className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div className="bg-[var(--s3)]/80 border border-[var(--b)] rounded-2xl p-3 flex items-center justify-between gap-3">
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-bold text-[var(--t1)] truncate">
+                  {isFarsi ? "کارگاه طراحی UI/UX" : "UI/UX Design Masterclass"}
+                </span>
+                <span className="text-[10px] text-[var(--t3)] font-semibold mt-0.5">
+                  {isFarsi ? "فردا • ۱۸:۰۰" : "Tomorrow • 18:00"}
+                </span>
+              </div>
+              <div className="w-8 h-8 rounded-xl bg-[var(--cyan)]/10 text-[var(--cyan)] flex items-center justify-center text-sm flex-shrink-0">
+                <Calendar className="w-4 h-4" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Column 2: Recent Homework */}
+        <div className="bg-[var(--s2)] border border-[var(--b)] rounded-3xl p-5 flex flex-col justify-between shadow-md">
+          <div className="flex items-center justify-between border-b border-[var(--b)] pb-3">
+            <h4 className="text-xs font-extrabold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
+              <span>📝</span>
+              <span>{isFarsi ? "تکالیف اخیر" : "Recent Homework"}</span>
+            </h4>
+            <Link
+              to="/academic/homework"
+              className="text-[11px] font-bold text-[var(--brand)] hover:underline no-underline"
+            >
+              {isFarsi ? "مشاهده همه" : "View all"}
+            </Link>
+          </div>
+
+          <div className="flex flex-col gap-3 my-3">
+            <div className="bg-[var(--s3)]/80 border border-[var(--b)] rounded-2xl p-3 flex items-center justify-between gap-3">
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-bold text-[var(--t1)] truncate">
+                  {isFarsi ? "پروژه نهایی React" : "Final React Project"}
+                </span>
+                <span className="text-[10px] text-[var(--t3)] font-semibold mt-0.5">
+                  {isFarsi ? "توسط محمد کریمی" : "By Mohammad Karimi"}
+                </span>
+              </div>
+              <span className="px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-400 text-[10px] font-bold">
+                {isFarsi ? "تحویل داده شده" : "Submitted"}
+              </span>
+            </div>
+
+            <div className="bg-[var(--s3)]/80 border border-[var(--b)] rounded-2xl p-3 flex items-center justify-between gap-3">
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-bold text-[var(--t1)] truncate">
+                  {isFarsi ? "طراحی داشبورد ادمین" : "Admin Dashboard UI"}
+                </span>
+                <span className="text-[10px] text-[var(--t3)] font-semibold mt-0.5">
+                  {isFarsi ? "توسط سارا احمدی" : "By Sara Ahmadi"}
+                </span>
+              </div>
+              <span className="px-2 py-0.5 rounded-lg bg-amber-500/15 text-amber-400 text-[10px] font-bold">
+                {isFarsi ? "در انتظار بررسی" : "Pending"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Column 3: Recent Members */}
+        <div className="bg-[var(--s2)] border border-[var(--b)] rounded-3xl p-5 flex flex-col justify-between shadow-md">
+          <div className="flex items-center justify-between border-b border-[var(--b)] pb-3">
+            <h4 className="text-xs font-extrabold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
+              <span>👥</span>
+              <span>{isFarsi ? "اعضای جدید" : "Recent Members"}</span>
+            </h4>
+            <Link
+              to="/crm/members"
+              className="text-[11px] font-bold text-[var(--brand)] hover:underline no-underline"
+            >
+              {isFarsi ? "مشاهده همه" : "View all"}
+            </Link>
+          </div>
+
+          <div className="flex flex-col gap-2.5 my-3">
+            <div className="flex items-center justify-between p-2 rounded-xl hover:bg-[var(--s3)]/50 transition-colors">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-[var(--brand)]/20 border border-[var(--brand)]/30 text-[var(--brand)] font-bold text-xs flex items-center justify-center flex-shrink-0">
+                  R
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-bold text-[var(--t1)] truncate">
+                    {isFarsi ? "رضا محمدی" : "Reza Mohammadi"}
+                  </span>
+                  <span className="text-[10px] text-[var(--t3)]">{isFarsi ? "دانشجو" : "Student"}</span>
+                </div>
+              </div>
+              <span className="text-[10px] text-[var(--t3)] font-semibold">{isFarsi ? "امروز" : "Today"}</span>
+            </div>
+
+            <div className="flex items-center justify-between p-2 rounded-xl hover:bg-[var(--s3)]/50 transition-colors">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-bold text-xs flex items-center justify-center flex-shrink-0">
+                  Z
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-bold text-[var(--t1)] truncate">
+                    {isFarsi ? "زهرا موسوی" : "Zahra Mousavi"}
+                  </span>
+                  <span className="text-[10px] text-[var(--t3)]">{isFarsi ? "استاد" : "Teacher"}</span>
+                </div>
+              </div>
+              <span className="text-[10px] text-[var(--t3)] font-semibold">{isFarsi ? "دیروز" : "Yesterday"}</span>
+            </div>
+
+            <div className="flex items-center justify-between p-2 rounded-xl hover:bg-[var(--s3)]/50 transition-colors">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-400 font-bold text-xs flex items-center justify-center flex-shrink-0">
+                  A
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-bold text-[var(--t1)] truncate">
+                    {isFarsi ? "علی حسینی" : "Ali Hosseini"}
+                  </span>
+                  <span className="text-[10px] text-[var(--t3)]">{isFarsi ? "دانشجو" : "Student"}</span>
+                </div>
+              </div>
+              <span className="text-[10px] text-[var(--t3)] font-semibold">{isFarsi ? "۲ روز پیش" : "2d ago"}</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
 export default AdminDashboardView;
+
