@@ -120,7 +120,7 @@ export default function Topbar({
   };
 
   return (
-    <header className="h-16 flex-shrink-0 flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-5 md:px-6 bg-[var(--s1)] border-b border-[var(--b)] transition-colors select-none z-30">
+    <header dir="ltr" className="h-16 flex-shrink-0 flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-5 md:px-6 bg-[var(--s1)] border-b border-[var(--b)] transition-colors select-none z-30">
       {/* 1. Left: Brand Logo & New Meeting Button */}
       <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-shrink-0">
         {showHamburger && (
@@ -178,10 +178,11 @@ export default function Topbar({
       <div className="flex-1 max-w-sm md:max-w-md mx-2 flex justify-center">
         <form
           onSubmit={handleSearchSubmit}
-          className="w-full flex items-center bg-[var(--s2)]/90 border border-[var(--b)] hover:border-[var(--brand)]/40 focus-within:border-[var(--brand)] focus-within:ring-1 focus-within:ring-[var(--brand)] rounded-full px-3.5 py-1.5 transition-all shadow-sm"
+          className="w-full flex items-center justify-between bg-[var(--s2)]/90 border border-[var(--b)] hover:border-[var(--brand)]/40 focus-within:border-[var(--brand)] focus-within:ring-1 focus-within:ring-[var(--brand)] rounded-full px-3.5 py-1.5 transition-all shadow-sm"
         >
           <input
             type="text"
+            dir={isFarsi ? "rtl" : "ltr"}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={isFarsi ? "جستجو در EduSpace..." : "Search EduSpace..."}
@@ -215,7 +216,10 @@ export default function Topbar({
           </button>
 
           {showOrgMenu && (
-            <div className="absolute end-0 top-full mt-2 w-56 bg-[var(--s1)] border border-[var(--b)] rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+            <div
+              dir={isFarsi ? "rtl" : "ltr"}
+              className="absolute right-0 top-full mt-2 w-56 bg-[var(--s1)] border border-[var(--b)] rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+            >
               <div className="p-2.5 bg-[var(--s2)] rounded-xl mb-1.5 flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-[var(--brand)] text-white font-black flex items-center justify-center text-sm shadow-sm flex-shrink-0">
                   {orgInitial}
@@ -327,7 +331,10 @@ export default function Topbar({
           </button>
 
           {showProfileMenu && (
-            <div className="absolute end-0 top-full mt-2 w-64 bg-[var(--s1)] border border-[var(--b)] rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+            <div
+              dir={isFarsi ? "rtl" : "ltr"}
+              className="absolute right-0 top-full mt-2 w-64 bg-[var(--s1)] border border-[var(--b)] rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+            >
               {/* User Header */}
               <div className="p-3 bg-[var(--s2)] rounded-xl mb-1 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-[var(--brand)] text-white font-black flex items-center justify-center text-sm shadow-sm shrink-0">
