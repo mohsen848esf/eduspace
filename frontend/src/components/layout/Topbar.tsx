@@ -22,9 +22,6 @@ import {
   Plus,
   Menu,
   Search,
-  LayoutGrid,
-  ChevronDown,
-  Building2,
 } from "lucide-react";
 
 interface TopbarProps {
@@ -53,11 +50,9 @@ export default function Topbar({
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [showOrgMenu, setShowOrgMenu] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
 
   const profileRef = useRef<HTMLDivElement>(null);
-  const orgRef = useRef<HTMLDivElement>(null);
   const bellRef = useRef<HTMLButtonElement>(null);
 
   const unreadCount = useNotificationsStore((s) =>
@@ -65,17 +60,12 @@ export default function Topbar({
   );
 
   const isFarsi = language === "fa";
-  const orgDisplayName = activeOrg?.name || "JobzLingo";
-  const orgInitial = orgDisplayName.charAt(0).toUpperCase();
 
   // Close menus on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setShowProfileMenu(false);
-      }
-      if (orgRef.current && !orgRef.current.contains(e.target as Node)) {
-        setShowOrgMenu(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -120,15 +110,22 @@ export default function Topbar({
   };
 
   return (
-    <header dir="ltr" className="h-16 flex-shrink-0 flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-5 md:px-6 bg-[var(--s1)] border-b border-[var(--b)] transition-colors select-none z-30">
-      {/* 1. Left: Brand Logo & New Meeting Button */}
-      <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-shrink-0">
+    <header
+      dir="ltr"
+      style={{
+        backgroundColor: "#0B111E",
+        borderColor: "rgba(255, 255, 255, 0.08)",
+      }}
+      className="h-16 flex-shrink-0 flex items-center justify-between gap-4 px-4 md:px-6 border-b transition-colors select-none z-30"
+    >
+      {/* 1. Left: Platform Brand (EduSpace - Enterprise LMS) */}
+      <div className="flex items-center gap-3 min-w-0 flex-shrink-0">
         {showHamburger && (
           <Tooltip content={t("dashboard:nav.openMenu", { defaultValue: "منو" })}>
             <button
               type="button"
               onClick={onHamburgerClick}
-              className="w-9 h-9 rounded-xl bg-transparent border border-[var(--b)] cursor-pointer text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] flex items-center justify-center transition-colors flex-shrink-0 md:hidden"
+              className="w-9 h-9 rounded-xl bg-transparent border border-slate-800 cursor-pointer text-slate-400 hover:bg-slate-800 hover:text-white flex items-center justify-center transition-colors flex-shrink-0 md:hidden"
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -143,15 +140,18 @@ export default function Topbar({
             <GraduationCap className="w-5 h-5 text-white" />
           </div>
           <div className="flex flex-col">
-            <span className="text-base font-extrabold text-[var(--t1)] tracking-tight leading-none">
+            <span className="text-base font-extrabold text-white tracking-tight leading-none">
               EduSpace
             </span>
-            <span className="text-[10px] text-[var(--t3)] font-semibold mt-1 leading-none">
+            <span className="text-[10px] text-slate-400 font-medium mt-1 leading-none">
               Enterprise LMS
             </span>
           </div>
         </Link>
+      </div>
 
+      {/* 2. Middle: + جلسه جدید (New Meeting) Button & Search Bar */}
+      <div className="flex items-center gap-2.5 max-w-lg w-full justify-center">
         {/* + جلسه جدید / New Meeting Button */}
         <button
           type="button"
@@ -165,20 +165,18 @@ export default function Topbar({
             })
           }
           disabled={roomLoading}
-          className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[var(--brand)] hover:opacity-90 text-white font-bold text-xs cursor-pointer border-none shadow-md shadow-[var(--brand)]/25 transition-all active:scale-[0.98] disabled:opacity-50 flex-shrink-0 ms-1"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#00e676] hover:bg-[#00c853] text-[#071712] font-black text-xs cursor-pointer border-none shadow-md shadow-[#00e676]/25 transition-all active:scale-[0.98] disabled:opacity-50 flex-shrink-0"
         >
-          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-          <span className="whitespace-nowrap font-extrabold">
+          <Plus className="w-4 h-4 stroke-[3]" />
+          <span className="whitespace-nowrap font-black">
             {isFarsi ? "جلسه جدید" : "New Meeting"}
           </span>
         </button>
-      </div>
 
-      {/* 2. Middle: Global Search Bar */}
-      <div className="flex-1 max-w-sm md:max-w-md mx-2 flex justify-center">
+        {/* Global Search Bar */}
         <form
           onSubmit={handleSearchSubmit}
-          className="w-full flex items-center justify-between bg-[var(--s2)]/90 border border-[var(--b)] hover:border-[var(--brand)]/40 focus-within:border-[var(--brand)] focus-within:ring-1 focus-within:ring-[var(--brand)] rounded-full px-3.5 py-1.5 transition-all shadow-sm"
+          className="w-full max-w-sm flex items-center justify-between bg-[#131B2E] border border-[#222F49] hover:border-slate-600 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 rounded-full px-3.5 py-1.5 transition-all shadow-inner"
         >
           <input
             type="text"
@@ -186,86 +184,19 @@ export default function Topbar({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={isFarsi ? "جستجو در EduSpace..." : "Search EduSpace..."}
-            className="w-full bg-transparent border-none text-xs text-[var(--t1)] placeholder:text-[var(--t3)] focus:outline-none"
+            className="w-full bg-transparent border-none text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none font-medium"
           />
           <button
             type="submit"
-            className="text-[var(--t3)] hover:text-[var(--brand)] p-0.5 bg-transparent border-none cursor-pointer flex items-center justify-center ms-1.5 flex-shrink-0"
+            className="text-slate-400 hover:text-emerald-400 p-0.5 bg-transparent border-none cursor-pointer flex items-center justify-center ms-1.5 flex-shrink-0"
           >
             <Search className="w-4 h-4" />
           </button>
         </form>
       </div>
 
-      {/* 3. Right: Org Switcher, Mini-Apps, Notifications, Theme, Help, Profile Avatar */}
-      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-        {/* Organization Switcher Dropdown Button */}
-        <div className="relative" ref={orgRef}>
-          <button
-            type="button"
-            onClick={() => setShowOrgMenu((prev) => !prev)}
-            className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-[var(--s2)] hover:bg-[var(--s3)] border border-[var(--b)] text-xs text-[var(--t1)] font-bold transition-all cursor-pointer shadow-sm"
-          >
-            <div className="w-5 h-5 rounded-md bg-[var(--brand)] text-white text-[11px] font-black flex items-center justify-center shadow-sm flex-shrink-0">
-              {orgInitial}
-            </div>
-            <span className="truncate max-w-[90px] hidden sm:inline font-bold">
-              {orgDisplayName}
-            </span>
-            <ChevronDown className="w-3.5 h-3.5 text-[var(--t3)] flex-shrink-0" />
-          </button>
-
-          {showOrgMenu && (
-            <div
-              dir={isFarsi ? "rtl" : "ltr"}
-              className="absolute right-0 top-full mt-2 w-56 bg-[var(--s1)] border border-[var(--b)] rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
-            >
-              <div className="p-2.5 bg-[var(--s2)] rounded-xl mb-1.5 flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[var(--brand)] text-white font-black flex items-center justify-center text-sm shadow-sm flex-shrink-0">
-                  {orgInitial}
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-bold text-[var(--t1)] truncate">
-                    {orgDisplayName}
-                  </span>
-                  <span className="text-[10px] text-[var(--brand-text)] font-semibold truncate">
-                    {isFarsi ? "سازمان فعال" : "Active Workspace"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-0.5">
-                <Link
-                  to="/crm/org-settings"
-                  onClick={() => setShowOrgMenu(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s2)] rounded-lg transition-colors no-underline"
-                >
-                  <Building2 className="w-4 h-4 text-[var(--t3)]" />
-                  <span>{isFarsi ? "تنظیمات سازمان" : "Organization Settings"}</span>
-                </Link>
-                <Link
-                  to="/dashboard"
-                  onClick={() => setShowOrgMenu(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s2)] rounded-lg transition-colors no-underline"
-                >
-                  <GraduationCap className="w-4 h-4 text-[var(--t3)]" />
-                  <span>{isFarsi ? "داشبورد سازمان" : "Org Dashboard"}</span>
-                </Link>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Mini Apps / Tools Grid Icon */}
-        <Tooltip content={isFarsi ? "برنامه‌ها و ابزارها" : "Apps & Tools"}>
-          <Link
-            to="/miniapps"
-            className="w-9 h-9 rounded-xl border border-transparent hover:border-[var(--b)] bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] flex items-center justify-center transition-all no-underline"
-          >
-            <LayoutGrid className="w-4 h-4" />
-          </Link>
-        </Tooltip>
-
+      {/* 3. Right: Notifications, Theme Toggle, Help, Profile Avatar */}
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
         {/* Notifications Popover */}
         <div className="relative">
           <Tooltip content={t("notifications:inbox.title", { defaultValue: "اعلان‌ها" })}>
@@ -273,11 +204,11 @@ export default function Topbar({
               ref={bellRef}
               type="button"
               onClick={() => setShowInbox((p) => !p)}
-              className="relative w-9 h-9 rounded-xl border border-transparent hover:border-[var(--b)] bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] flex items-center justify-center transition-all cursor-pointer"
+              className="relative w-9 h-9 rounded-xl border border-transparent hover:border-slate-800 bg-transparent text-slate-300 hover:bg-slate-800/80 hover:text-white flex items-center justify-center transition-all cursor-pointer"
             >
               <Bell className="w-4 h-4" />
               {unreadCount > 0 && (
-                <span className="absolute top-2 end-2 w-2 h-2 bg-red-500 rounded-full ring-2 ring-[var(--s1)] animate-pulse" />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full ring-2 ring-[#0B111E] animate-pulse" />
               )}
             </button>
           </Tooltip>
@@ -293,12 +224,12 @@ export default function Topbar({
           <button
             type="button"
             onClick={onToggleTheme}
-            className="w-9 h-9 rounded-xl border border-transparent hover:border-[var(--b)] bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] flex items-center justify-center transition-all cursor-pointer"
+            className="w-9 h-9 rounded-xl border border-transparent hover:border-slate-800 bg-transparent text-slate-300 hover:bg-slate-800/80 hover:text-white flex items-center justify-center transition-all cursor-pointer"
           >
             {isDark ? (
               <Moon className="w-4 h-4 text-indigo-300 hover:text-indigo-200" />
             ) : (
-              <Sun className="w-4 h-4 text-amber-500 hover:text-amber-400" />
+              <Sun className="w-4 h-4 text-amber-400 hover:text-amber-300" />
             )}
           </button>
         </Tooltip>
@@ -309,7 +240,7 @@ export default function Topbar({
             type="button"
             onClick={triggerHelp}
             aria-label="Help"
-            className="w-9 h-9 rounded-xl border border-transparent hover:border-[var(--b)] bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] flex items-center justify-center transition-all cursor-pointer"
+            className="w-9 h-9 rounded-xl border border-transparent hover:border-slate-800 bg-transparent text-slate-300 hover:bg-slate-800/80 hover:text-white flex items-center justify-center transition-all cursor-pointer"
           >
             <HelpCircle className="w-4 h-4" />
           </button>
@@ -321,7 +252,7 @@ export default function Topbar({
             type="button"
             onClick={() => setShowProfileMenu((prev) => !prev)}
             aria-label="User Profile"
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-[var(--brand)] to-emerald-700 text-white text-xs font-bold flex items-center justify-center border-2 border-[var(--b)] hover:ring-2 hover:ring-[var(--brand)]/40 transition-all cursor-pointer shadow-sm overflow-hidden"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 text-white text-xs font-bold flex items-center justify-center border-2 border-slate-700 hover:ring-2 hover:ring-emerald-400/40 transition-all cursor-pointer shadow-sm overflow-hidden"
           >
             {user?.avatar ? (
               <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
@@ -333,21 +264,21 @@ export default function Topbar({
           {showProfileMenu && (
             <div
               dir={isFarsi ? "rtl" : "ltr"}
-              className="absolute right-0 top-full mt-2 w-64 bg-[var(--s1)] border border-[var(--b)] rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
+              className="absolute right-0 top-full mt-2 w-64 bg-[#0F172A] border border-slate-800 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 text-slate-200"
             >
               {/* User Header */}
-              <div className="p-3 bg-[var(--s2)] rounded-xl mb-1 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[var(--brand)] text-white font-black flex items-center justify-center text-sm shadow-sm shrink-0">
+              <div className="p-3 bg-slate-900/90 rounded-xl mb-1 flex items-center gap-3 border border-slate-800">
+                <div className="w-10 h-10 rounded-full bg-emerald-500 text-slate-950 font-black flex items-center justify-center text-sm shadow-sm shrink-0">
                   {user?.full_name?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase() || "U"}
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-bold text-[var(--t1)] truncate">
+                  <span className="text-xs font-bold text-white truncate">
                     {user?.full_name || user?.username || "User"}
                   </span>
-                  <span className="text-[10px] text-[var(--t3)] truncate">
+                  <span className="text-[10px] text-slate-400 truncate">
                     {user?.email || ""}
                   </span>
-                  <span className="mt-1 inline-flex items-center text-[9px] font-semibold text-[var(--brand-text)] bg-[var(--brand-soft)] px-1.5 py-0.5 rounded w-fit">
+                  <span className="mt-1 inline-flex items-center text-[9px] font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded w-fit">
                     {activeOrg ? activeOrg.name : (isFarsi ? "کاربر شخصی" : "Personal")}
                   </span>
                 </div>
@@ -358,9 +289,9 @@ export default function Topbar({
                 <Link
                   to="/settings/profile"
                   onClick={() => setShowProfileMenu(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s2)] rounded-lg transition-colors no-underline"
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors no-underline"
                 >
-                  <User className="w-4 h-4 text-[var(--t3)]" />
+                  <User className="w-4 h-4 text-slate-400" />
                   <span>{isFarsi ? "حساب کاربری و پروفایل" : "Account Profile"}</span>
                 </Link>
 
@@ -368,17 +299,17 @@ export default function Topbar({
                 <button
                   type="button"
                   onClick={onToggleTheme}
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s2)] rounded-lg transition-colors border-none bg-transparent cursor-pointer"
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
                     {isDark ? (
                       <Moon className="w-4 h-4 text-indigo-400" />
                     ) : (
-                      <Sun className="w-4 h-4 text-amber-500" />
+                      <Sun className="w-4 h-4 text-amber-400" />
                     )}
                     <span>{isFarsi ? "حالت تاریک" : "Dark Mode"}</span>
                   </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--s3)] font-semibold text-[var(--t2)]">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 font-semibold text-slate-300">
                     {isDark ? (isFarsi ? "روشن" : "On") : (isFarsi ? "خاموش" : "Off")}
                   </span>
                 </button>
@@ -387,24 +318,24 @@ export default function Topbar({
                 <button
                   type="button"
                   onClick={toggleLanguage}
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s2)] rounded-lg transition-colors border-none bg-transparent cursor-pointer"
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
-                    <Globe className="w-4 h-4 text-[var(--t3)]" />
+                    <Globe className="w-4 h-4 text-slate-400" />
                     <span>{isFarsi ? "زبان برنامه" : "Language"}</span>
                   </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--s3)] font-semibold text-[var(--brand-text)]">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 font-semibold text-emerald-400">
                     {language === "fa" ? "فارسی (FA)" : "English (EN)"}
                   </span>
                 </button>
               </div>
 
               {/* Logout Button */}
-              <div className="mt-1 pt-1 border-t border-[var(--b)]">
+              <div className="mt-1 pt-1 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[var(--red)] hover:bg-[var(--red)]/10 rounded-lg transition-colors border-none bg-transparent cursor-pointer text-start"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border-none bg-transparent cursor-pointer text-start"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>{isFarsi ? "خروج از حساب کاربری" : "Sign Out"}</span>
