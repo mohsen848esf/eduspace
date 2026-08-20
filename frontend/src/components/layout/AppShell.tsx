@@ -99,85 +99,89 @@ export default function AppShell({
     <PageHelpProvider>
       <div
         className={cn(
-          "flex w-full h-full",
+          "flex flex-col w-full h-full min-h-screen",
           "bg-[var(--s0)] text-[var(--t1)]",
-          "transition-colors duration-300",
+          "transition-colors duration-300 overflow-hidden",
         )}
       >
-        {hasOrg && breakpoint === "desktop" && (
-          <Sidebar activeId={resolvedActive} onNavigate={handleNavigate} />
-        )}
-        {hasOrg && breakpoint === "tablet" && (
-          <IconRail activeId={resolvedActive} onNavigate={handleNavigate} />
-        )}
+        {/* Full-Width Topbar Header spanning 100% width across top */}
+        <Topbar
+          title={title}
+          subtitle={subtitle}
+          isDark={isDark}
+          onToggleTheme={toggleTheme}
+          showHamburger={hasOrg && breakpoint === "mobile"}
+          onHamburgerClick={() => setDrawerOpen(true)}
+        />
 
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-          <Topbar
-            title={title}
-            subtitle={subtitle}
-            isDark={isDark}
-            onToggleTheme={toggleTheme}
-            showHamburger={hasOrg && breakpoint === "mobile"}
-            onHamburgerClick={() => setDrawerOpen(true)}
-          />
-
-          {hasOrg && location.pathname !== "/dashboard" && <SubTopbar />}
-        {isSuspended && (
-          <div 
-            style={{
-              background: "rgba(239, 68, 68, 0.12)",
-              borderBottom: "1px solid rgba(239, 68, 68, 0.25)",
-              color: "var(--red)",
-              padding: "10px 16px",
-              fontSize: "12px",
-              fontWeight: "500",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "12px",
-              backdropFilter: "blur(4px)",
-              flexShrink: 0,
-            }}
-            className="no-print"
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <AlertTriangle style={{ width: "16px", height: "16px", flexShrink: 0 }} />
-              <span>
-                {isFarsi
-                  ? "دسترسی سازمان به دلیل فاکتورهای پرداخت‌نشده معلق شده است. برای فعال‌سازی مجدد لطفاً فاکتورهای معوقه را پرداخت کنید."
-                  : "Your organization suspension is active due to overdue/unpaid invoices. Please resolve billing to restore full service."}
-              </span>
-            </div>
-            <Link
-              to="/settings/billing"
-              style={{
-                fontWeight: "bold",
-                textDecoration: "underline",
-                color: "var(--brand-text)",
-                whiteSpace: "nowrap",
-                marginLeft: isFarsi ? "0" : "auto",
-                marginRight: isFarsi ? "auto" : "0",
-              }}
-            >
-              {isFarsi ? "پرداخت و مدیریت اشتراک" : "Manage Billing & Subscription"} &rarr;
-            </Link>
-          </div>
-        )}
-        <main
-          className={cn(
-            "flex-1 overflow-y-auto p-4 md:p-5",
-            // Bottom padding clears the fixed BottomNav on mobile.
-            breakpoint === "mobile" && "pb-20",
+        {/* Content body with Sidebar + Main View */}
+        <div className="flex flex-1 w-full min-h-0 overflow-hidden">
+          {hasOrg && breakpoint === "desktop" && (
+            <Sidebar activeId={resolvedActive} onNavigate={handleNavigate} />
           )}
-        >
-          {children}
-        </main>
-        {hasOrg && breakpoint === "mobile" && (
-          <BottomNav
-            activeId={resolvedActive}
-            onMoreClick={() => setDrawerOpen(true)}
-          />
-        )}
+          {hasOrg && breakpoint === "tablet" && (
+            <IconRail activeId={resolvedActive} onNavigate={handleNavigate} />
+          )}
+
+          <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+            {hasOrg && location.pathname !== "/dashboard" && <SubTopbar />}
+            {isSuspended && (
+              <div 
+                style={{
+                  background: "rgba(239, 68, 68, 0.12)",
+                  borderBottom: "1px solid rgba(239, 68, 68, 0.25)",
+                  color: "var(--red)",
+                  padding: "10px 16px",
+                  fontSize: "12px",
+                  fontWeight: "500",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                  backdropFilter: "blur(4px)",
+                  flexShrink: 0,
+                }}
+                className="no-print"
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <AlertTriangle style={{ width: "16px", height: "16px", flexShrink: 0 }} />
+                  <span>
+                    {isFarsi
+                      ? "دسترسی سازمان به دلیل فاکتورهای پرداخت‌نشده معلق شده است. برای فعال‌سازی مجدد لطفاً فاکتورهای معوقه را پرداخت کنید."
+                      : "Your organization suspension is active due to overdue/unpaid invoices. Please resolve billing to restore full service."}
+                  </span>
+                </div>
+                <Link
+                  to="/settings/billing"
+                  style={{
+                    fontWeight: "bold",
+                    textDecoration: "underline",
+                    color: "var(--brand-text)",
+                    whiteSpace: "nowrap",
+                    marginLeft: isFarsi ? "0" : "auto",
+                    marginRight: isFarsi ? "auto" : "0",
+                  }}
+                >
+                  {isFarsi ? "پرداخت و مدیریت اشتراک" : "Manage Billing & Subscription"} &rarr;
+                </Link>
+              </div>
+            )}
+            <main
+              className={cn(
+                "flex-1 overflow-y-auto p-4 md:p-5",
+                // Bottom padding clears the fixed BottomNav on mobile.
+                breakpoint === "mobile" && "pb-20",
+              )}
+            >
+              {children}
+            </main>
+            {hasOrg && breakpoint === "mobile" && (
+              <BottomNav
+                activeId={resolvedActive}
+                onMoreClick={() => setDrawerOpen(true)}
+              />
+            )}
+          </div>
         </div>
 
         {hasOrg && (
