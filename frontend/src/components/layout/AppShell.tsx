@@ -124,7 +124,7 @@ export default function AppShell({
           )}
 
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden rounded-2xl bg-[var(--s0)]">
-            {hasOrg && location.pathname !== "/dashboard" && <SubTopbar />}
+            {hasOrg && <SubTopbar />}
             {isSuspended && (
               <div 
                 style={{
