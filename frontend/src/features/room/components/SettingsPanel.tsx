@@ -46,6 +46,7 @@ export default function SettingsPanel({
     lockScreenShare,
     lockMicrophone,
     lockCamera,
+    lockDocumentPresentation,
     setRoomSettings,
   } = useRoomStore();
   const canModerate = isHost || isCoHost;
@@ -78,7 +79,16 @@ export default function SettingsPanel({
     }
   };
 
-  const handleToggleSetting = async (key: "mute_mic_on_join" | "mute_cam_on_join" | "lock_screen_share" | "lock_microphone" | "lock_camera", val: boolean) => {
+  const handleToggleSetting = async (
+    key:
+      | "mute_mic_on_join"
+      | "mute_cam_on_join"
+      | "lock_screen_share"
+      | "lock_microphone"
+      | "lock_camera"
+      | "lock_document_presentation",
+    val: boolean,
+  ) => {
     if (!roomCode || !canModerate || isUpdatingSettings) return;
     setIsUpdatingSettings(true);
     try {
@@ -88,6 +98,7 @@ export default function SettingsPanel({
       if (key === "lock_screen_share") setRoomSettings({ lockScreenShare: val });
       if (key === "lock_microphone") setRoomSettings({ lockMicrophone: val });
       if (key === "lock_camera") setRoomSettings({ lockCamera: val });
+      if (key === "lock_document_presentation") setRoomSettings({ lockDocumentPresentation: val });
     } catch {
       // Swallowed
     } finally {
@@ -619,6 +630,24 @@ export default function SettingsPanel({
               checked={lockCamera}
               disabled={!canModerate || isUpdatingSettings}
               onChange={() => handleToggleSetting("lock_camera", !lockCamera)}
+            />
+          </div>
+
+          {/* Lock Document Presentation */}
+          <div className="p-3.5 bg-white/5 rounded-2xl border border-white/10 flex items-start justify-between gap-3">
+            <div className="space-y-1 min-w-0">
+              <div className="font-bold text-gray-100 flex items-center gap-2">
+                <span className="text-amber-400">📑</span>
+                <span>قفل اشتراک و ارائه فایل</span>
+              </div>
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                بارگذاری و ارائه فایل و اسلاید برای اعضا تنها با اجازه میزبان انجام شود.
+              </p>
+            </div>
+            <Switch
+              checked={lockDocumentPresentation}
+              disabled={!canModerate || isUpdatingSettings}
+              onChange={() => handleToggleSetting("lock_document_presentation", !lockDocumentPresentation)}
             />
           </div>
 

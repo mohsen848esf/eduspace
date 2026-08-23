@@ -3,6 +3,7 @@ import type {
   CreateRoomInput,
   RoomResponse,
   RoomInfo,
+  PresentationDocument,
 } from "../schemas/room.schema";
 
 export interface RoomParticipantHistoryItem {
@@ -55,6 +56,7 @@ export interface RoomAccessSettings {
   lock_screen_share?: boolean;
   lock_microphone?: boolean;
   lock_camera?: boolean;
+  lock_document_presentation?: boolean;
 }
 
 // join/guest-join can return either direct entry or lobby waiting
@@ -174,6 +176,58 @@ export const roomApi = {
     const res = await client.post(`/rooms/${room_code}/grant-media-permission/`, {
       identity,
       permission_type,
+      granted,
+    });
+    return res.data;
+  },
+
+  // --- Presentations & Documents ---
+  uploadPresentation: async (
+    room_code: string,
+    formData: FormData,
+  ): Promise<PresentationDocument> => {
+    const res = await client.post(`/rooms/${room_code}/presentations/upload/`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
+  },
+
+  listPresentations: async (
+    room_code: string,
+  ): Promise<{ presentations: PresentationDocument[] }> => {
+    const res = await client.get(`/rooms/${room_code}/presentations/`);
+    return res.data;
+  },
+
+  setActivePresentation: async (
+    room_code: string,
+    docId: number,
+    isActive: boolean = true,
+  ): Promise<PresentationDocument | { message: string; is_active: boolean }> => {
+    const res = await client.post(`/rooms/${room_code}/presentations/${docId}/present/`, {
+      is_active: isActive,
+    });
+    return res.data;
+  },
+
+  setPresentationPage: async (
+    room_code: string,
+    docId: number,
+    page: number,
+  ): Promise<{ id: number; current_page: number; total_pages: number }> => {
+    const res = await client.post(`/rooms/${room_code}/presentations/${docId}/page/`, {
+      page,
+    });
+    return res.data;
+  },
+
+  grantPresentationPermission: async (
+    room_code: string,
+    identity: string,
+    granted: boolean = true,
+  ): Promise<{ message: string; participant: string; granted: boolean }> => {
+    const res = await client.post(`/rooms/${room_code}/grant-presentation-permission/`, {
+      identity,
       granted,
     });
     return res.data;

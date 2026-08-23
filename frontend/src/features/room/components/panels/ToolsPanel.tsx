@@ -106,21 +106,23 @@ export default function ToolsPanel() {
     gameTool,
     ...whiteboardTools,
     {
+      icon: "📑",
+      name: t("tools.presentationShare", "اشتراک و ارائه فایل"),
+      desc: t("tools.presentationShareDesc", "بارگذاری و نمایش اسناد PDF، تصاویر و اسلایدها روی استیج"),
+      status: "ready" as const,
+      onClick: () => {
+        window.dispatchEvent(new CustomEvent("eduspace:open-presentation-modal"));
+      },
+      bg: "bg-[rgba(99,102,241,0.15)]",
+      disabled: false,
+    },
+    {
       icon: "🤖",
       name: t("tools.aiSummary"),
       desc: t("tools.aiSummaryDesc"),
       status: "soon" as const,
       onClick: () => undefined,
       bg: "bg-[rgba(245,158,11,0.12)]",
-      disabled: true,
-    },
-    {
-      icon: "📁",
-      name: t("tools.fileShare"),
-      desc: t("tools.fileShareDesc"),
-      status: "soon" as const,
-      onClick: () => undefined,
-      bg: "bg-[rgba(248,113,113,0.12)]",
       disabled: true,
     },
   ];

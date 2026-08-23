@@ -5,7 +5,7 @@ export interface PermissionRequest {
   id: string;
   identity: string;
   displayName: string;
-  permission: "screen_share" | "microphone" | "camera";
+  permission: "screen_share" | "microphone" | "camera" | "presentation_upload";
   timestamp: number;
 }
 
@@ -36,6 +36,9 @@ export const InCallPermissionNotification: React.FC<InCallPermissionNotification
         } else if (req.permission === "camera") {
           label = "درخواست باز کردن دوربین";
           icon = "📷";
+        } else if (req.permission === "presentation_upload") {
+          label = "درخواست آپلود و ارائه فایل";
+          icon = "📄";
         }
 
         return (

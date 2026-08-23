@@ -12,7 +12,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Room, RoomParticipant, LobbyRequest
+from .models import Room, RoomParticipant, LobbyRequest, PresentationDocument
 
 
 def generate_room_code():
@@ -142,6 +142,7 @@ def create_room(request):
             lock_screen_share=bool(request.data.get('lock_screen_share', False)),
             lock_microphone=bool(request.data.get('lock_microphone', False)),
             lock_camera=bool(request.data.get('lock_camera', False)),
+            lock_document_presentation=bool(request.data.get('lock_document_presentation', True)),
             started_at=timezone.now(),
         )
 
@@ -149,6 +150,7 @@ def create_room(request):
             room=room,
             user=request.user,
             role=RoomParticipant.Role.HOST,
+            can_upload_presentation=True,
         )
 
         token = generate_livekit_token(room_code, request.user, is_host=True)
@@ -166,6 +168,7 @@ def create_room(request):
             'lock_screen_share': room.lock_screen_share,
             'lock_microphone': room.lock_microphone,
             'lock_camera': room.lock_camera,
+            'lock_document_presentation': room.lock_document_presentation,
         }, status=status.HTTP_201_CREATED)
 
 
@@ -241,13 +244,15 @@ def join_room(request, room_code):
     participant, created = RoomParticipant.objects.get_or_create(
         room=room,
         user=request.user,
-        defaults={'role': target_role},
+        defaults={'role': target_role, 'can_upload_presentation': (is_host or is_co_host)},
     )
 
     if not created:
         participant.is_active = True
         participant.left_at = None
         participant.role = target_role
+        if is_host or is_co_host:
+            participant.can_upload_presentation = True
         participant.save()
 
     token = generate_livekit_token(
@@ -273,9 +278,11 @@ def join_room(request, room_code):
         'lock_screen_share': room.lock_screen_share,
         'lock_microphone': room.lock_microphone,
         'lock_camera': room.lock_camera,
+        'lock_document_presentation': room.lock_document_presentation,
         'can_share_screen': participant.can_share_screen,
         'can_use_camera': participant.can_use_camera,
         'can_use_microphone': participant.can_use_microphone,
+        'can_upload_presentation': participant.can_upload_presentation,
     })
 
 
@@ -356,6 +363,7 @@ def guest_join_room(request, room_code):
         is_guest=True,
         role=RoomParticipant.Role.GUEST,
         is_active=True,
+        can_upload_presentation=False,
     )
 
     token = generate_livekit_token(
@@ -383,9 +391,11 @@ def guest_join_room(request, room_code):
         'lock_screen_share': room.lock_screen_share,
         'lock_microphone': room.lock_microphone,
         'lock_camera': room.lock_camera,
+        'lock_document_presentation': room.lock_document_presentation,
         'can_share_screen': participant.can_share_screen,
         'can_use_camera': participant.can_use_camera,
         'can_use_microphone': participant.can_use_microphone,
+        'can_upload_presentation': participant.can_upload_presentation,
     })
 
 
@@ -459,6 +469,7 @@ def get_room(request, room_code):
                 'can_share_screen': p.can_share_screen,
                 'can_use_camera': p.can_use_camera,
                 'can_use_microphone': p.can_use_microphone,
+                'can_upload_presentation': p.can_upload_presentation,
             })
         elif p.user:
             participants.append({
@@ -469,6 +480,7 @@ def get_room(request, room_code):
                 'can_share_screen': p.can_share_screen,
                 'can_use_camera': p.can_use_camera,
                 'can_use_microphone': p.can_use_microphone,
+                'can_upload_presentation': p.can_upload_presentation,
             })
 
     return Response({
@@ -490,6 +502,7 @@ def get_room(request, room_code):
         'lock_screen_share': room.lock_screen_share,
         'lock_microphone': room.lock_microphone,
         'lock_camera': room.lock_camera,
+        'lock_document_presentation': room.lock_document_presentation,
     })
 
 
@@ -1048,6 +1061,9 @@ def room_settings(request, room_code):
     if 'lock_camera' in request.data:
         room.lock_camera = bool(request.data['lock_camera'])
         updated.append('lock_camera')
+    if 'lock_document_presentation' in request.data:
+        room.lock_document_presentation = bool(request.data['lock_document_presentation'])
+        updated.append('lock_document_presentation')
 
     if updated:
         room.save(update_fields=updated)
@@ -1061,6 +1077,7 @@ def room_settings(request, room_code):
         'lock_screen_share': room.lock_screen_share,
         'lock_microphone': room.lock_microphone,
         'lock_camera': room.lock_camera,
+        'lock_document_presentation': room.lock_document_presentation,
     })
 
 
@@ -1209,3 +1226,219 @@ def list_co_hosts(request, room_code):
         for u in room.co_hosts.all()
     ]
     return Response({'co_hosts': co_hosts})
+
+
+# ---------------------------------------------------------------------------
+# Presentation & Document Stage Views
+# ---------------------------------------------------------------------------
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def upload_presentation(request, room_code):
+    """
+    Upload a presentation file (PDF, Image, Slide) for in-call presentation.
+    Allowed if user is Host/Co-Host, OR room.lock_document_presentation is False,
+    OR participant has can_upload_presentation=True.
+    """
+    try:
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if room.status == Room.Status.ENDED:
+        return Response({'error': 'Room has ended'}, status=status.HTTP_410_GONE)
+
+    user = request.user if request.user and request.user.is_authenticated else None
+    guest_identity = request.data.get('guest_identity')
+
+    participant = None
+    if user:
+        participant = RoomParticipant.objects.filter(room=room, user=user, is_active=True).first()
+    elif guest_identity:
+        participant = RoomParticipant.objects.filter(room=room, guest_identity=guest_identity, is_active=True).first()
+
+    # Permission check
+    can_moderate = room.can_manage_room(user) if user else False
+    if not can_moderate:
+        if room.lock_document_presentation:
+            if not participant or not participant.can_upload_presentation:
+                return Response({
+                    'error': 'امکان آپلود و ارائه فایل توسط برگزارکننده قفل است.',
+                    'code': 'PRESENTATION_LOCKED',
+                }, status=status.HTTP_403_FORBIDDEN)
+
+    uploaded_file = request.FILES.get('file')
+    if not uploaded_file:
+        return Response({'error': 'فایلی برای آپلود ارسال نشده است.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # 50MB max file size
+    if uploaded_file.size > 50 * 1024 * 1024:
+        return Response({'error': 'حداکثر حجم مجاز فایل ۵۰ مگابایت است.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    filename = uploaded_file.name.lower()
+    file_type = PresentationDocument.FileType.OTHER
+    if filename.endswith(('.pdf',)):
+        file_type = PresentationDocument.FileType.PDF
+    elif filename.endswith(('.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif')):
+        file_type = PresentationDocument.FileType.IMAGE
+    elif filename.endswith(('.ppt', '.pptx', '.odp', '.key')):
+        file_type = PresentationDocument.FileType.SLIDE
+
+    title = request.data.get('title') or uploaded_file.name
+    guest_name = request.data.get('guest_name') or (participant.guest_name if participant else 'مهمان')
+
+    total_pages = int(request.data.get('total_pages', 1))
+
+    doc = PresentationDocument.objects.create(
+        room=room,
+        uploader=user,
+        guest_uploader_name=guest_name if not user else None,
+        file=uploaded_file,
+        title=title,
+        file_type=file_type,
+        file_size_bytes=uploaded_file.size,
+        total_pages=max(1, total_pages),
+        current_page=1,
+    )
+
+    file_url = request.build_absolute_uri(doc.file.url) if doc.file else ''
+
+    return Response({
+        'id': doc.id,
+        'title': doc.title,
+        'file_url': file_url,
+        'file_type': doc.file_type,
+        'file_size_bytes': doc.file_size_bytes,
+        'total_pages': doc.total_pages,
+        'current_page': doc.current_page,
+        'uploader_name': doc.uploader_name,
+        'is_active_on_stage': doc.is_active_on_stage,
+        'created_at': doc.created_at.isoformat(),
+    }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def list_presentations(request, room_code):
+    try:
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    docs = room.presentations.all()
+    results = []
+    for d in docs:
+        file_url = request.build_absolute_uri(d.file.url) if d.file else ''
+        results.append({
+            'id': d.id,
+            'title': d.title,
+            'file_url': file_url,
+            'file_type': d.file_type,
+            'file_size_bytes': d.file_size_bytes,
+            'total_pages': d.total_pages,
+            'current_page': d.current_page,
+            'uploader_name': d.uploader_name,
+            'is_active_on_stage': d.is_active_on_stage,
+            'created_at': d.created_at.isoformat(),
+        })
+
+    return Response({'presentations': results})
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def set_active_presentation(request, room_code, doc_id):
+    """
+    Set a presentation as active/inactive on the room stage.
+    """
+    try:
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    is_active = request.data.get('is_active', True)
+
+    if not is_active or doc_id == 0 or str(doc_id) == '0':
+        room.presentations.update(is_active_on_stage=False)
+        return Response({'message': 'Presentation stopped', 'is_active': False})
+
+    try:
+        doc = room.presentations.get(id=doc_id)
+    except PresentationDocument.DoesNotExist:
+        return Response({'error': 'Presentation not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    room.presentations.update(is_active_on_stage=False)
+    doc.is_active_on_stage = True
+    doc.save(update_fields=['is_active_on_stage'])
+
+    file_url = request.build_absolute_uri(doc.file.url) if doc.file else ''
+    return Response({
+        'id': doc.id,
+        'title': doc.title,
+        'file_url': file_url,
+        'file_type': doc.file_type,
+        'total_pages': doc.total_pages,
+        'current_page': doc.current_page,
+        'uploader_name': doc.uploader_name,
+        'is_active_on_stage': True,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def set_presentation_page(request, room_code, doc_id):
+    try:
+        room = Room.objects.get(room_code=room_code)
+        doc = room.presentations.get(id=doc_id)
+    except (Room.DoesNotExist, PresentationDocument.DoesNotExist):
+        return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    page = int(request.data.get('page', 1))
+    doc.current_page = max(1, min(doc.total_pages, page))
+    doc.save(update_fields=['current_page'])
+
+    return Response({
+        'id': doc.id,
+        'current_page': doc.current_page,
+        'total_pages': doc.total_pages,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def grant_presentation_permission(request, room_code):
+    """
+    Host or Co-Host grants or revokes individual document upload/present permission.
+    """
+    try:
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if not room.can_manage_room(request.user):
+        return Response({'error': 'Only host or co-hosts can grant presentation permissions'}, status=status.HTTP_403_FORBIDDEN)
+
+    user_identifier = request.data.get('user_id') or request.data.get('username') or request.data.get('identity')
+    granted = request.data.get('granted', True)
+
+    if not user_identifier:
+        return Response({'error': 'user_identifier is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    participant_qs = RoomParticipant.objects.filter(room=room)
+    if isinstance(user_identifier, int) or str(user_identifier).isdigit():
+        participant_qs = participant_qs.filter(models.Q(user_id=int(user_identifier)) | models.Q(guest_identity=str(user_identifier)))
+    else:
+        participant_qs = participant_qs.filter(models.Q(user__username=user_identifier) | models.Q(guest_identity=user_identifier))
+
+    participant = participant_qs.first()
+    if not participant:
+        return Response({'error': 'Participant not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    participant.can_upload_presentation = bool(granted)
+    participant.save(update_fields=['can_upload_presentation'])
+
+    return Response({
+        'message': f'Presentation upload permission set to {granted} for {user_identifier}',
+        'participant': user_identifier,
+        'granted': bool(granted),
+    })

@@ -15,7 +15,7 @@ export function useInCallPermissions() {
 
   // Send a permission request to the room host & co-hosts
   const requestPermission = useCallback(
-    async (permission: "screen_share" | "microphone" | "camera") => {
+    async (permission: "screen_share" | "microphone" | "camera" | "presentation_upload") => {
       if (!room || !localParticipant) return;
       const reqPayload = {
         type: "PERMISSION_REQUEST",
@@ -35,6 +35,7 @@ export function useInCallPermissions() {
         if (permission === "screen_share") permName = "اشتراک صفحه";
         else if (permission === "microphone") permName = "استفاده از میکروفون";
         else if (permission === "camera") permName = "استفاده از دوربین";
+        else if (permission === "presentation_upload") permName = "آپلود و ارائه فایل";
 
         toast(`درخواست ${permName} برای برگزارکننده ارسال شد.`, {
           icon: "⏳",
@@ -52,12 +53,16 @@ export function useInCallPermissions() {
     async (req: PermissionRequest) => {
       if (!roomCode || !canModerate) return;
       try {
-        await roomApi.grantMediaPermission(
-          roomCode,
-          req.identity,
-          req.permission,
-          true,
-        );
+        if (req.permission === "presentation_upload") {
+          await roomApi.grantPresentationPermission(roomCode, req.identity, true);
+        } else {
+          await roomApi.grantMediaPermission(
+            roomCode,
+            req.identity,
+            req.permission,
+            true,
+          );
+        }
 
         // Broadcast permission granted over data channel
         const encoder = new TextEncoder();
@@ -74,7 +79,7 @@ export function useInCallPermissions() {
         setRequests((prev) => prev.filter((r) => r.id !== req.id));
         toast.success(`دسترسی برای ${req.displayName} تایید شد.`);
       } catch (err) {
-        console.error("Failed to grant media permission", err);
+        console.error("Failed to grant permission", err);
         toast.error("خطا در اعمال مجوز.");
       }
     },
@@ -146,6 +151,9 @@ export function useInCallPermissions() {
             } else if (permission === "camera") {
               permName = "استفاده از وب‌کم";
               setMediaPermissions({ canUseCamera: granted });
+            } else if (permission === "presentation_upload") {
+              permName = "آپلود و ارائه فایل";
+              setMediaPermissions({ canUploadPresentation: granted });
             }
 
             if (granted) {

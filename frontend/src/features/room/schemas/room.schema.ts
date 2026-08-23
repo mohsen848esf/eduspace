@@ -16,6 +16,19 @@ export const joinRoomSchema = z.object({
 export type CreateRoomInput = z.infer<typeof createRoomSchema>;
 export type JoinRoomInput = z.infer<typeof joinRoomSchema>;
 
+export interface PresentationDocument {
+  id: number;
+  title: string;
+  file_url: string;
+  file_type: "pdf" | "image" | "slide" | "other";
+  file_size_bytes?: number;
+  total_pages: number;
+  current_page: number;
+  uploader_name: string;
+  is_active_on_stage?: boolean;
+  created_at?: string;
+}
+
 export interface RoomResponse {
   room_code: string;
   name: string;
@@ -35,9 +48,11 @@ export interface RoomResponse {
   lock_screen_share?: boolean;
   lock_microphone?: boolean;
   lock_camera?: boolean;
+  lock_document_presentation?: boolean;
   can_share_screen?: boolean;
   can_use_camera?: boolean;
   can_use_microphone?: boolean;
+  can_upload_presentation?: boolean;
 }
 
 export interface RoomInfo {
@@ -54,6 +69,7 @@ export interface RoomInfo {
     can_share_screen?: boolean;
     can_use_camera?: boolean;
     can_use_microphone?: boolean;
+    can_upload_presentation?: boolean;
   }[];
   max_participants: number;
   duration_limit_minutes?: number | null;
@@ -66,4 +82,5 @@ export interface RoomInfo {
   lock_screen_share?: boolean;
   lock_microphone?: boolean;
   lock_camera?: boolean;
+  lock_document_presentation?: boolean;
 }

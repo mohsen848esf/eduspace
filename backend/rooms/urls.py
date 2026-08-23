@@ -19,6 +19,13 @@ urlpatterns = [
     # --- Access Settings & Media Permissions (host & co-hosts) ---
     path('<str:room_code>/settings/', views.room_settings, name='room_settings'),
     path('<str:room_code>/grant-media-permission/', views.grant_media_permission, name='grant_media_permission'),
+    path('<str:room_code>/grant-presentation-permission/', views.grant_presentation_permission, name='grant_presentation_permission'),
+
+    # --- Presentations & Document Sharing ---
+    path('<str:room_code>/presentations/', views.list_presentations, name='list_presentations'),
+    path('<str:room_code>/presentations/upload/', views.upload_presentation, name='upload_presentation'),
+    path('<str:room_code>/presentations/<int:doc_id>/present/', views.set_active_presentation, name='set_active_presentation'),
+    path('<str:room_code>/presentations/<int:doc_id>/page/', views.set_presentation_page, name='set_presentation_page'),
 
     # --- Co-Host Delegation ---
     path('<str:room_code>/co-hosts/', views.list_co_hosts, name='list_co_hosts'),

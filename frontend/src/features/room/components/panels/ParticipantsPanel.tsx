@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 import { Icons } from "../../../../lib/constants/icons";
 import { cn } from "../../../../lib/utils";
 import { useRoomStore } from "../../store/roomStore";
+import { roomApi } from "../../api/room.api";
 import recordingsApi, {
   type RecordingGrantUser,
 } from "../../../recordings/api/recordings.api";
@@ -40,6 +41,24 @@ export default function ParticipantsPanel() {
   const [showInvite, setShowInvite] = useState(false);
   const [grants, setGrants] = useState<RecordingGrantUser[]>([]);
   const [grantBusy, setGrantBusy] = useState<string | null>(null);
+  const [presentationGrants, setPresentationGrants] = useState<Set<string>>(new Set());
+
+  const togglePresentationGrant = async (identity: string) => {
+    if (!roomCode || !canModerate) return;
+    const nextVal = !presentationGrants.has(identity);
+    try {
+      await roomApi.grantPresentationPermission(roomCode, identity, nextVal);
+      setPresentationGrants((prev) => {
+        const next = new Set(prev);
+        if (nextVal) next.add(identity);
+        else next.delete(identity);
+        return next;
+      });
+      toast.success(nextVal ? "اجازه ارائه فایل داده شد." : "اجازه ارائه فایل لغو شد.");
+    } catch {
+      toast.error("خطا در تغییر دسترسی ارائه فایل.");
+    }
+  };
 
   // Index by username so the per-row toggle can resolve in O(1).
   const grantedUsernames = useMemo(
@@ -265,6 +284,23 @@ export default function ParticipantsPanel() {
               )}
             >
               {isPCoHost ? "همیار ✓" : "+ همیار"}
+            </button>
+          )}
+
+          {/* Moderator: toggle presentation upload grant */}
+          {canModerate && !isLocal && (
+            <button
+              type="button"
+              onClick={() => togglePresentationGrant(participant.identity)}
+              title={presentationGrants.has(participant.identity) ? "لغو اجازه ارائه فایل" : "اجازه ارائه فایل"}
+              className={cn(
+                "h-5 px-1.5 rounded-md border-none cursor-pointer flex items-center text-[9px] font-bold transition-colors",
+                presentationGrants.has(participant.identity)
+                  ? "bg-indigo-500/20 text-indigo-300 hover:bg-rose-500/20 hover:text-rose-300"
+                  : "bg-[var(--s4)] text-[var(--t3)] hover:bg-indigo-500/20 hover:text-indigo-300",
+              )}
+            >
+              {presentationGrants.has(participant.identity) ? "ارائه ✓" : "+ ارائه"}
             </button>
           )}
 

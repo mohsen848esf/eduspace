@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { PresentationDocument } from "../schemas/room.schema";
 
 interface RoomState {
   token: string | null;
@@ -21,19 +22,27 @@ interface RoomState {
   lockScreenShare: boolean;
   lockMicrophone: boolean;
   lockCamera: boolean;
+  lockDocumentPresentation: boolean;
   canShareScreen: boolean;
   canUseCamera: boolean;
   canUseMicrophone: boolean;
+  canUploadPresentation: boolean;
+  activePresentation: PresentationDocument | null;
+  presentationsList: PresentationDocument[];
   mutedByHost: Set<string>;
   setMutedByHost: (identity: string, muted: boolean) => void;
   setIsCoHost: (isCoHost: boolean) => void;
   setCoHosts: (coHosts: string[]) => void;
   addCoHost: (identity: string) => void;
   removeCoHost: (identity: string) => void;
+  setActivePresentation: (doc: PresentationDocument | null) => void;
+  setPresentationsList: (list: PresentationDocument[]) => void;
+  setPresentationCurrentPage: (page: number) => void;
   setMediaPermissions: (perms: {
     canShareScreen?: boolean;
     canUseCamera?: boolean;
     canUseMicrophone?: boolean;
+    canUploadPresentation?: boolean;
   }) => void;
   setRoomSettings: (settings: {
     requireApproval?: boolean;
@@ -46,6 +55,7 @@ interface RoomState {
     lockScreenShare?: boolean;
     lockMicrophone?: boolean;
     lockCamera?: boolean;
+    lockDocumentPresentation?: boolean;
   }) => void;
 
   setRoom: (data: {
@@ -69,9 +79,12 @@ interface RoomState {
     lockScreenShare?: boolean;
     lockMicrophone?: boolean;
     lockCamera?: boolean;
+    lockDocumentPresentation?: boolean;
     canShareScreen?: boolean;
     canUseCamera?: boolean;
     canUseMicrophone?: boolean;
+    canUploadPresentation?: boolean;
+    activePresentation?: PresentationDocument | null;
   }) => void;
   clearRoom: () => void;
 }
@@ -97,9 +110,13 @@ export const useRoomStore = create<RoomState>((set) => ({
   lockScreenShare: false,
   lockMicrophone: false,
   lockCamera: false,
+  lockDocumentPresentation: true,
   canShareScreen: true,
   canUseCamera: true,
   canUseMicrophone: true,
+  canUploadPresentation: false,
+  activePresentation: null,
+  presentationsList: [],
   mutedByHost: new Set<string>(),
   setMutedByHost: (identity, muted) =>
     set((state) => {
@@ -120,6 +137,18 @@ export const useRoomStore = create<RoomState>((set) => ({
     set((state) => ({
       coHosts: state.coHosts.filter((h) => h !== identity),
     })),
+  setActivePresentation: (doc) => set({ activePresentation: doc }),
+  setPresentationsList: (list) => set({ presentationsList: list }),
+  setPresentationCurrentPage: (page) =>
+    set((state) => {
+      if (!state.activePresentation) return state;
+      return {
+        activePresentation: {
+          ...state.activePresentation,
+          current_page: page,
+        },
+      };
+    }),
   setMediaPermissions: (perms) =>
     set((state) => ({
       canShareScreen:
@@ -134,6 +163,10 @@ export const useRoomStore = create<RoomState>((set) => ({
         perms.canUseMicrophone !== undefined
           ? perms.canUseMicrophone
           : state.canUseMicrophone,
+      canUploadPresentation:
+        perms.canUploadPresentation !== undefined
+          ? perms.canUploadPresentation
+          : state.canUploadPresentation,
     })),
   setRoomSettings: (settings) =>
     set((state) => ({
@@ -175,6 +208,10 @@ export const useRoomStore = create<RoomState>((set) => ({
         settings.lockCamera !== undefined
           ? settings.lockCamera
           : state.lockCamera,
+      lockDocumentPresentation:
+        settings.lockDocumentPresentation !== undefined
+          ? settings.lockDocumentPresentation
+          : state.lockDocumentPresentation,
     })),
   setRoom: (data) =>
     set({
@@ -198,9 +235,12 @@ export const useRoomStore = create<RoomState>((set) => ({
       lockScreenShare: data.lockScreenShare || false,
       lockMicrophone: data.lockMicrophone || false,
       lockCamera: data.lockCamera || false,
+      lockDocumentPresentation: data.lockDocumentPresentation !== undefined ? data.lockDocumentPresentation : true,
       canShareScreen: data.canShareScreen !== undefined ? data.canShareScreen : true,
       canUseCamera: data.canUseCamera !== undefined ? data.canUseCamera : true,
       canUseMicrophone: data.canUseMicrophone !== undefined ? data.canUseMicrophone : true,
+      canUploadPresentation: data.canUploadPresentation !== undefined ? data.canUploadPresentation : (data.isHost || data.isCoHost || false),
+      activePresentation: data.activePresentation || null,
     }),
   clearRoom: () =>
     set({
@@ -224,9 +264,13 @@ export const useRoomStore = create<RoomState>((set) => ({
       lockScreenShare: false,
       lockMicrophone: false,
       lockCamera: false,
+      lockDocumentPresentation: true,
       canShareScreen: true,
       canUseCamera: true,
       canUseMicrophone: true,
+      canUploadPresentation: false,
+      activePresentation: null,
+      presentationsList: [],
     }),
 }));
 

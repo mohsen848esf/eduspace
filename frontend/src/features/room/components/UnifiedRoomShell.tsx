@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRoomStore } from "../store/roomStore";
 import { useRoomLayoutStore, type ActivePanel } from "../store/roomLayoutStore";
 import { type SidebarTab } from "../hooks/useRoomControls";
@@ -25,6 +25,8 @@ import { type useWhiteboard } from "../hooks/useWhiteboard";
 import { type useReactions } from "../hooks/useReactions";
 import ReactionOverlay from "./reactions/ReactionOverlay";
 import InCallPermissionNotification from "./InCallPermissionNotification";
+import PresentationStage from "./presentation/PresentationStage";
+import PresentationUploadModal from "./presentation/PresentationUploadModal";
 import { useInCallPermissions } from "../hooks/useInCallPermissions";
 import { cn } from "../../../lib/utils";
 import { type LayoutMode } from "../store/roomLayoutStore";
@@ -114,9 +116,17 @@ export default function UnifiedRoomShell({
       window.removeEventListener("eduspace:open-people-tab", handler);
   }, [isMobile, controls.toggleSidebar, setActivePanel]);
 
-  const { isHost, isCoHost } = useRoomStore();
+  const { isHost, isCoHost, activePresentation } = useRoomStore();
   const canModerate = isHost || isCoHost;
   const inCallPermissions = useInCallPermissions();
+  const [presentationModalOpen, setPresentationModalOpen] = useState(false);
+
+  // Listen to open-presentation-modal event
+  useEffect(() => {
+    const handler = () => setPresentationModalOpen(true);
+    window.addEventListener("eduspace:open-presentation-modal", handler);
+    return () => window.removeEventListener("eduspace:open-presentation-modal", handler);
+  }, []);
 
   const handleSheetOpenChange = (panel: ActivePanel) => (open: boolean) => {
     if (!open && activePanel === panel) {
@@ -152,7 +162,9 @@ export default function UnifiedRoomShell({
               />
             )}
 
-            {game.gameBoard.isActive ? (
+            {activePresentation ? (
+              <PresentationStage />
+            ) : game.gameBoard.isActive ? (
               <GameBoard
                 gameBoard={game.gameBoard}
                 onEnd={game.endGame}
@@ -172,6 +184,7 @@ export default function UnifiedRoomShell({
 
             <RoomRecordingBadge
               className={
+                activePresentation ||
                 game.gameBoard.isActive ||
                 (whiteboard.whiteboard.isActive && !whiteboard.whiteboard.isMinimized)
                   ? "top-14 end-3"
@@ -265,6 +278,13 @@ export default function UnifiedRoomShell({
           isLoading={isLeaving}
           blocking
           onConfirm={onLeaveConfirm}
+        />
+
+        {/* Presentation Upload Modal */}
+        <PresentationUploadModal
+          isOpen={presentationModalOpen}
+          onClose={() => setPresentationModalOpen(false)}
+          onRequestPermission={() => inCallPermissions.requestPermission("presentation_upload")}
         />
       </div>
 

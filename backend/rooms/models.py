@@ -105,6 +105,10 @@ class Room(models.Model):
         default=False,
         help_text='Lock cameras for regular participants unless permission is granted.'
     )
+    lock_document_presentation = models.BooleanField(
+        default=True,
+        help_text='Lock document upload and presentation for regular members unless host unlocks or grants individually.'
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
@@ -232,6 +236,7 @@ class RoomParticipant(models.Model):
     can_share_screen = models.BooleanField(default=True)
     can_use_camera = models.BooleanField(default=True)
     can_use_microphone = models.BooleanField(default=True)
+    can_upload_presentation = models.BooleanField(default=False)
     joined_at = models.DateTimeField(auto_now_add=True)
     left_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
@@ -249,6 +254,38 @@ class RoomParticipant(models.Model):
         if self.is_guest:
             return f"{self.guest_name or self.guest_identity} (Guest) in {self.room.room_code}"
         return f"{self.user.username if self.user else 'Unknown'} in {self.room.room_code}"
+
+
+class PresentationDocument(models.Model):
+    class FileType(models.TextChoices):
+        PDF = 'pdf', 'PDF Document'
+        IMAGE = 'image', 'Image'
+        SLIDE = 'slide', 'Presentation Slide'
+        OTHER = 'other', 'Other Document'
+
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='presentations')
+    uploader = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    guest_uploader_name = models.CharField(max_length=100, null=True, blank=True)
+    file = models.FileField(upload_to='room_presentations/%Y/%m/')
+    title = models.CharField(max_length=255)
+    file_type = models.CharField(max_length=20, choices=FileType.choices, default=FileType.PDF)
+    file_size_bytes = models.PositiveIntegerField(default=0)
+    total_pages = models.PositiveIntegerField(default=1)
+    current_page = models.PositiveIntegerField(default=1)
+    is_active_on_stage = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} in {self.room.room_code}"
+
+    @property
+    def uploader_name(self) -> str:
+        if self.uploader:
+            return self.uploader.full_name or self.uploader.username
+        return self.guest_uploader_name or "Guest"
 
 
 def _make_recording_token() -> str:
