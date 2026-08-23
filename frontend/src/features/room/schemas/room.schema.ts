@@ -30,6 +30,14 @@ export interface RoomResponse {
   max_participants?: number;
   duration_limit_minutes?: number | null;
   is_duration_limited?: boolean;
+  mute_mic_on_join?: boolean;
+  mute_cam_on_join?: boolean;
+  lock_screen_share?: boolean;
+  lock_microphone?: boolean;
+  lock_camera?: boolean;
+  can_share_screen?: boolean;
+  can_use_camera?: boolean;
+  can_use_microphone?: boolean;
 }
 
 export interface RoomInfo {
@@ -43,6 +51,9 @@ export interface RoomInfo {
     user__full_name: string;
     role: "host" | "co_host" | "participant" | "guest";
     is_guest?: boolean;
+    can_share_screen?: boolean;
+    can_use_camera?: boolean;
+    can_use_microphone?: boolean;
   }[];
   max_participants: number;
   duration_limit_minutes?: number | null;
@@ -50,4 +61,9 @@ export interface RoomInfo {
   is_recorded: boolean;
   require_approval?: boolean;
   is_locked?: boolean;
+  mute_mic_on_join?: boolean;
+  mute_cam_on_join?: boolean;
+  lock_screen_share?: boolean;
+  lock_microphone?: boolean;
+  lock_camera?: boolean;
 }

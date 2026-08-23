@@ -84,6 +84,28 @@ class Room(models.Model):
         help_text='Completely block new participants from joining.',
     )
 
+    # --- Media Policies & Permission Locks ---
+    mute_mic_on_join = models.BooleanField(
+        default=False,
+        help_text='Mute participant microphones by default upon entry.'
+    )
+    mute_cam_on_join = models.BooleanField(
+        default=False,
+        help_text='Turn off participant cameras by default upon entry.'
+    )
+    lock_screen_share = models.BooleanField(
+        default=False,
+        help_text='Lock screen sharing for regular participants unless permission is granted.'
+    )
+    lock_microphone = models.BooleanField(
+        default=False,
+        help_text='Lock microphones for regular participants unless permission is granted.'
+    )
+    lock_camera = models.BooleanField(
+        default=False,
+        help_text='Lock cameras for regular participants unless permission is granted.'
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
@@ -207,6 +229,9 @@ class RoomParticipant(models.Model):
     guest_identity = models.CharField(max_length=100, null=True, blank=True)
     is_guest = models.BooleanField(default=False)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.PARTICIPANT)
+    can_share_screen = models.BooleanField(default=True)
+    can_use_camera = models.BooleanField(default=True)
+    can_use_microphone = models.BooleanField(default=True)
     joined_at = models.DateTimeField(auto_now_add=True)
     left_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)

@@ -133,10 +133,15 @@ def create_room(request):
             host=request.user,
             organization=org,
             meeting_type='ad_hoc',
-            max_participants=max_parts,
-            duration_limit_minutes=duration_limit if is_duration_limited else None,
-            is_duration_limited=is_duration_limited,
             is_recorded=request.data.get('is_recorded', False),
+            max_participants=max_parts,
+            duration_limit_minutes=duration_limit,
+            is_duration_limited=is_duration_limited,
+            mute_mic_on_join=bool(request.data.get('mute_mic_on_join', False)),
+            mute_cam_on_join=bool(request.data.get('mute_cam_on_join', False)),
+            lock_screen_share=bool(request.data.get('lock_screen_share', False)),
+            lock_microphone=bool(request.data.get('lock_microphone', False)),
+            lock_camera=bool(request.data.get('lock_camera', False)),
             started_at=timezone.now(),
         )
 
@@ -156,6 +161,11 @@ def create_room(request):
             'max_participants': room.max_participants,
             'duration_limit_minutes': room.duration_limit_minutes,
             'is_duration_limited': room.is_duration_limited,
+            'mute_mic_on_join': room.mute_mic_on_join,
+            'mute_cam_on_join': room.mute_cam_on_join,
+            'lock_screen_share': room.lock_screen_share,
+            'lock_microphone': room.lock_microphone,
+            'lock_camera': room.lock_camera,
         }, status=status.HTTP_201_CREATED)
 
 
@@ -255,6 +265,17 @@ def join_room(request, room_code):
         'is_host': is_host,
         'is_co_host': is_co_host,
         'is_guest': False,
+        'max_participants': room.max_participants,
+        'duration_limit_minutes': room.duration_limit_minutes,
+        'is_duration_limited': room.is_duration_limited,
+        'mute_mic_on_join': room.mute_mic_on_join,
+        'mute_cam_on_join': room.mute_cam_on_join,
+        'lock_screen_share': room.lock_screen_share,
+        'lock_microphone': room.lock_microphone,
+        'lock_camera': room.lock_camera,
+        'can_share_screen': participant.can_share_screen,
+        'can_use_camera': participant.can_use_camera,
+        'can_use_microphone': participant.can_use_microphone,
     })
 
 
@@ -327,7 +348,7 @@ def guest_join_room(request, room_code):
             status=status.HTTP_202_ACCEPTED,
         )
 
-    RoomParticipant.objects.create(
+    participant = RoomParticipant.objects.create(
         room=room,
         user=None,
         guest_name=display_name,
@@ -351,8 +372,20 @@ def guest_join_room(request, room_code):
         'token': token,
         'livekit_url': settings.LIVEKIT_WS_URL,
         'is_host': False,
+        'is_co_host': False,
         'is_guest': True,
         'guest_identity': guest_identity,
+        'max_participants': room.max_participants,
+        'duration_limit_minutes': room.duration_limit_minutes,
+        'is_duration_limited': room.is_duration_limited,
+        'mute_mic_on_join': room.mute_mic_on_join,
+        'mute_cam_on_join': room.mute_cam_on_join,
+        'lock_screen_share': room.lock_screen_share,
+        'lock_microphone': room.lock_microphone,
+        'lock_camera': room.lock_camera,
+        'can_share_screen': participant.can_share_screen,
+        'can_use_camera': participant.can_use_camera,
+        'can_use_microphone': participant.can_use_microphone,
     })
 
 
@@ -423,6 +456,9 @@ def get_room(request, room_code):
                 'user__full_name': p.guest_name,
                 'role': 'guest',
                 'is_guest': True,
+                'can_share_screen': p.can_share_screen,
+                'can_use_camera': p.can_use_camera,
+                'can_use_microphone': p.can_use_microphone,
             })
         elif p.user:
             participants.append({
@@ -430,6 +466,9 @@ def get_room(request, room_code):
                 'user__full_name': p.user.full_name or p.user.username,
                 'role': p.role,
                 'is_guest': False,
+                'can_share_screen': p.can_share_screen,
+                'can_use_camera': p.can_use_camera,
+                'can_use_microphone': p.can_use_microphone,
             })
 
     return Response({
@@ -446,6 +485,11 @@ def get_room(request, room_code):
         'is_recorded': room.is_recorded,
         'require_approval': room.require_approval,
         'is_locked': room.is_locked,
+        'mute_mic_on_join': room.mute_mic_on_join,
+        'mute_cam_on_join': room.mute_cam_on_join,
+        'lock_screen_share': room.lock_screen_share,
+        'lock_microphone': room.lock_microphone,
+        'lock_camera': room.lock_camera,
     })
 
 
@@ -989,6 +1033,21 @@ def room_settings(request, room_code):
     if 'is_locked' in request.data:
         room.is_locked = bool(request.data['is_locked'])
         updated.append('is_locked')
+    if 'mute_mic_on_join' in request.data:
+        room.mute_mic_on_join = bool(request.data['mute_mic_on_join'])
+        updated.append('mute_mic_on_join')
+    if 'mute_cam_on_join' in request.data:
+        room.mute_cam_on_join = bool(request.data['mute_cam_on_join'])
+        updated.append('mute_cam_on_join')
+    if 'lock_screen_share' in request.data:
+        room.lock_screen_share = bool(request.data['lock_screen_share'])
+        updated.append('lock_screen_share')
+    if 'lock_microphone' in request.data:
+        room.lock_microphone = bool(request.data['lock_microphone'])
+        updated.append('lock_microphone')
+    if 'lock_camera' in request.data:
+        room.lock_camera = bool(request.data['lock_camera'])
+        updated.append('lock_camera')
 
     if updated:
         room.save(update_fields=updated)
@@ -997,6 +1056,63 @@ def room_settings(request, room_code):
         'room_code': room.room_code,
         'require_approval': room.require_approval,
         'is_locked': room.is_locked,
+        'mute_mic_on_join': room.mute_mic_on_join,
+        'mute_cam_on_join': room.mute_cam_on_join,
+        'lock_screen_share': room.lock_screen_share,
+        'lock_microphone': room.lock_microphone,
+        'lock_camera': room.lock_camera,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def grant_media_permission(request, room_code):
+    """
+    Host or Co-Host grants or revokes a specific media permission (screen_share, microphone, camera)
+    for a participant.
+    """
+    try:
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if not room.can_manage_room(request.user):
+        return Response({'error': 'Only host or co-hosts can grant media permissions'}, status=status.HTTP_403_FORBIDDEN)
+
+    user_identifier = request.data.get('user_id') or request.data.get('username') or request.data.get('identity')
+    permission_type = request.data.get('permission_type')  # 'screen_share', 'microphone', 'camera'
+    granted = request.data.get('granted', True)
+
+    if not user_identifier or not permission_type:
+        return Response({'error': 'user_identifier and permission_type are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    participant_qs = RoomParticipant.objects.filter(room=room)
+    if isinstance(user_identifier, int) or str(user_identifier).isdigit():
+        participant_qs = participant_qs.filter(models.Q(user_id=int(user_identifier)) | models.Q(guest_identity=str(user_identifier)))
+    else:
+        participant_qs = participant_qs.filter(models.Q(user__username=user_identifier) | models.Q(guest_identity=user_identifier))
+
+    participant = participant_qs.first()
+    if not participant:
+        return Response({'error': 'Participant not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if permission_type == 'screen_share':
+        participant.can_share_screen = bool(granted)
+        participant.save(update_fields=['can_share_screen'])
+    elif permission_type == 'microphone':
+        participant.can_use_microphone = bool(granted)
+        participant.save(update_fields=['can_use_microphone'])
+    elif permission_type == 'camera':
+        participant.can_use_camera = bool(granted)
+        participant.save(update_fields=['can_use_camera'])
+    else:
+        return Response({'error': f'Invalid permission type: {permission_type}'}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response({
+        'message': f'Permission {permission_type} set to {granted} for {user_identifier}',
+        'participant': user_identifier,
+        'permission_type': permission_type,
+        'granted': bool(granted),
     })
 
 

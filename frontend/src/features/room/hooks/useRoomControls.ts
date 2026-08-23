@@ -143,23 +143,95 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
     }
   }, [localParticipant, initialCamOn]);
 
+  const {
+    isHost,
+    isCoHost,
+    lockMicrophone,
+    lockCamera,
+    lockScreenShare,
+    canUseMicrophone,
+    canUseCamera,
+    canShareScreen,
+  } = useRoomStore();
+  const canModerate = isHost || isCoHost;
+
   const toggleMic = useCallback(async () => {
     if (!localParticipant) return;
     const newState = !isMicOn;
+
+    if (newState && !canModerate && lockMicrophone && !canUseMicrophone) {
+      toast("میکروفون توسط برگزارکننده قفل است. در حال ارسال درخواست مجوز...", {
+        icon: "🔒",
+      });
+      const encoder = new TextEncoder();
+      const data = encoder.encode(
+        JSON.stringify({
+          type: "PERMISSION_REQUEST",
+          id: `${localParticipant.identity}-microphone-${Date.now()}`,
+          identity: localParticipant.identity,
+          displayName: localParticipant.name || localParticipant.identity,
+          permission: "microphone",
+          timestamp: Date.now(),
+        }),
+      );
+      await room.localParticipant.publishData(data, { reliable: true });
+      return;
+    }
+
     await localParticipant.setMicrophoneEnabled(newState);
     setIsMicOn(newState);
-  }, [localParticipant, isMicOn]);
+  }, [localParticipant, isMicOn, canModerate, lockMicrophone, canUseMicrophone, room]);
 
   const toggleCam = useCallback(async () => {
     if (!localParticipant) return;
     const newState = !isCamOn;
+
+    if (newState && !canModerate && lockCamera && !canUseCamera) {
+      toast("دوربین توسط برگزارکننده قفل است. در حال ارسال درخواست مجوز...", {
+        icon: "🔒",
+      });
+      const encoder = new TextEncoder();
+      const data = encoder.encode(
+        JSON.stringify({
+          type: "PERMISSION_REQUEST",
+          id: `${localParticipant.identity}-camera-${Date.now()}`,
+          identity: localParticipant.identity,
+          displayName: localParticipant.name || localParticipant.identity,
+          permission: "camera",
+          timestamp: Date.now(),
+        }),
+      );
+      await room.localParticipant.publishData(data, { reliable: true });
+      return;
+    }
+
     await localParticipant.setCameraEnabled(newState);
     setIsCamOn(newState);
-  }, [localParticipant, isCamOn]);
+  }, [localParticipant, isCamOn, canModerate, lockCamera, canUseCamera, room]);
 
   const toggleScreenShare = useCallback(async () => {
     if (!localParticipant) return;
+
     if (!isScreenSharing) {
+      if (!canModerate && lockScreenShare && !canShareScreen) {
+        toast("اشتراک صفحه توسط برگزارکننده قفل است. در حال ارسال درخواست مجوز...", {
+          icon: "🔒",
+        });
+        const encoder = new TextEncoder();
+        const data = encoder.encode(
+          JSON.stringify({
+            type: "PERMISSION_REQUEST",
+            id: `${localParticipant.identity}-screen_share-${Date.now()}`,
+            identity: localParticipant.identity,
+            displayName: localParticipant.name || localParticipant.identity,
+            permission: "screen_share",
+            timestamp: Date.now(),
+          }),
+        );
+        await room.localParticipant.publishData(data, { reliable: true });
+        return;
+      }
+
       await localParticipant.setScreenShareEnabled(true, {
         audio: true,
         selfBrowserSurface: "include",
@@ -168,7 +240,7 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
       await localParticipant.setScreenShareEnabled(false);
     }
     setIsScreenSharing((prev) => !prev);
-  }, [localParticipant, isScreenSharing]);
+  }, [localParticipant, isScreenSharing, canModerate, lockScreenShare, canShareScreen, room]);
 
   const toggleSidebar = useCallback((tab: SidebarTab) => {
     setSidebarTab((prev) => (prev === tab ? null : tab));

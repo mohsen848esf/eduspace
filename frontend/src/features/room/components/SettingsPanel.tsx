@@ -35,8 +35,65 @@ export default function SettingsPanel({
   const setLayoutMode = useRoomLayoutStore((s) => s.setLayoutMode);
   const setAdjustViewOpen = useRoomLayoutStore((s) => s.setAdjustViewOpen);
 
-  const { isHost, roomCode, requireApproval, isLocked, setRoomSettings } =
-    useRoomStore();
+  const {
+    isHost,
+    isCoHost,
+    roomCode,
+    requireApproval,
+    isLocked,
+    muteMicOnJoin,
+    muteCamOnJoin,
+    lockScreenShare,
+    lockMicrophone,
+    lockCamera,
+    setRoomSettings,
+  } = useRoomStore();
+  const canModerate = isHost || isCoHost;
+
+  const handleToggleApproval = async () => {
+    if (!roomCode || !canModerate || isUpdatingSettings) return;
+    setIsUpdatingSettings(true);
+    try {
+      const next = !requireApproval;
+      await roomApi.updateSettings(roomCode, { require_approval: next });
+      setRoomSettings({ requireApproval: next });
+    } catch {
+      // Swallowed
+    } finally {
+      setIsUpdatingSettings(false);
+    }
+  };
+
+  const handleToggleLock = async () => {
+    if (!roomCode || !canModerate || isUpdatingSettings) return;
+    setIsUpdatingSettings(true);
+    try {
+      const next = !isLocked;
+      await roomApi.updateSettings(roomCode, { is_locked: next });
+      setRoomSettings({ isLocked: next });
+    } catch {
+      // Swallowed
+    } finally {
+      setIsUpdatingSettings(false);
+    }
+  };
+
+  const handleToggleSetting = async (key: "mute_mic_on_join" | "mute_cam_on_join" | "lock_screen_share" | "lock_microphone" | "lock_camera", val: boolean) => {
+    if (!roomCode || !canModerate || isUpdatingSettings) return;
+    setIsUpdatingSettings(true);
+    try {
+      await roomApi.updateSettings(roomCode, { [key]: val });
+      if (key === "mute_mic_on_join") setRoomSettings({ muteMicOnJoin: val });
+      if (key === "mute_cam_on_join") setRoomSettings({ muteCamOnJoin: val });
+      if (key === "lock_screen_share") setRoomSettings({ lockScreenShare: val });
+      if (key === "lock_microphone") setRoomSettings({ lockMicrophone: val });
+      if (key === "lock_camera") setRoomSettings({ lockCamera: val });
+    } catch {
+      // Swallowed
+    } finally {
+      setIsUpdatingSettings(false);
+    }
+  };
 
   const [activeTab, setActiveTab] = useState<
     "devices" | "layout" | "access" | "general"
@@ -106,34 +163,6 @@ export default function SettingsPanel({
       } catch (e) {
         console.error("Failed to switch speaker", e);
       }
-    }
-  };
-
-  const handleToggleApproval = async () => {
-    if (!roomCode || !isHost || isUpdatingSettings) return;
-    const nextVal = !requireApproval;
-    setIsUpdatingSettings(true);
-    try {
-      await roomApi.updateSettings(roomCode, { require_approval: nextVal });
-      setRoomSettings({ requireApproval: nextVal });
-    } catch (e) {
-      console.error("Failed to update approval settings", e);
-    } finally {
-      setIsUpdatingSettings(false);
-    }
-  };
-
-  const handleToggleLock = async () => {
-    if (!roomCode || !isHost || isUpdatingSettings) return;
-    const nextVal = !isLocked;
-    setIsUpdatingSettings(true);
-    try {
-      await roomApi.updateSettings(roomCode, { is_locked: nextVal });
-      setRoomSettings({ isLocked: nextVal });
-    } catch (e) {
-      console.error("Failed to update lock settings", e);
-    } finally {
-      setIsUpdatingSettings(false);
     }
   };
 
@@ -453,7 +482,7 @@ export default function SettingsPanel({
         </div>
       )}
 
-      {/* Tab 3: Access Control (Host Settings) */}
+      {/* Tab 3: Access Control & Policies (Host & Co-Host Settings) */}
       {activeTab === "access" && (
         <div className="space-y-3 text-xs">
           {/* Require Approval Toggle */}
@@ -477,7 +506,7 @@ export default function SettingsPanel({
             </div>
             <Switch
               checked={requireApproval}
-              disabled={!isHost || isUpdatingSettings}
+              disabled={!canModerate || isUpdatingSettings}
               onChange={handleToggleApproval}
             />
           </div>
@@ -498,16 +527,106 @@ export default function SettingsPanel({
             </div>
             <Switch
               checked={isLocked}
-              disabled={!isHost || isUpdatingSettings}
+              disabled={!canModerate || isUpdatingSettings}
               onChange={handleToggleLock}
             />
           </div>
 
-          {!isHost && (
+          {/* Mute Mic On Join */}
+          <div className="p-3.5 bg-white/5 rounded-2xl border border-white/10 flex items-start justify-between gap-3">
+            <div className="space-y-1 min-w-0">
+              <div className="font-bold text-gray-100 flex items-center gap-2">
+                <span className="text-rose-400">🔇</span>
+                <span>قطع میکروفون در بدو ورود</span>
+              </div>
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                میکروفون شرکت‌کنندگان هنگام ورود به اتاق به صورت خودکار بسته باشد.
+              </p>
+            </div>
+            <Switch
+              checked={muteMicOnJoin}
+              disabled={!canModerate || isUpdatingSettings}
+              onChange={() => handleToggleSetting("mute_mic_on_join", !muteMicOnJoin)}
+            />
+          </div>
+
+          {/* Mute Cam On Join */}
+          <div className="p-3.5 bg-white/5 rounded-2xl border border-white/10 flex items-start justify-between gap-3">
+            <div className="space-y-1 min-w-0">
+              <div className="font-bold text-gray-100 flex items-center gap-2">
+                <span className="text-rose-400">📷</span>
+                <span>قطع وب‌کم در بدو ورود</span>
+              </div>
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                دوربین شرکت‌کنندگان هنگام ورود به اتاق به صورت خودکار خاموش باشد.
+              </p>
+            </div>
+            <Switch
+              checked={muteCamOnJoin}
+              disabled={!canModerate || isUpdatingSettings}
+              onChange={() => handleToggleSetting("mute_cam_on_join", !muteCamOnJoin)}
+            />
+          </div>
+
+          {/* Lock Screen Share */}
+          <div className="p-3.5 bg-white/5 rounded-2xl border border-white/10 flex items-start justify-between gap-3">
+            <div className="space-y-1 min-w-0">
+              <div className="font-bold text-gray-100 flex items-center gap-2">
+                <span className="text-amber-400">🖥️</span>
+                <span>قفل اشتراک صفحه برای اعضا</span>
+              </div>
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                تنها با درخواست و اجازه برگزارکننده یا همیاران امکان‌پذیر باشد.
+              </p>
+            </div>
+            <Switch
+              checked={lockScreenShare}
+              disabled={!canModerate || isUpdatingSettings}
+              onChange={() => handleToggleSetting("lock_screen_share", !lockScreenShare)}
+            />
+          </div>
+
+          {/* Lock Microphone */}
+          <div className="p-3.5 bg-white/5 rounded-2xl border border-white/10 flex items-start justify-between gap-3">
+            <div className="space-y-1 min-w-0">
+              <div className="font-bold text-gray-100 flex items-center gap-2">
+                <span className="text-amber-400">🎙️</span>
+                <span>قفل صحبت کردن (میکروفون)</span>
+              </div>
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                اعضا برای باز کردن میکروفون باید از برگزارکننده اجازه بگیرند.
+              </p>
+            </div>
+            <Switch
+              checked={lockMicrophone}
+              disabled={!canModerate || isUpdatingSettings}
+              onChange={() => handleToggleSetting("lock_microphone", !lockMicrophone)}
+            />
+          </div>
+
+          {/* Lock Camera */}
+          <div className="p-3.5 bg-white/5 rounded-2xl border border-white/10 flex items-start justify-between gap-3">
+            <div className="space-y-1 min-w-0">
+              <div className="font-bold text-gray-100 flex items-center gap-2">
+                <span className="text-amber-400">📷</span>
+                <span>قفل دوربین (وب‌کم)</span>
+              </div>
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                اعضا برای روشن کردن دوربین باید از برگزارکننده اجازه بگیرند.
+              </p>
+            </div>
+            <Switch
+              checked={lockCamera}
+              disabled={!canModerate || isUpdatingSettings}
+              onChange={() => handleToggleSetting("lock_camera", !lockCamera)}
+            />
+          </div>
+
+          {!canModerate && (
             <p className="text-[11px] text-amber-300/80 bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/20">
               {t(
                 "settings.hostOnlyNotice",
-                "تنظیمات دسترسی جلسه فقط توسط مدیر (هاست) قابل تغییر است.",
+                "تنظیمات دسترسی جلسه فقط توسط مدیر (میزبان) یا همیاران قابل تغییر است.",
               )}
             </p>
           )}

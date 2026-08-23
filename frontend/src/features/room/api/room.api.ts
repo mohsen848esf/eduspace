@@ -50,6 +50,11 @@ export interface LobbyListResponse {
 export interface RoomAccessSettings {
   require_approval: boolean;
   is_locked: boolean;
+  mute_mic_on_join?: boolean;
+  mute_cam_on_join?: boolean;
+  lock_screen_share?: boolean;
+  lock_microphone?: boolean;
+  lock_camera?: boolean;
 }
 
 // join/guest-join can return either direct entry or lobby waiting
@@ -156,6 +161,21 @@ export const roomApi = {
     username: string,
   ): Promise<{ message: string; co_hosts: string[] }> => {
     const res = await client.post(`/rooms/${room_code}/co-hosts/revoke/`, { username });
+    return res.data;
+  },
+
+  // --- Media Permissions ---
+  grantMediaPermission: async (
+    room_code: string,
+    identity: string,
+    permission_type: "screen_share" | "microphone" | "camera",
+    granted: boolean = true,
+  ): Promise<{ message: string; participant: string; permission_type: string; granted: boolean }> => {
+    const res = await client.post(`/rooms/${room_code}/grant-media-permission/`, {
+      identity,
+      permission_type,
+      granted,
+    });
     return res.data;
   },
 };

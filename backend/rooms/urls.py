@@ -16,8 +16,9 @@ urlpatterns = [
     path('<str:room_code>/lower-all-hands/', views.lower_all_hands, name='lower_all_hands'),
     path('<str:room_code>/participants-history/', views.room_participants_history, name='room_participants_history'),
 
-    # --- Access Settings (host & co-hosts) ---
+    # --- Access Settings & Media Permissions (host & co-hosts) ---
     path('<str:room_code>/settings/', views.room_settings, name='room_settings'),
+    path('<str:room_code>/grant-media-permission/', views.grant_media_permission, name='grant_media_permission'),
 
     # --- Co-Host Delegation ---
     path('<str:room_code>/co-hosts/', views.list_co_hosts, name='list_co_hosts'),

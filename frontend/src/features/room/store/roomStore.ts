@@ -16,18 +16,36 @@ interface RoomState {
   durationLimitMinutes: number | null;
   isDurationLimited: boolean;
   startedAt: string | null;
+  muteMicOnJoin: boolean;
+  muteCamOnJoin: boolean;
+  lockScreenShare: boolean;
+  lockMicrophone: boolean;
+  lockCamera: boolean;
+  canShareScreen: boolean;
+  canUseCamera: boolean;
+  canUseMicrophone: boolean;
   mutedByHost: Set<string>;
   setMutedByHost: (identity: string, muted: boolean) => void;
   setIsCoHost: (isCoHost: boolean) => void;
   setCoHosts: (coHosts: string[]) => void;
   addCoHost: (identity: string) => void;
   removeCoHost: (identity: string) => void;
+  setMediaPermissions: (perms: {
+    canShareScreen?: boolean;
+    canUseCamera?: boolean;
+    canUseMicrophone?: boolean;
+  }) => void;
   setRoomSettings: (settings: {
     requireApproval?: boolean;
     isLocked?: boolean;
     maxParticipants?: number;
     durationLimitMinutes?: number | null;
     isDurationLimited?: boolean;
+    muteMicOnJoin?: boolean;
+    muteCamOnJoin?: boolean;
+    lockScreenShare?: boolean;
+    lockMicrophone?: boolean;
+    lockCamera?: boolean;
   }) => void;
 
   setRoom: (data: {
@@ -46,6 +64,14 @@ interface RoomState {
     durationLimitMinutes?: number | null;
     isDurationLimited?: boolean;
     startedAt?: string | null;
+    muteMicOnJoin?: boolean;
+    muteCamOnJoin?: boolean;
+    lockScreenShare?: boolean;
+    lockMicrophone?: boolean;
+    lockCamera?: boolean;
+    canShareScreen?: boolean;
+    canUseCamera?: boolean;
+    canUseMicrophone?: boolean;
   }) => void;
   clearRoom: () => void;
 }
@@ -66,6 +92,14 @@ export const useRoomStore = create<RoomState>((set) => ({
   durationLimitMinutes: 60,
   isDurationLimited: true,
   startedAt: null,
+  muteMicOnJoin: false,
+  muteCamOnJoin: false,
+  lockScreenShare: false,
+  lockMicrophone: false,
+  lockCamera: false,
+  canShareScreen: true,
+  canUseCamera: true,
+  canUseMicrophone: true,
   mutedByHost: new Set<string>(),
   setMutedByHost: (identity, muted) =>
     set((state) => {
@@ -85,6 +119,21 @@ export const useRoomStore = create<RoomState>((set) => ({
   removeCoHost: (identity) =>
     set((state) => ({
       coHosts: state.coHosts.filter((h) => h !== identity),
+    })),
+  setMediaPermissions: (perms) =>
+    set((state) => ({
+      canShareScreen:
+        perms.canShareScreen !== undefined
+          ? perms.canShareScreen
+          : state.canShareScreen,
+      canUseCamera:
+        perms.canUseCamera !== undefined
+          ? perms.canUseCamera
+          : state.canUseCamera,
+      canUseMicrophone:
+        perms.canUseMicrophone !== undefined
+          ? perms.canUseMicrophone
+          : state.canUseMicrophone,
     })),
   setRoomSettings: (settings) =>
     set((state) => ({
@@ -106,6 +155,26 @@ export const useRoomStore = create<RoomState>((set) => ({
         settings.isDurationLimited !== undefined
           ? settings.isDurationLimited
           : state.isDurationLimited,
+      muteMicOnJoin:
+        settings.muteMicOnJoin !== undefined
+          ? settings.muteMicOnJoin
+          : state.muteMicOnJoin,
+      muteCamOnJoin:
+        settings.muteCamOnJoin !== undefined
+          ? settings.muteCamOnJoin
+          : state.muteCamOnJoin,
+      lockScreenShare:
+        settings.lockScreenShare !== undefined
+          ? settings.lockScreenShare
+          : state.lockScreenShare,
+      lockMicrophone:
+        settings.lockMicrophone !== undefined
+          ? settings.lockMicrophone
+          : state.lockMicrophone,
+      lockCamera:
+        settings.lockCamera !== undefined
+          ? settings.lockCamera
+          : state.lockCamera,
     })),
   setRoom: (data) =>
     set({
@@ -124,6 +193,14 @@ export const useRoomStore = create<RoomState>((set) => ({
       durationLimitMinutes: data.durationLimitMinutes !== undefined ? data.durationLimitMinutes : 60,
       isDurationLimited: data.isDurationLimited !== undefined ? data.isDurationLimited : true,
       startedAt: data.startedAt || null,
+      muteMicOnJoin: data.muteMicOnJoin || false,
+      muteCamOnJoin: data.muteCamOnJoin || false,
+      lockScreenShare: data.lockScreenShare || false,
+      lockMicrophone: data.lockMicrophone || false,
+      lockCamera: data.lockCamera || false,
+      canShareScreen: data.canShareScreen !== undefined ? data.canShareScreen : true,
+      canUseCamera: data.canUseCamera !== undefined ? data.canUseCamera : true,
+      canUseMicrophone: data.canUseMicrophone !== undefined ? data.canUseMicrophone : true,
     }),
   clearRoom: () =>
     set({
@@ -142,6 +219,14 @@ export const useRoomStore = create<RoomState>((set) => ({
       durationLimitMinutes: 60,
       isDurationLimited: true,
       startedAt: null,
+      muteMicOnJoin: false,
+      muteCamOnJoin: false,
+      lockScreenShare: false,
+      lockMicrophone: false,
+      lockCamera: false,
+      canShareScreen: true,
+      canUseCamera: true,
+      canUseMicrophone: true,
     }),
 }));
 

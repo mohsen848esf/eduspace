@@ -24,6 +24,8 @@ import { type useGameBoard } from "../hooks/useGameBoard";
 import { type useWhiteboard } from "../hooks/useWhiteboard";
 import { type useReactions } from "../hooks/useReactions";
 import ReactionOverlay from "./reactions/ReactionOverlay";
+import InCallPermissionNotification from "./InCallPermissionNotification";
+import { useInCallPermissions } from "../hooks/useInCallPermissions";
 import { cn } from "../../../lib/utils";
 import { type LayoutMode } from "../store/roomLayoutStore";
 
@@ -112,6 +114,10 @@ export default function UnifiedRoomShell({
       window.removeEventListener("eduspace:open-people-tab", handler);
   }, [isMobile, controls.toggleSidebar, setActivePanel]);
 
+  const { isHost, isCoHost } = useRoomStore();
+  const canModerate = isHost || isCoHost;
+  const inCallPermissions = useInCallPermissions();
+
   const handleSheetOpenChange = (panel: ActivePanel) => (open: boolean) => {
     if (!open && activePanel === panel) {
       setActivePanel("video");
@@ -137,6 +143,15 @@ export default function UnifiedRoomShell({
               isMobile && "flex-col"
             )}
           >
+            {/* In-Call Permission Request Banner (Host & Co-Hosts only) */}
+            {canModerate && inCallPermissions.requests.length > 0 && (
+              <InCallPermissionNotification
+                requests={inCallPermissions.requests}
+                onApprove={inCallPermissions.approveRequest}
+                onDeny={inCallPermissions.denyRequest}
+              />
+            )}
+
             {game.gameBoard.isActive ? (
               <GameBoard
                 gameBoard={game.gameBoard}
