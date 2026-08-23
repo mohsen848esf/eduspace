@@ -571,11 +571,14 @@ export default function RoomControls({
   const [copied, setCopied] = useState(false);
 
   const currentTime = useCurrentTime();
-  const { roomCode: storeRoomCode, isHost } = useRoomStore();
+  const { roomCode: storeRoomCode, isHost, isCoHost } = useRoomStore();
   const activeRoomCode = roomCode || storeRoomCode || "";
 
   const [lobbyPanelOpen, setLobbyPanelOpen] = useState(false);
-  const lobby = useLobbyHost({ roomCode: activeRoomCode, isHost });
+  const lobby = useLobbyHost({
+    roomCode: activeRoomCode,
+    canModerate: isHost || isCoHost,
+  });
 
   const copyRoomCode = async () => {
     if (!activeRoomCode) return;
@@ -768,8 +771,8 @@ export default function RoomControls({
 
       {/* ── Section 3: End Utility Dock (Tools Stack Fan-Out, Chat, People, Host Lobby) ── */}
       <div className="flex items-center gap-2 min-w-[130px] md:min-w-[180px] justify-end">
-        {/* Host Lobby Button */}
-        {isHost && (
+        {/* Host / Co-Host Lobby Button */}
+        {(isHost || isCoHost) && (
           <div className="relative">
             <Tooltip
               content={

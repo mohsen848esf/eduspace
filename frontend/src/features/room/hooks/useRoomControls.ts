@@ -265,6 +265,24 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
           setIsCamOn(false);
           toast(t("host.hostTurnedOffCamera"), { icon: "📵" });
         }
+
+        if (data.type === "ROLE_CHANGED") {
+          if (data.identity === localParticipant?.identity) {
+            const isNowCoHost = data.role === "co_host";
+            useRoomStore.getState().setIsCoHost(isNowCoHost);
+            toast(
+              isNowCoHost
+                ? "شما به عنوان همیار میزبان انتخاب شدید."
+                : "دسترسی همیار میزبان شما تغییر کرد.",
+              { icon: isNowCoHost ? "🛡️" : "ℹ️" },
+            );
+          }
+          if (data.role === "co_host") {
+            useRoomStore.getState().addCoHost(data.identity);
+          } else {
+            useRoomStore.getState().removeCoHost(data.identity);
+          }
+        }
       } catch {
         /* swallow */
       }

@@ -22,10 +22,14 @@ export interface RoomResponse {
   token: string;
   livekit_url: string;
   is_host?: boolean;
+  is_co_host?: boolean;
   is_guest?: boolean;
   guest_identity?: string;
   require_approval?: boolean;
   is_locked?: boolean;
+  max_participants?: number;
+  duration_limit_minutes?: number | null;
+  is_duration_limited?: boolean;
 }
 
 export interface RoomInfo {
@@ -33,12 +37,17 @@ export interface RoomInfo {
   name: string;
   status: "waiting" | "active" | "ended";
   host: string;
+  co_hosts?: string[];
   participants: {
     user__username: string;
     user__full_name: string;
-    role: "host" | "participant" | "guest";
+    role: "host" | "co_host" | "participant" | "guest";
     is_guest?: boolean;
   }[];
   max_participants: number;
+  duration_limit_minutes?: number | null;
+  is_duration_limited?: boolean;
   is_recorded: boolean;
+  require_approval?: boolean;
+  is_locked?: boolean;
 }

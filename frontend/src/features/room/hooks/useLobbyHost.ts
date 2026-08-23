@@ -3,10 +3,12 @@ import { roomApi, type LobbyRequest } from "../api/room.api";
 
 interface UseLobbyHostOptions {
   roomCode: string | null;
-  isHost: boolean;
+  isHost?: boolean;
+  canModerate?: boolean;
 }
 
-export function useLobbyHost({ roomCode, isHost }: UseLobbyHostOptions) {
+export function useLobbyHost({ roomCode, isHost, canModerate }: UseLobbyHostOptions) {
+  const isAllowed = canModerate !== undefined ? canModerate : isHost;
   const [requests, setRequests] = useState<LobbyRequest[]>([]);
   const [admittingId, setAdmittingId] = useState<number | null>(null);
   const [denyingId, setDenyingId] = useState<number | null>(null);
@@ -14,7 +16,7 @@ export function useLobbyHost({ roomCode, isHost }: UseLobbyHostOptions) {
   const isPollingRef = useRef(false);
 
   const fetchLobby = useCallback(async () => {
-    if (!roomCode || !isHost || isPollingRef.current) return;
+    if (!roomCode || !isAllowed || isPollingRef.current) return;
     isPollingRef.current = true;
     try {
       const res = await roomApi.lobbyList(roomCode);
@@ -24,16 +26,16 @@ export function useLobbyHost({ roomCode, isHost }: UseLobbyHostOptions) {
     } finally {
       isPollingRef.current = false;
     }
-  }, [roomCode, isHost]);
+  }, [roomCode, isAllowed]);
 
   // Polling loop
   useEffect(() => {
-    if (!roomCode || !isHost) return;
+    if (!roomCode || !isAllowed) return;
 
     fetchLobby();
     const interval = setInterval(fetchLobby, 3000);
     return () => clearInterval(interval);
-  }, [roomCode, isHost, fetchLobby]);
+  }, [roomCode, isAllowed, fetchLobby]);
 
   const admit = useCallback(
     async (requestId: number) => {

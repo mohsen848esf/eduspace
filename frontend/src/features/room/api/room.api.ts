@@ -134,5 +134,29 @@ export const roomApi = {
     const res = await client.patch(`/rooms/${room_code}/settings/`, settings);
     return res.data;
   },
+
+  // --- Co-Hosts ---
+  listCoHosts: async (
+    room_code: string,
+  ): Promise<{ co_hosts: { id: number; username: string; full_name: string }[] }> => {
+    const res = await client.get(`/rooms/${room_code}/co-hosts/`);
+    return res.data;
+  },
+
+  grantCoHost: async (
+    room_code: string,
+    username: string,
+  ): Promise<{ message: string; co_hosts: string[] }> => {
+    const res = await client.post(`/rooms/${room_code}/co-hosts/grant/`, { username });
+    return res.data;
+  },
+
+  revokeCoHost: async (
+    room_code: string,
+    username: string,
+  ): Promise<{ message: string; co_hosts: string[] }> => {
+    const res = await client.post(`/rooms/${room_code}/co-hosts/revoke/`, { username });
+    return res.data;
+  },
 };
 

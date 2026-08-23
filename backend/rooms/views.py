@@ -23,6 +23,7 @@ def generate_livekit_token(
     room_code: str,
     user=None,
     is_host: bool = False,
+    is_co_host: bool = False,
     guest_identity: str = None,
     guest_name: str = None
 ) -> str:
@@ -45,7 +46,10 @@ def generate_livekit_token(
         token.with_identity(ident)
         token.with_name(name)
 
-    token.with_metadata(json.dumps({'is_host': bool(is_host)}))
+    token.with_metadata(json.dumps({
+        'is_host': bool(is_host),
+        'is_co_host': bool(is_co_host),
+    }))
 
     token.with_grants(api.VideoGrants(
         room_join=True,
@@ -53,7 +57,7 @@ def generate_livekit_token(
         can_publish=True,
         can_subscribe=True,
         can_publish_data=True,
-        room_admin=is_host if (user and user.is_authenticated) else False,
+        room_admin=(is_host or is_co_host) if (user and user.is_authenticated) else False,
     ))
     return token.to_jwt()
 
@@ -190,9 +194,10 @@ def join_room(request, room_code):
         )
 
     is_host = room.host == request.user
+    is_co_host = room.co_hosts.filter(pk=request.user.pk).exists()
 
-    # Host always bypasses the lobby.
-    if not is_host and room.require_approval:
+    # Host and Co-Hosts always bypass the lobby.
+    if not (is_host or is_co_host) and room.require_approval:
         # Check if there's already a pending/admitted request for this user.
         existing = LobbyRequest.objects.filter(
             room=room,
@@ -218,18 +223,29 @@ def join_room(request, room_code):
             status=status.HTTP_202_ACCEPTED,
         )
 
+    target_role = (
+        RoomParticipant.Role.HOST
+        if is_host
+        else (RoomParticipant.Role.CO_HOST if is_co_host else RoomParticipant.Role.PARTICIPANT)
+    )
     participant, created = RoomParticipant.objects.get_or_create(
         room=room,
         user=request.user,
-        defaults={'role': RoomParticipant.Role.PARTICIPANT},
+        defaults={'role': target_role},
     )
 
     if not created:
         participant.is_active = True
         participant.left_at = None
+        participant.role = target_role
         participant.save()
 
-    token = generate_livekit_token(room_code, request.user, is_host=is_host)
+    token = generate_livekit_token(
+        room_code,
+        request.user,
+        is_host=is_host,
+        is_co_host=is_co_host,
+    )
 
     return Response({
         'room_code': room.room_code,
@@ -237,6 +253,7 @@ def join_room(request, room_code):
         'token': token,
         'livekit_url': settings.LIVEKIT_WS_URL,
         'is_host': is_host,
+        'is_co_host': is_co_host,
         'is_guest': False,
     })
 
@@ -420,6 +437,7 @@ def get_room(request, room_code):
         'name': room.name,
         'status': room.status,
         'host': room.host.username if room.host else 'Host',
+        'co_hosts': list(room.co_hosts.values_list('username', flat=True)),
         'participants': participants,
         'max_participants': room.max_participants,
         'duration_limit_minutes': room.duration_limit_minutes,
@@ -713,8 +731,8 @@ def lobby_list(request, room_code):
     except Room.DoesNotExist:
         return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    if room.host_id != request.user.id:
-        return Response({'error': 'Only host can view lobby'}, status=status.HTTP_403_FORBIDDEN)
+    if not room.can_manage_room(request.user):
+        return Response({'error': 'Only host or co-host can view lobby'}, status=status.HTTP_403_FORBIDDEN)
 
     # Expire stale pending requests.
     from datetime import timedelta
@@ -745,14 +763,14 @@ def lobby_list(request, room_code):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def lobby_admit(request, room_code, request_id):
-    """Admit a single lobby request. Host-only."""
+    """Admit a single lobby request. Host or Co-Host."""
     try:
         room = Room.objects.get(room_code=room_code)
     except Room.DoesNotExist:
         return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    if room.host_id != request.user.id:
-        return Response({'error': 'Only host can admit'}, status=status.HTTP_403_FORBIDDEN)
+    if not room.can_manage_room(request.user):
+        return Response({'error': 'Only host or co-host can admit'}, status=status.HTTP_403_FORBIDDEN)
 
     try:
         lobby_req = LobbyRequest.objects.get(id=request_id, room=room)
@@ -802,14 +820,14 @@ def lobby_admit(request, room_code, request_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def lobby_deny(request, room_code, request_id):
-    """Deny a single lobby request. Host-only."""
+    """Deny a single lobby request. Host or Co-Host."""
     try:
         room = Room.objects.get(room_code=room_code)
     except Room.DoesNotExist:
         return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    if room.host_id != request.user.id:
-        return Response({'error': 'Only host can deny'}, status=status.HTTP_403_FORBIDDEN)
+    if not room.can_manage_room(request.user):
+        return Response({'error': 'Only host or co-host can deny'}, status=status.HTTP_403_FORBIDDEN)
 
     try:
         lobby_req = LobbyRequest.objects.get(id=request_id, room=room)
@@ -829,14 +847,14 @@ def lobby_deny(request, room_code, request_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def lobby_admit_all(request, room_code):
-    """Admit all pending lobby requests at once. Host-only."""
+    """Admit all pending lobby requests at once. Host or Co-Host."""
     try:
         room = Room.objects.get(room_code=room_code)
     except Room.DoesNotExist:
         return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    if room.host_id != request.user.id:
-        return Response({'error': 'Only host can admit all'}, status=status.HTTP_403_FORBIDDEN)
+    if not room.can_manage_room(request.user):
+        return Response({'error': 'Only host or co-host can admit all'}, status=status.HTTP_403_FORBIDDEN)
 
     pending = LobbyRequest.objects.filter(room=room, status=LobbyRequest.Status.PENDING)
     count = 0
@@ -880,14 +898,14 @@ def lobby_admit_all(request, room_code):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def lobby_deny_all(request, room_code):
-    """Deny all pending lobby requests at once. Host-only."""
+    """Deny all pending lobby requests at once. Host or Co-Host."""
     try:
         room = Room.objects.get(room_code=room_code)
     except Room.DoesNotExist:
         return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    if room.host_id != request.user.id:
-        return Response({'error': 'Only host can deny all'}, status=status.HTTP_403_FORBIDDEN)
+    if not room.can_manage_room(request.user):
+        return Response({'error': 'Only host or co-host can deny all'}, status=status.HTTP_403_FORBIDDEN)
 
     count = LobbyRequest.objects.filter(
         room=room,
@@ -952,7 +970,7 @@ def lobby_status(request, room_code, request_id):
 @permission_classes([IsAuthenticated])
 def room_settings(request, room_code):
     """
-    Allows the host to toggle access control settings:
+    Allows host or co-hosts to toggle access control settings:
       - require_approval: bool
       - is_locked: bool
     """
@@ -961,8 +979,8 @@ def room_settings(request, room_code):
     except Room.DoesNotExist:
         return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    if room.host_id != request.user.id:
-        return Response({'error': 'Only host can change room settings'}, status=status.HTTP_403_FORBIDDEN)
+    if not room.can_manage_room(request.user):
+        return Response({'error': 'Only host or co-hosts can change room settings'}, status=status.HTTP_403_FORBIDDEN)
 
     updated = []
     if 'require_approval' in request.data:
@@ -980,3 +998,98 @@ def room_settings(request, room_code):
         'require_approval': room.require_approval,
         'is_locked': room.is_locked,
     })
+
+
+# ---------------------------------------------------------------------------
+# Co-Host Delegation Views
+# ---------------------------------------------------------------------------
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def grant_co_host(request, room_code):
+    """
+    Host delegates co-host / moderator permissions to a participant.
+    """
+    try:
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if room.host_id != request.user.id:
+        return Response({'error': 'Only the primary host can appoint co-hosts'}, status=status.HTTP_403_FORBIDDEN)
+
+    user_identifier = request.data.get('user_id') or request.data.get('username') or request.data.get('identity')
+    if not user_identifier:
+        return Response({'error': 'User identifier is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    from accounts.models import User
+    try:
+        if isinstance(user_identifier, int) or str(user_identifier).isdigit():
+            target_user = User.objects.get(id=int(user_identifier))
+        else:
+            target_user = User.objects.get(username=user_identifier)
+    except User.DoesNotExist:
+        return Response({'error': 'Target user not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    room.co_hosts.add(target_user)
+    RoomParticipant.objects.filter(room=room, user=target_user).update(role=RoomParticipant.Role.CO_HOST)
+
+    return Response({
+        'message': f'User {target_user.username} appointed as Co-Host.',
+        'co_hosts': list(room.co_hosts.values_list('username', flat=True)),
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def revoke_co_host(request, room_code):
+    """
+    Host revokes co-host permissions from a participant.
+    """
+    try:
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if room.host_id != request.user.id:
+        return Response({'error': 'Only the primary host can revoke co-hosts'}, status=status.HTTP_403_FORBIDDEN)
+
+    user_identifier = request.data.get('user_id') or request.data.get('username') or request.data.get('identity')
+    if not user_identifier:
+        return Response({'error': 'User identifier is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    from accounts.models import User
+    try:
+        if isinstance(user_identifier, int) or str(user_identifier).isdigit():
+            target_user = User.objects.get(id=int(user_identifier))
+        else:
+            target_user = User.objects.get(username=user_identifier)
+    except User.DoesNotExist:
+        return Response({'error': 'Target user not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    room.co_hosts.remove(target_user)
+    RoomParticipant.objects.filter(room=room, user=target_user).update(role=RoomParticipant.Role.PARTICIPANT)
+
+    return Response({
+        'message': f'Co-Host permissions revoked from {target_user.username}.',
+        'co_hosts': list(room.co_hosts.values_list('username', flat=True)),
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_co_hosts(request, room_code):
+    try:
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    co_hosts = [
+        {
+            'id': u.id,
+            'username': u.username,
+            'full_name': u.full_name or u.username,
+        }
+        for u in room.co_hosts.all()
+    ]
+    return Response({'co_hosts': co_hosts})

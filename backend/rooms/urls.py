@@ -16,8 +16,13 @@ urlpatterns = [
     path('<str:room_code>/lower-all-hands/', views.lower_all_hands, name='lower_all_hands'),
     path('<str:room_code>/participants-history/', views.room_participants_history, name='room_participants_history'),
 
-    # --- Access Settings (host only) ---
+    # --- Access Settings (host & co-hosts) ---
     path('<str:room_code>/settings/', views.room_settings, name='room_settings'),
+
+    # --- Co-Host Delegation ---
+    path('<str:room_code>/co-hosts/', views.list_co_hosts, name='list_co_hosts'),
+    path('<str:room_code>/co-hosts/grant/', views.grant_co_host, name='grant_co_host'),
+    path('<str:room_code>/co-hosts/revoke/', views.revoke_co_host, name='revoke_co_host'),
 
     # --- Lobby / Admit System ---
     path('<str:room_code>/lobby/', views.lobby_list, name='lobby_list'),

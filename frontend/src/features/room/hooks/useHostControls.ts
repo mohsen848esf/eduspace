@@ -16,7 +16,10 @@ export function useHostControls() {
   const room = useRoomContext();
   // localParticipant is needed for publishing data; reading from room context.
   useLocalParticipant();
-  const { isHost, roomCode } = useRoomStore();
+  const { isHost, isCoHost, coHosts, roomCode, addCoHost, removeCoHost } =
+    useRoomStore();
+
+  const canModerate = isHost || isCoHost;
 
   const sendControlMessage = useCallback(
     async (participant: RemoteParticipant, type: string) => {
@@ -32,7 +35,7 @@ export function useHostControls() {
 
   const muteParticipant = useCallback(
     async (participant: RemoteParticipant) => {
-      if (!isHost) return;
+      if (!canModerate) return;
       const isMuted = useRoomStore
         .getState()
         .mutedByHost?.has(participant.identity);
@@ -53,12 +56,12 @@ export function useHostControls() {
         toast.error(t("host.muteFailed"));
       }
     },
-    [isHost, sendControlMessage, t],
+    [canModerate, sendControlMessage, t],
   );
 
   const kickParticipant = useCallback(
     async (participant: RemoteParticipant) => {
-      if (!isHost) return;
+      if (!canModerate) return;
       try {
         await client.post(`/rooms/${roomCode}/kick/`, {
           identity: participant.identity,
@@ -69,12 +72,12 @@ export function useHostControls() {
         toast.error(t("host.removeFailed"));
       }
     },
-    [isHost, roomCode, t],
+    [canModerate, roomCode, t],
   );
 
   const grantScreenShare = useCallback(
     async (participant: RemoteParticipant) => {
-      if (!isHost) return;
+      if (!canModerate) return;
       try {
         await client.post(`/rooms/${roomCode}/grant-screen-share/`, {
           identity: participant.identity,
@@ -85,12 +88,12 @@ export function useHostControls() {
         toast.error(t("host.screenShareFailed"));
       }
     },
-    [isHost, roomCode, t],
+    [canModerate, roomCode, t],
   );
 
   const lowerParticipantHand = useCallback(
     async (participant: RemoteParticipant) => {
-      if (!isHost) return;
+      if (!canModerate) return;
       try {
         await client.post(`/rooms/${roomCode}/raise-hand/`, {
           identity: participant.identity,
@@ -102,12 +105,12 @@ export function useHostControls() {
         toast.error(t("host.handLowerFailed"));
       }
     },
-    [isHost, roomCode, t],
+    [canModerate, roomCode, t],
   );
 
   const lowerAllHands = useCallback(
     async () => {
-      if (!isHost) return;
+      if (!canModerate) return;
       try {
         await client.post(`/rooms/${roomCode}/lower-all-hands/`);
         toast.success(t("host.loweredAllHands"));
@@ -115,8 +118,72 @@ export function useHostControls() {
         toast.error(t("host.lowerAllHandsFailed"));
       }
     },
-    [isHost, roomCode, t],
+    [canModerate, roomCode, t],
   );
 
-  return { isHost, muteParticipant, kickParticipant, grantScreenShare, lowerParticipantHand, lowerAllHands };
+  const grantCoHost = useCallback(
+    async (username: string) => {
+      if (!isHost) return;
+      try {
+        await client.post(`/rooms/${roomCode}/co-hosts/grant/`, { username });
+        addCoHost(username);
+
+        // Broadcast real-time role change to all participants
+        const encoder = new TextEncoder();
+        const data = encoder.encode(
+          JSON.stringify({
+            type: "ROLE_CHANGED",
+            identity: username,
+            role: "co_host",
+          }),
+        );
+        await room.localParticipant.publishData(data, { reliable: true });
+
+        toast.success(`${username} به عنوان همیار میزبان انتخاب شد.`);
+      } catch {
+        toast.error("خطا در انتصاب همیار میزبان.");
+      }
+    },
+    [isHost, roomCode, addCoHost, room],
+  );
+
+  const revokeCoHost = useCallback(
+    async (username: string) => {
+      if (!isHost) return;
+      try {
+        await client.post(`/rooms/${roomCode}/co-hosts/revoke/`, { username });
+        removeCoHost(username);
+
+        // Broadcast real-time role change to all participants
+        const encoder = new TextEncoder();
+        const data = encoder.encode(
+          JSON.stringify({
+            type: "ROLE_CHANGED",
+            identity: username,
+            role: "participant",
+          }),
+        );
+        await room.localParticipant.publishData(data, { reliable: true });
+
+        toast.success(`دسترسی همیار میزبان از ${username} گرفته شد.`);
+      } catch {
+        toast.error("خطا در عزل همیار میزبان.");
+      }
+    },
+    [isHost, roomCode, removeCoHost, room],
+  );
+
+  return {
+    isHost,
+    isCoHost,
+    canModerate,
+    coHosts,
+    muteParticipant,
+    kickParticipant,
+    grantScreenShare,
+    lowerParticipantHand,
+    lowerAllHands,
+    grantCoHost,
+    revokeCoHost,
+  };
 }

@@ -6,6 +6,8 @@ interface RoomState {
   roomCode: string | null;
   roomName: string | null;
   isHost: boolean;
+  isCoHost: boolean;
+  coHosts: string[];
   isGuest: boolean;
   guestIdentity: string | null;
   requireApproval: boolean;
@@ -16,6 +18,10 @@ interface RoomState {
   startedAt: string | null;
   mutedByHost: Set<string>;
   setMutedByHost: (identity: string, muted: boolean) => void;
+  setIsCoHost: (isCoHost: boolean) => void;
+  setCoHosts: (coHosts: string[]) => void;
+  addCoHost: (identity: string) => void;
+  removeCoHost: (identity: string) => void;
   setRoomSettings: (settings: {
     requireApproval?: boolean;
     isLocked?: boolean;
@@ -30,6 +36,8 @@ interface RoomState {
     roomCode: string;
     roomName: string;
     isHost: boolean;
+    isCoHost?: boolean;
+    coHosts?: string[];
     isGuest?: boolean;
     guestIdentity?: string | null;
     requireApproval?: boolean;
@@ -48,6 +56,8 @@ export const useRoomStore = create<RoomState>((set) => ({
   roomCode: null,
   roomName: null,
   isHost: false,
+  isCoHost: false,
+  coHosts: [],
   isGuest: false,
   guestIdentity: null,
   requireApproval: false,
@@ -64,6 +74,18 @@ export const useRoomStore = create<RoomState>((set) => ({
       else updated.delete(identity);
       return { mutedByHost: updated };
     }),
+  setIsCoHost: (isCoHost) => set({ isCoHost }),
+  setCoHosts: (coHosts) => set({ coHosts }),
+  addCoHost: (identity) =>
+    set((state) => ({
+      coHosts: state.coHosts.includes(identity)
+        ? state.coHosts
+        : [...state.coHosts, identity],
+    })),
+  removeCoHost: (identity) =>
+    set((state) => ({
+      coHosts: state.coHosts.filter((h) => h !== identity),
+    })),
   setRoomSettings: (settings) =>
     set((state) => ({
       requireApproval:
@@ -92,6 +114,8 @@ export const useRoomStore = create<RoomState>((set) => ({
       roomCode: data.roomCode,
       roomName: data.roomName,
       isHost: data.isHost,
+      isCoHost: data.isCoHost || false,
+      coHosts: data.coHosts || [],
       isGuest: data.isGuest || false,
       guestIdentity: data.guestIdentity || null,
       requireApproval: data.requireApproval || false,
@@ -108,6 +132,8 @@ export const useRoomStore = create<RoomState>((set) => ({
       roomCode: null,
       roomName: null,
       isHost: false,
+      isCoHost: false,
+      coHosts: [],
       isGuest: false,
       guestIdentity: null,
       requireApproval: false,

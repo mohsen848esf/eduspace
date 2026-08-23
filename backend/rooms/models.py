@@ -48,6 +48,14 @@ class Room(models.Model):
         default='ad_hoc'
     )
 
+    # Co-hosts explicitly delegated by host with moderator privileges (lobby, mute, locks)
+    co_hosts = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name='co_hosted_rooms',
+        help_text='Participants authorized as Co-Hosts with room moderator privileges.'
+    )
+
     # Per-room set of non-host users the host has explicitly authorized
     # to start / stop / pause / resume recording during the call. The
     # host themselves is implicitly always allowed and does NOT need to
@@ -83,15 +91,27 @@ class Room(models.Model):
     def __str__(self):
         return f"{self.name} ({self.room_code})"
 
-    def can_control_recording(self, user) -> bool:
+    def can_manage_room(self, user) -> bool:
         """
-        True if `user` may start/stop/pause/resume recording in this
-        room. The host always passes; other users pass when they're in
-        ``recording_grants``.
+        True if user is host or one of the delegated co-hosts with moderator privileges.
         """
         if not user or not user.is_authenticated:
             return False
         if user.id == self.host_id:
+            return True
+        return self.co_hosts.filter(pk=user.pk).exists()
+
+    def can_control_recording(self, user) -> bool:
+        """
+        True if `user` may start/stop/pause/resume recording in this
+        room. The host always passes; other users pass when they're in
+        ``recording_grants`` or ``co_hosts``.
+        """
+        if not user or not user.is_authenticated:
+            return False
+        if user.id == self.host_id:
+            return True
+        if self.co_hosts.filter(pk=user.pk).exists():
             return True
         return self.recording_grants.filter(pk=user.pk).exists()
 
@@ -177,6 +197,7 @@ class LobbyRequest(models.Model):
 class RoomParticipant(models.Model):
     class Role(models.TextChoices):
         HOST = 'host', 'Host'
+        CO_HOST = 'co_host', 'Co-Host'
         PARTICIPANT = 'participant', 'Participant'
         GUEST = 'guest', 'Guest'
 

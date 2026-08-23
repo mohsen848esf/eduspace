@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import {
   useLocalParticipant,
   useParticipants,
-  useTracks,
 } from "@livekit/components-react";
 import { Track } from "livekit-client";
 import toast from "react-hot-toast";
@@ -30,7 +29,14 @@ export default function ParticipantsPanel() {
   const participants = useParticipants();
   const { localParticipant } = useLocalParticipant();
   const { roomCode, isHost } = useRoomStore();
-  const { lowerParticipantHand, lowerAllHands } = useHostControls();
+  const {
+    lowerParticipantHand,
+    lowerAllHands,
+    grantCoHost,
+    revokeCoHost,
+    canModerate,
+    coHosts,
+  } = useHostControls();
   const [showInvite, setShowInvite] = useState(false);
   const [grants, setGrants] = useState<RecordingGrantUser[]>([]);
   const [grantBusy, setGrantBusy] = useState<string | null>(null);
@@ -87,9 +93,9 @@ export default function ParticipantsPanel() {
           : without;
       });
       toast.success(
-        nextGranted
-          ? t("recordingGrant.toastGranted", { name: res.full_name })
-          : t("recordingGrant.toastRevoked", { name: res.full_name }),
+        res.granted
+          ? t("recordingGrant.toastGranted", { username })
+          : t("recordingGrant.toastRevoked", { username }),
       );
     } catch (err: any) {
       const detail = err?.response?.data?.error;
@@ -103,7 +109,6 @@ export default function ParticipantsPanel() {
     if (p.identity === localParticipant.identity) {
       return isHost;
     }
-    if (p.permissions?.roomAdmin) return true;
     if (p.metadata) {
       try {
         const meta = JSON.parse(p.metadata);
@@ -113,13 +118,25 @@ export default function ParticipantsPanel() {
     return false;
   };
 
+  const isParticipantCoHost = (p: any) => {
+    if (isParticipantHost(p)) return false;
+    if (coHosts.includes(p.identity)) return true;
+    if (p.metadata) {
+      try {
+        const meta = JSON.parse(p.metadata);
+        if (meta.is_co_host || meta.role === "co_host") return true;
+      } catch {}
+    }
+    return false;
+  };
+
   const hosts = useMemo(
-    () => participants.filter(isParticipantHost),
-    [participants, isHost, localParticipant.identity],
+    () => participants.filter((p) => isParticipantHost(p) || isParticipantCoHost(p)),
+    [participants, isHost, coHosts, localParticipant.identity],
   );
   const others = useMemo(
-    () => participants.filter((p) => !isParticipantHost(p)),
-    [participants, isHost, localParticipant.identity],
+    () => participants.filter((p) => !isParticipantHost(p) && !isParticipantCoHost(p)),
+    [participants, isHost, coHosts, localParticipant.identity],
   );
 
   const getHandRaiseInfo = (p: any) => {
@@ -166,6 +183,8 @@ export default function ParticipantsPanel() {
     const gradient = getAvatarGradient(participant.identity);
     const { mutedByHost } = useRoomStore();
     const isMutedByHost = mutedByHost?.has(participant.identity);
+    const isPCoHost = isParticipantCoHost(participant);
+    const isPHost = isParticipantHost(participant);
 
     // Parse participant metadata
     let handRaised = false;
@@ -176,23 +195,23 @@ export default function ParticipantsPanel() {
       } catch {}
     }
 
-    // Real publication state — preferred over the local "we asked the host
-    // to mute" flag so the row never lies if the participant unmuted again.
-    const tracks = useTracks([
-      { source: Track.Source.Microphone, withPlaceholder: true },
-    ]);
-    const micTrack = tracks.find(
-      (tr) => tr.participant.identity === participant.identity,
-    );
-    const isMicMuted =
-      isMutedByHost || (micTrack?.publication?.isMuted ?? false);
-    const isCamOff = !participant.isCameraEnabled;
+    // Real publication state
+    const audioTrackPub = participant.getTrackPublication(Track.Source.Microphone);
+    const videoTrackPub = participant.getTrackPublication(Track.Source.Camera);
+    const isMicMuted = !audioTrackPub || audioTrackPub.isMuted;
+    const isCamOff = !videoTrackPub || videoTrackPub.isMuted;
 
     return (
-      <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--s3)] transition-colors cursor-pointer">
+      <div
+        className={cn(
+          "flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors group",
+          "hover:bg-[var(--s3)]",
+          isLocal && "bg-[var(--s2)]",
+        )}
+      >
         <div
           className={cn(
-            "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 bg-gradient-to-br relative",
+            "w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 relative",
             gradient,
           )}
         >
@@ -203,15 +222,52 @@ export default function ParticipantsPanel() {
             </span>
           )}
         </div>
-        <span className="text-xs font-medium text-[var(--t1)] truncate">
-          {isLocal ? `${name} (${t("tile.you") || "You"})` : name}
-        </span>
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <span className="text-xs font-medium text-[var(--t1)] truncate">
+            {isLocal ? `${name} (${t("tile.you") || "You"})` : name}
+          </span>
+          {isPHost && (
+            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-[var(--brand-soft)] text-[var(--brand-text)] flex-shrink-0">
+              {t("topbar.host", "میزبان")}
+            </span>
+          )}
+          {isPCoHost && (
+            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex-shrink-0">
+              همیار میزبان
+            </span>
+          )}
+        </div>
+
         {handRaised && (
           <span className="text-amber-500 text-xs animate-pulse" title={t("controls.raiseHand")}>
             ✋
           </span>
         )}
-        <div className="flex gap-1 items-center ms-auto">
+
+        <div className="flex gap-1 items-center ms-auto flex-shrink-0">
+          {/* Host-only Co-Host delegation toggle */}
+          {isHost && !isLocal && (
+            <button
+              type="button"
+              onClick={() => {
+                if (isPCoHost) {
+                  revokeCoHost(participant.identity);
+                } else {
+                  grantCoHost(participant.identity);
+                }
+              }}
+              title={isPCoHost ? "عزل از همیار میزبان" : "انتصاب به عنوان همیار میزبان"}
+              className={cn(
+                "h-5 px-1.5 rounded-md border-none cursor-pointer flex items-center text-[9px] font-bold transition-colors",
+                isPCoHost
+                  ? "bg-emerald-500/20 text-emerald-300 hover:bg-rose-500/20 hover:text-rose-300"
+                  : "bg-[var(--s4)] text-[var(--t3)] hover:bg-emerald-500/20 hover:text-emerald-300",
+              )}
+            >
+              {isPCoHost ? "همیار ✓" : "+ همیار"}
+            </button>
+          )}
+
           {/* Host-only: toggle to grant/revoke recording control. */}
           {isHost && !isLocal && (
             <RecordingGrantToggle
@@ -222,7 +278,8 @@ export default function ParticipantsPanel() {
               t={t}
             />
           )}
-          {isHost && !isLocal && handRaised && (
+
+          {canModerate && !isLocal && handRaised && (
             <button
               type="button"
               onClick={(e) => {
