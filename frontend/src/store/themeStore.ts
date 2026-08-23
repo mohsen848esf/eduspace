@@ -43,17 +43,69 @@ const INJECTED_CSS_VARS = [
   "--header-border",
 ];
 
-export const applyPlatformThemeToDOM = () => {
+export const applyPlatformThemeToDOM = (mode: "dark" | "light" = "dark") => {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  
-  // Clear any dynamically injected inline CSS variables so default stylesheet applies
+
+  // Clear any existing custom org variables
   INJECTED_CSS_VARS.forEach((varName) => {
     root.style.removeProperty(varName);
   });
 
+  const platformTokens =
+    mode === "light"
+      ? {
+          "--brand": "#2563EB",
+          "--brand-h": "#1D4ED8",
+          "--brand-soft": "rgba(37, 99, 235, 0.10)",
+          "--brand-text": "#FFFFFF",
+          "--brand-dark": "#0F172A",
+          "--s0": "#F8FAFC",
+          "--s1": "#FFFFFF",
+          "--s2": "#FFFFFF",
+          "--s3": "#F1F5F9",
+          "--s4": "#E2E8F0",
+          "--b": "#E2E8F0",
+          "--b-soft": "#EEF2F6",
+          "--bh": "#2563EB",
+          "--t1": "#0F172A",
+          "--t2": "#475569",
+          "--t3": "#64748B",
+          "--header-bg": "#08131F",
+          "--header-border": "#14283D",
+        }
+      : {
+          "--brand": "#38BDF8",
+          "--brand-h": "#0EA5E9",
+          "--brand-soft": "rgba(56, 189, 248, 0.14)",
+          "--brand-text": "#04140F",
+          "--brand-dark": "#060A12",
+          "--s0": "#0B111E",
+          "--s1": "#0E1626",
+          "--s2": "#141F36",
+          "--s3": "#1A2744",
+          "--s4": "#223254",
+          "--b": "#1E2D4A",
+          "--b-soft": "#18243C",
+          "--bh": "#38BDF8",
+          "--t1": "#F8FAFC",
+          "--t2": "#94A3B8",
+          "--t3": "#64748B",
+          "--header-bg": "#08131F",
+          "--header-border": "#14283D",
+        };
+
+  Object.entries(platformTokens).forEach(([k, v]) => {
+    root.style.setProperty(k, v);
+  });
+
   root.classList.remove("light", "dark-tinted", "light-tinted");
-  root.setAttribute("data-theme", "platform");
+  if (mode === "light") {
+    root.classList.add("light");
+    root.setAttribute("data-theme", "platform-light");
+  } else {
+    root.setAttribute("data-theme", "platform-dark");
+  }
 };
 
 export const applyThemeToDOM = (theme: ThemeMode) => {

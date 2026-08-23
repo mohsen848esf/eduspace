@@ -564,7 +564,7 @@ export default function OrgSettingsPage() {
       <div className={cn("flex flex-col gap-6 mx-auto w-full", activeTab === "appearance" ? "max-w-7xl" : "max-w-5xl")}>
 
         {/* Tabs navigation */}
-        <div className="flex border-b border-[var(--b)] gap-6 overflow-x-auto">
+        <div className="sticky -top-4 md:-top-5 z-20 bg-[var(--s0)]/95 backdrop-blur-md pt-2 pb-0 flex border-b border-[var(--b)] gap-6 overflow-x-auto custom-scrollbar">
           <button
             onClick={() => setActiveTab("appearance")}
             className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap flex items-center gap-1.5 ${activeTab === "appearance"

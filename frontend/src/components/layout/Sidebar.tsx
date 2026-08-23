@@ -192,8 +192,8 @@ export default function Sidebar({
       isSubItem ? "px-2.5 py-2 rounded-lg" : "px-3.5 py-2.5",
       collapsed && "justify-center px-2",
       isActive
-        ? "bg-[#0D4936] text-[#00D084] font-bold shadow-sm border border-[#164638]"
-        : "bg-transparent text-[#A7B9B3] hover:bg-[#0C2A21] hover:text-[#DCE9E4]"
+        ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-bold shadow-sm border border-[var(--b)]"
+        : "bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)]"
     );
 
     const el = targetTo ? (
@@ -231,7 +231,7 @@ export default function Sidebar({
     <aside
       className={cn(
         "flex flex-col flex-shrink-0 h-full",
-        "bg-[#071E18] border border-[#164638] rounded-2xl shadow-sm overflow-hidden",
+        "bg-[var(--s1)] border border-[var(--b)] rounded-2xl shadow-sm overflow-hidden",
         "transition-all duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
         collapsed ? "w-14" : "w-[260px]",
       )}
@@ -239,12 +239,12 @@ export default function Sidebar({
       {/* Logo / Org Header (Box 2) */}
       <div
         className={cn(
-          "flex items-center h-18 px-4 border-b border-[#164638] flex-shrink-0 bg-[#09251D]",
+          "flex items-center h-18 px-4 border-b border-[var(--b)] flex-shrink-0 bg-[var(--s1)]",
           collapsed && "justify-center h-14 px-2",
         )}
       >
         <div className="flex items-center gap-3 w-full">
-          <div className="w-10 h-10 bg-[#00D084] rounded-xl flex items-center justify-center text-[#04140F] font-black text-xl flex-shrink-0 shadow-md shadow-[#00D084]/20 overflow-hidden">
+          <div className="w-10 h-10 bg-[var(--brand)] rounded-xl flex items-center justify-center text-[var(--brand-dark,#04140F)] font-black text-xl flex-shrink-0 shadow-md shadow-[var(--brand)]/20 overflow-hidden">
             {activeOrg?.logo ? (
               <img
                 src={getMediaUrl(activeOrg.logo)}
@@ -259,10 +259,10 @@ export default function Sidebar({
           </div>
           {!collapsed && (
             <div className="flex flex-col min-w-0">
-              <span className="text-[15px] font-black text-[#F2F7F5] leading-snug truncate">
+              <span className="text-[15px] font-black text-[var(--t1)] leading-snug truncate">
                 {activeOrg ? activeOrg.name : "JobzLingo"}
               </span>
-              <span className="text-[11px] text-[#A3B7B0] font-medium truncate mt-0.5">
+              <span className="text-[11px] text-[var(--t3)] font-medium truncate mt-0.5">
                 {isFarsi ? "آکادمی" : "Academy"}
               </span>
             </div>
@@ -279,7 +279,7 @@ export default function Sidebar({
             .map((item) => renderSingleNavButton(item))}
         </div>
 
-        <div className="h-px w-full bg-[var(--b)] my-1.5" />
+        <div className="flex-shrink-0 h-px w-full bg-[var(--b)] my-1.5" />
 
         {/* 2. Categorized Accordion Navigation */}
         <div className="flex flex-col gap-1">
@@ -324,12 +324,12 @@ export default function Sidebar({
                   className={cn(
                     "flex items-center justify-between w-full px-3 py-2.5 rounded-xl transition-all duration-150 border-none cursor-pointer select-none text-start my-0.5",
                     hasActiveChild
-                      ? "text-[#00D084] font-bold bg-[#0D4936]/35"
-                      : "text-[#A7B9B3] hover:bg-[#0C2A21] hover:text-[#DCE9E4] bg-transparent font-semibold"
+                      ? "text-[var(--brand-text)] font-bold bg-[var(--brand-soft)] border border-[var(--b)]"
+                      : "text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] bg-transparent font-semibold"
                   )}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className={cn("w-5 h-5 flex items-center justify-center flex-shrink-0 text-base", hasActiveChild ? "text-[#00D084]" : "text-[#809A92]")}>
+                    <span className={cn("w-5 h-5 flex items-center justify-center flex-shrink-0 text-base", hasActiveChild ? "text-[var(--brand)]" : "text-[var(--t3)]")}>
                       {cat.icon}
                     </span>
                     <span className="text-[13px] truncate leading-tight">
@@ -338,8 +338,8 @@ export default function Sidebar({
                   </div>
                   <span
                     className={cn(
-                      "text-[#809A92] transition-transform duration-200 flex-shrink-0 inline-flex items-center justify-center w-4 h-4",
-                      isGroupExpanded ? "rotate-180 text-[#00D084]" : "rotate-0"
+                      "text-[var(--t3)] transition-transform duration-200 flex-shrink-0 inline-flex items-center justify-center w-4 h-4",
+                      isGroupExpanded ? "rotate-180 text-[var(--brand)]" : "rotate-0"
                     )}
                   >
                     {Icons.chevronDown}
@@ -348,7 +348,7 @@ export default function Sidebar({
 
                 {/* Submenu Children */}
                 {isGroupExpanded && (
-                  <div className="flex flex-col ms-4 ps-2.5 my-0.5 border-s border-[#164638] gap-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <div className="flex flex-col ms-4 ps-2.5 my-0.5 border-s border-[var(--b)] gap-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
                     {cat.visibleChildren.map((child) => {
                       const targetTo = child.to;
                       const isChildActive = targetTo
@@ -360,15 +360,15 @@ export default function Sidebar({
                       const childClasses = cn(
                         "flex items-center justify-between w-full px-3 py-2 rounded-lg transition-all duration-150 no-underline select-none text-start text-[12.5px]",
                         isChildActive
-                          ? "bg-[#0D4936] text-[#00D084] font-bold shadow-xs border border-[#164638]"
-                          : "bg-transparent text-[#A7B9B3] hover:bg-[#0C2A21] hover:text-[#DCE9E4] font-medium"
+                          ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-bold shadow-xs border border-[var(--b)]"
+                          : "bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] font-medium"
                       );
 
                       const content = (
                         <>
                           <span className="truncate">{childLabel}</span>
                           {Boolean(child.badge) && (
-                            <span className="bg-[#FF4D5D] text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full">
+                            <span className="bg-[var(--red)] text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full">
                               {child.badge}
                             </span>
                           )}
@@ -408,7 +408,7 @@ export default function Sidebar({
 
         {/* 3. Platform Governance (Super Admin Isolated Context) */}
         {user?.is_superuser && (
-          <div className="pt-2 mt-auto border-t border-[#164638]">
+          <div className="pt-2 mt-auto border-t border-[var(--b)]">
             {!collapsed && (
               <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider px-2 py-0.5 block">
                 {isFarsi ? "حاکمیت پلتفرم" : "Platform Context"}
@@ -438,30 +438,30 @@ export default function Sidebar({
       </nav>
 
       {/* Bottom Organization & Actions Section (Box 3) */}
-      <div className="p-3 border-t border-[#164638] flex flex-col gap-2 flex-shrink-0 relative" ref={switcherRef}>
+      <div className="p-3 border-t border-[var(--b)] flex flex-col gap-2 flex-shrink-0 relative" ref={switcherRef}>
         {!collapsed && (
-          <div className="bg-[#0B2B21] border border-[#16503F] rounded-2xl p-3 flex flex-col gap-2 shadow-md">
+          <div className="bg-[var(--s2)] border border-[var(--b)] rounded-2xl p-3 flex flex-col gap-2 shadow-md">
             <div className="flex flex-col">
-              <span className="text-[13px] font-bold text-[#F2F7F5] truncate leading-tight">
+              <span className="text-[13px] font-bold text-[var(--t1)] truncate leading-tight">
                 {activeOrg ? `${activeOrg.name} Academy` : "JobzLingo Academy"}
               </span>
-              <span className="text-[11px] text-[#A3B7B0] font-medium mt-0.5">
+              <span className="text-[11px] text-[var(--t3)] font-medium mt-0.5">
                 {activeOrgRole || (isFarsi ? "مدیریت سازمان" : "Organization Management")}
               </span>
             </div>
 
             {/* 4 Overlapping Avatars */}
             <div className="flex -space-x-2 rtl:space-x-reverse my-1">
-              <div className="w-6 h-6 rounded-full bg-emerald-600 text-white text-[9px] font-black flex items-center justify-center border-2 border-[#0B2B21] shadow-sm">
+              <div className="w-6 h-6 rounded-full bg-emerald-600 text-white text-[9px] font-black flex items-center justify-center border-2 border-[var(--s2)] shadow-sm">
                 {user?.username?.charAt(0).toUpperCase() || "A"}
               </div>
-              <div className="w-6 h-6 rounded-full bg-indigo-600 text-white text-[9px] font-black flex items-center justify-center border-2 border-[#0B2B21] shadow-sm">
+              <div className="w-6 h-6 rounded-full bg-indigo-600 text-white text-[9px] font-black flex items-center justify-center border-2 border-[var(--s2)] shadow-sm">
                 Z
               </div>
-              <div className="w-6 h-6 rounded-full bg-amber-500 text-white text-[9px] font-black flex items-center justify-center border-2 border-[#0B2B21] shadow-sm">
+              <div className="w-6 h-6 rounded-full bg-amber-500 text-white text-[9px] font-black flex items-center justify-center border-2 border-[var(--s2)] shadow-sm">
                 R
               </div>
-              <div className="w-6 h-6 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center border-2 border-[#0B2B21] shadow-sm">
+              <div className="w-6 h-6 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center border-2 border-[var(--s2)] shadow-sm">
                 M
               </div>
             </div>
@@ -470,7 +470,7 @@ export default function Sidebar({
             <button
               type="button"
               onClick={() => setShowSwitcher((p) => !p)}
-              className="w-full bg-[#096A49] hover:bg-[#00A96B] text-white border border-[#16503F] rounded-xl py-1.5 px-3 text-xs font-bold cursor-pointer transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]"
+              className="w-full bg-[var(--brand)] hover:bg-[var(--brand-h)] text-[var(--brand-dark,#04140F)] border border-[var(--b)] rounded-xl py-1.5 px-3 text-xs font-bold cursor-pointer transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]"
             >
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M17 11l-5-5-5 5M17 13l-5 5-5-5" />

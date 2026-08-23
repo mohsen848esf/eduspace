@@ -40,8 +40,8 @@ export default function ThemeScopeController() {
     const isPlatformScoped = isCallRoute || isAuthRoute || isPersonalHome;
 
     if (isPlatformScoped) {
-      // Force direct Platform Theme (Dark Navy/Slate #08131F)
-      applyPlatformThemeToDOM();
+      // Force direct Platform Theme (Dark Navy or Light Slate #F8FAFC)
+      applyPlatformThemeToDOM(isDark ? "dark" : "light");
     } else {
       // Organization Workspace: Apply organization white-label theme
       const branding = orgContext?.organization?.branding;
@@ -62,6 +62,8 @@ export default function ThemeScopeController() {
             ? "light-tinted"
             : "light";
         }
+      } else {
+        activeMode = isDark ? "dark-tinted" : "light";
       }
 
       applyOrgThemeToDOM(branding, activeMode);

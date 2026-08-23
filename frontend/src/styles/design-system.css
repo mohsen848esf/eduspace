@@ -184,7 +184,35 @@
   }
 }
 
-/* Custom Smooth & Sleek Scrollbar */
+/* ── Global Theme-Aware Scrollbar for ALL Browsers ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--b, #164638) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--b, #164638);
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--brand, #00d084);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Custom Scrollbar Helper Classes */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -203,3 +231,12 @@
   scrollbar-width: thin;
   scrollbar-color: var(--b, #164638) transparent;
 }
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
