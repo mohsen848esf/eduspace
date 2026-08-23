@@ -103,14 +103,37 @@ def create_room(request):
 
         name = request.data.get('name', '').strip()
 
+        # Quotas based on subscription tier
+        max_parts = 25
+        duration_limit = 60
+        is_duration_limited = True
+
+        if org and hasattr(org, 'subscription') and org.subscription and org.subscription.plan:
+            plan = org.subscription.plan
+            max_parts = plan.max_meeting_participants or 100
+            duration_limit = plan.max_group_duration_minutes
+            is_duration_limited = bool(duration_limit and 0 < duration_limit < 1440)
+
+        requested_max = request.data.get('max_participants')
+        if requested_max:
+            try:
+                requested_max = int(requested_max)
+                if requested_max > 0:
+                    max_parts = min(requested_max, max_parts)
+            except (ValueError, TypeError):
+                pass
+
         room = Room.objects.create(
             name=name,
             room_code=room_code,
             host=request.user,
             organization=org,
             meeting_type='ad_hoc',
-            max_participants=request.data.get('max_participants', 20),
+            max_participants=max_parts,
+            duration_limit_minutes=duration_limit if is_duration_limited else None,
+            is_duration_limited=is_duration_limited,
             is_recorded=request.data.get('is_recorded', False),
+            started_at=timezone.now(),
         )
 
         RoomParticipant.objects.create(
@@ -126,6 +149,9 @@ def create_room(request):
             'name': room.name,
             'token': token,
             'livekit_url': settings.LIVEKIT_WS_URL,
+            'max_participants': room.max_participants,
+            'duration_limit_minutes': room.duration_limit_minutes,
+            'is_duration_limited': room.is_duration_limited,
         }, status=status.HTTP_201_CREATED)
 
 
@@ -154,7 +180,14 @@ def join_room(request, room_code):
 
     active_count = room.participants.filter(is_active=True).count()
     if active_count >= room.max_participants:
-        return Response({'error': 'Room is full'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {
+                'error': f'ظرفیت اتاق تکمیل شده است (حداکثر {room.max_participants} نفر).',
+                'code': 'ROOM_FULL',
+                'max_participants': room.max_participants,
+            },
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
 
     is_host = room.host == request.user
 
@@ -232,7 +265,14 @@ def guest_join_room(request, room_code):
 
     active_count = room.participants.filter(is_active=True).count()
     if active_count >= room.max_participants:
-        return Response({'error': 'Room is full'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {
+                'error': f'ظرفیت اتاق تکمیل شده است (حداکثر {room.max_participants} نفر).',
+                'code': 'ROOM_FULL',
+                'max_participants': room.max_participants,
+            },
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
 
     display_name = str(request.data.get('display_name', '')).strip()
     if not display_name or len(display_name) < 2:
@@ -382,6 +422,9 @@ def get_room(request, room_code):
         'host': room.host.username if room.host else 'Host',
         'participants': participants,
         'max_participants': room.max_participants,
+        'duration_limit_minutes': room.duration_limit_minutes,
+        'is_duration_limited': room.is_duration_limited,
+        'started_at': room.started_at.isoformat() if room.started_at else (room.created_at.isoformat() if room.created_at else None),
         'is_recorded': room.is_recorded,
         'require_approval': room.require_approval,
         'is_locked': room.is_locked,

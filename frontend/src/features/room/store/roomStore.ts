@@ -10,11 +10,18 @@ interface RoomState {
   guestIdentity: string | null;
   requireApproval: boolean;
   isLocked: boolean;
+  maxParticipants: number;
+  durationLimitMinutes: number | null;
+  isDurationLimited: boolean;
+  startedAt: string | null;
   mutedByHost: Set<string>;
   setMutedByHost: (identity: string, muted: boolean) => void;
   setRoomSettings: (settings: {
     requireApproval?: boolean;
     isLocked?: boolean;
+    maxParticipants?: number;
+    durationLimitMinutes?: number | null;
+    isDurationLimited?: boolean;
   }) => void;
 
   setRoom: (data: {
@@ -27,6 +34,10 @@ interface RoomState {
     guestIdentity?: string | null;
     requireApproval?: boolean;
     isLocked?: boolean;
+    maxParticipants?: number;
+    durationLimitMinutes?: number | null;
+    isDurationLimited?: boolean;
+    startedAt?: string | null;
   }) => void;
   clearRoom: () => void;
 }
@@ -41,6 +52,10 @@ export const useRoomStore = create<RoomState>((set) => ({
   guestIdentity: null,
   requireApproval: false,
   isLocked: false,
+  maxParticipants: 25,
+  durationLimitMinutes: 60,
+  isDurationLimited: true,
+  startedAt: null,
   mutedByHost: new Set<string>(),
   setMutedByHost: (identity, muted) =>
     set((state) => {
@@ -57,6 +72,18 @@ export const useRoomStore = create<RoomState>((set) => ({
           : state.requireApproval,
       isLocked:
         settings.isLocked !== undefined ? settings.isLocked : state.isLocked,
+      maxParticipants:
+        settings.maxParticipants !== undefined
+          ? settings.maxParticipants
+          : state.maxParticipants,
+      durationLimitMinutes:
+        settings.durationLimitMinutes !== undefined
+          ? settings.durationLimitMinutes
+          : state.durationLimitMinutes,
+      isDurationLimited:
+        settings.isDurationLimited !== undefined
+          ? settings.isDurationLimited
+          : state.isDurationLimited,
     })),
   setRoom: (data) =>
     set({
@@ -69,6 +96,10 @@ export const useRoomStore = create<RoomState>((set) => ({
       guestIdentity: data.guestIdentity || null,
       requireApproval: data.requireApproval || false,
       isLocked: data.isLocked || false,
+      maxParticipants: data.maxParticipants || 25,
+      durationLimitMinutes: data.durationLimitMinutes !== undefined ? data.durationLimitMinutes : 60,
+      isDurationLimited: data.isDurationLimited !== undefined ? data.isDurationLimited : true,
+      startedAt: data.startedAt || null,
     }),
   clearRoom: () =>
     set({
@@ -81,6 +112,10 @@ export const useRoomStore = create<RoomState>((set) => ({
       guestIdentity: null,
       requireApproval: false,
       isLocked: false,
+      maxParticipants: 25,
+      durationLimitMinutes: 60,
+      isDurationLimited: true,
+      startedAt: null,
     }),
 }));
 
