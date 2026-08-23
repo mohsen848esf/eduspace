@@ -28,7 +28,14 @@ function useDuration() {
 
 export default function RoomTopbar() {
   const { t } = useTranslation("room");
-  const { roomCode, roomName, isHost } = useRoomStore();
+  const {
+    roomCode,
+    roomName,
+    isHost,
+    maxParticipants,
+    durationLimitMinutes,
+    isDurationLimited,
+  } = useRoomStore();
   const remoteParticipants = useParticipants();
 
   const { localParticipant } = useLocalParticipant();
@@ -42,6 +49,19 @@ export default function RoomTopbar() {
 
   const recording = useRoomRecording({ roomCode, isHost });
 
+  // Calculate elapsed and remaining minutes
+  // For free tier (>3 participants and duration limited to 60 mins)
+  const isGroupCall = totalParticipants > 3;
+  const isCapped = isDurationLimited && isGroupCall && Boolean(durationLimitMinutes);
+  
+  // Approximate seconds from duration string
+  const [mStr] = duration.includes(":") ? duration.split(":").slice(-2) : ["0"];
+  const currentTotalMinutes = parseInt(mStr || "0", 10) + (duration.split(":").length > 2 ? parseInt(duration.split(":")[0], 10) * 60 : 0);
+  const limitMins = durationLimitMinutes || 60;
+  const remainingMins = Math.max(0, limitMins - currentTotalMinutes);
+  const isWarningZone = isCapped && remainingMins <= 10;
+  const isCriticalZone = isCapped && remainingMins <= 5;
+
   const copyRoomCode = async () => {
     await navigator.clipboard.writeText(
       `${window.location.origin}/room/${roomCode}`,
@@ -52,10 +72,7 @@ export default function RoomTopbar() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const participantsLabel =
-    totalParticipants === 1
-      ? t("topbar.participantOne", { count: totalParticipants })
-      : t("topbar.participantOther", { count: totalParticipants });
+  const participantsLabel = `${totalParticipants} / ${maxParticipants || 25} نفر`;
 
   return (
     <div className="h-12 flex-shrink-0 flex items-center justify-between px-4 bg-[var(--s1)] border-b border-[var(--b)]">
@@ -91,12 +108,27 @@ export default function RoomTopbar() {
 
       {/* Center */}
       <div className="flex items-center gap-3">
-        {/* Recording-state badge moved to RoomRecordingBadge — it's now
-            rendered as an overlay on the call surface so non-hosts see
-            it too, not just inside the host's topbar. */}
-        <span className="text-sm font-mono text-[var(--green)] font-semibold force-ltr">
-          {duration}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={cn(
+              "text-sm font-mono font-semibold force-ltr",
+              isCriticalZone
+                ? "text-red-400 animate-pulse"
+                : isWarningZone
+                  ? "text-amber-400"
+                  : "text-[var(--green)]",
+            )}
+          >
+            {duration}
+          </span>
+
+          {isWarningZone && (
+            <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
+              ⏳ {remainingMins} دقیقه تا پایان زمان رایگان
+            </span>
+          )}
+        </div>
+
         <span className="text-xs text-[var(--t3)]">{participantsLabel}</span>
       </div>
 
@@ -133,7 +165,7 @@ export default function RoomTopbar() {
               className="fixed inset-0 z-40"
               onClick={() => setShowInfo(false)}
             />
-            <div className="absolute top-10 end-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-56 fade-in">
+            <div className="absolute top-10 end-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-64 fade-in">
               <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2">
                 {t("topbar.infoTitle")}
               </div>
@@ -167,7 +199,15 @@ export default function RoomTopbar() {
                     {t("topbar.infoParticipants")}
                   </span>
                   <span className="text-xs font-medium text-[var(--t1)]">
-                    {totalParticipants}
+                    {totalParticipants} از حداکثر {maxParticipants || 25} نفر
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-[var(--t3)]">
+                    محدودیت زمانی:
+                  </span>
+                  <span className="text-xs font-medium text-[var(--t1)]">
+                    {isCapped ? `${limitMins} دقیقه (گروهی)` : "نامحدود"}
                   </span>
                 </div>
                 <div className="flex justify-between">

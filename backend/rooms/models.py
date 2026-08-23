@@ -16,7 +16,10 @@ class Room(models.Model):
     room_code = models.CharField(max_length=10, unique=True)
     host = models.ForeignKey(User, on_delete=models.CASCADE, related_name='hosted_rooms')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.WAITING)
-    max_participants = models.PositiveIntegerField(default=20)
+    max_participants = models.PositiveIntegerField(default=25)
+    duration_limit_minutes = models.PositiveIntegerField(default=60, null=True, blank=True)
+    is_duration_limited = models.BooleanField(default=True)
+    warning_sent_at = models.DateTimeField(null=True, blank=True)
     is_recorded = models.BooleanField(default=False)
     session = models.ForeignKey(
         'accounts.Session',
