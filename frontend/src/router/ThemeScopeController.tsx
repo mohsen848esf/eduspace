@@ -2,7 +2,12 @@ import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuthStore } from "../features/auth/store/authStore";
 import { useOrgContextStore } from "../features/auth/store/orgContextStore";
-import { useThemeStore, applyPlatformThemeToDOM, applyThemeToDOM } from "../store/themeStore";
+import {
+  useThemeStore,
+  applyPlatformThemeToDOM,
+  applyOrgThemeToDOM,
+  type ThemeMode,
+} from "../store/themeStore";
 
 export default function ThemeScopeController() {
   const location = useLocation();
@@ -35,11 +40,31 @@ export default function ThemeScopeController() {
     const isPlatformScoped = isCallRoute || isAuthRoute || isPersonalHome;
 
     if (isPlatformScoped) {
-      // Force direct Platform Theme (Dark Navy/Slate #0B111E)
+      // Force direct Platform Theme (Dark Navy/Slate #08131F)
       applyPlatformThemeToDOM();
     } else {
       // Organization Workspace: Apply organization white-label theme
-      applyThemeToDOM(theme);
+      const branding = orgContext?.organization?.branding;
+
+      // Determine active mode from user preference & org branding
+      let activeMode: ThemeMode = theme;
+      if (branding?.default_theme) {
+        if (isDark) {
+          activeMode = branding.default_theme.startsWith("dark")
+            ? branding.default_theme
+            : branding.is_tinted !== false
+            ? "dark-tinted"
+            : "dark";
+        } else {
+          activeMode = branding.default_theme.startsWith("light")
+            ? branding.default_theme
+            : branding.is_tinted !== false
+            ? "light-tinted"
+            : "light";
+        }
+      }
+
+      applyOrgThemeToDOM(branding, activeMode);
     }
   }, [location.pathname, theme, isDark, user, activeSlug, orgContext]);
 

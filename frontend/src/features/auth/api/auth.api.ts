@@ -26,12 +26,22 @@ export interface AuthResponse {
   refresh: string;
 }
 
+export interface OrganizationBranding {
+  primary_color?: string;
+  secondary_color?: string;
+  default_theme?: "light" | "light-tinted" | "dark" | "dark-tinted";
+  is_tinted?: boolean;
+  slogan?: string;
+  custom_tokens?: Record<string, string>;
+}
+
 export interface OrgContext {
   organization: {
     id: number;
     name: string;
     slug: string;
     logo?: string | null;
+    branding?: OrganizationBranding;
     invite_code?: string;
     is_suspended?: boolean;
     suspension_reason?: string | null;
@@ -47,6 +57,7 @@ export interface OrganizationDetail {
   type: string;
   is_active: boolean;
   logo: string | null;
+  branding?: OrganizationBranding;
   created_at: string;
   approval_required_to_join?: boolean;
   invite_code?: string;

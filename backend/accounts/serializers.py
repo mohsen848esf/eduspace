@@ -534,7 +534,7 @@ class OrgContextSerializer(serializers.Serializer):
 class OrganizationDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
-        fields = ('id', 'name', 'slug', 'type', 'is_active', 'logo', 'created_at', 'approval_required_to_join', 'invite_code')
+        fields = ('id', 'name', 'slug', 'type', 'is_active', 'logo', 'branding', 'created_at', 'approval_required_to_join', 'invite_code')
         read_only_fields = ('id', 'slug', 'type', 'is_active', 'created_at', 'invite_code')
 
 

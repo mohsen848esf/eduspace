@@ -15,6 +15,7 @@ import { Modal, ModalHeader, ModalTitle, ModalBody, ModalFooter } from "../../..
 import Spinner from "../../../components/ui/Spinner";
 import { Switch } from "../../../components/ui";
 import ReportsExportWidget from "./ReportsExportWidget";
+import OrgAppearanceSettings from "../../organization/components/OrgAppearanceSettings";
 
 const parseUA = (ua: string) => {
   if (!ua) return "Unknown Device";
@@ -79,7 +80,7 @@ export default function OrgSettingsPage() {
 
   const canManageMembers = hasPermission("can_manage_members");
 
-  const [activeTab, setActiveTab] = useState<"details" | "members" | "connections" | "roles" | "audit_logs" | "reports">("details");
+  const [activeTab, setActiveTab] = useState<"appearance" | "details" | "members" | "connections" | "roles" | "audit_logs" | "reports">("appearance");
 
   // Edit organization details state
   const [orgName, setOrgName] = useState("");
@@ -564,6 +565,16 @@ export default function OrgSettingsPage() {
         {/* Tabs navigation */}
         <div className="flex border-b border-[var(--b)] gap-6 overflow-x-auto">
           <button
+            onClick={() => setActiveTab("appearance")}
+            className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap flex items-center gap-1.5 ${activeTab === "appearance"
+                ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
+                : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
+              }`}
+          >
+            <span>🎨</span>
+            <span>{isFarsi ? "طرح ظاهر و برندینگ" : "Appearance & Branding"}</span>
+          </button>
+          <button
             onClick={() => setActiveTab("details")}
             className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${activeTab === "details"
                 ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
@@ -621,6 +632,11 @@ export default function OrgSettingsPage() {
             {isFarsi ? "گزارشات و خروجی‌ها" : "Reports & Exports"}
           </button>
         </div>
+
+        {/* Tab content 0: Appearance & Visual Identity */}
+        {activeTab === "appearance" && activeOrg && (
+          <OrgAppearanceSettings organization={activeOrg} />
+        )}
 
         {/* Tab content 1: Details */}
         {activeTab === "details" && activeOrg && (

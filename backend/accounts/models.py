@@ -118,6 +118,7 @@ class Organization(models.Model):
     suspended_at = models.DateTimeField(null=True, blank=True)
     suspension_reason = models.TextField(blank=True, default='')
     logo = models.FileField(upload_to='org_logos/', null=True, blank=True, validators=[validate_org_logo])
+    branding = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     approval_required_to_join = models.BooleanField(default=False)
