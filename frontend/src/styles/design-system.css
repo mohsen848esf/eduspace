@@ -1,4 +1,56 @@
 :root,
+.dark-tinted,
+[data-theme="dark-tinted"],
+[data-theme="dark"] {
+  /* ── 1. Deep Emerald Enterprise Dark Theme Tokens ── */
+  --color-app-bg: #061713;
+  --color-sidebar-bg: #071e18;
+  --color-header-bg: #08131f;
+  --color-surface-1: #0a211a;
+  --color-surface-2: #0d2920;
+  --color-surface-3: #103127;
+  --color-border: #164638;
+  --color-border-soft: #12382f;
+  --color-primary: #00d084;
+  --color-primary-hover: #00e88f;
+  --color-primary-soft: #0a6b4a;
+  --color-primary-glow: rgba(0, 208, 132, 0.18);
+  --color-text-primary: #f2f7f5;
+  --color-text-secondary: #a3b7b0;
+  --color-text-muted: #718982;
+  --color-text-disabled: #4d625c;
+
+  /* ── Standard EduSpace Semantic Bindings ── */
+  --brand: #00d084;
+  --brand-h: #00e88f;
+  --brand-soft: rgba(0, 208, 132, 0.14);
+  --brand-text: #00d084;
+  --brand-dark: #04140f;
+
+  --s0: #061713; /* App Background */
+  --s1: #071e18; /* Sidebar Background */
+  --s2: #0a211a; /* Main Cards Surface 1 */
+  --s3: #0d2920; /* Elevated Cards Surface 2 */
+  --s4: #103127; /* Hover / Selected Surface 3 */
+
+  --b: #164638; /* Crisp Primary Green Border */
+  --b-soft: #12382f; /* Subtle Secondary Green Border */
+  --bh: #00d084; /* Glowing Hover Border */
+
+  --t1: #f2f7f5; /* Primary Title Text */
+  --t2: #a3b7b0; /* Secondary Body Text */
+  --t3: #718982; /* Muted Hint Text */
+
+  --green: #00d084;
+  --amber: #ffb000;
+  --cyan: #168cff;
+  --red: #ff4d5d;
+  --purple: #8b7cff;
+
+  --header-bg: #08131f;
+  --header-border: #14283d;
+}
+
 .platform-theme,
 [data-theme="platform"] {
   --brand: #6366f1;
@@ -6,19 +58,19 @@
   --brand-soft: rgba(99, 102, 241, 0.12);
   --brand-text: #818cf8;
 
-  --s0: #0b111e;
-  --s1: #10192a;
-  --s2: #162238;
-  --s3: #1e2c46;
+  --s0: #08131f;
+  --s1: #0d1c2e;
+  --s2: #14283d;
+  --s3: #1e354f;
 
-  --b: rgba(255, 255, 255, 0.08);
+  --b: #1e354f;
   --bh: rgba(99, 102, 241, 0.35);
 
   --t1: #f8fafc;
   --t2: #94a3b8;
   --t3: #64748b;
 
-  --green: #10b981;
+  --green: #00d084;
   --amber: #f59e0b;
   --red: #ef4444;
   --cyan: #38bdf8;
@@ -36,36 +88,6 @@
   --t3: #a0a0c0;
   --brand-soft: rgba(99, 102, 241, 0.08);
   --brand-text: #4f46e5;
-}
-
-/* ──────────────────────────────────────────────────────────────────
- * Organization Theming & White-Label Design Tokens
- * ──────────────────────────────────────────────────────────────── */
-
-/* Dark-Tinted (Forest Emerald & Glowing Gold/Amber) */
-.dark-tinted,
-[data-theme="dark-tinted"] {
-  --brand: #00e676;
-  --brand-h: #00c853;
-  --brand-soft: rgba(0, 230, 118, 0.12);
-  --brand-text: #00e676;
-
-  --s0: #071712;
-  --s1: #0c231b;
-  --s2: #112d23;
-  --s3: #183e30;
-
-  --b: rgba(0, 230, 118, 0.09);
-  --bh: rgba(0, 230, 118, 0.35);
-
-  --t1: #e8f5e9;
-  --t2: #81c784;
-  --t3: #388e3c;
-
-  --green: #00e676;
-  --amber: #ffb300;
-  --cyan: #26c6da;
-  --red: #ef4444;
 }
 
 /* Light-Tinted (Jade / Soft Mint) */

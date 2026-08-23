@@ -113,8 +113,8 @@ export default function Topbar({
     <header
       dir="ltr"
       style={{
-        backgroundColor: "#0B111E",
-        borderColor: "rgba(255, 255, 255, 0.08)",
+        backgroundColor: "#08131F",
+        borderColor: "#14283D",
       }}
       className="h-16 flex-shrink-0 flex items-center justify-between gap-4 px-4 md:px-6 border-b transition-colors select-none z-30"
     >
@@ -125,7 +125,7 @@ export default function Topbar({
             <button
               type="button"
               onClick={onHamburgerClick}
-              className="w-9 h-9 rounded-xl bg-transparent border border-slate-800 cursor-pointer text-slate-400 hover:bg-slate-800 hover:text-white flex items-center justify-center transition-colors flex-shrink-0 md:hidden"
+              className="w-9 h-9 rounded-xl bg-transparent border border-[#1E354F] cursor-pointer text-slate-400 hover:bg-[#14283D] hover:text-white flex items-center justify-center transition-colors flex-shrink-0 md:hidden"
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -165,18 +165,18 @@ export default function Topbar({
             })
           }
           disabled={roomLoading}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#00e676] hover:bg-[#00c853] text-white font-extrabold text-xs cursor-pointer border-none shadow-md shadow-[#00e676]/25 transition-all active:scale-[0.98] disabled:opacity-50 flex-shrink-0"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#00D084] hover:bg-[#00E88F] text-[#04140F] font-black text-xs cursor-pointer border-none shadow-md shadow-[#00D084]/20 transition-all active:scale-[0.98] disabled:opacity-50 flex-shrink-0"
         >
-          <span className="whitespace-nowrap text-white font-black text-xs">
+          <span className="whitespace-nowrap text-[#04140F] font-black text-xs">
             {isFarsi ? "جلسه جدید" : "New Meeting"}
           </span>
-          <Plus className="w-3.5 h-3.5 text-white stroke-[3]" />
+          <Plus className="w-3.5 h-3.5 text-[#04140F] stroke-[3.5]" />
         </button>
 
         {/* Global Search Bar */}
         <form
           onSubmit={handleSearchSubmit}
-          className="w-full max-w-sm flex items-center justify-between bg-[#131B2E] border border-[#222F49] hover:border-slate-600 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 rounded-full px-3.5 py-1.5 transition-all shadow-inner"
+          className="w-full max-w-sm flex items-center justify-between bg-[#0D1C2E] border border-[#1E354F] hover:border-slate-500 focus-within:border-[#00D084] focus-within:ring-1 focus-within:ring-[#00D084]/50 rounded-full px-3.5 py-1.5 transition-all shadow-inner"
         >
           <input
             type="text"
@@ -188,7 +188,7 @@ export default function Topbar({
           />
           <button
             type="submit"
-            className="text-slate-400 hover:text-emerald-400 p-0.5 bg-transparent border-none cursor-pointer flex items-center justify-center ms-1.5 flex-shrink-0"
+            className="text-slate-400 hover:text-[#00D084] p-0.5 bg-transparent border-none cursor-pointer flex items-center justify-center ms-1.5 flex-shrink-0"
           >
             <Search className="w-4 h-4" />
           </button>
@@ -204,11 +204,11 @@ export default function Topbar({
               ref={bellRef}
               type="button"
               onClick={() => setShowInbox((p) => !p)}
-              className="relative w-9 h-9 rounded-xl border border-transparent hover:border-slate-800 bg-transparent text-slate-300 hover:bg-slate-800/80 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              className="relative w-9 h-9 rounded-xl border border-transparent hover:border-[#1E354F] bg-transparent text-slate-300 hover:bg-[#14283D] hover:text-white flex items-center justify-center transition-all cursor-pointer"
             >
               <Bell className="w-4 h-4" />
               {unreadCount > 0 && (
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full ring-2 ring-[#0B111E] animate-pulse" />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full ring-2 ring-[#08131F] animate-pulse" />
               )}
             </button>
           </Tooltip>
