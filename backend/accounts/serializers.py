@@ -524,6 +524,7 @@ class OrgContextSerializer(serializers.Serializer):
                 'name': org.name,
                 'slug': org.slug,
                 'logo': logo_url,
+                'branding': org.branding,
                 'invite_code': org.invite_code,
                 'is_suspended': org.is_suspended,
                 'suspension_reason': org.suspension_reason,
@@ -536,6 +537,16 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
         model = Organization
         fields = ('id', 'name', 'slug', 'type', 'is_active', 'logo', 'branding', 'created_at', 'approval_required_to_join', 'invite_code')
         read_only_fields = ('id', 'slug', 'type', 'is_active', 'created_at', 'invite_code')
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        request = self.context.get('request')
+        if instance.logo:
+            if request:
+                ret['logo'] = request.build_absolute_uri(instance.logo.url)
+            else:
+                ret['logo'] = instance.logo.url
+        return ret
 
 
 class OrgMemberSerializer(serializers.ModelSerializer):

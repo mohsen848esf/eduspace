@@ -6,6 +6,7 @@ export interface UserOrg {
   name: string;
   slug: string;
   role: string | null;
+  logo?: string | null;
 }
 
 export interface User {

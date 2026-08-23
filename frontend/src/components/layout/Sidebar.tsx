@@ -10,6 +10,7 @@ import { Icons } from "../../lib/constants/icons";
 import { useLocale } from "../../i18n/useLocale";
 import { useOrgContextStore } from "../../features/auth/store/orgContextStore";
 import { useQueryClient } from "@tanstack/react-query";
+import { getMediaUrl } from "../../lib/api/client";
 
 interface SidebarProps {
   activeId?: string;
@@ -27,7 +28,7 @@ export default function Sidebar({
   const isFarsi = language === "fa";
   const [collapsed] = useState(false);
   const { logout, user } = useAuthStore();
-  const { activeRole, hasAnyPermission } = useOrgPermission();
+  const { activeRole, hasAnyPermission, activeOrg: permActiveOrg } = useOrgPermission();
 
   const queryClient = useQueryClient();
   const { activeSlug, fetchOrgContext, setActiveSlug } = useOrgContextStore();
@@ -134,8 +135,8 @@ export default function Sidebar({
     return themes[index % themes.length];
   };
 
-  const activeOrg = user?.organizations?.find((o) => o.slug === activeSlug);
-  const activeOrgRole = activeOrg?.role || activeRole || (isFarsi ? "عضو" : "Member");
+  const activeOrg = permActiveOrg || user?.organizations?.find((o) => o.slug === activeSlug);
+  const activeOrgRole = (activeOrg && "role" in activeOrg ? activeOrg.role : null) || activeRole || (isFarsi ? "عضو" : "Member");
 
   const filterNavItem = (item: NavItem): boolean => {
     if (item.permissions && !hasAnyPermission(item.permissions)) return false;
@@ -243,8 +244,14 @@ export default function Sidebar({
         )}
       >
         <div className="flex items-center gap-3 w-full">
-          <div className="w-10 h-10 bg-[#00D084] rounded-xl flex items-center justify-center text-[#04140F] font-black text-xl flex-shrink-0 shadow-md shadow-[#00D084]/20">
-            {activeOrg ? (
+          <div className="w-10 h-10 bg-[#00D084] rounded-xl flex items-center justify-center text-[#04140F] font-black text-xl flex-shrink-0 shadow-md shadow-[#00D084]/20 overflow-hidden">
+            {activeOrg?.logo ? (
+              <img
+                src={getMediaUrl(activeOrg.logo)}
+                alt={activeOrg.name}
+                className="w-full h-full object-cover"
+              />
+            ) : activeOrg ? (
               <span className="uppercase">{activeOrg.name.charAt(0)}</span>
             ) : (
               <span>J</span>

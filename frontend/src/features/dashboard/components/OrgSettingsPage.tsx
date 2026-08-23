@@ -16,6 +16,7 @@ import Spinner from "../../../components/ui/Spinner";
 import { Switch } from "../../../components/ui";
 import ReportsExportWidget from "./ReportsExportWidget";
 import OrgAppearanceSettings from "../../organization/components/OrgAppearanceSettings";
+import { cn } from "../../../lib/utils";
 
 const parseUA = (ua: string) => {
   if (!ua) return "Unknown Device";
@@ -560,7 +561,7 @@ export default function OrgSettingsPage() {
 
   return (
     <AppShell title={isFarsi ? "تنظیمات سازمان" : "Organization Settings"}>
-      <div className="flex flex-col gap-6 max-w-5xl mx-auto">
+      <div className={cn("flex flex-col gap-6 mx-auto w-full", activeTab === "appearance" ? "max-w-7xl" : "max-w-5xl")}>
 
         {/* Tabs navigation */}
         <div className="flex border-b border-[var(--b)] gap-6 overflow-x-auto">

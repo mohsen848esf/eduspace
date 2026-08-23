@@ -10,6 +10,7 @@ import Badge from "@/components/ui/Badge";
 import { getBezierPath } from "../../utils/chart.utils";
 import type { Course, AcademyClass, Enrollment } from "../../types/crm.types";
 import type { Session } from "@/features/sessions/types";
+import { getMediaUrl } from "@/lib/api/client";
 
 export interface AdminDashboardViewProps {
   user?: any;
@@ -93,15 +94,23 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
         {/* Left in RTL: Academy Logo on left, Name & Slogan to its right */}
         <div className="flex items-center gap-3.5 self-stretch md:self-auto justify-end" dir="ltr">
-          <div className="w-12 h-12 rounded-2xl bg-[#00D084] flex items-center justify-center text-[#04140F] font-black text-2xl shadow-lg shadow-[#00D084]/25 flex-shrink-0">
-            {orgName.charAt(0).toUpperCase()}
+          <div className="w-12 h-12 rounded-2xl bg-[#00D084] flex items-center justify-center text-[#04140F] font-black text-2xl shadow-lg shadow-[#00D084]/25 flex-shrink-0 overflow-hidden">
+            {activeOrg?.logo ? (
+              <img
+                src={getMediaUrl(activeOrg.logo)}
+                alt={orgName}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              orgName.charAt(0).toUpperCase()
+            )}
           </div>
           <div className="flex flex-col text-left">
             <span className="text-base md:text-[17px] font-extrabold text-[#F2F7F5] leading-tight truncate">
               {orgName}
             </span>
             <span className="text-xs text-[#A3B7B0] font-medium mt-1 leading-none truncate">
-              English for Better Opportunities
+              {activeOrg?.branding?.slogan || "English for Better Opportunities"}
             </span>
           </div>
         </div>

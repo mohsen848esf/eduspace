@@ -13,6 +13,8 @@ import {
   generateBrandingMarkdownTemplate,
   parseBrandingMarkdown,
 } from "../utils/brandingMarkdown";
+import { getMediaUrl } from "../../../lib/api/client";
+import { useOrgContextStore } from "../../auth/store/orgContextStore";
 import {
   Upload,
   Download,
@@ -128,6 +130,10 @@ export default function OrgAppearanceSettings({
       );
       queryClient.invalidateQueries({ queryKey: ["activeOrganization"] });
       queryClient.invalidateQueries({ queryKey: ["orgContext"] });
+      queryClient.invalidateQueries({ queryKey: ["orgMembers"] });
+      if (organization.slug) {
+        useOrgContextStore.getState().fetchOrgContext(organization.slug);
+      }
       onSuccess?.();
     },
     onError: (err: any) => {
@@ -242,7 +248,7 @@ export default function OrgAppearanceSettings({
   return (
     <div className="w-full flex flex-col lg:flex-row gap-6 items-start pb-8">
       {/* ── 1. LEFT COLUMN: Visual Identity & Branding Controls ── */}
-      <div className="w-full lg:w-[420px] flex-shrink-0 bg-[#071E18] border border-[#164638] rounded-3xl p-5 md:p-6 flex flex-col gap-6 shadow-xl text-[#F2F7F5]">
+      <div className="w-full lg:w-[440px] flex-shrink-0 bg-[#071E18] border border-[#164638] rounded-3xl p-5 md:p-6 flex flex-col gap-6 shadow-xl text-[#F2F7F5] max-h-[calc(100vh-160px)] overflow-y-auto custom-scrollbar sticky top-4">
         {/* Header Title */}
         <div className="flex flex-col border-b border-[#164638] pb-4">
           <div className="flex items-center gap-2">
@@ -268,7 +274,7 @@ export default function OrgAppearanceSettings({
               <div className="w-12 h-12 rounded-xl bg-[#00D084] flex items-center justify-center text-[#04140F] font-black text-xl flex-shrink-0 shadow-md shadow-[#00D084]/20 overflow-hidden">
                 {logoPreview ? (
                   <img
-                    src={logoPreview}
+                    src={getMediaUrl(logoPreview)}
                     alt={organization.name}
                     className="w-full h-full object-cover"
                   />
@@ -588,7 +594,7 @@ export default function OrgAppearanceSettings({
       </div>
 
       {/* ── 2. RIGHT COLUMN: Real-Time Interactive Live Mini Dashboard Preview ── */}
-      <div className="flex-1 w-full min-w-0 flex flex-col gap-3">
+      <div className="flex-1 w-full min-w-0 flex flex-col gap-3 sticky top-4 self-start">
         {/* Preview Badge & Info */}
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
@@ -661,13 +667,21 @@ export default function OrgAppearanceSettings({
 
               <div className="flex items-center gap-2.5" dir="ltr">
                 <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg shadow-md flex-shrink-0"
+                  className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg shadow-md flex-shrink-0 overflow-hidden"
                   style={{
                     backgroundColor: previewTokens["--brand"],
                     color: previewTokens["--brand-text"],
                   }}
                 >
-                  {organization.name.charAt(0).toUpperCase()}
+                  {logoPreview ? (
+                    <img
+                      src={getMediaUrl(logoPreview)}
+                      alt={organization.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    organization.name.charAt(0).toUpperCase()
+                  )}
                 </div>
                 <div className="flex flex-col text-left">
                   <span

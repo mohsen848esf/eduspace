@@ -17,6 +17,22 @@ const getApiUrl = (): string => {
   return `${origin}/api`;
 };
 
+export const getMediaUrl = (path?: string | null): string => {
+  if (!path) return "";
+  if (
+    path.startsWith("http://") ||
+    path.startsWith("https://") ||
+    path.startsWith("blob:") ||
+    path.startsWith("data:")
+  ) {
+    return path;
+  }
+  const apiBase = getApiUrl();
+  const hostBase = apiBase.replace(/\/api\/?$/, "");
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return `${hostBase}${cleanPath}`;
+};
+
 const client = axios.create({
   baseURL: getApiUrl(),
   headers: { "Content-Type": "application/json" },
