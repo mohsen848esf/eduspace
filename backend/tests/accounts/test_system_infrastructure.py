@@ -68,8 +68,8 @@ class SystemInfrastructureTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
 
     def test_celery_task_execution(self):
-        res_email = send_email_task.delay('test@example.com', 'subject', 'body')
+        res_email = send_email_task.apply(args=['test@example.com', 'subject', 'body'])
         self.assertEqual(res_email.result, "Email sent to test@example.com")
 
-        res_sms = send_sms_task.delay('123456789', 'hello')
+        res_sms = send_sms_task.apply(args=['123456789', 'hello'])
         self.assertEqual(res_sms.result, "SMS sent to 123456789")

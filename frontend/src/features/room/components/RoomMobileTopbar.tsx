@@ -10,6 +10,8 @@ import { Icons } from "../../../lib/constants/icons";
 import { cn } from "../../../lib/utils";
 import RecordControls from "../../recordings/components/room/RecordControls";
 import { useRoomRecording } from "../../recordings/hooks/useRoomRecording";
+import { useLobbyHost } from "../hooks/useLobbyHost";
+import { LobbyPanel } from "./LobbyPanel";
 
 function useDuration() {
   const [seconds, setSeconds] = useState(0);
@@ -24,23 +26,9 @@ function useDuration() {
   return `${m}:${s}`;
 }
 
-/**
- * Mobile in-call topbar.
- *
- * Single 12px-tall row that fits a 320px viewport without wrapping:
- *   [● Room name (truncate) | timer | 👥N · ⋯]
- *
- * The overflow ⋯ button opens a small popup with the room code (copy),
- * record controls (host only), and a tiny info block. This keeps the
- * always-visible chrome lean — desktop's Topbar is much busier and was
- * never going to fit a phone width.
- *
- * Recording state uses a single small red dot with no "REC" label, per
- * the user's request.
- */
 export default function RoomMobileTopbar() {
   const { t } = useTranslation("room");
-  const { roomCode, roomName, isHost } = useRoomStore();
+  const { roomCode, roomName, isHost, isCoHost } = useRoomStore();
   const remote = useParticipants();
   const { localParticipant } = useLocalParticipant();
   const total = new Set([
@@ -49,8 +37,15 @@ export default function RoomMobileTopbar() {
   ]).size;
   const duration = useDuration();
   const [showMenu, setShowMenu] = useState(false);
+  const [lobbyPanelOpen, setLobbyPanelOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const canModerate = isHost || isCoHost;
+  const lobby = useLobbyHost({
+    roomCode: roomCode || "",
+    canModerate,
+  });
 
   const recording = useRoomRecording({ roomCode, isHost });
 
@@ -101,6 +96,43 @@ export default function RoomMobileTopbar() {
         <span aria-hidden>👥</span>
         {total}
       </span>
+
+      {/* Host / Co-Host Waiting Room Button */}
+      {canModerate && (
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setLobbyPanelOpen((prev) => !prev)}
+            aria-label={t("lobby.hostPanelTitle", "افراد در انتظار ورود")}
+            className={cn(
+              "relative w-7 h-7 rounded-lg flex items-center justify-center border transition-all cursor-pointer",
+              lobby.count > 0
+                ? "bg-indigo-600/20 border-indigo-500/50 text-indigo-300"
+                : "bg-transparent border-transparent text-[var(--t3)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
+            )}
+          >
+            <span className="scale-90">{Icons.shield}</span>
+            {lobby.count > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center animate-bounce shadow-md">
+                {lobby.count}
+              </span>
+            )}
+          </button>
+
+          <LobbyPanel
+            isOpen={lobbyPanelOpen}
+            onClose={() => setLobbyPanelOpen(false)}
+            requests={lobby.requests}
+            admittingId={lobby.admittingId}
+            denyingId={lobby.denyingId}
+            isBatchAction={lobby.isBatchAction}
+            onAdmit={lobby.admit}
+            onDeny={lobby.deny}
+            onAdmitAll={lobby.admitAll}
+            onDenyAll={lobby.denyAll}
+          />
+        </div>
+      )}
 
       {/* Overflow menu */}
       <div ref={menuRef} className="relative">

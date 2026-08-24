@@ -70,7 +70,7 @@ export default function JoinOrgPage() {
   }, [orgSlug, isFarsi, navigate]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--s0)] text-[var(--t1)] platform-theme p-6">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--s0)] text-[var(--t1)] p-6">
       <div className="bg-[var(--s2)] border border-[var(--b)] rounded-2xl p-8 max-w-md w-full text-center shadow-lg flex flex-col items-center gap-6">
         <h2 className="text-xl font-bold text-[var(--t1)]">
           {isFarsi ? "عضویت در آکادمی" : "Joining Academy"}

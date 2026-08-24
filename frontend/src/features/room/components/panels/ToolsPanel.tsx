@@ -28,12 +28,18 @@ export default function ToolsPanel() {
     minimizeWhiteboard,
     restoreWhiteboard,
   } = useRoomWhiteboard();
-  const { isHost } = useRoomStore();
+  const {
+    isHost,
+    activePresentation,
+    isPresentationMinimized,
+    setIsPresentationMinimized,
+  } = useRoomStore();
   const [showSelector, setShowSelector] = useState(false);
 
   const isGameActive = gameBoard.isActive;
   const isWhiteboardActive = whiteboardState.isActive;
   const isWhiteboardMinimized = whiteboardState.isMinimized;
+  const isPresActive = !!activePresentation;
 
   const gameTool = isGameActive
     ? {
@@ -102,20 +108,57 @@ export default function ToolsPanel() {
         },
       ];
 
+  const presentationTools = isPresActive
+    ? [
+        isPresentationMinimized
+          ? {
+              icon: "📑",
+              name: t("tools.viewPresentation", "مشاهده ارائه فعال"),
+              desc: t("tools.viewPresentationDesc", "نمایش مجدد اسناد و اسلایدها روی صفحه"),
+              status: "ready" as const,
+              onClick: () => setIsPresentationMinimized(false),
+              bg: "bg-[rgba(99,102,241,0.15)]",
+              disabled: false,
+            }
+          : {
+              icon: "🗕",
+              name: t("tools.hidePresentation", "بستن ارائه از روی صفحه"),
+              desc: t("tools.hidePresentationDesc", "مخفی‌سازی محلی (ارائه برای دیگران فعال می‌ماند)"),
+              status: "ready" as const,
+              onClick: () => setIsPresentationMinimized(true),
+              bg: "bg-[rgba(148,163,184,0.15)]",
+              disabled: false,
+            },
+        {
+          icon: "📂",
+          name: t("tools.changePresentation", "انتخاب فایل جدید برای ارائه"),
+          desc: t("tools.changePresentationDesc", "بارگذاری سند جدید یا تعویض فایل جاری"),
+          status: "ready" as const,
+          onClick: () => {
+            window.dispatchEvent(new CustomEvent("eduspace:open-presentation-modal"));
+          },
+          bg: "bg-[rgba(99,102,241,0.12)]",
+          disabled: false,
+        },
+      ]
+    : [
+        {
+          icon: "📑",
+          name: t("tools.presentationShare", "اشتراک و ارائه فایل و اسلاید"),
+          desc: t("tools.presentationShareDesc", "بارگذاری و نمایش اسناد PDF، تصاویر و اسلایدها روی استیج"),
+          status: "ready" as const,
+          onClick: () => {
+            window.dispatchEvent(new CustomEvent("eduspace:open-presentation-modal"));
+          },
+          bg: "bg-[rgba(99,102,241,0.15)]",
+          disabled: false,
+        },
+      ];
+
   const tools = [
     gameTool,
     ...whiteboardTools,
-    {
-      icon: "📑",
-      name: t("tools.presentationShare", "اشتراک و ارائه فایل"),
-      desc: t("tools.presentationShareDesc", "بارگذاری و نمایش اسناد PDF، تصاویر و اسلایدها روی استیج"),
-      status: "ready" as const,
-      onClick: () => {
-        window.dispatchEvent(new CustomEvent("eduspace:open-presentation-modal"));
-      },
-      bg: "bg-[rgba(99,102,241,0.15)]",
-      disabled: false,
-    },
+    ...presentationTools,
     {
       icon: "🤖",
       name: t("tools.aiSummary"),

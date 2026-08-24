@@ -41,25 +41,25 @@ export const LobbyWaitingScreen: React.FC<LobbyWaitingScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#0b111e] flex flex-col items-center justify-center p-4 text-[#f8fafc] relative overflow-hidden select-none font-sans platform-theme">
+    <div className="min-h-screen w-full bg-[var(--s0)] flex flex-col items-center justify-center p-4 text-[var(--t1)] relative overflow-hidden select-none font-sans">
       {/* Background ambient glowing gradient orbs */}
-      <div className="absolute top-1/4 -left-20 w-80 h-80 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-violet-600/15 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/4 -left-20 w-80 h-80 bg-[var(--brand)]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-[var(--brand)]/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Main card */}
-      <div className="relative z-10 w-full max-w-md bg-slate-900/90 border border-white/10 backdrop-blur-2xl rounded-3xl p-8 shadow-2xl text-center flex flex-col items-center animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative z-10 w-full max-w-md bg-[var(--s1)] border border-[var(--b)] backdrop-blur-2xl rounded-3xl p-8 shadow-2xl text-center flex flex-col items-center animate-in fade-in zoom-in-95 duration-200">
         {/* Room Header Info */}
         <div className="mb-6 flex flex-col items-center">
-          <span className="text-xs font-semibold px-3 py-1 rounded-full bg-white/10 text-indigo-300 border border-white/10 tracking-wide uppercase mb-2">
+          <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[var(--brand-soft)] text-[var(--brand-text)] border border-[var(--b)] tracking-wide uppercase mb-2">
             {roomCode}
           </span>
-          <h2 className="text-lg font-bold text-gray-100 line-clamp-1">
+          <h2 className="text-lg font-bold text-[var(--t1)] line-clamp-1">
             {roomName || t("lobby.defaultRoomTitle", "اتاق گفتگو")}
           </h2>
           {displayName && (
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-[var(--t3)] mt-0.5">
               {t("lobby.asUser", "ورود به عنوان:")}{" "}
-              <span className="text-gray-200 font-medium">{displayName}</span>
+              <span className="text-[var(--t2)] font-medium">{displayName}</span>
             </p>
           )}
         </div>
@@ -219,7 +219,7 @@ export const LobbyWaitingScreen: React.FC<LobbyWaitingScreenProps> = ({
         )}
 
         {/* Action Buttons Footer */}
-        <div className="w-full mt-6 pt-6 border-t border-white/10 flex items-center gap-3">
+        <div className="w-full mt-6 pt-6 border-t border-[var(--b)] flex items-center gap-3">
           {(status === "expired" ||
             status === "denied" ||
             status === "network_error") &&
@@ -227,7 +227,7 @@ export const LobbyWaitingScreen: React.FC<LobbyWaitingScreenProps> = ({
               <button
                 type="button"
                 onClick={onRetry}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 transition-all cursor-pointer border-none flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 px-4 rounded-xl bg-[var(--brand)] hover:bg-[var(--brand-h)] text-[var(--brand-text)] text-xs font-semibold shadow-lg shadow-[var(--brand)]/20 transition-all cursor-pointer border-none flex items-center justify-center gap-2"
               >
                 <span>{t("common.retry", "تلاش دوباره")}</span>
               </button>
@@ -236,7 +236,7 @@ export const LobbyWaitingScreen: React.FC<LobbyWaitingScreenProps> = ({
           <button
             type="button"
             onClick={handleExit}
-            className="flex-1 py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/15 text-gray-300 hover:text-white text-xs font-semibold border border-white/10 transition-all cursor-pointer flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 px-4 rounded-xl bg-[var(--s2)] hover:bg-[var(--s3)] text-[var(--t2)] hover:text-[var(--t1)] text-xs font-semibold border border-[var(--b)] transition-all cursor-pointer flex items-center justify-center gap-2"
           >
             <span>{Icons.signOut}</span>
             <span>{t("lobby.leaveLobby", "ترک لابی / خروج")}</span>

@@ -19,28 +19,24 @@ export default function ThemeScopeController() {
   useEffect(() => {
     const path = location.pathname;
 
-    // 1. Core Call & Video Services
-    const isCallRoute = path.startsWith("/room");
-
-    // 2. Auth & Public Entry Routes
+    // 1. Auth & Public Entry Routes (Always platform scoped)
     const isAuthRoute =
       path === "/login" ||
       path === "/register" ||
       path.startsWith("/join") ||
       path === "/unauthorized";
 
-    // 3. User with No Organizations (Standalone Platform Personal Mode)
+    // 2. User Organization Context
     const hasOrg = Boolean(
       (user?.organizations && user.organizations.length > 0) ||
-        (activeSlug && activeSlug !== "no organization") ||
-        orgContext,
+        (activeSlug && activeSlug !== "no organization" && activeSlug !== "null") ||
+        orgContext?.organization,
     );
-    const isPersonalHome = path === "/dashboard" && !hasOrg;
 
-    const isPlatformScoped = isCallRoute || isAuthRoute || isPersonalHome;
+    const isPlatformScoped = isAuthRoute || !hasOrg;
 
     if (isPlatformScoped) {
-      // Force direct Platform Theme (Dark Navy or Light Slate #F8FAFC)
+      // Platform Personal / Non-Org Mode: Apply Platform Theme (Light or Dark)
       applyPlatformThemeToDOM(isDark ? "dark" : "light");
     } else {
       // Organization Workspace: Apply organization white-label theme
@@ -63,7 +59,7 @@ export default function ThemeScopeController() {
             : "light";
         }
       } else {
-        activeMode = isDark ? "dark-tinted" : "light";
+        activeMode = isDark ? "dark" : "light";
       }
 
       applyOrgThemeToDOM(branding, activeMode);

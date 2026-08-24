@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Button from "./Button";
 
@@ -10,8 +9,23 @@ interface ErrorScreenProps {
   resetErrorBoundary?: () => void;
 }
 
+const handleGoBack = () => {
+  if (typeof window !== "undefined") {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.href = "/dashboard";
+    }
+  }
+};
+
+const handleGoDashboard = () => {
+  if (typeof window !== "undefined") {
+    window.location.href = "/dashboard";
+  }
+};
+
 export function UnauthorizedScreen({ title, description }: ErrorScreenProps) {
-  const navigate = useNavigate();
   const { t } = useTranslation(["common", "dashboard"]);
 
   return (
@@ -31,14 +45,14 @@ export function UnauthorizedScreen({ title, description }: ErrorScreenProps) {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
           <Button
             variant="secondary"
-            onClick={() => navigate(-1)}
+            onClick={handleGoBack}
             className="w-full sm:w-auto"
           >
             {t("common:actions.goBack", "Go Back")}
           </Button>
           <Button
             variant="primary"
-            onClick={() => navigate("/dashboard")}
+            onClick={handleGoDashboard}
             className="w-full sm:w-auto"
           >
             {t("dashboard:nav.home", "Dashboard")}
@@ -50,7 +64,6 @@ export function UnauthorizedScreen({ title, description }: ErrorScreenProps) {
 }
 
 export function NotFoundScreen({ title, description }: ErrorScreenProps) {
-  const navigate = useNavigate();
   const { t } = useTranslation(["common", "dashboard"]);
 
   return (
@@ -73,14 +86,14 @@ export function NotFoundScreen({ title, description }: ErrorScreenProps) {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
           <Button
             variant="secondary"
-            onClick={() => navigate(-1)}
+            onClick={handleGoBack}
             className="w-full sm:w-auto"
           >
             {t("common:actions.goBack", "Go Back")}
           </Button>
           <Button
             variant="primary"
-            onClick={() => navigate("/dashboard")}
+            onClick={handleGoDashboard}
             className="w-full sm:w-auto"
           >
             {t("dashboard:nav.home", "Dashboard")}
@@ -92,7 +105,6 @@ export function NotFoundScreen({ title, description }: ErrorScreenProps) {
 }
 
 export function ServerErrorScreen({ error, resetErrorBoundary }: ErrorScreenProps) {
-  const navigate = useNavigate();
   const { t } = useTranslation(["common", "dashboard"]);
 
   const handleRetry = () => {
@@ -101,6 +113,13 @@ export function ServerErrorScreen({ error, resetErrorBoundary }: ErrorScreenProp
     } else {
       window.location.reload();
     }
+  };
+
+  const handleGoHome = () => {
+    if (resetErrorBoundary) {
+      resetErrorBoundary();
+    }
+    window.location.href = "/dashboard";
   };
 
   return (
@@ -135,10 +154,7 @@ export function ServerErrorScreen({ error, resetErrorBoundary }: ErrorScreenProp
           </Button>
           <Button
             variant="primary"
-            onClick={() => {
-              if (resetErrorBoundary) resetErrorBoundary();
-              navigate("/dashboard");
-            }}
+            onClick={handleGoHome}
             className="w-full sm:w-auto"
           >
             {t("dashboard:nav.home", "Dashboard")}

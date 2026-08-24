@@ -253,8 +253,9 @@ export interface GenerateOptions {
 }
 
 export function generateThemeTokens(options: GenerateOptions = {}): ThemeTokens {
-  const primaryHex = (options.primary || "#00D084").trim();
-  const secondaryHex = (options.secondary || "#FFB000").trim();
+  const isLightMode = options.mode === "light" || options.mode === "light-tinted";
+  const primaryHex = (options.primary || (isLightMode ? "#2563EB" : "#38BDF8")).trim();
+  const secondaryHex = (options.secondary || "#818CF8").trim();
   const mode: ThemeMode = options.mode || "dark-tinted";
 
   const { h, s } = hexToHsl(primaryHex);
@@ -262,10 +263,6 @@ export function generateThemeTokens(options: GenerateOptions = {}): ThemeTokens 
   const brandText = getContrastTextColor(primaryHex);
   const brandHover = hslToHex(h, s, Math.min(65, hexToHsl(primaryHex).l + 6));
   const brandSoft = `rgba(${hexToRgb(primaryHex).r}, ${hexToRgb(primaryHex).g}, ${hexToRgb(primaryHex).b}, 0.14)`;
-
-  // Always enforce the Platform Header isolation: Dark Navy #08131F
-  const platformHeaderBg = "#08131F";
-  const platformHeaderBorder = "#14283D";
 
   let tokens: ThemeTokens;
 
@@ -304,8 +301,8 @@ export function generateThemeTokens(options: GenerateOptions = {}): ThemeTokens 
         "--chart-grid": "#E2E8F0",
         "--chart-label": "#64748B",
 
-        "--header-bg": platformHeaderBg,
-        "--header-border": platformHeaderBorder,
+        "--header-bg": "#FFFFFF",
+        "--header-border": "#E2E8F0",
       };
       break;
     }
@@ -319,7 +316,7 @@ export function generateThemeTokens(options: GenerateOptions = {}): ThemeTokens 
         "--brand-text": brandText,
         "--brand-dark": hslToHex(h, 45, 12),
 
-        "--s0": hslToHex(h, Math.min(s * 0.35, 26), 97), // E.g., #F3F8F5 for Emerald
+        "--s0": hslToHex(h, Math.min(s * 0.35, 26), 97), // E.g., #F3F8F5
         "--s1": hslToHex(h, Math.min(s * 0.25, 20), 99), // #F7FBF9
         "--s2": "#FFFFFF",
         "--s3": hslToHex(h, Math.min(s * 0.35, 24), 96), // #EFF8F3
@@ -344,8 +341,8 @@ export function generateThemeTokens(options: GenerateOptions = {}): ThemeTokens 
         "--chart-grid": hslToHex(h, 25, 88),
         "--chart-label": hslToHex(h, 20, 48),
 
-        "--header-bg": platformHeaderBg,
-        "--header-border": platformHeaderBorder,
+        "--header-bg": hslToHex(h, Math.min(s * 0.25, 20), 99),
+        "--header-border": hslToHex(h, Math.min(s * 0.35, 28), 86),
       };
       break;
     }
@@ -384,8 +381,8 @@ export function generateThemeTokens(options: GenerateOptions = {}): ThemeTokens 
         "--chart-grid": "#222B35",
         "--chart-label": "#87939E",
 
-        "--header-bg": platformHeaderBg,
-        "--header-border": platformHeaderBorder,
+        "--header-bg": "#08131F",
+        "--header-border": "#14283D",
       };
       break;
     }
@@ -425,8 +422,8 @@ export function generateThemeTokens(options: GenerateOptions = {}): ThemeTokens 
         "--chart-grid": hslToHex(h, 25, 16), // #14382F
         "--chart-label": hslToHex(h, 10, 50),
 
-        "--header-bg": platformHeaderBg,
-        "--header-border": platformHeaderBorder,
+        "--header-bg": "#08131F",
+        "--header-border": "#14283D",
       };
       break;
     }

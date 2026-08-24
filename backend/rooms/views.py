@@ -503,6 +503,22 @@ def get_room(request, room_code):
         'lock_microphone': room.lock_microphone,
         'lock_camera': room.lock_camera,
         'lock_document_presentation': room.lock_document_presentation,
+        'active_presentation': (
+            {
+                'id': room.presentations.filter(is_active_on_stage=True).first().id,
+                'title': room.presentations.filter(is_active_on_stage=True).first().title,
+                'file_url': request.build_absolute_uri(room.presentations.filter(is_active_on_stage=True).first().file.url) if room.presentations.filter(is_active_on_stage=True).first().file else '',
+                'file_type': room.presentations.filter(is_active_on_stage=True).first().file_type,
+                'file_size_bytes': room.presentations.filter(is_active_on_stage=True).first().file_size_bytes,
+                'total_pages': room.presentations.filter(is_active_on_stage=True).first().total_pages,
+                'current_page': room.presentations.filter(is_active_on_stage=True).first().current_page,
+                'uploader_name': room.presentations.filter(is_active_on_stage=True).first().uploader_name,
+                'is_active_on_stage': True,
+                'created_at': room.presentations.filter(is_active_on_stage=True).first().created_at.isoformat(),
+            }
+            if room.presentations.filter(is_active_on_stage=True).exists()
+            else None
+        ),
     })
 
 

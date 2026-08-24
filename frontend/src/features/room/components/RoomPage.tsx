@@ -221,10 +221,12 @@ export default function RoomPage() {
   }, [preJoinDone]);
 
   useEffect(() => {
+    const isLeaving = useRoomStore.getState().isUserLeaving;
+    if (isLeaving || callEnded) return;
     if (!token && roomCode && preJoinDone && !isWaitingInLobby) {
       handleJoinAttempt();
     }
-  }, [roomCode, preJoinDone, token, isWaitingInLobby, handleJoinAttempt]);
+  }, [roomCode, preJoinDone, token, isWaitingInLobby, handleJoinAttempt, callEnded]);
 
   // Polling when waiting in lobby
   const { status: lobbyStatus, elapsedSeconds } = useLobbyWaiting({
@@ -306,7 +308,7 @@ export default function RoomPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--s0)] text-[var(--t1)] platform-theme gap-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--s0)] text-[var(--t1)] gap-4">
         <Spinner size="lg" />
         <p className="text-sm text-[var(--t2)]">{t("join.joining")}</p>
       </div>
@@ -315,7 +317,7 @@ export default function RoomPage() {
 
   if (error && !roomAccessError && !isWaitingInLobby) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--s0)] text-[var(--t1)] platform-theme gap-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--s0)] text-[var(--t1)] gap-4">
         <span className="text-4xl">⚠️</span>
         <p className="text-[var(--red)] text-sm">{error}</p>
         <button
@@ -338,7 +340,7 @@ export default function RoomPage() {
           setPreJoinDone(true);
         }}
         onCancel={() => {
-          setCallEnded(true);
+          leaveRoom();
         }}
       />
     );
@@ -346,14 +348,14 @@ export default function RoomPage() {
 
   if (!token || !livekitUrl) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--s0)] text-[var(--t1)] platform-theme">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--s0)] text-[var(--t1)]">
         <Spinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="w-screen h-screen bg-[var(--s0)] text-[var(--t1)] platform-theme overflow-hidden">
+    <div className="w-screen h-screen bg-[var(--s0)] text-[var(--t1)] overflow-hidden">
       <LiveKitRoom
         token={token}
         serverUrl={livekitUrl}
@@ -377,8 +379,10 @@ export default function RoomPage() {
         }}
         onDisconnected={() => {
           useBackgroundStore.getState().setBackground("none");
-          setCallEnded(true);
-          leaveRoom({ redirectTo: null });
+          const isLeaving = useRoomStore.getState().isUserLeaving;
+          if (!isLeaving) {
+            setCallEnded(true);
+          }
         }}
         style={{ height: "100vh", display: "flex", flexDirection: "column" }}
       >

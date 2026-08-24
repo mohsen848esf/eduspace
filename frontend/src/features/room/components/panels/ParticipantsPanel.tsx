@@ -16,6 +16,7 @@ import recordingsApi, {
 import InviteModal from "../InviteModal";
 import { getAvatarGradient, getInitials } from "./avatarHelpers";
 import { useHostControls } from "../../hooks/useHostControls";
+import { useLobbyHost } from "../../hooks/useLobbyHost";
 
 /**
  * Panel content listing the host and other participants.
@@ -38,6 +39,10 @@ export default function ParticipantsPanel() {
     canModerate,
     coHosts,
   } = useHostControls();
+  const lobby = useLobbyHost({
+    roomCode: roomCode || "",
+    canModerate,
+  });
   const [showInvite, setShowInvite] = useState(false);
   const [grants, setGrants] = useState<RecordingGrantUser[]>([]);
   const [grantBusy, setGrantBusy] = useState<string | null>(null);
@@ -358,6 +363,78 @@ export default function ParticipantsPanel() {
         <span>+</span>
         {t("sidebar.addPeople")}
       </button>
+
+      {/* Waiting Room (Lobby) Section for Moderators */}
+      {canModerate && lobby.count > 0 && (
+        <div className="mb-3 p-3 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 text-white space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span className="text-indigo-400 scale-90">{Icons.shield}</span>
+              <span className="text-xs font-bold text-indigo-100">
+                {t("lobby.waitingParticipants", "افراد در انتظار ورود")}
+              </span>
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500 text-white">
+                {lobby.count}
+              </span>
+            </div>
+
+            {lobby.count >= 2 && (
+              <button
+                type="button"
+                disabled={lobby.isBatchAction}
+                onClick={lobby.admitAll}
+                className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold border-none cursor-pointer disabled:opacity-50 transition-colors"
+              >
+                {t("lobby.admitAll", "تأیید همه")}
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 scrollbar-none">
+            {lobby.requests.map((req) => (
+              <div
+                key={req.id}
+                className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/10 gap-2"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center justify-center text-[10px] font-bold shrink-0">
+                    {req.display_name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-xs font-medium text-gray-200 truncate">
+                    {req.display_name}
+                  </span>
+                  {req.is_guest && (
+                    <span className="px-1 py-0.5 rounded text-[8px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 shrink-0">
+                      {t("lobby.guestBadge", "مهمان")}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    disabled={lobby.admittingId === req.id || lobby.isBatchAction}
+                    onClick={() => lobby.admit(req.id)}
+                    title={t("lobby.admit", "تأیید")}
+                    className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs border-none cursor-pointer disabled:opacity-50"
+                  >
+                    {Icons.check}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={lobby.denyingId === req.id || lobby.isBatchAction}
+                    onClick={() => lobby.deny(req.id)}
+                    title={t("lobby.deny", "رد")}
+                    className="p-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs cursor-pointer disabled:opacity-50"
+                  >
+                    {Icons.x}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Host Section */}
       {hosts.length > 0 && (

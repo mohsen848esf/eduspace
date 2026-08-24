@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRoomContext, useLocalParticipant } from "@livekit/components-react";
 import { useRoomStore } from "../../store/roomStore";
 import { roomApi } from "../../api/room.api";
+import { Tooltip } from "../../../../components/ui/Tooltip";
 import { cn } from "../../../../lib/utils";
 import toast from "react-hot-toast";
+import { Minus, Maximize2, Minimize2, ExternalLink } from "lucide-react";
 
 export const PresentationStage: React.FC = () => {
   const room = useRoomContext();
@@ -12,6 +14,7 @@ export const PresentationStage: React.FC = () => {
     roomCode,
     activePresentation,
     setActivePresentation,
+    setIsPresentationMinimized,
     setPresentationCurrentPage,
     isHost,
     isCoHost,
@@ -58,6 +61,14 @@ export const PresentationStage: React.FC = () => {
     },
     [activePresentation, roomCode, room, setPresentationCurrentPage],
   );
+
+  // Minimize presentation
+  const handleMinimize = useCallback(() => {
+    setIsPresentationMinimized(true);
+    toast("ارائه فایل کوچک شد. از منوی ابزارها می‌توانید آن را مجدداً باز کنید.", {
+      icon: "🗕",
+    });
+  }, [setIsPresentationMinimized]);
 
   // Stop presentation
   const handleStopPresentation = useCallback(async () => {
@@ -112,35 +123,6 @@ export const PresentationStage: React.FC = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isPresenter, activePresentation, handlePageChange]);
 
-  // Listen to LiveKit data channel for presentation updates
-  useEffect(() => {
-    if (!room) return;
-
-    const handleData = (payload: Uint8Array) => {
-      try {
-        const decoder = new TextDecoder();
-        const data = JSON.parse(decoder.decode(payload));
-
-        if (data.type === "PRESENTATION_PAGE_CHANGE") {
-          if (activePresentation && activePresentation.id === data.docId) {
-            setPresentationCurrentPage(data.currentPage);
-          }
-        } else if (data.type === "PRESENTATION_START") {
-          setActivePresentation(data.document);
-        } else if (data.type === "PRESENTATION_STOP") {
-          setActivePresentation(null);
-        }
-      } catch {
-        /* ignore invalid data packets */
-      }
-    };
-
-    room.on("dataReceived", handleData);
-    return () => {
-      room.off("dataReceived", handleData);
-    };
-  }, [room, activePresentation, setPresentationCurrentPage, setActivePresentation]);
-
   if (!activePresentation) return null;
 
   const isPdf = activePresentation.file_type === "pdf";
@@ -155,64 +137,90 @@ export const PresentationStage: React.FC = () => {
       )}
     >
       {/* Top Header Bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-slate-900/90 backdrop-blur-md border-b border-white/10 text-white z-20">
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="text-xl">
+      <div className="flex items-center justify-between px-3 sm:px-4 py-2 bg-slate-900/90 backdrop-blur-md border-b border-white/10 text-white z-20 gap-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="text-xl shrink-0">
             {isPdf ? "📄" : isImage ? "🖼️" : "📊"}
           </span>
           <div className="flex flex-col min-w-0">
             <span className="text-xs font-bold truncate text-slate-100">
               {activePresentation.title}
             </span>
-            <span className="text-[10px] text-slate-400">
+            <span className="text-[10px] text-slate-400 truncate">
               ارائه‌دهنده: {activePresentation.uploader_name}
             </span>
           </div>
         </div>
 
         {/* Zoom & Screen Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Zoom controls */}
           <div className="flex items-center bg-white/5 rounded-xl border border-white/10 px-1 py-0.5 text-xs">
             <button
               type="button"
               onClick={() => setZoom((z) => Math.max(50, z - 20))}
-              className="px-2 py-1 hover:text-indigo-400 cursor-pointer font-bold"
+              className="px-2 py-1 hover:text-indigo-400 cursor-pointer font-bold border-none bg-transparent text-white"
               title="بزرگنمایی کمتر"
             >
               -
             </button>
-            <span className="px-1.5 text-[11px] text-gray-300 font-mono">
+            <span className="px-1 text-[11px] text-gray-300 font-mono">
               {zoom}%
             </span>
             <button
               type="button"
               onClick={() => setZoom((z) => Math.min(200, z + 20))}
-              className="px-2 py-1 hover:text-indigo-400 cursor-pointer font-bold"
+              className="px-2 py-1 hover:text-indigo-400 cursor-pointer font-bold border-none bg-transparent text-white"
               title="بزرگنمایی بیشتر"
             >
               +
             </button>
           </div>
 
+          {/* Open in new tab link */}
+          <Tooltip content="مشاهده فایل در برگه جدید">
+            <a
+              href={activePresentation.file_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 transition-colors flex items-center justify-center text-xs"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          </Tooltip>
+
           {/* Fullscreen Button */}
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 cursor-pointer transition-colors"
-            title="تمام صفحه"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-            </svg>
-          </button>
+          <Tooltip content={isFullscreen ? "خروج از تمام صفحه" : "تمام صفحه"}>
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 cursor-pointer transition-colors flex items-center justify-center"
+            >
+              {isFullscreen ? (
+                <Minimize2 className="w-4 h-4" />
+              ) : (
+                <Maximize2 className="w-4 h-4" />
+              )}
+            </button>
+          </Tooltip>
+
+          {/* Minimize Button */}
+          <Tooltip content="کوچک‌نمایی و بستن از روی صفحه (ارائه برای دیگران فعال می‌ماند)">
+            <button
+              type="button"
+              onClick={handleMinimize}
+              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 cursor-pointer transition-colors flex items-center justify-center"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
+          </Tooltip>
 
           {/* Stop Presentation (Presenter or Moderator only) */}
           {(isPresenter || canModerate) && (
             <button
               type="button"
               onClick={handleStopPresentation}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-all active:scale-95 shadow-md shadow-rose-950/40"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-all active:scale-95 shadow-md shadow-rose-950/40 border-none"
             >
               <span>بستن ارائه</span>
             </button>
@@ -221,16 +229,16 @@ export const PresentationStage: React.FC = () => {
       </div>
 
       {/* Main Presentation Viewport */}
-      <div className="relative flex-1 flex items-center justify-center overflow-auto p-4 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+      <div className="relative flex-1 flex items-center justify-center overflow-auto p-2 sm:p-4 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
         {isPdf ? (
           <div
-            className="flex items-center justify-center transition-transform duration-150 ease-out"
+            className="flex items-center justify-center transition-transform duration-150 ease-out w-full h-full"
             style={{ transform: `scale(${zoom / 100})` }}
           >
             <iframe
               src={`${activePresentation.file_url}#page=${activePresentation.current_page}&toolbar=0&navpanes=0`}
               title={activePresentation.title}
-              className="w-[850px] h-[600px] max-w-[90vw] max-h-[75vh] rounded-2xl shadow-2xl border border-white/10 bg-white"
+              className="w-full max-w-[1200px] h-[78vh] rounded-2xl shadow-2xl border border-white/10 bg-white"
             />
           </div>
         ) : (

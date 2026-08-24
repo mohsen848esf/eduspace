@@ -28,6 +28,7 @@ import InCallPermissionNotification from "./InCallPermissionNotification";
 import PresentationStage from "./presentation/PresentationStage";
 import PresentationUploadModal from "./presentation/PresentationUploadModal";
 import { useInCallPermissions } from "../hooks/useInCallPermissions";
+import { usePresentationSync } from "../hooks/usePresentationSync";
 import { cn } from "../../../lib/utils";
 import { type LayoutMode } from "../store/roomLayoutStore";
 
@@ -116,9 +117,11 @@ export default function UnifiedRoomShell({
       window.removeEventListener("eduspace:open-people-tab", handler);
   }, [isMobile, controls.toggleSidebar, setActivePanel]);
 
-  const { isHost, isCoHost, activePresentation } = useRoomStore();
+  const { isHost, isCoHost, activePresentation, isPresentationMinimized } =
+    useRoomStore();
   const canModerate = isHost || isCoHost;
   const inCallPermissions = useInCallPermissions();
+  usePresentationSync();
   const [presentationModalOpen, setPresentationModalOpen] = useState(false);
 
   // Listen to open-presentation-modal event
@@ -140,7 +143,7 @@ export default function UnifiedRoomShell({
 
   return (
     <>
-      <div className="relative flex flex-col w-full h-full platform-theme text-[var(--t1)]">
+      <div className="relative flex flex-col w-full h-full text-[var(--t1)]">
         {/* Topbar */}
         {isMobile ? <RoomMobileTopbar /> : <RoomTopbar />}
 
@@ -162,7 +165,7 @@ export default function UnifiedRoomShell({
               />
             )}
 
-            {activePresentation ? (
+            {activePresentation && !isPresentationMinimized ? (
               <PresentationStage />
             ) : game.gameBoard.isActive ? (
               <GameBoard
@@ -184,7 +187,7 @@ export default function UnifiedRoomShell({
 
             <RoomRecordingBadge
               className={
-                activePresentation ||
+                (activePresentation && !isPresentationMinimized) ||
                 game.gameBoard.isActive ||
                 (whiteboard.whiteboard.isActive && !whiteboard.whiteboard.isMinimized)
                   ? "top-14 end-3"

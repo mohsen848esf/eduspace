@@ -28,6 +28,8 @@ interface RoomState {
   canUseMicrophone: boolean;
   canUploadPresentation: boolean;
   activePresentation: PresentationDocument | null;
+  isPresentationMinimized: boolean;
+  isUserLeaving: boolean;
   presentationsList: PresentationDocument[];
   mutedByHost: Set<string>;
   setMutedByHost: (identity: string, muted: boolean) => void;
@@ -35,7 +37,9 @@ interface RoomState {
   setCoHosts: (coHosts: string[]) => void;
   addCoHost: (identity: string) => void;
   removeCoHost: (identity: string) => void;
+  setIsUserLeaving: (isLeaving: boolean) => void;
   setActivePresentation: (doc: PresentationDocument | null) => void;
+  setIsPresentationMinimized: (minimized: boolean) => void;
   setPresentationsList: (list: PresentationDocument[]) => void;
   setPresentationCurrentPage: (page: number) => void;
   setMediaPermissions: (perms: {
@@ -116,6 +120,8 @@ export const useRoomStore = create<RoomState>((set) => ({
   canUseMicrophone: true,
   canUploadPresentation: false,
   activePresentation: null,
+  isPresentationMinimized: false,
+  isUserLeaving: false,
   presentationsList: [],
   mutedByHost: new Set<string>(),
   setMutedByHost: (identity, muted) =>
@@ -137,7 +143,11 @@ export const useRoomStore = create<RoomState>((set) => ({
     set((state) => ({
       coHosts: state.coHosts.filter((h) => h !== identity),
     })),
-  setActivePresentation: (doc) => set({ activePresentation: doc }),
+  setIsUserLeaving: (isUserLeaving) => set({ isUserLeaving }),
+  setActivePresentation: (doc) =>
+    set({ activePresentation: doc, isPresentationMinimized: false }),
+  setIsPresentationMinimized: (minimized) =>
+    set({ isPresentationMinimized: minimized }),
   setPresentationsList: (list) => set({ presentationsList: list }),
   setPresentationCurrentPage: (page) =>
     set((state) => {
@@ -270,6 +280,8 @@ export const useRoomStore = create<RoomState>((set) => ({
       canUseMicrophone: true,
       canUploadPresentation: false,
       activePresentation: null,
+      isPresentationMinimized: false,
+      isUserLeaving: false,
       presentationsList: [],
     }),
 }));

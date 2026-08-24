@@ -71,8 +71,8 @@ export const applyPlatformThemeToDOM = (mode: "dark" | "light" = "dark") => {
           "--t1": "#0F172A",
           "--t2": "#475569",
           "--t3": "#64748B",
-          "--header-bg": "#08131F",
-          "--header-border": "#14283D",
+          "--header-bg": "#FFFFFF",
+          "--header-border": "#E2E8F0",
         }
       : {
           "--brand": "#38BDF8",
@@ -136,9 +136,10 @@ export const applyOrgThemeToDOM = (
   const root = document.documentElement;
 
   const mode = modeOverride || branding?.default_theme || "dark-tinted";
+  const isLight = mode.startsWith("light");
   const tokens = generateThemeTokens({
-    primary: branding?.primary_color || "#00D084",
-    secondary: branding?.secondary_color || "#FFB000",
+    primary: branding?.primary_color || (isLight ? "#2563EB" : "#38BDF8"),
+    secondary: branding?.secondary_color || "#818CF8",
     mode,
     customTokens: branding?.custom_tokens,
   });

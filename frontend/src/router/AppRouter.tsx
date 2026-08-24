@@ -47,8 +47,8 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
 
 export default function AppRouter() {
   return (
-    <ErrorBoundary>
-      <BrowserRouter>
+    <BrowserRouter>
+      <ErrorBoundary>
         <ThemeScopeController />
         <AppInitializer>
           <NotificationProvider />
@@ -90,7 +90,7 @@ export default function AppRouter() {
             </Routes>
           </Suspense>
         </AppInitializer>
-      </BrowserRouter>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </BrowserRouter>
   );
 }

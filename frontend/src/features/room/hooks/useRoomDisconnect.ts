@@ -36,6 +36,7 @@ export function useRoomDisconnect() {
 
   const disconnect = useCallback(
     async ({ stopRecordingFirst = false }: DisconnectOptions = {}) => {
+      useRoomStore.getState().setIsUserLeaving(true);
       const recordingStore = useActiveRecordingStore.getState();
 
       // Capture the in-flight token NOW (before we tear anything down).

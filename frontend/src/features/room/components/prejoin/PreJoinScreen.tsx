@@ -100,7 +100,7 @@ export default function PreJoinScreen({
   };
 
   return (
-    <div className="min-h-screen bg-[var(--s0)] text-[var(--t1)] platform-theme flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
+    <div className="min-h-screen bg-[var(--s0)] text-[var(--t1)] flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
       <div className="w-full max-w-5xl mx-auto space-y-6">
         {/* Main 2-Column Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">

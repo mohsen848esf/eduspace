@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Icons } from "../../../lib/constants/icons";
 import { cn } from "../../../lib/utils";
@@ -30,18 +30,46 @@ export const LobbyPanel: React.FC<LobbyPanelProps> = ({
   onDenyAll,
 }) => {
   const { t } = useTranslation("room");
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click or Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   return (
     <div
+      ref={panelRef}
       className={cn(
-        "absolute bottom-[76px] right-6 z-[100] w-96 max-w-[calc(100vw-2rem)]",
-        "bg-slate-900/95 backdrop-blur-2xl border border-white/15 rounded-3xl shadow-2xl p-4 text-white animate-in fade-in zoom-in-95 duration-150 select-none flex flex-col max-h-[500px]",
+        "absolute bottom-full mb-3 end-0 z-[100] w-[380px] max-w-[calc(100vw-1.5rem)]",
+        "bg-slate-900/95 backdrop-blur-2xl border border-white/15 rounded-3xl shadow-2xl p-4 text-white animate-in fade-in zoom-in-95 duration-150 select-none flex flex-col max-h-[480px]",
       )}
       style={{
         boxShadow:
-          "0 25px 50px -12px rgba(0,0,0,0.7), 0 0 25px rgba(99,102,241,0.25)",
+          "0 25px 50px -12px rgba(0,0,0,0.75), 0 0 25px rgba(99,102,241,0.25)",
       }}
     >
       {/* Header */}
@@ -59,6 +87,7 @@ export const LobbyPanel: React.FC<LobbyPanelProps> = ({
         <button
           type="button"
           onClick={onClose}
+          aria-label={t("common:actions.close", "بستن")}
           className="text-gray-400 hover:text-white text-xs p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
         >
           {Icons.x}

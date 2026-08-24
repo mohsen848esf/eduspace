@@ -745,16 +745,6 @@ export default function RoomControls({
         />
 
         <CtrlBtn
-          icon={<span className="text-lg leading-none">📑</span>}
-          label="ارائه فایل"
-          tooltip="اشتراک و ارائه فایل و اسلاید"
-          onClick={() => {
-            window.dispatchEvent(new CustomEvent("eduspace:open-presentation-modal"));
-          }}
-          size={size}
-        />
-
-        <CtrlBtn
           icon={Icons.settings}
           label={t("controls.settings")}
           tooltip={t("tooltips.settings")}

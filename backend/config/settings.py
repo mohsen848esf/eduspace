@@ -47,7 +47,10 @@ MIDDLEWARE = [
     'sys_admin.middleware.SuspensionMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'config.media_middleware.MediaFrameSecurityMiddleware',
 ]
+
+X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 ROOT_URLCONF = 'config.urls'
 

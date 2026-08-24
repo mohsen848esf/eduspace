@@ -23,8 +23,21 @@ def run():
     org_dandan, _ = Organization.objects.get_or_create(slug='dandan', defaults={
         'name': 'dandan',
         'type': 'organization',
-        'owner': User.objects.get(id=1)
+        'owner': User.objects.get(id=1),
+        'branding': {
+            'primary_color': '#00D084',
+            'secondary_color': '#FFB000',
+            'default_theme': 'dark-tinted',
+            'is_tinted': True,
+        }
     })
+    org_dandan.branding = {
+        'primary_color': '#00D084',
+        'secondary_color': '#FFB000',
+        'default_theme': 'dark-tinted',
+        'is_tinted': True,
+    }
+    org_dandan.save()
 
     # Roles
     student_role, _ = Role.objects.get_or_create(name='Student', organization=None)

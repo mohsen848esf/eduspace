@@ -93,18 +93,29 @@ class AuthViewsTest(APITestCase):
         self.assertEqual(res.data, [])
 
     def test_search_users_success(self):
+        from django.core.cache import cache
+        cache.clear()
+        from accounts.models import Organization, OrgMember, Role, Permission
+        self.user.is_superuser = True
+        self.user.save()
+
+        org = Organization.objects.create(name="Search Org", slug="search-org", owner=self.user)
+        student_role, _ = Role.objects.get_or_create(name="Student", organization=org)
+        OrgMember.objects.create(user=self.user, organization=org, role=student_role)
+
         # Create matching users
         for i in range(12):
-            User.objects.create_user(username=f"search_test_{i}", password='password123', full_name=f"Match Name {i}")
+            u = User.objects.create_user(username=f"search_test_{i}", password='password123', full_name=f"Match Name {i}")
+            OrgMember.objects.create(user=u, organization=org, role=student_role)
         
         self.client.force_authenticate(user=self.user)
-        res = self.client.get(f"{self.search_url}?q=search_test")
+        res = self.client.get(f"{self.search_url}?q=search_test", HTTP_X_ORGANIZATION_SLUG=org.slug)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         
         # Max results should be capped at 10
         self.assertEqual(len(res.data), 10)
         
-        # Excluding current user
-        res2 = self.client.get(f"{self.search_url}?q=auth_user")
+        # Excluding non-matching query
+        res2 = self.client.get(f"{self.search_url}?q=nonexistent_xyz", HTTP_X_ORGANIZATION_SLUG=org.slug)
         self.assertEqual(res2.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res2.data), 0)

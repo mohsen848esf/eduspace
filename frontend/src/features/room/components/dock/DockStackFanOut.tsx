@@ -41,7 +41,12 @@ export default function DockStackFanOut({
     minimizeWhiteboard,
     launchWhiteboard,
   } = useRoomWhiteboard();
-  const { isHost } = useRoomStore();
+  const {
+    isHost,
+    activePresentation,
+    isPresentationMinimized,
+    setIsPresentationMinimized,
+  } = useRoomStore();
 
   const isRtl =
     typeof document !== "undefined" &&
@@ -97,6 +102,24 @@ export default function DockStackFanOut({
     onClose,
   ]);
 
+  const handlePresentationAction = useCallback(() => {
+    onClose();
+    if (activePresentation) {
+      if (isPresentationMinimized) {
+        setIsPresentationMinimized(false);
+      } else {
+        setIsPresentationMinimized(true);
+      }
+    } else {
+      window.dispatchEvent(new CustomEvent("eduspace:open-presentation-modal"));
+    }
+  }, [
+    activePresentation,
+    isPresentationMinimized,
+    setIsPresentationMinimized,
+    onClose,
+  ]);
+
   const handleMiniAppsAction = useCallback(() => {
     onClose();
     if (onOpenMiniApps) {
@@ -116,6 +139,13 @@ export default function DockStackFanOut({
       action: handleWhiteboardAction,
     },
     {
+      id: "presentation",
+      labelKey: "tools.presentationShare",
+      defaultLabel: "اشتراک و ارائه فایل و اسلاید",
+      icon: "📑",
+      action: handlePresentationAction,
+    },
+    {
       id: "miniapps",
       labelKey: "tools.miniApps",
       defaultLabel: "مینی‌اپ‌ها و بازی‌ها",
@@ -127,16 +157,6 @@ export default function DockStackFanOut({
       labelKey: "tools.quickQuiz",
       defaultLabel: "آزمون سریع و پرسش",
       icon: "📊",
-      action: () => {
-        onClose();
-        onOpenPanel("tools");
-      },
-    },
-    {
-      id: "timer",
-      labelKey: "tools.focusTimer",
-      defaultLabel: "تایمر و زمان‌سنج تمرکز",
-      icon: "⏱️",
       action: () => {
         onClose();
         onOpenPanel("tools");
@@ -330,14 +350,21 @@ export default function DockStackFanOut({
           </span>
 
           {/* Active Tool Corner Badge */}
-          {whiteboard.isActive && (
+          {whiteboard.isActive ? (
             <span
               className="absolute -top-1 -end-1 w-4 h-4 rounded-full bg-emerald-500 text-white text-[9px] font-bold flex items-center justify-center shadow-md ring-2 ring-[var(--s1)] animate-in zoom-in"
               title={t("whiteboard.title", "تخته وایت‌برد فعال")}
             >
               ✏️
             </span>
-          )}
+          ) : activePresentation ? (
+            <span
+              className="absolute -top-1 -end-1 w-4 h-4 rounded-full bg-indigo-500 text-white text-[9px] font-bold flex items-center justify-center shadow-md ring-2 ring-[var(--s1)] animate-in zoom-in"
+              title={activePresentation.title}
+            >
+              📑
+            </span>
+          ) : null}
 
           {/* Active Indicator Dot */}
           {isOpen && (
