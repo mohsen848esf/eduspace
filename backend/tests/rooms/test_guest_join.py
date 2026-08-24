@@ -68,7 +68,7 @@ class GuestJoinAPITests(APITestCase):
 
         url = reverse("guest_join_room", kwargs={"room_code": self.active_room.room_code})
         response = self.client.post(url, {"display_name": "Late Guest"}, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_410_GONE)
         self.assertIn("ended", response.json()["error"])
 
     def test_guest_join_rejects_full_room(self):
@@ -77,8 +77,8 @@ class GuestJoinAPITests(APITestCase):
 
         url = reverse("guest_join_room", kwargs={"room_code": self.active_room.room_code})
         response = self.client.post(url, {"display_name": "Overflow Guest"}, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("full", response.json()["error"])
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertIn("ظرفیت", response.json()["error"])
 
     def test_guest_leave_room(self):
         join_url = reverse("guest_join_room", kwargs={"room_code": self.active_room.room_code})
