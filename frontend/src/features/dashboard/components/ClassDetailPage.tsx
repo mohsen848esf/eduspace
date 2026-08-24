@@ -538,7 +538,7 @@ export default function ClassDetailPage() {
               {cls.scheduling_mode === 'automatic' ? (
                 <div className="p-4 flex flex-col gap-4">
                   {/* Recurrence Rule Banner */}
-                  <div className="p-4 bg-[var(--brand)]/10 text-[var(--brand-text)] border border-[var(--brand)]/20 rounded-xl flex items-center justify-between">
+                  <div className="p-4 bg-[var(--brand)]/10 text-[var(--t1)] border border-[var(--brand)]/20 rounded-xl flex items-center justify-between">
                     <div>
                       <h4 className="text-xs font-bold mb-1">
                         {isFarsi ? "برنامه هفتگی کلاس (سیستم خودکار)" : "Weekly Schedule (Automatic)"}
@@ -770,7 +770,7 @@ export default function ClassDetailPage() {
                                 </span>
                               )}
                               {assignment.attachment && (
-                                <a href={assignment.attachment} target="_blank" rel="noreferrer" className="text-[var(--brand-text)] hover:underline no-underline font-semibold flex items-center gap-1">
+                                <a href={assignment.attachment} target="_blank" rel="noreferrer" className="text-[var(--brand)] hover:underline no-underline font-semibold flex items-center gap-1">
                                   📎 {isFarsi ? "پیوست درس" : "Attachment"}
                                 </a>
                               )}
@@ -1043,7 +1043,7 @@ export default function ClassDetailPage() {
                   onClick={() => setClassForm({ ...classForm, scheduling_mode: 'manual' })}
                   className={`py-2 px-3 text-xs font-medium rounded-xl border transition-all cursor-pointer ${
                     classForm.scheduling_mode === 'manual'
-                      ? "bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm"
+                      ? "bg-[var(--brand)] text-[var(--brand-text)] border-[var(--brand)] shadow-sm"
                       : "bg-[var(--s2)] text-[var(--t2)] border-[var(--b)] hover:border-[var(--brand)]"
                   }`}
                 >
@@ -1054,7 +1054,7 @@ export default function ClassDetailPage() {
                   onClick={() => setClassForm({ ...classForm, scheduling_mode: 'automatic' })}
                   className={`py-2 px-3 text-xs font-medium rounded-xl border transition-all cursor-pointer ${
                     classForm.scheduling_mode === 'automatic'
-                      ? "bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm"
+                      ? "bg-[var(--brand)] text-[var(--brand-text)] border-[var(--brand)] shadow-sm"
                       : "bg-[var(--s2)] text-[var(--t2)] border-[var(--b)] hover:border-[var(--brand)]"
                   }`}
                 >
@@ -1074,7 +1074,7 @@ export default function ClassDetailPage() {
                   onClick={() => setClassForm({ ...classForm, capacity_mode: 'unlimited' })}
                   className={`py-2 px-3 text-xs font-medium rounded-xl border transition-all cursor-pointer ${
                     classForm.capacity_mode === 'unlimited'
-                      ? "bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm"
+                      ? "bg-[var(--brand)] text-[var(--brand-text)] border-[var(--brand)] shadow-sm"
                       : "bg-[var(--s2)] text-[var(--t2)] border-[var(--b)] hover:border-[var(--brand)]"
                   }`}
                 >
@@ -1085,7 +1085,7 @@ export default function ClassDetailPage() {
                   onClick={() => setClassForm({ ...classForm, capacity_mode: 'limited' })}
                   className={`py-2 px-3 text-xs font-medium rounded-xl border transition-all cursor-pointer ${
                     classForm.capacity_mode === 'limited'
-                      ? "bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm"
+                      ? "bg-[var(--brand)] text-[var(--brand-text)] border-[var(--brand)] shadow-sm"
                       : "bg-[var(--s2)] text-[var(--t2)] border-[var(--b)] hover:border-[var(--brand)]"
                   }`}
                 >

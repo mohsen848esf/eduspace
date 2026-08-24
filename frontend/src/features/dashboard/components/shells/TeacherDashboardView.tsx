@@ -156,7 +156,7 @@ export const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({
               </span>
               <Link
                 to="/academic/classes"
-                className="px-2 py-0.5 rounded text-[8px] font-extrabold bg-[var(--brand)] hover:brightness-110 text-white no-underline tracking-wider uppercase transition-colors"
+                className="px-2 py-0.5 rounded text-[8px] font-extrabold bg-[var(--brand)] hover:brightness-110 text-[var(--brand-text)] no-underline tracking-wider uppercase transition-colors"
               >
                 {isFarsi ? "تصحیح" : "Grade Now"}
               </Link>
@@ -258,7 +258,7 @@ export const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({
                         {isFirst ? (
                           <Link
                             to={`/room/${c.room || "CS102"}`}
-                            className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[var(--brand)] hover:brightness-110 text-white font-bold text-xs cursor-pointer border-none shadow-md transition-all active:scale-[0.98] no-underline"
+                            className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[var(--brand)] hover:brightness-110 text-[var(--brand-text)] font-bold text-xs cursor-pointer border-none shadow-md transition-all active:scale-[0.98] no-underline"
                           >
                             <span>🚪</span>
                             <span>{isFarsi ? "ورود به کلاس" : "Enter Room"}</span>
@@ -495,7 +495,7 @@ export const TeacherDashboardView: React.FC<TeacherDashboardViewProps> = ({
                     })
                   }
                   disabled={roomLoading}
-                  className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg bg-[var(--brand)] hover:brightness-110 text-white font-bold text-[10px] cursor-pointer border-none transition-all active:scale-[0.98]"
+                  className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg bg-[var(--brand)] hover:brightness-110 text-[var(--brand-text)] font-bold text-[10px] cursor-pointer border-none transition-all active:scale-[0.98]"
                 >
                   {isFarsi ? "شروع جلسه کلاس" : "Start Session"}
                 </button>

@@ -54,7 +54,7 @@ export default function SysAdminPage() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`px-5 py-3 text-xs md:text-sm font-semibold border-b-2 transition-all duration-200 outline-none ${
                     isActive
-                      ? "border-[var(--brand)] text-[var(--brand-text)] bg-[var(--brand-soft)]/20"
+                      ? "border-[var(--brand)] text-[var(--brand)] bg-[var(--brand-soft)]/20"
                       : "border-transparent text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s2)]/40"
                   }`}
                 >
@@ -75,7 +75,7 @@ export default function SysAdminPage() {
             </button>
             <button
               onClick={() => toast.success(isFarsi ? "آغاز فرآیند استقرار مستاجر جدید..." : "Initializing new tenant deployment...")}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#6366f1] hover:bg-[#6366f1]/90 text-xs text-white font-bold shadow-sm transition-all active:scale-[0.98] select-none"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[var(--brand)] hover:bg-[var(--brand-h)] text-xs text-[var(--brand-text)] font-bold shadow-sm transition-all active:scale-[0.98] select-none"
             >
               <span>➕</span>
               <span>{isFarsi ? "استقرار سازمان جدید" : "New Org Deployment"}</span>

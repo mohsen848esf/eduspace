@@ -133,7 +133,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               {classesCount}
             </span>
           </div>
-          <div className="flex items-center justify-center gap-1 text-[11px] text-[var(--brand-text)] font-bold">
+          <div className="flex items-center justify-center gap-1 text-[11px] text-[var(--brand)] font-bold">
             <span>↑</span>
             <span>{isFarsi ? "۲ عدد از هفته قبل" : "+2 from last week"}</span>
           </div>
@@ -156,7 +156,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           </div>
           <Link
             to="/inbox"
-            className="text-[11px] text-[var(--brand-text)] hover:opacity-80 font-bold no-underline transition-colors"
+            className="text-[11px] text-[var(--brand)] hover:opacity-80 font-bold no-underline transition-colors"
           >
             {isFarsi ? "مشاهده همه" : "View All"}
           </Link>
@@ -179,7 +179,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           </div>
           <Link
             to="/academic/homework"
-            className="text-[11px] text-[var(--brand-text)] hover:opacity-80 font-bold no-underline transition-colors"
+            className="text-[11px] text-[var(--brand)] hover:opacity-80 font-bold no-underline transition-colors"
           >
             {isFarsi ? "مشاهده همه" : "View All"}
           </Link>
@@ -202,7 +202,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           </div>
           <Link
             to="/academic/sessions"
-            className="text-[11px] text-[var(--brand-text)] hover:opacity-80 font-bold no-underline transition-colors"
+            className="text-[11px] text-[var(--brand)] hover:opacity-80 font-bold no-underline transition-colors"
           >
             {isFarsi ? "مشاهده برنامه امروز" : "Today's Schedule"}
           </Link>
@@ -223,7 +223,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               {activeMembersCount}
             </span>
           </div>
-          <div className="flex items-center justify-center gap-1 text-[11px] text-[var(--brand-text)] font-bold">
+          <div className="flex items-center justify-center gap-1 text-[11px] text-[var(--brand)] font-bold">
             <span>↑</span>
             <span>{isFarsi ? "۱۸٪ نسبت به ماه قبل" : "+18% this month"}</span>
           </div>
@@ -237,7 +237,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-extrabold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
-                <span className="text-[var(--brand-text)]">⭕</span>
+                <span className="text-[var(--brand)]">⭕</span>
                 <span>{isFarsi ? "توزیع محصولات" : "Category Breakdown"}</span>
               </h3>
               <p className="text-[11px] text-[var(--t3)] font-semibold mt-0.5">
@@ -344,14 +344,14 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <h3 className="text-sm font-extrabold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
-                <span className="text-[var(--brand-text)]">📈</span>
+                <span className="text-[var(--brand)]">📈</span>
                 <span>{isFarsi ? "عملکرد مالی" : "Financial Performance"}</span>
               </h3>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-xl md:text-2xl font-black text-[var(--t1)] font-mono">
                   {formattedRevenue}
                 </span>
-                <Badge variant="success" size="sm" className="font-bold bg-[var(--brand-soft)] text-[var(--brand-text)] border border-[var(--b)]">
+                <Badge variant="success" size="sm" className="font-bold bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--b)]">
                   +12.5%
                 </Badge>
               </div>
@@ -419,12 +419,12 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         <div className="bg-[var(--s2)] border border-[var(--b)] rounded-3xl p-5 flex flex-col justify-between shadow-md">
           <div className="flex items-center justify-between border-b border-[var(--b)] pb-3">
             <h4 className="text-xs font-extrabold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
-              <span className="text-[var(--brand-text)]">📅</span>
+              <span className="text-[var(--brand)]">📅</span>
               <span>{isFarsi ? "جلسات پیش رو" : "Upcoming Sessions"}</span>
             </h4>
             <Link
               to="/academic/sessions"
-              className="text-[11px] font-bold text-[var(--brand-text)] hover:underline no-underline"
+              className="text-[11px] font-bold text-[var(--brand)] hover:underline no-underline"
             >
               {isFarsi ? "مشاهده همه" : "View all"}
             </Link>
@@ -465,12 +465,12 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         <div className="bg-[var(--s2)] border border-[var(--b)] rounded-3xl p-5 flex flex-col justify-between shadow-md">
           <div className="flex items-center justify-between border-b border-[var(--b)] pb-3">
             <h4 className="text-xs font-extrabold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
-              <span className="text-[var(--brand-text)]">📝</span>
+              <span className="text-[var(--brand)]">📝</span>
               <span>{isFarsi ? "تکالیف اخیر" : "Recent Homework"}</span>
             </h4>
             <Link
               to="/academic/homework"
-              className="text-[11px] font-bold text-[var(--brand-text)] hover:underline no-underline"
+              className="text-[11px] font-bold text-[var(--brand)] hover:underline no-underline"
             >
               {isFarsi ? "مشاهده همه" : "View all"}
             </Link>
@@ -486,7 +486,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   {isFarsi ? "توسط محمد کریمی" : "By Mohammad Karimi"}
                 </span>
               </div>
-              <span className="px-2.5 py-1 rounded-lg bg-[var(--brand-soft)] text-[var(--brand-text)] border border-[var(--b)] text-[10px] font-bold">
+              <span className="px-2.5 py-1 rounded-lg bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--b)] text-[10px] font-bold">
                 {isFarsi ? "تحویل داده شده" : "Submitted"}
               </span>
             </div>
@@ -511,12 +511,12 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         <div className="bg-[var(--s2)] border border-[var(--b)] rounded-3xl p-5 flex flex-col justify-between shadow-md">
           <div className="flex items-center justify-between border-b border-[var(--b)] pb-3">
             <h4 className="text-xs font-extrabold text-[var(--t1)] uppercase tracking-wider flex items-center gap-2">
-              <span className="text-[var(--brand-text)]">👥</span>
+              <span className="text-[var(--brand)]">👥</span>
               <span>{isFarsi ? "اعضای جدید" : "Recent Members"}</span>
             </h4>
             <Link
               to="/crm/members"
-              className="text-[11px] font-bold text-[var(--brand-text)] hover:underline no-underline"
+              className="text-[11px] font-bold text-[var(--brand)] hover:underline no-underline"
             >
               {isFarsi ? "مشاهده همه" : "View all"}
             </Link>
@@ -525,7 +525,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           <div className="flex flex-col gap-2.5 my-3">
             <div className="flex items-center justify-between p-2 rounded-xl hover:bg-[var(--s3)] transition-colors">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-full bg-[var(--brand-soft)] border border-[var(--b)] text-[var(--brand-text)] font-bold text-xs flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-[var(--brand-soft)] border border-[var(--b)] text-[var(--brand)] font-bold text-xs flex items-center justify-center flex-shrink-0">
                   R
                 </div>
                 <div className="flex flex-col min-w-0">

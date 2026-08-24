@@ -104,7 +104,7 @@ export default function StudentPaymentsPage() {
             <div className="bg-[var(--s2)] border border-[var(--b)] rounded-2xl p-5 shadow-sm flex items-center justify-between relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-24 h-24 bg-[var(--brand)]/5 rounded-full blur-2xl pointer-events-none" />
               <div>
-                <span className="text-[10px] font-bold text-[var(--brand-text)] uppercase tracking-wider block">
+                <span className="text-[10px] font-bold text-[var(--t3)] uppercase tracking-wider block">
                   {isFarsi ? "کل شهریه صادر شده" : "Total Billed"}
                 </span>
                 <div className="text-2xl font-black text-[var(--t1)] mt-1.5">
@@ -138,7 +138,7 @@ export default function StudentPaymentsPage() {
             const colors = {
               unpaid: "border-rose-500 text-rose-500",
               paid: "border-emerald-500 text-emerald-500",
-              all: "border-[var(--brand)] text-[var(--brand-text)]"
+              all: "border-[var(--brand)] text-[var(--brand)]"
             };
 
             return (
@@ -194,7 +194,7 @@ export default function StudentPaymentsPage() {
                         <FileText className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-[9px] font-bold text-[var(--brand-text)] uppercase tracking-wider block">
+                        <span className="text-[9px] font-bold text-[var(--brand)] uppercase tracking-wider block">
                           {invoice.invoice_number || `INV-${invoice.id}`}
                         </span>
                         <h4 className="text-sm font-bold text-[var(--t1)] mt-0.5 truncate">{invoice.class_name || (isFarsi ? "شهریه آکادمی" : "Academy Tuition")}</h4>

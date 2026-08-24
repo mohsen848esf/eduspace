@@ -75,7 +75,7 @@ export default function AuditLogsView() {
                       @{log.operator_username}
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="font-mono text-xs font-semibold bg-[var(--brand-soft)] text-[var(--brand-text)] border border-[var(--brand)]/10 px-2 py-0.5 rounded">
+                      <span className="font-mono text-xs font-semibold bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--brand)]/10 px-2 py-0.5 rounded">
                         {log.action}
                       </span>
                     </td>

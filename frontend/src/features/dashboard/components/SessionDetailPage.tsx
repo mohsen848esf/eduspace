@@ -241,7 +241,7 @@ export default function SessionDetailPage() {
         <div className="flex justify-between items-center">
           <Link
             to="/academic/sessions"
-            className="flex items-center gap-1.5 text-sm font-semibold text-[var(--brand-text)] hover:underline no-underline"
+            className="flex items-center gap-1.5 text-sm font-semibold text-[var(--brand)] hover:underline no-underline"
           >
             {isFarsi ? (
               <>
@@ -280,7 +280,7 @@ export default function SessionDetailPage() {
                 <h2 className="text-xl font-bold text-[var(--t1)]">{session.title}</h2>
                 <Link
                   to={`/academic/classes/${session.academy_class}`}
-                  className="text-xs text-[var(--brand-text)] hover:underline no-underline font-semibold mt-1 inline-block"
+                  className="text-xs text-[var(--brand)] hover:underline no-underline font-semibold mt-1 inline-block"
                 >
                   {session.academy_class_name}
                 </Link>
@@ -406,7 +406,7 @@ export default function SessionDetailPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-[var(--s3)] border border-[var(--b)] p-3 rounded-xl flex flex-col">
                   <span className="text-[10px] text-[var(--t3)] font-semibold uppercase">{isFarsi ? "نرخ حضور" : "Rate"}</span>
-                  <span className="text-lg font-extrabold text-[var(--brand-text)] mt-1 flex items-center gap-1">
+                  <span className="text-lg font-extrabold text-[var(--brand)] mt-1 flex items-center gap-1">
                     <Percent className="w-3.5 h-3.5" />
                     {attendanceRate.toFixed(1)}%
                   </span>

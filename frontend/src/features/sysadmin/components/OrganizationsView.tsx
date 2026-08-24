@@ -166,7 +166,7 @@ export default function OrganizationsView() {
                         {org.logo ? (
                           <img src={org.logo} alt="" className="w-8 h-8 rounded-lg object-cover" />
                         ) : (
-                          <div className="w-8 h-8 rounded-lg bg-[var(--brand-soft)] text-[var(--brand-text)] flex items-center justify-center font-bold uppercase">
+                          <div className="w-8 h-8 rounded-lg bg-[var(--brand-soft)] text-[var(--brand)] flex items-center justify-center font-bold uppercase">
                             {org.name.charAt(0)}
                           </div>
                         )}
@@ -199,7 +199,7 @@ export default function OrganizationsView() {
                         </button>
                         <button
                           onClick={() => handleOpenQuota(org)}
-                          className="px-2.5 py-1 text-xs bg-[var(--brand-soft)] hover:bg-[var(--brand)] hover:text-white text-[var(--brand-text)] rounded-md font-medium transition"
+                          className="px-2.5 py-1 text-xs bg-[var(--brand-soft)] hover:bg-[var(--brand)] hover:text-[var(--brand-text)] text-[var(--brand)] rounded-md font-medium transition"
                         >
                           Quota
                         </button>
@@ -312,7 +312,7 @@ export default function OrganizationsView() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-white font-medium text-sm rounded-lg transition"
+                  className="px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand-h)] text-[var(--brand-text)] font-medium text-sm rounded-lg transition"
                 >
                   Save Limits
                 </button>
@@ -379,7 +379,7 @@ export default function OrganizationsView() {
                 {selectedOrg.logo ? (
                   <img src={selectedOrg.logo} alt="" className="w-16 h-16 rounded-xl object-cover" />
                 ) : (
-                  <div className="w-16 h-16 rounded-xl bg-[var(--brand-soft)] text-[var(--brand-text)] flex items-center justify-center font-extrabold text-2xl uppercase">
+                  <div className="w-16 h-16 rounded-xl bg-[var(--brand-soft)] text-[var(--brand)] flex items-center justify-center font-extrabold text-2xl uppercase">
                     {selectedOrg.name.charAt(0)}
                   </div>
                 )}
@@ -498,7 +498,7 @@ export default function OrganizationsView() {
             <div className="px-6 py-4 bg-[var(--s2)] border-t border-[var(--b)] flex justify-end">
               <button
                 onClick={() => setIsDetailModalOpen(false)}
-                className="px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-white font-medium text-sm rounded-lg transition"
+                className="px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand-h)] text-[var(--brand-text)] font-medium text-sm rounded-lg transition"
               >
                 Close Portal
               </button>

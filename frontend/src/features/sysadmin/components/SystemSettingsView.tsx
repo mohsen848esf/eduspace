@@ -91,7 +91,7 @@ export default function SystemSettingsView() {
         <div className="flex gap-2">
           <button
             onClick={() => setIsCreateOpen(true)}
-            className="px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-white font-medium text-sm rounded-lg transition flex items-center gap-1.5"
+            className="px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand-h)] text-[var(--brand-text)] font-medium text-sm rounded-lg transition flex items-center gap-1.5"
           >
             <span>+ Add Variable</span>
           </button>
@@ -134,7 +134,7 @@ export default function SystemSettingsView() {
                 <div className="flex items-center gap-4 justify-between md:justify-end">
                   <div className="text-right">
                     <div className="text-xs text-[var(--t3)] uppercase font-semibold">Value</div>
-                    <div className="font-mono text-sm md:text-md font-bold text-[var(--brand-text)] bg-[var(--brand-soft)] px-3 py-1 rounded border border-[var(--brand)]/10">
+                    <div className="font-mono text-sm md:text-md font-bold text-[var(--brand)] bg-[var(--brand-soft)] px-3 py-1 rounded border border-[var(--brand)]/10">
                       {config.value}
                     </div>
                   </div>
@@ -214,7 +214,7 @@ export default function SystemSettingsView() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-white font-medium text-sm rounded-lg transition"
+                  className="px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand-h)] text-[var(--brand-text)] font-medium text-sm rounded-lg transition"
                 >
                   Add Config
                 </button>
@@ -264,7 +264,7 @@ export default function SystemSettingsView() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-white font-medium text-sm rounded-lg transition"
+                  className="px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand-h)] text-[var(--brand-text)] font-medium text-sm rounded-lg transition"
                 >
                   Save Config
                 </button>

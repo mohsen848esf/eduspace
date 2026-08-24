@@ -66,12 +66,12 @@ export default function LeaderboardPage() {
     <AppShell title={isFarsi ? "جدول امتیازات" : "Leaderboard"}>
       <div className="space-y-8 p-6 max-w-6xl mx-auto" dir={isFarsi ? "rtl" : "ltr"}>
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-gray-800 pb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-[var(--b)] pb-6">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold text-[var(--t1)]">
               {isFarsi ? "تالار افتخارات کلاس" : "Classroom Hall of Fame"}
             </h1>
-            <p className="text-gray-400 mt-2">
+            <p className="text-[var(--t3)] mt-2 text-sm">
               {isFarsi
                 ? "رده‌بندی دانشجویان بر اساس امتیاز بازی‌های گروهی و تکالیف"
                 : "Student rankings based on interactive game participation and graded assessments."}
@@ -83,7 +83,7 @@ export default function LeaderboardPage() {
               placeholder={isFarsi ? "جستجو در دانشجوها..." : "Search students..."}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition-colors"
+              className="w-full px-4 py-2 bg-[var(--s2)] border border-[var(--b)] rounded-xl text-[var(--t1)] placeholder-[var(--t3)] focus:outline-none focus:border-[var(--brand)] transition-colors"
             />
           </div>
         </div>
@@ -145,11 +145,11 @@ export default function LeaderboardPage() {
             )}
 
             {/* General Leaderboard Table */}
-            <div className="bg-gray-900/30 border border-gray-800 rounded-xl overflow-hidden backdrop-blur-sm">
+            <div className="bg-[var(--s2)] border border-[var(--b)] rounded-2xl overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse" dir={isFarsi ? "rtl" : "ltr"}>
                   <thead>
-                    <tr className="bg-gray-900/80 text-gray-400 text-xs font-semibold uppercase tracking-wider border-b border-gray-800">
+                    <tr className="bg-[var(--s3)] text-[var(--t3)] text-xs font-semibold uppercase tracking-wider border-b border-[var(--b)]">
                       <th className="px-6 py-4 text-center w-20">{isFarsi ? "رتبه" : "Rank"}</th>
                       <th className="px-6 py-4">{isFarsi ? "دانشجو" : "Student"}</th>
                       <th className="px-6 py-4 text-center">{isFarsi ? "امتیاز بازی‌ها" : "Game Points"}</th>
@@ -157,35 +157,35 @@ export default function LeaderboardPage() {
                       <th className="px-6 py-4 text-right pr-10">{isFarsi ? "مجموع امتیازات" : "Total Score"}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-800 text-sm">
+                  <tbody className="divide-y divide-[var(--b)] text-sm">
                     {filteredLeaderboard.map((entry) => (
                       <tr
                         key={entry.username}
-                        className="hover:bg-gray-800/20 transition-colors duration-150 text-gray-300"
+                        className="hover:bg-[var(--s3)] transition-colors duration-150 text-[var(--t2)]"
                       >
-                        <td className="px-6 py-4 text-center font-bold text-gray-400">
+                        <td className="px-6 py-4 text-center font-bold text-[var(--t3)]">
                           {entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : entry.rank}
                         </td>
                         <td className="px-6 py-4">
                           <div>
-                            <div className="font-semibold text-white">{entry.full_name}</div>
-                            <div className="text-xs text-gray-500">@{entry.username}</div>
+                            <div className="font-semibold text-[var(--t1)]">{entry.full_name}</div>
+                            <div className="text-xs text-[var(--t3)]">@{entry.username}</div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-center font-medium text-purple-400">
+                        <td className="px-6 py-4 text-center font-semibold text-[var(--purple)]">
                           {entry.game_points}
                         </td>
-                        <td className="px-6 py-4 text-center font-medium text-pink-400">
+                        <td className="px-6 py-4 text-center font-semibold text-[var(--brand)]">
                           {entry.assessment_points}
                         </td>
-                        <td className="px-6 py-4 text-right pr-10 font-bold text-white text-base">
+                        <td className="px-6 py-4 text-right pr-10 font-bold text-[var(--t1)] text-base">
                           {entry.total_score}
                         </td>
                       </tr>
                     ))}
                     {filteredLeaderboard.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="text-center py-12 text-gray-500">
+                        <td colSpan={5} className="text-center py-12 text-[var(--t3)]">
                           {isFarsi ? "دانشجویی یافت نشد" : "No students found."}
                         </td>
                       </tr>
@@ -197,21 +197,21 @@ export default function LeaderboardPage() {
             
             {/* Pagination Controls */}
             {data && !Array.isArray(data) && (data.next || data.previous) && (
-              <div className="flex items-center justify-between mt-6 bg-gray-900/20 border border-gray-800/80 rounded-xl p-4 backdrop-blur-sm" dir={isFarsi ? "rtl" : "ltr"}>
+              <div className="flex items-center justify-between mt-6 bg-[var(--s2)] border border-[var(--b)] rounded-xl p-4" dir={isFarsi ? "rtl" : "ltr"}>
                 <button
                   disabled={!data.previous}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="px-4 py-2 bg-purple-600/10 border border-purple-500/30 rounded-lg text-purple-400 font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-purple-600/20 active:scale-95 transition-all text-xs"
+                  className="px-4 py-2 bg-[var(--brand-soft)] border border-[var(--b)] rounded-lg text-[var(--brand)] font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand)]/20 active:scale-95 transition-all text-xs"
                 >
                   {isFarsi ? "صفحه قبلی" : "Previous Page"}
                 </button>
-                <span className="text-gray-400 text-sm font-medium">
+                <span className="text-[var(--t3)] text-sm font-medium">
                   {isFarsi ? `صفحه ${page}` : `Page ${page}`}
                 </span>
                 <button
                   disabled={!data.next}
                   onClick={() => setPage((p) => p + 1)}
-                  className="px-4 py-2 bg-purple-600/10 border border-purple-500/30 rounded-lg text-purple-400 font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-purple-600/20 active:scale-95 transition-all text-xs"
+                  className="px-4 py-2 bg-[var(--brand-soft)] border border-[var(--b)] rounded-lg text-[var(--brand)] font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand)]/20 active:scale-95 transition-all text-xs"
                 >
                   {isFarsi ? "صفحه بعدی" : "Next Page"}
                 </button>

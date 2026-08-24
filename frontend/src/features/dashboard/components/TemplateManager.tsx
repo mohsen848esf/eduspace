@@ -205,7 +205,7 @@ export default function TemplateManager() {
                     <td className="p-4 font-semibold text-[var(--t1)]">{tmpl.name}</td>
                     <td className="p-4 text-[var(--t2)] font-mono text-xs">{tmpl.slug}</td>
                     <td className="p-4 text-[var(--t2)]">
-                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-[var(--brand-soft)]/40 text-[var(--brand-text)] font-semibold">
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-[var(--brand-soft)]/40 text-[var(--brand)] font-semibold">
                         {tmpl.channel}
                       </span>
                     </td>
@@ -366,7 +366,7 @@ export default function TemplateManager() {
             <div className="flex flex-col gap-2 bg-[var(--s3)] border border-[var(--b)] rounded-xl p-4 min-h-[200px]">
               <div className="text-xs font-bold text-[var(--t3)] uppercase tracking-wide border-b border-[var(--b)] pb-2 mb-2 flex items-center justify-between">
                 <span>{isFarsi ? "خروجی رندر شده" : "Rendered Output"}</span>
-                <span className="text-[10px] text-[var(--brand-text)] font-semibold">{previewTemplate?.channel}</span>
+                <span className="text-[10px] text-[var(--brand)] font-semibold">{previewTemplate?.channel}</span>
               </div>
               
               {previewTemplate?.channel === "EMAIL" && (

@@ -159,7 +159,7 @@ export default function SessionsPage() {
                 onClick={() => setViewMode("calendar")}
                 className={`px-3 py-1.5 text-xs font-medium rounded-lg cursor-pointer transition-all border-none ${
                   viewMode === "calendar"
-                    ? "bg-[var(--brand)] text-white shadow-sm"
+                    ? "bg-[var(--brand)] text-[var(--brand-text)] shadow-sm"
                     : "text-[var(--t2)] hover:text-[var(--brand)] bg-transparent"
                 }`}
               >
@@ -170,7 +170,7 @@ export default function SessionsPage() {
                 onClick={() => setViewMode("list")}
                 className={`px-3 py-1.5 text-xs font-medium rounded-lg cursor-pointer transition-all border-none ${
                   viewMode === "list"
-                    ? "bg-[var(--brand)] text-white shadow-sm"
+                    ? "bg-[var(--brand)] text-[var(--brand-text)] shadow-sm"
                     : "text-[var(--t2)] hover:text-[var(--brand)] bg-transparent"
                 }`}
               >
@@ -335,8 +335,8 @@ export default function SessionsPage() {
                   return (
                     <tr key={s.id} className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors text-left">
                       <td className="p-4 text-[var(--t3)]">{idx + 1}</td>
-                      <td className="p-4 font-semibold text-[var(--brand-text)]">
-                        <Link to={`/academic/classes/${s.academy_class}`} className="hover:underline text-[var(--brand-text)] no-underline">
+                      <td className="p-4 font-semibold text-[var(--t1)]">
+                        <Link to={`/academic/classes/${s.academy_class}`} className="hover:underline text-[var(--brand)] no-underline">
                           {s.academy_class_name || "—"}
                         </Link>
                       </td>

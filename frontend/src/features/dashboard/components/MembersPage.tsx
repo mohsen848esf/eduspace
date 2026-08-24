@@ -568,7 +568,7 @@ export default function MembersPage() {
                                   return (
                                     <Link
                                       to={`/room/${liveSession.active_room_code}`}
-                                      className="inline-block text-[10px] bg-[var(--green)] hover:brightness-110 text-white font-bold px-2 py-0.5 rounded-full cursor-pointer no-underline border-none animate-pulse"
+                                      className="inline-block text-[10px] bg-[var(--green)] hover:brightness-110 text-[var(--brand-text)] font-bold px-2 py-0.5 rounded-full cursor-pointer no-underline border-none animate-pulse"
                                     >
                                       {isFarsi ? "ورود به کلاس زنده" : "Join Live Class"}
                                     </Link>
@@ -644,7 +644,7 @@ export default function MembersPage() {
                         onClick={() => setMemberStatusFilter(f)}
                         className={`text-[10px] font-bold px-2.5 py-1 rounded-full border cursor-pointer transition-all ${
                           memberStatusFilter === f
-                            ? "bg-[var(--brand)] text-white border-[var(--brand)]"
+                            ? "bg-[var(--brand)] text-[var(--brand-text)] border-[var(--brand)]"
                             : "bg-transparent text-[var(--t3)] border-[var(--b)] hover:border-[var(--brand)]/50"
                         }`}
                       >

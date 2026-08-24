@@ -585,7 +585,7 @@ export default function LedgerPage() {
             <div className="p-5 rounded-2xl bg-[var(--s2)] border border-[var(--b)] shadow-sm flex flex-col gap-1 transition-all hover:-translate-y-1">
               <span className="text-xs text-[var(--t3)] uppercase font-semibold">{isFarsi ? "نرخ وصول مطالبات" : "Collection Rate"}</span>
               {loadingSummary ? <Spinner size="sm" /> : (
-                <span className="text-2xl font-bold text-[var(--brand-text)]">{summaryData?.collection_rate}%</span>
+                <span className="text-2xl font-bold text-[var(--brand)]">{summaryData?.collection_rate}%</span>
               )}
             </div>
           </div>
@@ -597,7 +597,7 @@ export default function LedgerPage() {
             onClick={() => setActiveSubTab("invoices")}
             className={`px-4 py-2 text-sm font-medium border-b-2 cursor-pointer transition-colors duration-150 whitespace-nowrap bg-transparent ${
               activeSubTab === "invoices"
-                ? "border-[var(--brand)] text-[var(--brand-text)]"
+                ? "border-[var(--brand)] text-[var(--brand)]"
                 : "border-transparent text-[var(--t2)] hover:text-[var(--t1)]"
             }`}
           >
@@ -608,7 +608,7 @@ export default function LedgerPage() {
               onClick={() => setActiveSubTab("expenses")}
               className={`px-4 py-2 text-sm font-medium border-b-2 cursor-pointer transition-colors duration-150 whitespace-nowrap bg-transparent ${
                 activeSubTab === "expenses"
-                  ? "border-[var(--brand)] text-[var(--brand-text)]"
+                  ? "border-[var(--brand)] text-[var(--brand)]"
                   : "border-transparent text-[var(--t2)] hover:text-[var(--t1)]"
               }`}
             >
@@ -675,7 +675,7 @@ export default function LedgerPage() {
                 )}
               </div>
               {classIdParam && (
-                <div className="flex items-center justify-between mx-4 my-2 p-2 bg-[var(--brand-soft)] border border-[var(--b)] rounded-xl text-xs text-[var(--brand-text)]">
+                <div className="flex items-center justify-between mx-4 my-2 p-2 bg-[var(--brand-soft)] border border-[var(--b)] rounded-xl text-xs text-[var(--brand)]">
                   <span>
                     {isFarsi ? "فیلتر بر اساس کلاس: " : "Filtered by class: "}
                     <strong>{selectedClassFilter?.name || classIdParam}</strong>

@@ -143,11 +143,11 @@ export default function SubTopbar() {
             <React.Fragment key={idx}>
               {idx > 0 && <span className="text-[var(--t3)]/60 mx-1">{isFarsi ? "‹" : "›"}</span>}
               {isLast ? (
-                <span className="text-[var(--brand-text)] font-semibold">{item.name}</span>
+                <span className="text-[var(--t1)] font-semibold">{item.name}</span>
               ) : canClick ? (
                 <Link
                   to={item.url!}
-                  className="hover:text-[var(--brand-text)] text-[var(--t3)] no-underline transition-colors"
+                  className="hover:text-[var(--brand)] text-[var(--t3)] no-underline transition-colors"
                 >
                   {item.name}
                 </Link>

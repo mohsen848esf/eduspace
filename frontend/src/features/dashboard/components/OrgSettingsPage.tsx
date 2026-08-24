@@ -568,7 +568,7 @@ export default function OrgSettingsPage() {
           <button
             onClick={() => setActiveTab("appearance")}
             className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap flex items-center gap-1.5 ${activeTab === "appearance"
-                ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
+                ? "border-[var(--brand)] text-[var(--brand)] font-semibold"
                 : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
               }`}
           >
@@ -578,7 +578,7 @@ export default function OrgSettingsPage() {
           <button
             onClick={() => setActiveTab("details")}
             className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${activeTab === "details"
-                ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
+                ? "border-[var(--brand)] text-[var(--brand)] font-semibold"
                 : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
               }`}
           >
@@ -587,7 +587,7 @@ export default function OrgSettingsPage() {
           <button
             onClick={() => setActiveTab("members")}
             className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${activeTab === "members"
-                ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
+                ? "border-[var(--brand)] text-[var(--brand)] font-semibold"
                 : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
               }`}
           >
@@ -596,7 +596,7 @@ export default function OrgSettingsPage() {
           <button
             onClick={() => setActiveTab("connections")}
             className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${activeTab === "connections"
-                ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
+                ? "border-[var(--brand)] text-[var(--brand)] font-semibold"
                 : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
               }`}
           >
@@ -605,7 +605,7 @@ export default function OrgSettingsPage() {
           <button
             onClick={() => setActiveTab("roles")}
             className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${activeTab === "roles"
-                ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
+                ? "border-[var(--brand)] text-[var(--brand)] font-semibold"
                 : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
               }`}
           >
@@ -617,7 +617,7 @@ export default function OrgSettingsPage() {
               setLogsPage(1);
             }}
             className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${activeTab === "audit_logs"
-                ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
+                ? "border-[var(--brand)] text-[var(--brand)] font-semibold"
                 : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
               }`}
           >
@@ -626,7 +626,7 @@ export default function OrgSettingsPage() {
           <button
             onClick={() => setActiveTab("reports")}
             className={`pb-3 text-sm font-medium border-b-2 bg-transparent border-none cursor-pointer transition-all duration-150 whitespace-nowrap ${activeTab === "reports"
-                ? "border-[var(--brand-text)] text-[var(--brand-text)] font-semibold"
+                ? "border-[var(--brand)] text-[var(--brand)] font-semibold"
                 : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
               }`}
           >

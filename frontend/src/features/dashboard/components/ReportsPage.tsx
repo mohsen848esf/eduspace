@@ -179,7 +179,7 @@ export default function ReportsPage() {
           <p className="text-[var(--t2)]">Failed to load analytics data.</p>
           <button
             onClick={() => refetch()}
-            className="px-4 py-2 rounded-xl bg-[var(--brand)] text-white text-sm font-medium hover:bg-[var(--brand-h)] transition-colors cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-[var(--brand)] text-[var(--brand-text)] text-sm font-medium hover:bg-[var(--brand-h)] transition-colors cursor-pointer"
           >
             Retry
           </button>

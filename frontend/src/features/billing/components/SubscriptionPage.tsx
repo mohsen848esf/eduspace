@@ -253,7 +253,7 @@ export default function SubscriptionPage() {
             onClick={() => setActiveTab("plans_usage")}
             className={`px-5 py-3.5 text-sm font-semibold border-b-2 transition-all duration-200 flex items-center gap-2 cursor-pointer ${
               activeTab === "plans_usage"
-                ? "border-[var(--brand)] text-[var(--brand-text)] bg-[var(--brand-soft)]/20"
+                ? "border-[var(--brand)] text-[var(--brand)] bg-[var(--brand-soft)]/20"
                 : "border-transparent text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s2)]/40"
             }`}
           >
@@ -264,7 +264,7 @@ export default function SubscriptionPage() {
             onClick={() => setActiveTab("invoices_billing")}
             className={`px-5 py-3.5 text-sm font-semibold border-b-2 transition-all duration-200 flex items-center gap-2 cursor-pointer ${
               activeTab === "invoices_billing"
-                ? "border-[var(--brand)] text-[var(--brand-text)] bg-[var(--brand-soft)]/20"
+                ? "border-[var(--brand)] text-[var(--brand)] bg-[var(--brand-soft)]/20"
                 : "border-transparent text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s2)]/40"
             }`}
           >
@@ -283,7 +283,7 @@ export default function SubscriptionPage() {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="space-y-2">
                   <div className="flex items-center gap-3">
-                    <span className="text-xs uppercase tracking-wider text-[var(--brand-text)] font-extrabold bg-[var(--brand-soft)] px-2.5 py-1 rounded-md">
+                    <span className="text-xs uppercase tracking-wider text-[var(--brand)] font-extrabold bg-[var(--brand-soft)] px-2.5 py-1 rounded-md">
                       Current Subscription
                     </span>
                     {getStatusBadge(subscription.status)}
@@ -386,7 +386,7 @@ export default function SubscriptionPage() {
                           <div className="flex justify-between items-start">
                             <h4 className="font-bold text-lg text-[var(--t1)]">{p.name}</h4>
                             {isActive && (
-                              <span className="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full bg-[var(--brand-soft)] text-[var(--brand-text)] border border-[var(--brand)]/20">
+                              <span className="text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--brand)]/20">
                                 Current
                               </span>
                             )}

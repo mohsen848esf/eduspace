@@ -28,8 +28,12 @@ export function useRoom() {
           isGuest: false,
         });
         navigate(`/room/${res.room_code}`);
+        return res;
       } catch (err: any) {
-        setError(err.response?.data?.error || t("join.createFailed"));
+        const msg = err.response?.data?.error || err.message || t("join.createFailed");
+        setError(msg);
+        console.error("Failed to create room:", err);
+        throw err;
       } finally {
         setIsLoading(false);
       }

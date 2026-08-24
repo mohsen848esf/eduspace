@@ -120,7 +120,7 @@ export default function HomeworkPage() {
             };
 
             const colors = {
-              assigned: "border-[var(--brand)] text-[var(--brand-text)]",
+              assigned: "border-[var(--brand)] text-[var(--brand)]",
               submitted: "border-sky-500 text-sky-500",
               graded: "border-emerald-500 text-emerald-500",
               overdue: "border-rose-500 text-rose-500"
@@ -174,7 +174,7 @@ export default function HomeworkPage() {
                       <FileText className="w-5 h-5" />
                     </div>
                     <div className="min-w-0">
-                      <span className="text-[9px] font-bold text-[var(--brand-text)] uppercase tracking-wider block">
+                      <span className="text-[9px] font-bold text-[var(--brand)] uppercase tracking-wider block">
                         {assignment.class_name || "Academy Class"}
                       </span>
                       <h4 className="text-sm font-bold text-[var(--t1)] mt-0.5 truncate">{assignment.title}</h4>

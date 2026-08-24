@@ -85,7 +85,7 @@ export default function ReportsExportWidget() {
                 <button
                   onClick={() => handleExport(card.id)}
                   disabled={activeExport !== null}
-                  className="w-full py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider bg-[var(--brand)] text-white hover:bg-[var(--brand-h)] shadow-md shadow-indigo-950/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider bg-[var(--brand)] text-[var(--brand-text)] hover:bg-[var(--brand-h)] shadow-md shadow-indigo-950/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isLoading ? (
                     <>

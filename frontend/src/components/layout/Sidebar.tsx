@@ -192,7 +192,7 @@ export default function Sidebar({
       isSubItem ? "px-2.5 py-2 rounded-lg" : "px-3.5 py-2.5",
       collapsed && "justify-center px-2",
       isActive
-        ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-bold shadow-sm border border-[var(--b)]"
+        ? "bg-[var(--brand-soft)] text-[var(--brand)] font-bold shadow-sm border border-[var(--b)]"
         : "bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)]"
     );
 
@@ -305,7 +305,7 @@ export default function Sidebar({
                     className={cn(
                       "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 border-none cursor-pointer mx-auto my-0.5",
                       hasActiveChild
-                        ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-bold shadow-sm"
+                        ? "bg-[var(--brand-soft)] text-[var(--brand)] font-bold shadow-sm"
                         : "bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)]"
                     )}
                   >
@@ -324,7 +324,7 @@ export default function Sidebar({
                   className={cn(
                     "flex items-center justify-between w-full px-3 py-2.5 rounded-xl transition-all duration-150 border-none cursor-pointer select-none text-start my-0.5",
                     hasActiveChild
-                      ? "text-[var(--brand-text)] font-bold bg-[var(--brand-soft)] border border-[var(--b)]"
+                      ? "text-[var(--brand)] font-bold bg-[var(--brand-soft)] border border-[var(--b)]"
                       : "text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] bg-transparent font-semibold"
                   )}
                 >
@@ -360,7 +360,7 @@ export default function Sidebar({
                       const childClasses = cn(
                         "flex items-center justify-between w-full px-3 py-2 rounded-lg transition-all duration-150 no-underline select-none text-start text-[12.5px]",
                         isChildActive
-                          ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-bold shadow-xs border border-[var(--b)]"
+                          ? "bg-[var(--brand-soft)] text-[var(--brand)] font-bold shadow-xs border border-[var(--b)]"
                           : "bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)] font-medium"
                       );
 
@@ -499,7 +499,7 @@ export default function Sidebar({
                         className={cn(
                           "w-full flex items-center justify-between gap-3 p-2 rounded-xl border-none cursor-pointer text-start transition-colors",
                           isActive
-                            ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-semibold"
+                            ? "bg-[var(--brand-soft)] text-[var(--brand)] font-semibold"
                             : "bg-transparent text-[var(--t2)] hover:bg-[var(--s2)] hover:text-[var(--t1)]"
                         )}
                       >

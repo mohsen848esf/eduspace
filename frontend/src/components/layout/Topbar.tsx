@@ -155,15 +155,22 @@ export default function Topbar({
         {/* + جلسه جدید / New Meeting Button */}
         <button
           type="button"
-          onClick={() =>
-            createRoom({
-              name: t("dashboard:roomDefault", {
-                name: user?.full_name || user?.username || "",
-              }),
-              max_participants: 20,
-              is_recorded: false,
-            })
-          }
+          onClick={async () => {
+            const userName = user?.full_name || user?.username || "";
+            const defaultTitle = userName
+              ? (isFarsi ? `جلسه ${userName}` : `${userName}'s Meeting`)
+              : (isFarsi ? "جلسه آنلاین جدید" : "Instant Meeting");
+
+            try {
+              await createRoom({
+                name: defaultTitle,
+                max_participants: 20,
+                is_recorded: false,
+              });
+            } catch (err) {
+              console.error("Failed to create room:", err);
+            }
+          }}
           disabled={roomLoading}
           className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#00D084] hover:bg-[#00E88F] text-[#04140F] font-black text-xs cursor-pointer border-none shadow-md shadow-[#00D084]/20 transition-all active:scale-[0.98] disabled:opacity-50 flex-shrink-0"
         >

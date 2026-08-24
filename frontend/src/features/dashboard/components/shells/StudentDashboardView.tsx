@@ -155,7 +155,7 @@ export const StudentDashboardView: React.FC<StudentDashboardViewProps> = ({
                           </Badge>
                           <Link
                             to={`/room/${s.active_room_code}`}
-                            className="px-4 py-2 rounded-xl bg-[var(--brand)] text-white hover:brightness-110 font-bold text-xs shadow-md transition-all active:scale-[0.98] no-underline"
+                            className="px-4 py-2 rounded-xl bg-[var(--brand)] text-[var(--brand-text)] hover:brightness-110 font-bold text-xs shadow-md transition-all active:scale-[0.98] no-underline"
                           >
                             {isFarsi ? "ورود به کلاس" : "Join Class"}
                           </Link>

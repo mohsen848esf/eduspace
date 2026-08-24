@@ -502,7 +502,7 @@ export default function ClassesPage() {
                       onClick={() => setClassForm({ ...classForm, scheduling_mode: 'manual' })}
                       className={`py-2 px-3 text-xs font-medium rounded-xl border transition-all cursor-pointer ${
                         classForm.scheduling_mode === 'manual'
-                          ? "bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm"
+                          ? "bg-[var(--brand)] text-[var(--brand-text)] border-[var(--brand)] shadow-sm"
                           : "bg-[var(--s2)] text-[var(--t2)] border-[var(--b)] hover:border-[var(--brand)]"
                       }`}
                     >
@@ -513,7 +513,7 @@ export default function ClassesPage() {
                       onClick={() => setClassForm({ ...classForm, scheduling_mode: 'automatic' })}
                       className={`py-2 px-3 text-xs font-medium rounded-xl border transition-all cursor-pointer ${
                         classForm.scheduling_mode === 'automatic'
-                          ? "bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm"
+                          ? "bg-[var(--brand)] text-[var(--brand-text)] border-[var(--brand)] shadow-sm"
                           : "bg-[var(--s2)] text-[var(--t2)] border-[var(--b)] hover:border-[var(--brand)]"
                       }`}
                     >
@@ -628,7 +628,7 @@ export default function ClassesPage() {
                           onClick={() => setClassForm({ ...classForm, recurrence_end_mode: 'date' })}
                           className={`py-1.5 px-3 text-[10px] font-medium rounded-lg border transition-all cursor-pointer ${
                             classForm.recurrence_end_mode === 'date'
-                              ? "bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm"
+                              ? "bg-[var(--brand)] text-[var(--brand-text)] border-[var(--brand)] shadow-sm"
                               : "bg-[var(--s2)] text-[var(--t2)] border-[var(--b)]"
                           }`}
                         >
@@ -640,7 +640,7 @@ export default function ClassesPage() {
                           onClick={() => setClassForm({ ...classForm, recurrence_end_mode: 'occurrences' })}
                           className={`py-1.5 px-3 text-[10px] font-medium rounded-lg border transition-all cursor-pointer ${
                             classForm.recurrence_end_mode === 'occurrences'
-                              ? "bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm"
+                              ? "bg-[var(--brand)] text-[var(--brand-text)] border-[var(--brand)] shadow-sm"
                               : "bg-[var(--s2)] text-[var(--t2)] border-[var(--b)]"
                           }`}
                         >
@@ -675,7 +675,7 @@ export default function ClassesPage() {
                       onClick={() => setClassForm({ ...classForm, capacity_mode: 'unlimited' })}
                       className={`py-2 px-3 text-xs font-medium rounded-xl border transition-all cursor-pointer ${
                         classForm.capacity_mode === 'unlimited'
-                          ? "bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm"
+                          ? "bg-[var(--brand)] text-[var(--brand-text)] border-[var(--brand)] shadow-sm"
                           : "bg-[var(--s2)] text-[var(--t2)] border-[var(--b)] hover:border-[var(--brand)]"
                       }`}
                     >
@@ -686,7 +686,7 @@ export default function ClassesPage() {
                       onClick={() => setClassForm({ ...classForm, capacity_mode: 'limited' })}
                       className={`py-2 px-3 text-xs font-medium rounded-xl border transition-all cursor-pointer ${
                         classForm.capacity_mode === 'limited'
-                          ? "bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm"
+                          ? "bg-[var(--brand)] text-[var(--brand-text)] border-[var(--brand)] shadow-sm"
                           : "bg-[var(--s2)] text-[var(--t2)] border-[var(--b)] hover:border-[var(--brand)]"
                       }`}
                     >
