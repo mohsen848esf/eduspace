@@ -328,6 +328,19 @@ export default function PersonalHomePage() {
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {[
                     isFarsi ? "کلاس‌های آنلاین" : "Live Classes",
+                    isFarsi ? "مدیریت دوره‌ها" : "Courses",
+                    isFarsi ? "دفتر کل مالی" : "Financial Ledger",
+                    isFarsi ? "حضور و غیاب" : "Attendance",
+                  ].map((badge, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2 py-0.5 rounded-md bg-[var(--s3)] text-[10px] font-medium text-[var(--t2)]"
+                    >
+                      {badge}
+                    </span>
+                  ))}
+                </div>
+              </div>
 
               <div className="pt-6">
                 <button
