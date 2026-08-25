@@ -5,6 +5,8 @@ import secrets
 import string
 
 from django.conf import settings
+from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 from livekit import api
 from rest_framework import status

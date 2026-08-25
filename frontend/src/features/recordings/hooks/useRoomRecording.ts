@@ -9,50 +9,46 @@ import recordingsApi, {
 } from "../api/recordings.api";
 import { useActiveRecordingStore } from "../store/activeRecordingStore";
 
-const POLL_MS = 2500;
+const POLL_MS = 4500;
 /**
  * Slower poll for non-hosts. They only consume the read-only state to
- * render the "this call is being recorded" indicator, so 5s is plenty.
+ * render the "this call is being recorded" indicator.
  */
-const POLL_MS_PARTICIPANT = 5000;
+const POLL_MS_PARTICIPANT = 7000;
 /**
- * Permission grants change rarely (host clicks a switch). 5s is a good
- * balance between "feels live" and "doesn't hammer the endpoint".
+ * Permission grants change rarely (host clicks a switch).
  */
-const POLL_MS_PERMISSION = 5000;
+const POLL_MS_PERMISSION = 10000;
 
 interface UseRoomRecordingOptions {
   roomCode: string | null;
   isHost: boolean;
 }
 
+// Module-level registry so multiple mounting components share a single polling loop
+const pollRegistry = new Map<
+  string,
+  {
+    subscribers: number;
+    statusTimer: number | null;
+    permTimer: number | null;
+    inFlightStatus: boolean;
+    inFlightPerm: boolean;
+  }
+>();
+
 /**
  * Drives the in-room recording UI: polls status, exposes start/stop/pause/resume,
  * and surfaces the latest Recording object so the topbar button can render the
  * right state.
- *
- * Polling is gated by `isHost` so participants never hit the endpoint when the
- * server would 403 them anyway.
- *
- * Side effect: keeps the activeRecordingStore in sync. When a recording
- * finishes (transitions to completed/failed), its token is moved from
- * `inFlightToken` to `pendingEditToken` so the disconnect flow can take
- * the host to the editor after they leave the call — instead of yanking
- * them out of an active conversation.
  */
 export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) {
   const { t } = useTranslation("recordings");
-  const [status, setStatus] = useState<RoomRecordingStatus>({
-    status: "idle",
-    recording: null,
-  });
-  const [permission, setPermission] = useState<RoomRecordingPermission>({
-    can_control: false,
-    is_host: false,
-    grants: null,
-  });
+  const status = useActiveRecordingStore((s) => s.status);
+  const setStatus = useActiveRecordingStore((s) => s.setStatus);
+  const permission = useActiveRecordingStore((s) => s.permission);
+  const setPermission = useActiveRecordingStore((s) => s.setPermission);
   const [isMutating, setIsMutating] = useState(false);
-  const cancelled = useRef(false);
   const lastTokenRef = useRef<string | null>(null);
   const setInFlight = useActiveRecordingStore((s) => s.setInFlight);
   const setPendingEdit = useActiveRecordingStore((s) => s.setPendingEdit);
@@ -98,49 +94,86 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
   }, [status.recording, isHost, setInFlight, setPendingEdit]);
 
   const refresh = useCallback(async () => {
-    // Skip status polling if local client-side recording is active or user is an unauthenticated guest
     const hasToken = typeof localStorage !== "undefined" && !!localStorage.getItem("access_token");
     if (!roomCode || isClientRecording || !hasToken) return;
+    const entry = pollRegistry.get(roomCode);
+    if (entry && entry.inFlightStatus) return;
+    if (entry) entry.inFlightStatus = true;
     try {
       const next = await recordingsApi.roomStatus(roomCode);
-      if (!cancelled.current) setStatus(next);
+      setStatus(next);
     } catch {
       // Silent
+    } finally {
+      if (entry) entry.inFlightStatus = false;
     }
-  }, [roomCode, isClientRecording]);
+  }, [roomCode, isClientRecording, setStatus]);
 
   const refreshPermission = useCallback(async () => {
     const hasToken = typeof localStorage !== "undefined" && !!localStorage.getItem("access_token");
     if (!roomCode || !hasToken) return;
+    const entry = pollRegistry.get(roomCode);
+    if (entry && entry.inFlightPerm) return;
+    if (entry) entry.inFlightPerm = true;
     try {
       const next = await recordingsApi.getRecordingPermission(roomCode);
-      if (!cancelled.current) setPermission(next);
+      setPermission(next);
     } catch {
       // Silent
+    } finally {
+      if (entry) entry.inFlightPerm = false;
     }
-  }, [roomCode]);
+  }, [roomCode, setPermission]);
 
+  // Unified singleton timer registration per roomCode
   useEffect(() => {
-    cancelled.current = false;
     const hasToken = typeof localStorage !== "undefined" && !!localStorage.getItem("access_token");
     if (!roomCode || !hasToken) return;
-    refresh();
-    const interval = isHost ? POLL_MS : POLL_MS_PARTICIPANT;
-    const id = window.setInterval(refresh, interval);
+
+    let entry = pollRegistry.get(roomCode);
+    if (!entry) {
+      entry = {
+        subscribers: 0,
+        statusTimer: null,
+        permTimer: null,
+        inFlightStatus: false,
+        inFlightPerm: false,
+      };
+      pollRegistry.set(roomCode, entry);
+    }
+
+    entry.subscribers += 1;
+
+    // Start single interval loop if this is the active coordinator
+    if (entry.statusTimer === null) {
+      refresh();
+      const interval = isHost ? POLL_MS : POLL_MS_PARTICIPANT;
+      entry.statusTimer = window.setInterval(() => {
+        if (typeof document !== "undefined" && document.hidden) return;
+        refresh();
+      }, interval);
+    }
+
+    if (entry.permTimer === null) {
+      refreshPermission();
+      entry.permTimer = window.setInterval(() => {
+        if (typeof document !== "undefined" && document.hidden) return;
+        refreshPermission();
+      }, POLL_MS_PERMISSION);
+    }
+
     return () => {
-      cancelled.current = true;
-      window.clearInterval(id);
+      const current = pollRegistry.get(roomCode);
+      if (current) {
+        current.subscribers -= 1;
+        if (current.subscribers <= 0) {
+          if (current.statusTimer !== null) window.clearInterval(current.statusTimer);
+          if (current.permTimer !== null) window.clearInterval(current.permTimer);
+          pollRegistry.delete(roomCode);
+        }
+      }
     };
-  }, [refresh, roomCode, isHost]);
-
-  // Permission polling runs separately
-  useEffect(() => {
-    const hasToken = typeof localStorage !== "undefined" && !!localStorage.getItem("access_token");
-    if (!roomCode || !hasToken) return;
-    refreshPermission();
-    const id = window.setInterval(refreshPermission, POLL_MS_PERMISSION);
-    return () => window.clearInterval(id);
-  }, [refreshPermission, roomCode]);
+  }, [roomCode, isHost, refresh, refreshPermission]);
 
   // Cleanup screen capture and mic streams on unmount
   useEffect(() => {

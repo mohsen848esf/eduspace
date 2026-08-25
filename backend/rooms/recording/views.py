@@ -51,7 +51,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status as http
 from rest_framework.decorators import (
-    api_view, authentication_classes, permission_classes,
+    api_view, authentication_classes, permission_classes, throttle_classes,
 )
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -387,6 +387,7 @@ def resume_recording(request, room_code: str):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@throttle_classes([])
 def recording_status(request, room_code: str):
     room = _get_room_or_404(room_code)
     if not room:
@@ -583,6 +584,7 @@ def complete_client_recording(request, token: str):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@throttle_classes([])
 def recording_permission(request, room_code: str):
     room = _get_room_or_404(room_code)
     if not room:
