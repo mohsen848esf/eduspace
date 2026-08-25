@@ -47,7 +47,7 @@ const variantClasses: Record<ControlButtonVariant, string> = {
   default:
     "bg-[var(--s2)] text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
   active:
-    "bg-[var(--brand-soft)] text-[var(--brand-text)] hover:bg-[var(--brand)]/20 ring-1 ring-[var(--brand)]/30",
+    "bg-[var(--brand-soft)] text-[var(--t1)] border-[var(--brand)]/60 ring-2 ring-[var(--brand)]/40 shadow-sm",
   danger: "bg-[var(--red)]/15 text-[var(--red)] hover:bg-[var(--red)]/25",
   leave:
     "bg-[var(--red)] text-white shadow-md shadow-[var(--red)]/30 hover:bg-[var(--red)]/90",
@@ -102,7 +102,7 @@ const ControlButton = forwardRef<HTMLButtonElement, ControlButtonProps>(
               "font-medium leading-none whitespace-nowrap",
               labelSize[size],
               variant === "active"
-                ? "text-[var(--brand-text)]"
+                ? "text-[var(--t1)] font-semibold"
                 : variant === "danger"
                   ? "text-[var(--red)]"
                   : variant === "leave"

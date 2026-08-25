@@ -144,8 +144,8 @@ function SplitBtn({
         "relative flex items-center border rounded-2xl transition-all duration-200 shadow-sm group",
         height,
         isOn
-          ? "bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-400"
-          : "bg-rose-500/10 hover:bg-rose-500/20 border-rose-500/30 text-rose-400"
+          ? "bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/40 text-emerald-600 dark:text-emerald-400"
+          : "bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/40 text-rose-600 dark:text-rose-400"
       )}
     >
       <Tooltip content={tooltipMain}>
@@ -823,12 +823,13 @@ export default function RoomControls({
           </div>
         )}
 
-        {/* macOS Dock Stack 3D Curved Fan-out for Tools */}
-        <DockStackFanOut
-          isOpen={toolsStackOpen}
-          onToggle={() => setToolsStackOpen((prev) => !prev)}
-          onClose={() => setToolsStackOpen(false)}
-          onOpenPanel={(p) => handlePanelClick(p)}
+        {/* Tools Panel Toggle */}
+        <CtrlBtn
+          icon={Icons.tools}
+          label={t("controls.tools", "ابزارها")}
+          tooltip={t("tooltips.tools", "ابزارها و برنامه‌ها")}
+          onClick={() => handlePanelClick("tools")}
+          isOn={isPanelActive("tools")}
           size={size}
         />
 

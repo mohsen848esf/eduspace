@@ -80,7 +80,7 @@ export default function RoomSidebar({
                     "w-9 h-9 rounded-lg border-none cursor-pointer",
                     "flex items-center justify-center transition-all duration-150",
                     activeTab === tab.id
-                      ? "bg-[var(--brand-soft)] text-[var(--brand)]"
+                      ? "bg-[var(--brand-soft)] text-[var(--t1)] border border-[var(--brand)]/40 shadow-xs font-bold"
                       : "bg-transparent text-[var(--t3)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
                   )}
                 >
