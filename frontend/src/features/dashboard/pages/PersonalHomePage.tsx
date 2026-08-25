@@ -126,7 +126,7 @@ export default function PersonalHomePage() {
         {/* 1. Header Date & Day Strip (Google Meet Style) */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--b)]/60">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[var(--brand)]/10 text-[var(--brand-text)] flex items-center justify-center font-bold shadow-sm">
+            <div className="w-10 h-10 rounded-2xl bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--brand)]/30 flex items-center justify-center font-bold shadow-sm">
               <Calendar className="w-5 h-5" />
             </div>
             <div className="flex flex-col">
@@ -274,15 +274,19 @@ export default function PersonalHomePage() {
               />
               <button
                 type="submit"
-          <div className="flex items-center gap-2">
-            <Badge variant="brand" dot className="px-3 py-1.5 text-xs font-bold">
-              {isFarsi ? "آنلاین و آماده گفتگو" : "Ready for Calls"}
-            </Badge>
+                disabled={!roomInput.trim()}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer border-none",
+                  roomInput.trim()
+                    ? "bg-[var(--brand)] text-white hover:opacity-90 shadow-sm"
+                    : "bg-transparent text-[var(--t3)] opacity-50 cursor-not-allowed",
+                )}
+              >
+                {isFarsi ? "پیوستن" : "Join"}
+              </button>
+            </form>
           </div>
         </div>
-
-        {/* 2. Main Action Stage: Start Instant Meeting & Join with Code */}
-        <PersonalMeetingStage onRefresh={fetchPersonalMeetings} />
 
         {/* 3. Creative Bento Cards: Upgrade to Enterprise LMS */}
         <div className="space-y-3">
