@@ -19,24 +19,27 @@ export default function ThemeScopeController() {
   useEffect(() => {
     const path = location.pathname;
 
-    // 1. Auth & Public Entry Routes (Always platform scoped)
+    // 1. Call & Video Room Routes (Always Platform Theme: Light or Dark)
+    const isCallRoute = path.startsWith("/room");
+
+    // 2. Auth & Public Entry Routes (Always Platform Theme)
     const isAuthRoute =
       path === "/login" ||
       path === "/register" ||
       path.startsWith("/join") ||
       path === "/unauthorized";
 
-    // 2. User Organization Context
+    // 3. User Organization Context
     const hasOrg = Boolean(
       (user?.organizations && user.organizations.length > 0) ||
         (activeSlug && activeSlug !== "no organization" && activeSlug !== "null") ||
         orgContext?.organization,
     );
 
-    const isPlatformScoped = isAuthRoute || !hasOrg;
+    const isPlatformScoped = isCallRoute || isAuthRoute || !hasOrg;
 
     if (isPlatformScoped) {
-      // Platform Personal / Non-Org Mode: Apply Platform Theme (Light or Dark)
+      // Direct Platform Theme (Slate Light #F8FAFC or Modern Dark #0B111E)
       applyPlatformThemeToDOM(isDark ? "dark" : "light");
     } else {
       // Organization Workspace: Apply organization white-label theme

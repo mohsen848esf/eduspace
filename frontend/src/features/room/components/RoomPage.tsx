@@ -297,6 +297,7 @@ export default function RoomPage() {
         onRejoin={() => {
           setCallEnded(false);
           setPreJoinDone(false);
+          useRoomStore.getState().setIsUserLeaving(false);
           clearError();
         }}
         onExit={() => {
@@ -379,10 +380,7 @@ export default function RoomPage() {
         }}
         onDisconnected={() => {
           useBackgroundStore.getState().setBackground("none");
-          const isLeaving = useRoomStore.getState().isUserLeaving;
-          if (!isLeaving) {
-            setCallEnded(true);
-          }
+          setCallEnded(true);
         }}
         style={{ height: "100vh", display: "flex", flexDirection: "column" }}
       >

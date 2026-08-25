@@ -123,7 +123,9 @@ export function useRoomDisconnect() {
           // the editor for the recording they just stopped.
           await leaveRoom({ redirectTo: `/recordings/${pendingEditToken}/edit` });
         } else {
-          leaveRoom();
+          // Clear room on backend and store without navigating away,
+          // allowing CallEndedScreen to render for 60 seconds with rejoin/exit options.
+          await leaveRoom({ redirectTo: null });
         }
       }
     },

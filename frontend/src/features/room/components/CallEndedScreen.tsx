@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { PhoneOff, RotateCcw, Home, Star, CheckCircle2 } from "lucide-react";
+import { PhoneOff, RotateCcw, Home, Star, CheckCircle2, Timer } from "lucide-react";
 import Button from "../../../components/ui/Button";
 import { useLocale } from "../../../i18n/useLocale";
 import { useAuthStore } from "../../../features/auth/store/authStore";
@@ -26,14 +26,34 @@ export default function CallEndedScreen({
 
   const [rating, setRating] = useState<number | null>(null);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [countdown, setCountdown] = useState(60);
+  const exitedRef = useRef(false);
 
   const handleReturnHome = () => {
+    if (exitedRef.current) return;
+    exitedRef.current = true;
     if (onExit) {
       onExit();
     } else {
       navigate(isAuthenticated ? "/dashboard" : "/login");
     }
   };
+
+  // 60-second countdown timer for auto-redirect
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleReturnHome();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   const handleRate = (stars: number) => {
     setRating(stars);
@@ -49,7 +69,7 @@ export default function CallEndedScreen({
       {/* Main card */}
       <div className="relative z-10 w-full max-w-md bg-[var(--s1)] border border-[var(--b)] backdrop-blur-2xl rounded-3xl p-6 sm:p-8 shadow-2xl text-center flex flex-col items-center animate-in fade-in zoom-in-95 duration-200">
         {/* End Call Icon Badge */}
-        <div className="w-16 h-16 rounded-2xl bg-red-500/15 border border-red-500/25 flex items-center justify-center text-red-500 mb-5 shadow-lg shadow-red-500/10">
+        <div className="w-16 h-16 rounded-2xl bg-red-500/15 border border-red-500/25 flex items-center justify-center text-red-500 mb-4 shadow-lg shadow-red-500/10">
           <PhoneOff className="w-8 h-8" />
         </div>
 
@@ -57,7 +77,7 @@ export default function CallEndedScreen({
         <h2 className="text-xl font-black text-[var(--t1)]">
           {isFarsi ? "شما از جلسه خارج شدید" : "You have left the meeting"}
         </h2>
-        <p className="text-xs text-[var(--t3)] mt-1 mb-6">
+        <p className="text-xs text-[var(--t3)] mt-1 mb-4">
           {roomName || roomCode ? (
             <span>
               {isFarsi ? "جلسه:" : "Meeting:"}{" "}
@@ -67,6 +87,16 @@ export default function CallEndedScreen({
             <span>{isFarsi ? "تماس به پایان رسید" : "The call has ended"}</span>
           )}
         </p>
+
+        {/* 60s Countdown Timer Badge */}
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--s2)] border border-[var(--b)] text-xs text-[var(--t2)] mb-6 font-medium">
+          <Timer className="w-3.5 h-3.5 text-[var(--brand)] animate-pulse" />
+          <span>
+            {isFarsi
+              ? `بازگشت خودکار به داشبورد در ${countdown} ثانیه`
+              : `Auto-returning to dashboard in ${countdown}s`}
+          </span>
+        </div>
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full mb-6">
