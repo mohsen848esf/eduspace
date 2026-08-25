@@ -47,7 +47,7 @@ const variantClasses: Record<ControlButtonVariant, string> = {
   default:
     "bg-[var(--s2)] text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
   active:
-    "bg-[var(--brand-soft)] text-[var(--t1)] border-[var(--brand)]/60 ring-2 ring-[var(--brand)]/40 shadow-sm",
+    "bg-[var(--brand-soft)] text-[var(--brand-dark)] dark:text-white border-[var(--brand)]/60 ring-2 ring-[var(--brand)]/40 shadow-sm",
   danger: "bg-[var(--red)]/15 text-[var(--red)] hover:bg-[var(--red)]/25",
   leave:
     "bg-[var(--red)] text-white shadow-md shadow-[var(--red)]/30 hover:bg-[var(--red)]/90",
@@ -87,7 +87,7 @@ const ControlButton = forwardRef<HTMLButtonElement, ControlButtonProps>(
       >
         <span
           className={cn(
-            "flex items-center justify-center transition-all duration-200 shadow-xs",
+            "flex items-center justify-center transition-all duration-200 shadow-xs [&>svg]:stroke-current [&>svg]:fill-none",
             isLeave
               ? containerSize[size]
               : cn(containerSize[size], variantClasses[variant], "border border-[var(--b)]"),
@@ -102,7 +102,7 @@ const ControlButton = forwardRef<HTMLButtonElement, ControlButtonProps>(
               "font-medium leading-none whitespace-nowrap",
               labelSize[size],
               variant === "active"
-                ? "text-[var(--t1)] font-semibold"
+                ? "text-[var(--brand-dark)] dark:text-white font-bold"
                 : variant === "danger"
                   ? "text-[var(--red)]"
                   : variant === "leave"

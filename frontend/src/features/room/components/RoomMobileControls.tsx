@@ -88,7 +88,7 @@ export default function RoomMobileControls({
       <div
         className={cn(
           "w-full max-w-[480px] flex items-center justify-between gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-2xl border shadow-2xl backdrop-blur-2xl",
-          "bg-[#0f172a]/95 dark:bg-[#0f172a]/95 border-white/15 text-white shadow-[0_10px_30px_rgba(0,0,0,0.6)] overflow-x-auto scrollbar-none"
+          "bg-[var(--s2)]/95 border-[var(--b)] text-[var(--t1)] shadow-2xl overflow-x-auto scrollbar-none"
         )}
       >
         {/* Mic Toggle */}
@@ -214,17 +214,17 @@ function MobileDockBtn({
         aria-label={ariaLabel || tooltip}
         className={cn(
           "w-8.5 h-8.5 sm:w-10 sm:h-10 min-w-8.5 sm:min-w-10 rounded-xl flex items-center justify-center border transition-all duration-150 cursor-pointer shrink-0",
-          "active:scale-90 select-none [&>svg]:w-4 [&>svg]:h-4 sm:[&>svg]:w-5 sm:[&>svg]:h-5",
+          "active:scale-90 select-none [&>svg]:w-4 [&>svg]:h-4 sm:[&>svg]:w-5 sm:[&>svg]:h-5 [&>svg]:stroke-current [&>svg]:fill-none",
           variant === "default" &&
-            "bg-white/10 hover:bg-white/15 border-white/10 text-gray-200",
+            "bg-[var(--s3)] hover:bg-[var(--s4)] border-[var(--b)] text-[var(--t2)] hover:text-[var(--t1)]",
           variant === "active" &&
-            "bg-indigo-600 border-indigo-400 text-white shadow-[0_0_12px_rgba(99,102,241,0.5)]",
+            "bg-[var(--brand-soft)] border-[var(--brand)]/60 text-[var(--brand-dark)] dark:text-white shadow-xs ring-2 ring-[var(--brand)]/40",
           variant === "emerald" &&
-            "bg-emerald-600/90 border-emerald-400 text-white shadow-[0_0_12px_rgba(16,185,129,0.4)]",
+            "bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400",
           variant === "danger" &&
-            "bg-rose-600/90 border-rose-400 text-white shadow-[0_0_12px_rgba(244,63,94,0.4)]",
+            "bg-rose-500/15 border-rose-500/40 text-rose-600 dark:text-rose-400",
           variant === "amber" &&
-            "bg-amber-600 border-amber-400 text-white shadow-[0_0_12px_rgba(245,158,11,0.5)]"
+            "bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400"
         )}
       >
         {icon}

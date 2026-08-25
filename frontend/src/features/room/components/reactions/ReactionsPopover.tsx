@@ -65,11 +65,11 @@ export default function ReactionsPopover({
       <div
         className={cn(
           "flex items-center gap-1.5 p-1.5 md:p-2 rounded-full backdrop-blur-2xl shadow-2xl border",
-          "bg-[#0f172a]/95 dark:bg-[#0f172a]/95 border-white/20 text-white",
+          "bg-[var(--s2)]/95 border-[var(--b)] text-[var(--t1)]",
           "max-w-[calc(100vw-1.5rem)] overflow-x-auto scrollbar-none touch-pan-x"
         )}
         style={{
-          boxShadow: "0 20px 40px -10px rgba(0,0,0,0.6), 0 0 20px rgba(99,102,241,0.25)",
+          boxShadow: "0 20px 40px -10px rgba(0,0,0,0.3), 0 0 20px rgba(37,99,235,0.15)",
         }}
       >
         {REACTION_EMOJIS.map(({ emoji, label }) => (
@@ -83,7 +83,7 @@ export default function ReactionsPopover({
             className={cn(
               "w-10 h-10 rounded-full flex items-center justify-center text-2xl",
               "border-none bg-transparent cursor-pointer transition-all duration-150 transform-gpu",
-              "hover:scale-135 hover:-translate-y-1 hover:bg-white/15 active:scale-90",
+              "hover:scale-135 hover:-translate-y-1 hover:bg-[var(--s3)] active:scale-90",
               "focus:outline-hidden"
             )}
           >

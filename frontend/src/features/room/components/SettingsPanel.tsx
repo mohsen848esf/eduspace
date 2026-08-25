@@ -214,40 +214,40 @@ export default function SettingsPanel({
       ref={popoverRef}
       className={cn(
         "absolute bottom-[76px] left-1/2 -translate-x-1/2 z-[100] w-[460px] max-w-[calc(100vw-2rem)]",
-        "bg-slate-900/95 backdrop-blur-2xl border border-white/15 rounded-3xl shadow-2xl p-5 text-white animate-in fade-in zoom-in-95 duration-150 select-none",
+        "bg-[var(--s2)]/95 backdrop-blur-2xl border border-[var(--b)] rounded-3xl shadow-2xl p-5 text-[var(--t1)] animate-in fade-in zoom-in-95 duration-150 select-none",
       )}
       style={{
         boxShadow:
-          "0 25px 50px -12px rgba(0,0,0,0.7), 0 0 25px rgba(99,102,241,0.25)",
+          "0 25px 50px -12px rgba(0,0,0,0.5), 0 0 25px rgba(37,99,235,0.15)",
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
+      <div className="flex items-center justify-between border-b border-[var(--b)] pb-3 mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-indigo-400">{Icons.settings}</span>
-          <span className="text-sm font-bold text-gray-100">
+          <span className="text-[var(--brand)]">{Icons.settings}</span>
+          <span className="text-sm font-bold text-[var(--t1)]">
             {t("settings.title", "تنظیمات تماس")}
           </span>
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="text-gray-400 hover:text-white text-xs p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+          className="text-[var(--t3)] hover:text-[var(--t1)] text-xs p-1.5 rounded-lg hover:bg-[var(--s3)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
         >
           {Icons.x}
         </button>
       </div>
 
       {/* Modern Tabs Header */}
-      <div className="flex gap-1.5 p-1 bg-white/5 rounded-2xl border border-white/10 mb-4 text-xs font-semibold">
+      <div className="flex gap-1.5 p-1 bg-[var(--s1)] rounded-2xl border border-[var(--b)] mb-4 text-xs font-semibold">
         <button
           type="button"
           onClick={() => setActiveTab("devices")}
           className={cn(
             "flex-1 py-2 px-2 rounded-xl transition-all cursor-pointer border-none flex items-center justify-center gap-1.5",
             activeTab === "devices"
-              ? "bg-indigo-600 text-white shadow-sm"
-              : "bg-transparent text-gray-400 hover:text-white hover:bg-white/5",
+              ? "bg-[var(--brand)] text-white shadow-sm font-bold"
+              : "bg-transparent text-[var(--t3)] hover:text-[var(--t1)] hover:bg-[var(--s3)]",
           )}
         >
           <span className="scale-90">{Icons.mic}</span>
@@ -260,8 +260,8 @@ export default function SettingsPanel({
           className={cn(
             "flex-1 py-2 px-2 rounded-xl transition-all cursor-pointer border-none flex items-center justify-center gap-1.5",
             activeTab === "layout"
-              ? "bg-indigo-600 text-white shadow-sm"
-              : "bg-transparent text-gray-400 hover:text-white hover:bg-white/5",
+              ? "bg-[var(--brand)] text-white shadow-sm font-bold"
+              : "bg-transparent text-[var(--t3)] hover:text-[var(--t1)] hover:bg-[var(--s3)]",
           )}
         >
           <span className="scale-90">{Icons.home}</span>
@@ -274,8 +274,8 @@ export default function SettingsPanel({
           className={cn(
             "flex-1 py-2 px-2 rounded-xl transition-all cursor-pointer border-none flex items-center justify-center gap-1.5",
             activeTab === "access"
-              ? "bg-indigo-600 text-white shadow-sm"
-              : "bg-transparent text-gray-400 hover:text-white hover:bg-white/5",
+              ? "bg-[var(--brand)] text-white shadow-sm font-bold"
+              : "bg-transparent text-[var(--t3)] hover:text-[var(--t1)] hover:bg-[var(--s3)]",
           )}
         >
           <span className="scale-90">{Icons.shield}</span>
@@ -288,8 +288,8 @@ export default function SettingsPanel({
           className={cn(
             "flex-1 py-2 px-2 rounded-xl transition-all cursor-pointer border-none flex items-center justify-center gap-1.5",
             activeTab === "general"
-              ? "bg-indigo-600 text-white shadow-sm"
-              : "bg-transparent text-gray-400 hover:text-white hover:bg-white/5",
+              ? "bg-[var(--brand)] text-white shadow-sm font-bold"
+              : "bg-transparent text-[var(--t3)] hover:text-[var(--t1)] hover:bg-[var(--s3)]",
           )}
         >
           <span className="scale-90">{Icons.tools}</span>
@@ -302,20 +302,20 @@ export default function SettingsPanel({
         <div className="space-y-3.5 max-h-80 overflow-y-auto pr-1 scrollbar-none text-xs">
           {/* Microphone */}
           <div>
-            <label className="text-[11px] font-bold text-gray-400 block mb-1.5 flex items-center gap-1.5">
+            <label className="text-[11px] font-bold text-[var(--t3)] block mb-1.5 flex items-center gap-1.5">
               <span>{Icons.mic}</span>
               <span>{t("preJoin.microphone", "میکروفون")}</span>
             </label>
             <select
               value={selectedMic}
               onChange={(e) => handleDeviceChange("audioinput", e.target.value)}
-              className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-xs text-gray-200 outline-none focus:border-indigo-400 transition-colors"
+              className="w-full bg-[var(--s1)] border border-[var(--b)] rounded-xl px-3 py-2 text-xs text-[var(--t1)] outline-none focus:border-[var(--brand)] transition-colors"
             >
               {mics.map((d) => (
                 <option
                   key={d.deviceId}
                   value={d.deviceId}
-                  className="bg-slate-900 text-white"
+                  className="bg-[var(--s2)] text-[var(--t1)]"
                 >
                   {d.label || t("preJoin.deviceLabels.microphone", "میکروفون")}
                 </option>
@@ -325,20 +325,20 @@ export default function SettingsPanel({
 
           {/* Camera */}
           <div>
-            <label className="text-[11px] font-bold text-gray-400 block mb-1.5 flex items-center gap-1.5">
+            <label className="text-[11px] font-bold text-[var(--t3)] block mb-1.5 flex items-center gap-1.5">
               <span>{Icons.camera}</span>
               <span>{t("preJoin.camera", "دوربین")}</span>
             </label>
             <select
               value={selectedCam}
               onChange={(e) => handleDeviceChange("videoinput", e.target.value)}
-              className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-xs text-gray-200 outline-none focus:border-indigo-400 transition-colors"
+              className="w-full bg-[var(--s1)] border border-[var(--b)] rounded-xl px-3 py-2 text-xs text-[var(--t1)] outline-none focus:border-[var(--brand)] transition-colors"
             >
               {cameras.map((d) => (
                 <option
                   key={d.deviceId}
                   value={d.deviceId}
-                  className="bg-slate-900 text-white"
+                  className="bg-[var(--s2)] text-[var(--t1)]"
                 >
                   {d.label || t("preJoin.deviceLabels.camera", "دوربین")}
                 </option>
@@ -349,7 +349,7 @@ export default function SettingsPanel({
           {/* Speaker */}
           {speakers.length > 0 && (
             <div>
-              <label className="text-[11px] font-bold text-gray-400 block mb-1.5 flex items-center gap-1.5">
+              <label className="text-[11px] font-bold text-[var(--t3)] block mb-1.5 flex items-center gap-1.5">
                 <span>{Icons.bell}</span>
                 <span>{t("preJoin.speaker", "بلندگو / اسپیکر")}</span>
               </label>
@@ -358,13 +358,13 @@ export default function SettingsPanel({
                 onChange={(e) =>
                   handleDeviceChange("audiooutput", e.target.value)
                 }
-                className="w-full bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-xs text-gray-200 outline-none focus:border-indigo-400 transition-colors"
+                className="w-full bg-[var(--s1)] border border-[var(--b)] rounded-xl px-3 py-2 text-xs text-[var(--t1)] outline-none focus:border-[var(--brand)] transition-colors"
               >
                 {speakers.map((d) => (
                   <option
                     key={d.deviceId}
                     value={d.deviceId}
-                    className="bg-slate-900 text-white"
+                    className="bg-[var(--s2)] text-[var(--t1)]"
                   >
                     {d.label || t("preJoin.deviceLabels.speaker", "اسپیکر")}
                   </option>
@@ -375,12 +375,12 @@ export default function SettingsPanel({
 
           {/* Virtual Background */}
           <div className="pt-1">
-            <label className="text-[11px] font-bold text-gray-400 block mb-2 flex items-center gap-1.5">
+            <label className="text-[11px] font-bold text-[var(--t3)] block mb-2 flex items-center gap-1.5">
               <span>{Icons.eye}</span>
               <span>{t("preJoin.background", "افکت پس‌زمینه و بلور")}</span>
             </label>
             {!isSupported ? (
-              <p className="text-[11px] text-gray-400">
+              <p className="text-[11px] text-[var(--t3)]">
                 {t(
                   "preJoin.backgroundNotSupported",
                   "مرورگر شما از جلوه‌های پس‌زمینه پشتیبانی نمی‌کند",
@@ -394,20 +394,20 @@ export default function SettingsPanel({
                     type="button"
                     onClick={() => changeBackground(bg.id)}
                     className={cn(
-                      "h-14 rounded-xl border-2 cursor-pointer transition-all overflow-hidden relative bg-white/10 p-0",
+                      "h-14 rounded-xl border-2 cursor-pointer transition-all overflow-hidden relative bg-[var(--s1)] p-0",
                       background === bg.id
-                        ? "border-indigo-400 scale-[1.03] shadow-md shadow-indigo-500/30"
-                        : "border-transparent hover:border-white/30",
+                        ? "border-[var(--brand)] scale-[1.03] shadow-md shadow-[var(--brand)]/20"
+                        : "border-transparent hover:border-[var(--b)]",
                     )}
                   >
                     {bg.id === "none" && (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-[10px] text-gray-300 font-medium leading-none gap-1">
+                      <div className="w-full h-full flex flex-col items-center justify-center text-[10px] text-[var(--t2)] font-medium leading-none gap-1">
                         <span className="text-sm">Ø</span>
                         <span>{t("preJoin.bgNone", "هیچ")}</span>
                       </div>
                     )}
                     {bg.id === "blur" && (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-[10px] text-gray-300 font-medium leading-none gap-1 bg-white/15">
+                      <div className="w-full h-full flex flex-col items-center justify-center text-[10px] text-[var(--t2)] font-medium leading-none gap-1 bg-[var(--s3)]">
                         <span className="text-xs">░</span>
                         <span>{t("preJoin.bgBlur", "بلور")}</span>
                       </div>
@@ -467,8 +467,8 @@ export default function SettingsPanel({
                 className={cn(
                   "flex items-center gap-2 p-3 rounded-2xl border text-xs font-semibold cursor-pointer transition-all",
                   layoutMode === mode.id
-                    ? "bg-indigo-600 text-white border-indigo-400 shadow-md shadow-indigo-600/30"
-                    : "bg-white/5 text-gray-300 border-white/10 hover:bg-white/10 hover:text-white",
+                    ? "bg-[var(--brand)] text-white border-[var(--brand)] shadow-md shadow-[var(--brand)]/20 font-bold"
+                    : "bg-[var(--s1)] text-[var(--t2)] border-[var(--b)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
                 )}
               >
                 <span className="scale-90">{mode.icon}</span>
@@ -483,7 +483,7 @@ export default function SettingsPanel({
               onClose();
               setAdjustViewOpen(true);
             }}
-            className="w-full py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-indigo-300 hover:text-indigo-200 text-xs font-semibold border border-white/10 transition-colors cursor-pointer flex items-center justify-center gap-2"
+            className="w-full py-2.5 rounded-2xl bg-[var(--s1)] hover:bg-[var(--s3)] text-[var(--brand)] text-xs font-semibold border border-[var(--b)] transition-colors cursor-pointer flex items-center justify-center gap-2"
           >
             <span>{Icons.settings}</span>
             <span>
@@ -497,10 +497,10 @@ export default function SettingsPanel({
       {activeTab === "access" && (
         <div className="space-y-3 text-xs">
           {/* Require Approval Toggle */}
-          <div className="p-3.5 bg-white/5 rounded-2xl border border-white/10 flex items-start justify-between gap-3">
+          <div className="p-3.5 bg-[var(--s1)] rounded-2xl border border-[var(--b)] flex items-start justify-between gap-3">
             <div className="space-y-1 min-w-0">
-              <div className="font-bold text-gray-100 flex items-center gap-2">
-                <span className="text-indigo-400">{Icons.shield}</span>
+              <div className="font-bold text-[var(--t1)] flex items-center gap-2">
+                <span className="text-[var(--brand)]">{Icons.shield}</span>
                 <span>
                   {t(
                     "settings.requireApprovalTitle",
@@ -508,7 +508,7 @@ export default function SettingsPanel({
                   )}
                 </span>
               </div>
-              <p className="text-[11px] text-gray-400 leading-relaxed">
+              <p className="text-[11px] text-[var(--t3)] leading-relaxed">
                 {t(
                   "settings.requireApprovalDesc",
                   "افرادی که از طریق لینک دعوت متصل می‌شوند ابتدا در لابی منتظر می‌مانند تا توسط شما تأیید شوند.",
@@ -523,13 +523,13 @@ export default function SettingsPanel({
           </div>
 
           {/* Lock Room Toggle */}
-          <div className="p-3.5 bg-white/5 rounded-2xl border border-white/10 flex items-start justify-between gap-3">
+          <div className="p-3.5 bg-[var(--s1)] rounded-2xl border border-[var(--b)] flex items-start justify-between gap-3">
             <div className="space-y-1 min-w-0">
-              <div className="font-bold text-gray-100 flex items-center gap-2">
-                <span className="text-amber-400">{Icons.lock}</span>
+              <div className="font-bold text-[var(--t1)] flex items-center gap-2">
+                <span className="text-amber-500">{Icons.lock}</span>
                 <span>{t("settings.lockRoomTitle", "قفل کردن جلسه")}</span>
               </div>
-              <p className="text-[11px] text-gray-400 leading-relaxed">
+              <p className="text-[11px] text-[var(--t3)] leading-relaxed">
                 {t(
                   "settings.lockRoomDesc",
                   "ورود هرگونه شرکت‌کننده جدید را کاملاً مسدود می‌کند.",
@@ -544,13 +544,13 @@ export default function SettingsPanel({
           </div>
 
           {/* Mute Mic On Join */}
-          <div className="p-3.5 bg-white/5 rounded-2xl border border-white/10 flex items-start justify-between gap-3">
+          <div className="p-3.5 bg-[var(--s1)] rounded-2xl border border-[var(--b)] flex items-start justify-between gap-3">
             <div className="space-y-1 min-w-0">
-              <div className="font-bold text-gray-100 flex items-center gap-2">
-                <span className="text-rose-400">🔇</span>
+              <div className="font-bold text-[var(--t1)] flex items-center gap-2">
+                <span className="text-rose-500">🔇</span>
                 <span>قطع میکروفون در بدو ورود</span>
               </div>
-              <p className="text-[11px] text-gray-400 leading-relaxed">
+              <p className="text-[11px] text-[var(--t3)] leading-relaxed">
                 میکروفون شرکت‌کنندگان هنگام ورود به اتاق به صورت خودکار بسته باشد.
               </p>
             </div>
@@ -562,13 +562,13 @@ export default function SettingsPanel({
           </div>
 
           {/* Mute Cam On Join */}
-          <div className="p-3.5 bg-white/5 rounded-2xl border border-white/10 flex items-start justify-between gap-3">
+          <div className="p-3.5 bg-[var(--s1)] rounded-2xl border border-[var(--b)] flex items-start justify-between gap-3">
             <div className="space-y-1 min-w-0">
-              <div className="font-bold text-gray-100 flex items-center gap-2">
-                <span className="text-rose-400">📷</span>
+              <div className="font-bold text-[var(--t1)] flex items-center gap-2">
+                <span className="text-rose-500">📷</span>
                 <span>قطع وب‌کم در بدو ورود</span>
               </div>
-              <p className="text-[11px] text-gray-400 leading-relaxed">
+              <p className="text-[11px] text-[var(--t3)] leading-relaxed">
                 دوربین شرکت‌کنندگان هنگام ورود به اتاق به صورت خودکار خاموش باشد.
               </p>
             </div>
@@ -580,13 +580,13 @@ export default function SettingsPanel({
           </div>
 
           {/* Lock Screen Share */}
-          <div className="p-3.5 bg-white/5 rounded-2xl border border-white/10 flex items-start justify-between gap-3">
+          <div className="p-3.5 bg-[var(--s1)] rounded-2xl border border-[var(--b)] flex items-start justify-between gap-3">
             <div className="space-y-1 min-w-0">
-              <div className="font-bold text-gray-100 flex items-center gap-2">
-                <span className="text-amber-400">🖥️</span>
+              <div className="font-bold text-[var(--t1)] flex items-center gap-2">
+                <span className="text-amber-500">🖥️</span>
                 <span>قفل اشتراک صفحه برای اعضا</span>
               </div>
-              <p className="text-[11px] text-gray-400 leading-relaxed">
+              <p className="text-[11px] text-[var(--t3)] leading-relaxed">
                 تنها با درخواست و اجازه برگزارکننده یا همیاران امکان‌پذیر باشد.
               </p>
             </div>
@@ -598,13 +598,13 @@ export default function SettingsPanel({
           </div>
 
           {/* Lock Microphone */}
-          <div className="p-3.5 bg-white/5 rounded-2xl border border-white/10 flex items-start justify-between gap-3">
+          <div className="p-3.5 bg-[var(--s1)] rounded-2xl border border-[var(--b)] flex items-start justify-between gap-3">
             <div className="space-y-1 min-w-0">
-              <div className="font-bold text-gray-100 flex items-center gap-2">
-                <span className="text-amber-400">🎙️</span>
+              <div className="font-bold text-[var(--t1)] flex items-center gap-2">
+                <span className="text-amber-500">🎙️</span>
                 <span>قفل صحبت کردن (میکروفون)</span>
               </div>
-              <p className="text-[11px] text-gray-400 leading-relaxed">
+              <p className="text-[11px] text-[var(--t3)] leading-relaxed">
                 اعضا برای باز کردن میکروفون باید از برگزارکننده اجازه بگیرند.
               </p>
             </div>
@@ -616,13 +616,13 @@ export default function SettingsPanel({
           </div>
 
           {/* Lock Camera */}
-          <div className="p-3.5 bg-white/5 rounded-2xl border border-white/10 flex items-start justify-between gap-3">
+          <div className="p-3.5 bg-[var(--s1)] rounded-2xl border border-[var(--b)] flex items-start justify-between gap-3">
             <div className="space-y-1 min-w-0">
-              <div className="font-bold text-gray-100 flex items-center gap-2">
-                <span className="text-amber-400">📷</span>
+              <div className="font-bold text-[var(--t1)] flex items-center gap-2">
+                <span className="text-amber-500">📷</span>
                 <span>قفل دوربین (وب‌کم)</span>
               </div>
-              <p className="text-[11px] text-gray-400 leading-relaxed">
+              <p className="text-[11px] text-[var(--t3)] leading-relaxed">
                 اعضا برای روشن کردن دوربین باید از برگزارکننده اجازه بگیرند.
               </p>
             </div>
@@ -634,13 +634,13 @@ export default function SettingsPanel({
           </div>
 
           {/* Lock Document Presentation */}
-          <div className="p-3.5 bg-white/5 rounded-2xl border border-white/10 flex items-start justify-between gap-3">
+          <div className="p-3.5 bg-[var(--s1)] rounded-2xl border border-[var(--b)] flex items-start justify-between gap-3">
             <div className="space-y-1 min-w-0">
-              <div className="font-bold text-gray-100 flex items-center gap-2">
-                <span className="text-amber-400">📑</span>
+              <div className="font-bold text-[var(--t1)] flex items-center gap-2">
+                <span className="text-amber-500">📑</span>
                 <span>قفل اشتراک و ارائه فایل</span>
               </div>
-              <p className="text-[11px] text-gray-400 leading-relaxed">
+              <p className="text-[11px] text-[var(--t3)] leading-relaxed">
                 بارگذاری و ارائه فایل و اسلاید برای اعضا تنها با اجازه میزبان انجام شود.
               </p>
             </div>
@@ -652,7 +652,7 @@ export default function SettingsPanel({
           </div>
 
           {!canModerate && (
-            <p className="text-[11px] text-amber-300/80 bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/20">
+            <p className="text-[11px] text-amber-600 dark:text-amber-300 bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/20">
               {t(
                 "settings.hostOnlyNotice",
                 "تنظیمات دسترسی جلسه فقط توسط مدیر (میزبان) یا همیاران قابل تغییر است.",
@@ -666,12 +666,12 @@ export default function SettingsPanel({
       {activeTab === "general" && (
         <div className="space-y-2.5 text-xs">
           {/* Push to Talk */}
-          <div className="flex items-center justify-between p-3 bg-white/5 rounded-2xl border border-white/10">
+          <div className="flex items-center justify-between p-3 bg-[var(--s1)] rounded-2xl border border-[var(--b)]">
             <div className="space-y-0.5">
-              <div className="font-bold text-gray-200">
+              <div className="font-bold text-[var(--t1)]">
                 {t("settings.pushToTalk", "فشردن برای صحبت (Push to Talk)")}
               </div>
-              <div className="text-[11px] text-gray-400">
+              <div className="text-[11px] text-[var(--t3)]">
                 {isPushToTalk
                   ? t("settings.pttHold", "نگه‌داشتن Space برای ارسال صدا")
                   : t("settings.pttDisabled", "غیرفعال")}
@@ -684,12 +684,12 @@ export default function SettingsPanel({
           </div>
 
           {/* Noise Cancellation */}
-          <div className="flex items-center justify-between p-3 bg-white/5 rounded-2xl border border-white/10">
+          <div className="flex items-center justify-between p-3 bg-[var(--s1)] rounded-2xl border border-[var(--b)]">
             <div className="space-y-0.5">
-              <span className="font-bold text-gray-200 block">
+              <span className="font-bold text-[var(--t1)] block">
                 {t("settings.noiseCancellation", "حذف نویز و اکوی صدا")}
               </span>
-              <span className="text-[11px] text-gray-400 block">
+              <span className="text-[11px] text-[var(--t3)] block">
                 {t(
                   "settings.noiseDesc",
                   "بهینه‌سازی کیفیت صوتی و فیلتر صدای محیط",
@@ -700,12 +700,12 @@ export default function SettingsPanel({
           </div>
 
           {/* HD Video */}
-          <div className="flex items-center justify-between p-3 bg-white/5 rounded-2xl border border-white/10">
+          <div className="flex items-center justify-between p-3 bg-[var(--s1)] rounded-2xl border border-[var(--b)]">
             <div className="space-y-0.5">
-              <span className="font-bold text-gray-200 block">
+              <span className="font-bold text-[var(--t1)] block">
                 {t("settings.hdVideo", "کیفیت ویدیوی HD")}
               </span>
-              <span className="text-[11px] text-gray-400 block">
+              <span className="text-[11px] text-[var(--t3)] block">
                 {t("settings.hdDesc", "ارسال تصویر با وضوح بالا 720p/1080p")}
               </span>
             </div>

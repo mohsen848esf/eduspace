@@ -46,17 +46,17 @@ export const InCallPermissionNotification: React.FC<InCallPermissionNotification
             key={req.id}
             className={cn(
               "flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-2xl",
-              "bg-slate-900/95 backdrop-blur-xl border border-amber-500/40 text-white shadow-2xl",
+              "bg-[var(--s2)]/95 backdrop-blur-xl border border-amber-500/50 text-[var(--t1)] shadow-2xl",
               "shadow-amber-500/10 transition-all",
             )}
           >
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="text-lg flex-shrink-0">{icon}</span>
               <div className="flex flex-col min-w-0">
-                <span className="text-xs font-bold text-white truncate">
+                <span className="text-xs font-bold text-[var(--t1)] truncate">
                   {req.displayName}
                 </span>
-                <span className="text-[11px] text-amber-300/90 font-medium truncate">
+                <span className="text-[11px] text-amber-600 dark:text-amber-300 font-medium truncate">
                   {label}
                 </span>
               </div>
@@ -66,14 +66,14 @@ export const InCallPermissionNotification: React.FC<InCallPermissionNotification
               <button
                 type="button"
                 onClick={() => onApprove(req)}
-                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg border-none cursor-pointer transition-all active:scale-95 shadow-md shadow-emerald-900/30"
+                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg border-none cursor-pointer transition-all active:scale-95 shadow-xs"
               >
                 تایید
               </button>
               <button
                 type="button"
                 onClick={() => onDeny(req)}
-                className="px-2.5 py-1 bg-white/10 hover:bg-rose-500/20 text-gray-300 hover:text-rose-300 text-xs font-semibold rounded-lg border-none cursor-pointer transition-all active:scale-95"
+                className="px-2.5 py-1 bg-[var(--s3)] hover:bg-rose-500/20 text-[var(--t2)] hover:text-rose-600 dark:hover:text-rose-300 text-xs font-semibold rounded-lg border border-[var(--b)] transition-all active:scale-95 cursor-pointer"
               >
                 رد
               </button>

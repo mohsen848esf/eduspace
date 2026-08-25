@@ -99,11 +99,12 @@ export const applyPlatformThemeToDOM = (mode: "dark" | "light" = "dark") => {
     root.style.setProperty(k, v);
   });
 
-  root.classList.remove("light", "dark-tinted", "light-tinted");
+  root.classList.remove("light", "dark", "dark-tinted", "light-tinted");
   if (mode === "light") {
     root.classList.add("light");
     root.setAttribute("data-theme", "platform-light");
   } else {
+    root.classList.add("dark");
     root.setAttribute("data-theme", "platform-dark");
   }
 };
@@ -111,19 +112,20 @@ export const applyPlatformThemeToDOM = (mode: "dark" | "light" = "dark") => {
 export const applyThemeToDOM = (theme: ThemeMode) => {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  root.classList.remove("light", "dark-tinted", "light-tinted");
+  root.classList.remove("light", "dark", "dark-tinted", "light-tinted");
   root.removeAttribute("data-theme");
 
   if (theme === "light") {
     root.classList.add("light");
     root.setAttribute("data-theme", "light");
   } else if (theme === "dark-tinted") {
-    root.classList.add("dark-tinted");
+    root.classList.add("dark", "dark-tinted");
     root.setAttribute("data-theme", "dark-tinted");
   } else if (theme === "light-tinted") {
-    root.classList.add("light-tinted");
+    root.classList.add("light", "light-tinted");
     root.setAttribute("data-theme", "light-tinted");
   } else {
+    root.classList.add("dark");
     root.setAttribute("data-theme", "dark");
   }
 };
@@ -149,19 +151,20 @@ export const applyOrgThemeToDOM = (
     root.style.setProperty(key, value);
   });
 
-  root.classList.remove("light", "dark-tinted", "light-tinted");
+  root.classList.remove("light", "dark", "dark-tinted", "light-tinted");
   root.removeAttribute("data-theme");
 
   if (mode === "light") {
     root.classList.add("light");
     root.setAttribute("data-theme", "light");
   } else if (mode === "light-tinted") {
-    root.classList.add("light-tinted");
+    root.classList.add("light", "light-tinted");
     root.setAttribute("data-theme", "light-tinted");
   } else if (mode === "dark-tinted") {
-    root.classList.add("dark-tinted");
+    root.classList.add("dark", "dark-tinted");
     root.setAttribute("data-theme", "dark-tinted");
   } else {
+    root.classList.add("dark");
     root.setAttribute("data-theme", "dark");
   }
 };

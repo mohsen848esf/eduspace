@@ -69,17 +69,17 @@ export const LobbyWaitingScreen: React.FC<LobbyWaitingScreenProps> = ({
           <div className="flex flex-col items-center space-y-5 my-2">
             {/* Pulsing Avatar / Icon */}
             <div className="relative flex items-center justify-center">
-              <div className="absolute w-24 h-24 rounded-full bg-indigo-500/20 animate-ping opacity-75" />
-              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 text-white relative z-10">
+              <div className="absolute w-24 h-24 rounded-full bg-[var(--brand)]/20 animate-ping opacity-75" />
+              <div className="w-20 h-20 rounded-full bg-[var(--brand)] flex items-center justify-center shadow-lg shadow-[var(--brand)]/30 text-white relative z-10">
                 <div className="scale-125">{Icons.clock}</div>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <h3 className="text-base font-bold text-gray-100">
+              <h3 className="text-base font-bold text-[var(--t1)]">
                 {t("lobby.waitingTitle", "در انتظار تأیید هاست...")}
               </h3>
-              <p className="text-xs text-gray-400 max-w-xs leading-relaxed">
+              <p className="text-xs text-[var(--t3)] max-w-xs leading-relaxed">
                 {t(
                   "lobby.waitingDesc",
                   "درخواست ورود شما برای مدیر جلسه ارسال شد. به محض تأیید به طور خودکار متصل خواهید شد.",
@@ -88,14 +88,14 @@ export const LobbyWaitingScreen: React.FC<LobbyWaitingScreenProps> = ({
             </div>
 
             {/* Waiting Timer */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-indigo-300">
-              <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[var(--s2)] border border-[var(--b)] text-xs font-mono text-[var(--brand)]">
+              <div className="w-2 h-2 rounded-full bg-[var(--brand)] animate-pulse" />
               <span>{formatTimer(elapsedSeconds)}</span>
             </div>
 
             {/* Host not present helper if waiting > 2 mins */}
             {elapsedSeconds >= 120 && (
-              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 text-xs leading-relaxed max-w-xs text-right animate-in fade-in duration-300 flex items-start gap-2">
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-600 dark:text-amber-300 text-xs leading-relaxed max-w-xs text-right animate-in fade-in duration-300 flex items-start gap-2">
                 <div className="mt-0.5 shrink-0">{Icons.people}</div>
                 <span>
                   {t(
@@ -111,15 +111,15 @@ export const LobbyWaitingScreen: React.FC<LobbyWaitingScreenProps> = ({
         {/* 2. DENIED STATE */}
         {status === "denied" && (
           <div className="flex flex-col items-center space-y-4 my-2">
-            <div className="w-20 h-20 rounded-full bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shadow-lg shadow-rose-500/20">
+            <div className="w-20 h-20 rounded-full bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-500 shadow-lg shadow-rose-500/20">
               <div className="scale-125">{Icons.userX}</div>
             </div>
 
             <div className="space-y-1.5">
-              <h3 className="text-base font-bold text-rose-300">
+              <h3 className="text-base font-bold text-rose-600 dark:text-rose-300">
                 {t("lobby.deniedTitle", "ورود شما تأیید نشد")}
               </h3>
-              <p className="text-xs text-gray-400 max-w-xs leading-relaxed">
+              <p className="text-xs text-[var(--t3)] max-w-xs leading-relaxed">
                 {t(
                   "lobby.deniedDesc",
                   "مدیر جلسه درخواست ورود شما را رد کرد. در صورت لزوم با هاست تماس بگیرید.",
@@ -132,15 +132,15 @@ export const LobbyWaitingScreen: React.FC<LobbyWaitingScreenProps> = ({
         {/* 3. ROOM LOCKED STATE */}
         {status === "locked" && (
           <div className="flex flex-col items-center space-y-4 my-2">
-            <div className="w-20 h-20 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/20">
+            <div className="w-20 h-20 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-500 shadow-lg shadow-amber-500/20">
               <div className="scale-125">{Icons.lock}</div>
             </div>
 
             <div className="space-y-1.5">
-              <h3 className="text-base font-bold text-amber-300">
+              <h3 className="text-base font-bold text-amber-600 dark:text-amber-300">
                 {t("lobby.lockedTitle", "اتاق قفل شده است")}
               </h3>
-              <p className="text-xs text-gray-400 max-w-xs leading-relaxed">
+              <p className="text-xs text-[var(--t3)] max-w-xs leading-relaxed">
                 {t(
                   "lobby.lockedDesc",
                   "مدیر جلسه ورود افراد جدید به این اتاق را موقتاً بسته است.",
@@ -153,15 +153,15 @@ export const LobbyWaitingScreen: React.FC<LobbyWaitingScreenProps> = ({
         {/* 4. ROOM ENDED STATE */}
         {status === "room_ended" && (
           <div className="flex flex-col items-center space-y-4 my-2">
-            <div className="w-20 h-20 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-gray-400 shadow-lg">
+            <div className="w-20 h-20 rounded-full bg-[var(--s2)] border border-[var(--b)] flex items-center justify-center text-[var(--t3)] shadow-lg">
               <div className="scale-125">{Icons.phoneOff}</div>
             </div>
 
             <div className="space-y-1.5">
-              <h3 className="text-base font-bold text-gray-200">
+              <h3 className="text-base font-bold text-[var(--t1)]">
                 {t("lobby.endedTitle", "جلسه به پایان رسید")}
               </h3>
-              <p className="text-xs text-gray-400 max-w-xs leading-relaxed">
+              <p className="text-xs text-[var(--t3)] max-w-xs leading-relaxed">
                 {t(
                   "lobby.endedDesc",
                   "این جلسه توسط هاست پایان یافته و دیگر در دسترس نیست.",
@@ -174,15 +174,15 @@ export const LobbyWaitingScreen: React.FC<LobbyWaitingScreenProps> = ({
         {/* 5. EXPIRED STATE */}
         {status === "expired" && (
           <div className="flex flex-col items-center space-y-4 my-2">
-            <div className="w-20 h-20 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg">
+            <div className="w-20 h-20 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-500 shadow-lg">
               <div className="scale-125">{Icons.clock}</div>
             </div>
 
             <div className="space-y-1.5">
-              <h3 className="text-base font-bold text-amber-300">
+              <h3 className="text-base font-bold text-amber-600 dark:text-amber-300">
                 {t("lobby.expiredTitle", "زمان انتظار پایان یافت")}
               </h3>
-              <p className="text-xs text-gray-400 max-w-xs leading-relaxed">
+              <p className="text-xs text-[var(--t3)] max-w-xs leading-relaxed">
                 {t(
                   "lobby.expiredDesc",
                   "درخواست ورود شما منقضی شد. لطفاً دوباره تلاش کنید.",
@@ -195,15 +195,15 @@ export const LobbyWaitingScreen: React.FC<LobbyWaitingScreenProps> = ({
         {/* 6. NETWORK ERROR STATE */}
         {status === "network_error" && (
           <div className="flex flex-col items-center space-y-4 my-2">
-            <div className="w-20 h-20 rounded-full bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shadow-lg">
+            <div className="w-20 h-20 rounded-full bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-500 shadow-lg">
               <div className="scale-125">{Icons.wifiOff}</div>
             </div>
 
             <div className="space-y-1.5">
-              <h3 className="text-base font-bold text-rose-300">
+              <h3 className="text-base font-bold text-rose-600 dark:text-rose-300">
                 {t("lobby.networkErrorTitle", "خطا در برقراری ارتباط")}
               </h3>
-              <p className="text-xs text-gray-400 max-w-xs leading-relaxed">
+              <p className="text-xs text-[var(--t3)] max-w-xs leading-relaxed">
                 {t(
                   "lobby.networkErrorDesc",
                   "ارتباط شما با سرور ناپایدار است. سیستم در حال تلاش مجدد است...",
@@ -211,8 +211,8 @@ export const LobbyWaitingScreen: React.FC<LobbyWaitingScreenProps> = ({
               </p>
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-indigo-400">
-              <div className="w-3 h-3 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
+            <div className="flex items-center gap-2 text-xs text-[var(--brand)]">
+              <div className="w-3 h-3 rounded-full border-2 border-[var(--brand)] border-t-transparent animate-spin" />
               <span>{t("lobby.reconnecting", "در حال تلاش مجدد...")}</span>
             </div>
           </div>
