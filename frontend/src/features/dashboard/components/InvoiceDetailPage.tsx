@@ -201,18 +201,18 @@ export default function InvoiceDetailPage() {
                   <p className="text-xs text-[var(--t2)] mt-2">
                     {isFarsi ? "کلاس آموزشی: " : "Class: "}{" "}
                     {invoice.academy_class ? (
-                      <Link to={`/academic/classes/${invoice.academy_class}`} className="text-[var(--brand-text)] hover:underline font-semibold no-underline">
+                      <Link to={`/academic/classes/${invoice.academy_class}`} className="text-[var(--brand)] hover:underline font-semibold no-underline">
                         {invoice.class_name}
                       </Link>
                     ) : (
-                      <strong className="text-[var(--brand-text)]">{invoice.class_name}</strong>
+                      <strong className="text-[var(--brand)]">{invoice.class_name}</strong>
                     )}
                   </p>
                 )}
                 {cls && cls.course && (
                   <p className="text-xs text-[var(--t2)] mt-1">
                     {isFarsi ? "دوره مرتبط: " : "Parent Course: "}{" "}
-                    <Link to={`/academic/courses/${cls.course}`} className="text-[var(--brand-text)] hover:underline font-semibold no-underline">
+                    <Link to={`/academic/courses/${cls.course}`} className="text-[var(--brand)] hover:underline font-semibold no-underline">
                       {cls.course_title || (isFarsi ? "مشاهده دوره" : "View Course")}
                     </Link>
                   </p>
@@ -313,7 +313,7 @@ export default function InvoiceDetailPage() {
               </div>
               <div className="flex justify-between items-center border-t border-[var(--b)] pt-2 font-bold text-sm">
                 <span className="text-[var(--t1)]">{isFarsi ? "مبلغ قابل پرداخت:" : "Total Payable:"}</span>
-                <span className="font-mono text-[var(--brand-text)]">${totalAmount.toFixed(2)}</span>
+                <span className="font-mono text-[var(--brand)]">${totalAmount.toFixed(2)}</span>
               </div>
             </div>
           </div>

@@ -478,9 +478,9 @@ export default function MembersPage() {
             <button
               key={tab}
               onClick={() => setActiveSubTab(tab)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 cursor-pointer transition-colors duration-150 whitespace-nowrap bg-transparent ${
+              className={`px-4 py-2 text-sm font-bold border-b-2 cursor-pointer transition-colors duration-150 whitespace-nowrap bg-transparent ${
                 activeSubTab === tab
-                  ? "border-[var(--brand)] text-[var(--brand-text)]"
+                  ? "border-[var(--brand)] text-[var(--brand)]"
                   : "border-transparent text-[var(--t2)] hover:text-[var(--t1)]"
               }`}
             >
@@ -568,7 +568,7 @@ export default function MembersPage() {
                                   return (
                                     <Link
                                       to={`/room/${liveSession.active_room_code}`}
-                                      className="inline-block text-[10px] bg-[var(--green)] hover:brightness-110 text-[var(--brand-text)] font-bold px-2 py-0.5 rounded-full cursor-pointer no-underline border-none animate-pulse"
+                                      className="inline-block text-[10px] bg-[var(--green)] hover:brightness-110 text-white font-bold px-2 py-0.5 rounded-full cursor-pointer no-underline border-none animate-pulse"
                                     >
                                       {isFarsi ? "ورود به کلاس زنده" : "Join Live Class"}
                                     </Link>

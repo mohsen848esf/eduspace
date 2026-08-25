@@ -121,8 +121,8 @@ export const InboxDetailDrawer: React.FC<InboxDetailDrawerProps> = ({
             )}
 
             {kind === "ASSESSMENT_GRADED" && (
-              <div className="p-4 rounded-xl bg-[var(--brand-soft)]/20 border border-[var(--brand)]/20 space-y-2">
-                <div className="text-xs font-semibold text-[var(--brand-text)]">
+              <div className="p-4 rounded-xl bg-[var(--brand-soft)] border border-[var(--brand)]/20 space-y-2">
+                <div className="text-xs font-semibold text-[var(--brand)]">
                   {t("notifications:inbox.detail.assessmentResult", { defaultValue: "Assessment Result" })}
                 </div>
                 <div className="text-sm font-extrabold text-[var(--t1)]">

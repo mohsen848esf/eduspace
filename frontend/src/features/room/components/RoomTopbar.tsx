@@ -84,7 +84,7 @@ export default function RoomTopbar() {
             {roomName || t("topbar.defaultRoomName")}
           </span>
           {isHost && (
-            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-[var(--brand-soft)] text-[var(--brand-text)]">
+            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--brand)]/30">
               {t("topbar.host")}
             </span>
           )}
@@ -151,7 +151,7 @@ export default function RoomTopbar() {
             className={cn(
               "w-8 h-8 rounded-lg border-none cursor-pointer flex items-center justify-center transition-all text-sm",
               showInfo
-                ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
+                ? "bg-[var(--brand-soft)] text-[var(--brand)]"
                 : "bg-transparent text-[var(--t3)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
             )}
           >
@@ -182,7 +182,7 @@ export default function RoomTopbar() {
                   <span className="text-xs text-[var(--t3)]">
                     {t("topbar.infoCode")}
                   </span>
-                  <span className="text-xs font-mono text-[var(--brand-text)] force-ltr">
+                  <span className="text-xs font-mono font-bold text-[var(--brand)] force-ltr">
                     {roomCode}
                   </span>
                 </div>
@@ -214,7 +214,7 @@ export default function RoomTopbar() {
                   <span className="text-xs text-[var(--t3)]">
                     {t("topbar.infoYourRole")}
                   </span>
-                  <span className="text-xs font-medium text-[var(--brand-text)]">
+                  <span className="text-xs font-bold text-[var(--brand)]">
                     {isHost
                       ? t("topbar.roleHost")
                       : t("topbar.roleParticipant")}

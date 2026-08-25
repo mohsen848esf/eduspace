@@ -350,7 +350,7 @@ function EntryCard({ entry, selected, onSelect, t }: EntryCardProps) {
               {entry.ready ? t("miniapps:card.ready") : t("miniapps:card.soon")}
             </span>
             {entry.premium && (
-              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-[var(--brand-soft)] text-[var(--brand-text)]">
+              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--brand)]/30">
                 {t("miniapps:card.premium")}
               </span>
             )}

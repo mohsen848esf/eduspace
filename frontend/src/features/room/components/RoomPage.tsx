@@ -323,7 +323,7 @@ export default function RoomPage() {
         <p className="text-[var(--red)] text-sm">{error}</p>
         <button
           onClick={() => leaveRoom()}
-          className="text-[var(--brand-text)] hover:underline text-sm bg-transparent border-none cursor-pointer"
+          className="text-[var(--brand)] font-semibold hover:underline text-sm bg-transparent border-none cursor-pointer"
         >
           ← {t("common:actions.back")}
         </button>

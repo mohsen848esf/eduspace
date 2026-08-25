@@ -185,7 +185,7 @@ export default function ChatPanel({
           className={cn(
             "w-8 h-8 rounded-lg border-none cursor-pointer flex items-center justify-center text-base transition-all flex-shrink-0",
             showEmoji
-              ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
+              ? "bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--brand)]/30"
               : "bg-transparent text-[var(--t3)] hover:bg-[var(--s3)]",
           )}
         >

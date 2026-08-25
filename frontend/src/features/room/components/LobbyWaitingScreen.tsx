@@ -50,7 +50,7 @@ export const LobbyWaitingScreen: React.FC<LobbyWaitingScreenProps> = ({
       <div className="relative z-10 w-full max-w-md bg-[var(--s1)] border border-[var(--b)] backdrop-blur-2xl rounded-3xl p-8 shadow-2xl text-center flex flex-col items-center animate-in fade-in zoom-in-95 duration-200">
         {/* Room Header Info */}
         <div className="mb-6 flex flex-col items-center">
-          <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[var(--brand-soft)] text-[var(--brand-text)] border border-[var(--b)] tracking-wide uppercase mb-2">
+          <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--brand)]/30 tracking-wide uppercase mb-2">
             {roomCode}
           </span>
           <h2 className="text-lg font-bold text-[var(--t1)] line-clamp-1">

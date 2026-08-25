@@ -341,7 +341,7 @@ export default function DockStackFanOut({
             buttonSizeClass,
             "hover:-translate-y-0.5 hover:scale-105 active:scale-95",
             isOpen
-              ? "bg-[var(--brand-soft)] text-[var(--brand-text)] ring-2 ring-[var(--brand)] shadow-[0_0_15px_var(--brand)]"
+              ? "bg-[var(--brand-soft)] text-[var(--brand)] ring-2 ring-[var(--brand)] shadow-[0_0_15px_var(--brand)]"
               : "bg-[var(--s2)] text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]"
           )}
         >

@@ -193,7 +193,7 @@ export default function PublishModal({
               <div className="flex items-center gap-1">
                 <button
                   onClick={selectAllParticipants}
-                  className="text-[11px] text-[var(--brand-text)] hover:underline bg-transparent border-none cursor-pointer"
+                  className="text-[11px] text-[var(--brand)] font-semibold hover:underline bg-transparent border-none cursor-pointer"
                 >
                   {t("recordings:publishModal.selectAll")}
                 </button>
@@ -216,7 +216,7 @@ export default function PublishModal({
                     className={cn(
                       "flex items-center gap-2 px-2 py-1.5 rounded-lg border-none cursor-pointer text-start transition-colors",
                       checked
-                        ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
+                        ? "bg-[var(--brand-soft)] text-[var(--brand)] font-semibold border border-[var(--brand)]/30"
                         : "bg-transparent text-[var(--t1)] hover:bg-[var(--s3)]",
                     )}
                   >
@@ -277,7 +277,7 @@ export default function PublishModal({
                 className={cn(
                   "flex items-center gap-2 px-2 py-1.5 rounded-lg border-none cursor-pointer text-start transition-colors",
                   checked
-                    ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
+                    ? "bg-[var(--brand-soft)] text-[var(--brand)] font-semibold border border-[var(--brand)]/30"
                     : "bg-transparent text-[var(--t1)] hover:bg-[var(--s3)]",
                 )}
               >

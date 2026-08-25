@@ -142,7 +142,7 @@ export default function RoomMobileTopbar() {
           className={cn(
             "w-8 h-8 rounded-lg border-none cursor-pointer flex items-center justify-center text-base",
             showMenu
-              ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
+              ? "bg-[var(--brand-soft)] text-[var(--brand)]"
               : "bg-transparent text-[var(--t3)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
           )}
         >
@@ -176,7 +176,7 @@ export default function RoomMobileTopbar() {
                 <span className="text-[var(--t3)]">
                   {t("topbar.infoYourRole")}
                 </span>
-                <span className="text-[var(--brand-text)] font-medium">
+                <span className="text-[var(--brand)] font-bold">
                   {isHost ? t("topbar.roleHost") : t("topbar.roleParticipant")}
                 </span>
               </div>

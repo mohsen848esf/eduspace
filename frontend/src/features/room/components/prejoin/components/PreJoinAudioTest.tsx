@@ -29,7 +29,7 @@ export const PreJoinAudioTest: React.FC<PreJoinAudioTestProps> = ({
       <div className="p-4 rounded-2xl bg-[var(--s2)] border border-[var(--b)] space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[var(--brand-soft)] text-[var(--brand-text)] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--brand)]/30 flex items-center justify-center">
               <Volume2 className="w-4 h-4" />
             </div>
             <div>

@@ -262,7 +262,7 @@ function MiniAppTile({ card, t }: MiniAppTileProps) {
             {isReady ? t("card.ready") : t("card.soon")}
           </span>
           {card.premium && (
-            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-[var(--brand-soft)] text-[var(--brand-text)]">
+            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--brand)]/30">
               {t("card.premium")}
             </span>
           )}

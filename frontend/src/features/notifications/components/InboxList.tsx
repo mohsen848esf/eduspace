@@ -53,7 +53,7 @@ function getNotificationDetails(item: NotificationItem, t: any) {
     case "RECORDING_PUBLISHED":
       return {
         icon: Film,
-        iconBg: "bg-[var(--brand-soft)] text-[var(--brand-text)]",
+        iconBg: "bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--brand)]/30",
         title: (data.from as string) || t("recordings:title", { defaultValue: "New Recording" }),
         subtitle: (data.room_name as string) || "Session Recording",
         actionLabel: t("recordings:notification.watch", { defaultValue: "Watch" }),
@@ -72,7 +72,7 @@ function getNotificationDetails(item: NotificationItem, t: any) {
     case "ASSESSMENT_GRADED":
       return {
         icon: GraduationCap,
-        iconBg: "bg-[var(--brand-soft)] text-[var(--brand-text)]",
+        iconBg: "bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--brand)]/30",
         title: (data.assessment_title as string) || t("notifications:assessmentGraded.title", { defaultValue: "Assessment Graded" }),
         subtitle: `Score: ${data.score ?? "-"} / ${data.total_points ?? "-"}`,
         actionLabel: t("notifications:assessmentGraded.view", { defaultValue: "View Results" }),

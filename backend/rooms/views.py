@@ -185,8 +185,14 @@ def join_room(request, room_code):
     except Room.DoesNotExist:
         return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
 
+    # If room was marked ended, allow the host of an instant/standalone room to reopen it on rejoin
     if room.status == Room.Status.ENDED:
-        return Response({'error': 'Room has ended'}, status=status.HTTP_410_GONE)
+        if room.host == request.user and not room.session_id:
+            room.status = Room.Status.ACTIVE
+            room.ended_at = None
+            room.save()
+        else:
+            return Response({'error': 'Room has ended'}, status=status.HTTP_410_GONE)
 
     # Room is completely locked — no new joins.
     if room.is_locked:
@@ -431,20 +437,21 @@ def leave_room(request, room_code):
     participant.save()
 
     room = participant.room
-    if request.user and request.user.is_authenticated and room.host == request.user:
+    # Only automatically terminate scheduled course sessions with a session_id on host leave.
+    # Standalone/instant rooms remain open and reusable (Google Meet style).
+    if request.user and request.user.is_authenticated and room.host == request.user and room.session_id:
         room.status = Room.Status.ENDED
         room.ended_at = timezone.now()
         room.save()
         RoomParticipant.objects.filter(room=room).update(is_active=False, left_at=timezone.now())
 
-        if room.session_id:
-            from accounts.services.session_service import SessionService
-            try:
-                SessionService.complete_session(room.session_id, actor=request.user)
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Failed to complete session {room.session_id} on room leave: {e}", exc_info=True)
+        from accounts.services.session_service import SessionService
+        try:
+            SessionService.complete_session(room.session_id, actor=request.user)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to complete session {room.session_id} on room leave: {e}", exc_info=True)
 
     return Response({'message': 'Left room successfully'})
 

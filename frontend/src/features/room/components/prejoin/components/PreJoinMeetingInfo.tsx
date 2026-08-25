@@ -99,7 +99,7 @@ export const PreJoinMeetingInfo: React.FC<PreJoinMeetingInfoProps> = ({
         <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[var(--s2)] border border-[var(--b)]">
           <div className="flex items-center gap-2 text-xs">
             <span className="text-[var(--t3)]">{t("preJoin.roomCodeLabel")}</span>
-            <span className="font-mono font-bold text-sm text-[var(--brand-text)] bg-[var(--s0)] px-2.5 py-1 rounded-lg border border-[var(--b)]/80 tracking-wider">
+            <span className="font-mono font-extrabold text-sm text-[var(--brand)] bg-[var(--s0)] px-2.5 py-1 rounded-lg border border-[var(--b)]/80 tracking-wider">
               {roomCode}
             </span>
           </div>
@@ -228,7 +228,7 @@ export const PreJoinMeetingInfo: React.FC<PreJoinMeetingInfoProps> = ({
           <Link
             to={isAuthenticated ? "/dashboard" : "/login"}
             onClick={onCancel}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--t3)] hover:text-[var(--brand-text)] transition-colors hover:underline"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--t3)] hover:text-[var(--brand)] transition-colors hover:underline"
           >
             {isFarsi ? <ArrowRight className="w-3.5 h-3.5" /> : <ArrowLeft className="w-3.5 h-3.5" />}
             <span>

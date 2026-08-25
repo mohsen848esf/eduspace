@@ -81,7 +81,7 @@ export const PreJoinDeviceSettings: React.FC<PreJoinDeviceSettingsProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[var(--brand-soft)] text-[var(--brand-text)] flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--brand)]/30 flex items-center justify-center">
               <Camera className="w-4 h-4" />
             </div>
             <div>
@@ -107,7 +107,7 @@ export const PreJoinDeviceSettings: React.FC<PreJoinDeviceSettingsProps> = ({
             className={cn(
               "flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer",
               activeTab === "audio"
-                ? "border-[var(--brand)] text-[var(--brand-text)] bg-[var(--s1)] rounded-t-xl"
+                ? "border-[var(--brand)] text-[var(--brand)] bg-[var(--s1)] rounded-t-xl"
                 : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
             )}
           >
@@ -121,7 +121,7 @@ export const PreJoinDeviceSettings: React.FC<PreJoinDeviceSettingsProps> = ({
             className={cn(
               "flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer",
               activeTab === "video"
-                ? "border-[var(--brand)] text-[var(--brand-text)] bg-[var(--s1)] rounded-t-xl"
+                ? "border-[var(--brand)] text-[var(--brand)] bg-[var(--s1)] rounded-t-xl"
                 : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
             )}
           >
@@ -135,7 +135,7 @@ export const PreJoinDeviceSettings: React.FC<PreJoinDeviceSettingsProps> = ({
             className={cn(
               "flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer",
               activeTab === "effects"
-                ? "border-[var(--brand)] text-[var(--brand-text)] bg-[var(--s1)] rounded-t-xl"
+                ? "border-[var(--brand)] text-[var(--brand)] bg-[var(--s1)] rounded-t-xl"
                 : "border-transparent text-[var(--t3)] hover:text-[var(--t1)]"
             )}
           >

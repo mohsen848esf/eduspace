@@ -151,7 +151,7 @@ export default function RecordingCard({
                 e.stopPropagation();
                 navigate(`/recordings/${recording.public_token}`);
               }}
-              className="flex-1 h-7 rounded-md border-none cursor-pointer text-[11px] font-semibold bg-[var(--brand-soft)] text-[var(--brand-text)] hover:bg-[var(--brand)]/15 transition-colors"
+              className="flex-1 h-7 rounded-md border border-[var(--brand)]/30 cursor-pointer text-[11px] font-bold bg-[var(--brand-soft)] text-[var(--brand)] hover:bg-[var(--brand)]/20 transition-colors"
             >
               {t("card.watch")}
             </button>
@@ -161,7 +161,7 @@ export default function RecordingCard({
                   <Tooltip content={t("card.share")}>
                     <button
                       onClick={handleShare}
-                      className="w-7 h-7 rounded-md border-none cursor-pointer bg-[var(--s3)] text-[var(--t2)] hover:text-[var(--brand-text)] hover:bg-[var(--brand-soft)] flex items-center justify-center text-xs"
+                      className="w-7 h-7 rounded-md border-none cursor-pointer bg-[var(--s3)] text-[var(--t2)] hover:text-[var(--brand)] hover:bg-[var(--brand-soft)] flex items-center justify-center text-xs"
                     >
                       ↗
                     </button>

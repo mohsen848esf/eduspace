@@ -164,10 +164,10 @@ export default function RecordingsPage() {
                 key={f}
                 onClick={() => setFilter(f)}
                 className={cn(
-                  "px-3 min-h-9 h-9 rounded-lg border-none cursor-pointer text-xs font-semibold transition-colors flex-shrink-0",
+                  "px-3 min-h-9 h-9 rounded-lg border cursor-pointer text-xs font-bold transition-colors flex-shrink-0",
                   filter === f
-                    ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
-                    : "bg-[var(--s2)] text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
+                    ? "bg-[var(--brand-soft)] text-[var(--brand)] border-[var(--brand)]"
+                    : "bg-[var(--s2)] text-[var(--t2)] border-[var(--b)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
                 )}
               >
                 {t(`filters.${f}`)}
@@ -193,9 +193,9 @@ export default function RecordingsPage() {
               <button
                 onClick={toggleSelectionMode}
                 className={cn(
-                  "px-3 h-9 rounded-lg border cursor-pointer text-xs font-semibold transition-colors flex-shrink-0 flex items-center justify-center gap-1.5",
+                  "px-3 h-9 rounded-lg border cursor-pointer text-xs font-bold transition-colors flex-shrink-0 flex items-center justify-center gap-1.5",
                   selectionMode
-                    ? "bg-[var(--brand-soft)] text-[var(--brand-text)] border-[var(--brand)]"
+                    ? "bg-[var(--brand-soft)] text-[var(--brand)] border-[var(--brand)]"
                     : "bg-[var(--s2)] text-[var(--t2)] border-[var(--b)] hover:bg-[var(--s3)]"
                 )}
               >

@@ -221,7 +221,7 @@ export default function RecordControls({
                   className={cn(
                     "w-full text-start px-2 py-1.5 rounded-md text-xs cursor-pointer border-none transition-colors",
                     quality === q
-                      ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
+                      ? "bg-[var(--brand-soft)] text-[var(--brand)] font-bold border border-[var(--brand)]/30"
                       : "bg-transparent text-[var(--t2)] hover:bg-[var(--s3)]",
                   )}
                 >

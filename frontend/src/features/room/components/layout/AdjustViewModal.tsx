@@ -227,7 +227,7 @@ export default function AdjustViewModal({
                     `Max ${maxTiles} tiles to display, depending on window size.`}
                 </p>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-[var(--brand)]/20 text-[var(--brand-text)] font-bold text-xs">
+              <span className="px-2.5 py-0.5 rounded-full bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--brand)]/30 font-bold text-xs">
                 {maxTiles}
               </span>
             </div>
@@ -257,8 +257,8 @@ export default function AdjustViewModal({
                 <span
                   key={val}
                   className={cn(
-                    "cursor-pointer hover:text-white transition-colors",
-                    maxTiles === val && "text-[var(--brand-text)] font-bold"
+                    "cursor-pointer hover:text-[var(--t1)] transition-colors",
+                    maxTiles === val && "text-[var(--brand)] font-extrabold"
                   )}
                   onClick={() => setMaxTiles(val)}
                 >

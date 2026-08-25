@@ -80,7 +80,7 @@ export const PreJoinEffectsPicker: React.FC<PreJoinEffectsPickerProps> = ({
 
         <div className="flex items-center gap-2">
           {isLoading && (
-            <div className="flex items-center gap-1.5 text-xs text-[var(--brand-text)] font-semibold animate-pulse">
+            <div className="flex items-center gap-1.5 text-xs text-[var(--brand)] font-semibold animate-pulse">
               <Spinner size="sm" />
               <span>{t("preJoin.bgApplying")}</span>
             </div>
@@ -131,7 +131,7 @@ export const PreJoinEffectsPicker: React.FC<PreJoinEffectsPickerProps> = ({
               )}
 
               {preset.isBlur && (
-                <div className="flex flex-col items-center gap-1 text-[var(--brand-text)]">
+                <div className="flex flex-col items-center gap-1 text-sky-300 group-hover:text-white">
                   <Droplets className="w-4 h-4" />
                   <span className="text-[10px] font-semibold">{label}</span>
                 </div>

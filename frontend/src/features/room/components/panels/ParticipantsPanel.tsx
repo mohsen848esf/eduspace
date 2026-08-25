@@ -251,7 +251,7 @@ export default function ParticipantsPanel() {
             {isLocal ? `${name} (${t("tile.you") || "You"})` : name}
           </span>
           {isPHost && (
-            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-[var(--brand-soft)] text-[var(--brand-text)] flex-shrink-0">
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--brand)]/30 flex-shrink-0">
               {t("topbar.host", "میزبان")}
             </span>
           )}
@@ -358,9 +358,9 @@ export default function ParticipantsPanel() {
     <div className="flex flex-col gap-1 h-full">
       <button
         onClick={() => setShowInvite(true)}
-        className="flex items-center justify-center gap-2 w-full py-2 mb-2 bg-[var(--brand-soft)] hover:bg-[var(--brand)]/15 text-[var(--brand-text)] text-xs font-semibold rounded-lg border-none cursor-pointer transition-all"
+        className="flex items-center justify-center gap-2 w-full py-2.5 mb-2 bg-[var(--brand-soft)] hover:bg-[var(--brand)]/20 text-[var(--brand)] border border-[var(--brand)]/30 text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-[0.98]"
       >
-        <span>+</span>
+        <span className="text-sm font-bold">+</span>
         {t("sidebar.addPeople")}
       </button>
 

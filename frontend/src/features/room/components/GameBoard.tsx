@@ -151,7 +151,7 @@ function ParticipantStrip({
             )}
 
             {entry.isLocal && (
-              <div className="absolute top-1 start-1 bg-[var(--brand-soft)] text-[var(--brand-text)] text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 rounded-md">
+              <div className="absolute top-1 start-1 bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--brand)]/30 text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 rounded-md">
                 {t("tile.you").replace(/[()]/g, "")}
               </div>
             )}
@@ -160,7 +160,7 @@ function ParticipantStrip({
               <span
                 className={cn(
                   "text-[10px] font-medium text-white truncate block",
-                  entry.identity === localIdentity && "text-[var(--brand-text)]",
+                  entry.identity === localIdentity && "text-[var(--brand)] font-bold",
                 )}
               >
                 {entry.name}

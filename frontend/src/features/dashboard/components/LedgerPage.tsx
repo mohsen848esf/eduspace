@@ -718,7 +718,7 @@ export default function LedgerPage() {
                           <td className="p-4 font-semibold">
                             <Link 
                               to={`/finance/invoices/${inv.id}`} 
-                              className="text-[var(--brand-text)] hover:underline no-underline"
+                              className="text-[var(--brand)] hover:underline no-underline"
                             >
                               {inv.invoice_number || `#${inv.id}`}
                             </Link>
@@ -769,7 +769,7 @@ export default function LedgerPage() {
                           <td className="p-4 text-right flex justify-end gap-2">
                             <button
                               onClick={() => printInvoice(inv)}
-                              className="text-xs bg-transparent text-[var(--brand-text)] hover:underline border-none cursor-pointer"
+                              className="text-xs bg-transparent text-[var(--brand)] hover:underline border-none cursor-pointer"
                             >
                               🖨️ {isFarsi ? "چاپ رسید" : "Print"}
                             </button>
@@ -924,7 +924,7 @@ export default function LedgerPage() {
                     <tbody>
                       {expenses.map((exp) => (
                         <tr key={exp.id} className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors text-left">
-                          <td className="p-4 font-semibold text-[var(--brand-text)] capitalize">{exp.category.replace("_", " ")}</td>
+                          <td className="p-4 font-semibold text-[var(--t1)] capitalize">{exp.category.replace("_", " ")}</td>
                           <td className="p-4 text-[var(--t2)] max-w-xs truncate flex items-center gap-1.5">
                             <span>{exp.description}</span>
                             {exp.attachment && (
@@ -1113,7 +1113,7 @@ export default function LedgerPage() {
                 <button
                   type="button"
                   onClick={() => setLineItems([...lineItems, { description: "", quantity: 1, unit_price: "" }])}
-                  className="text-xs bg-transparent text-[var(--brand-text)] hover:underline border-none cursor-pointer font-semibold"
+                  className="text-xs bg-transparent text-[var(--brand)] hover:underline border-none cursor-pointer font-semibold"
                 >
                   {isFarsi ? "+ افزودن آیتم" : "+ Add Item"}
                 </button>
