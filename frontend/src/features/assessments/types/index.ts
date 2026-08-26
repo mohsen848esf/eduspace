@@ -13,7 +13,7 @@ export interface Question {
   options: QuestionOption[];
   points: string;
   is_active: boolean;
-  correct_answer?: string[] | string | Record<string, any>;
+  correct_answer?: string[] | string | Record<string, unknown>;
   created_at?: string;
   updated_at?: string;
 }
@@ -99,6 +99,7 @@ export interface AssignmentSubmission {
   id: number;
   assignment: number;
   assignment_title?: string;
+  assignment_class: number;
   student: number;
   student_username?: string;
   student_full_name?: string;

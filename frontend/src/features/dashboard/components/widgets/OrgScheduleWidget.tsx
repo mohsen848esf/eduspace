@@ -4,7 +4,6 @@ import {
   Calendar,
   Clock,
   Radio,
-  ChevronRight,
   User,
   ArrowLeft,
   ArrowRight,

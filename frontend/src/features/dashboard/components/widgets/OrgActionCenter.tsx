@@ -6,7 +6,6 @@ import {
   Calendar,
   Film,
   Plus,
-  Video,
   ArrowLeft,
   ArrowRight,
   Clock,
@@ -23,7 +22,6 @@ export interface OrgActionCenterProps {
   pendingSubmissions: AssignmentSubmission[];
   studentAssignments?: Assignment[];
   studentSubmissions?: AssignmentSubmission[];
-  studentRecordings?: any[];
 }
 
 export const OrgActionCenter: React.FC<OrgActionCenterProps> = ({
@@ -33,7 +31,6 @@ export const OrgActionCenter: React.FC<OrgActionCenterProps> = ({
   pendingSubmissions,
   studentAssignments = [],
   studentSubmissions = [],
-  studentRecordings = [],
 }) => {
   const canTeachClass = hasPermission("can_teach_class");
   const canManageMembers = hasPermission("can_manage_members");
@@ -100,7 +97,7 @@ export const OrgActionCenter: React.FC<OrgActionCenterProps> = ({
                   <div className="space-y-0.5 min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-[var(--t1)] truncate">
-                        {sub.student_name || sub.student_username || (isFarsi ? "دانشجو" : "Student")}
+                        {sub.student_full_name || sub.student_username || (isFarsi ? "دانشجو" : "Student")}
                       </span>
                       <span className="px-1.5 py-0.5 rounded-md bg-[var(--amber)]/15 text-[var(--amber)] text-[10px] font-semibold">
                         {isFarsi ? "منتظر نمره" : "Submitted"}

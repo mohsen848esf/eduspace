@@ -13,9 +13,11 @@ import {
 import type { AcademyClass, Enrollment } from "../../types/crm.types";
 import type { Session } from "@/features/sessions/types";
 import type { Assignment, AssignmentSubmission } from "@/features/assessments/types";
+import type { User } from "@/features/auth/api/auth.api";
+import type { Recording } from "@/features/recordings/api/recordings.api";
 
 export interface OrgKpiGridProps {
-  user: any;
+  user: User | null;
   hasPermission: (permission: string) => boolean;
   isFarsi: boolean;
   localeTag: string;
@@ -26,7 +28,7 @@ export interface OrgKpiGridProps {
   allSubmissions: AssignmentSubmission[];
   studentAssignments?: Assignment[];
   studentSubmissions?: AssignmentSubmission[];
-  studentRecordings?: any[];
+  studentRecordings?: Recording[];
   totalPendingRevenue?: number;
   totalRevenue?: number;
 }

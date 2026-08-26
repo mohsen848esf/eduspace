@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Users, ArrowLeft, ArrowRight, Video, Plus } from "lucide-react";
+import { BookOpen, Users, ArrowLeft, ArrowRight, Plus } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card, { CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import OrgWelcomeBanner from "../widgets/OrgWelcomeBanner";
@@ -12,10 +12,12 @@ import OrgFinanceSnapshot from "../widgets/OrgFinanceSnapshot";
 import type { Course, AcademyClass, Enrollment, FinanceSummary, TuitionInvoice } from "../../types/crm.types";
 import type { Session } from "@/features/sessions/types";
 import type { Assignment, AssignmentSubmission } from "@/features/assessments/types";
+import type { OrgContext, User } from "@/features/auth/api/auth.api";
+import type { Recording } from "@/features/recordings/api/recordings.api";
 
 export interface OrgDashboardViewProps {
-  user: any;
-  activeOrg: any;
+  user: User | null;
+  activeOrg: OrgContext["organization"];
   activeRole: string | null;
   hasPermission: (permission: string) => boolean;
   isFarsi: boolean;
@@ -30,7 +32,7 @@ export interface OrgDashboardViewProps {
   allSubmissions: AssignmentSubmission[];
   studentAssignments?: Assignment[];
   studentSubmissions?: AssignmentSubmission[];
-  studentRecordings?: any[];
+  studentRecordings?: Recording[];
   recentInvoicesData?: { results?: TuitionInvoice[] } | null;
 }
 
@@ -225,7 +227,6 @@ export const OrgDashboardView: React.FC<OrgDashboardViewProps> = ({
             pendingSubmissions={allSubmissions.filter((s) => s.status === "submitted")}
             studentAssignments={studentAssignments}
             studentSubmissions={studentSubmissions}
-            studentRecordings={studentRecordings}
           />
 
           {/* Financial Snapshot (Only rendered for users with financial permissions) */}

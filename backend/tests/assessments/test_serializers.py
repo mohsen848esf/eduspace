@@ -12,6 +12,8 @@ from assessments.models import (
     AssessmentQuestion,
     Submission,
     StudentAnswer,
+    Assignment,
+    AssignmentSubmission,
 )
 from assessments.serializers import (
     QuestionBankSerializer,
@@ -23,6 +25,7 @@ from assessments.serializers import (
     StudentAnswerTeacherSerializer,
     SubmissionStudentSerializer,
     SubmissionTeacherSerializer,
+    AssignmentSubmissionSerializer,
 )
 
 User = get_user_model()
@@ -320,3 +323,20 @@ class AssessmentSerializersTest(TestCase):
         self.assertIn("answers", teacher_sub_data)
         self.assertEqual(len(teacher_sub_data["answers"]), 1)
         self.assertIn("teacher_notes", teacher_sub_data["answers"][0])
+
+    def test_assignment_submission_contract_includes_class_and_student_name(self):
+        assignment = Assignment.objects.create(
+            organization=self.org,
+            academy_class=self.academy_class,
+            title="Class homework",
+            created_by=self.teacher,
+        )
+        assignment_submission = AssignmentSubmission.objects.create(
+            assignment=assignment,
+            student=self.student,
+        )
+
+        data = AssignmentSubmissionSerializer(assignment_submission).data
+
+        self.assertEqual(data["assignment_class"], self.academy_class.id)
+        self.assertEqual(data["student_full_name"], self.student.full_name)

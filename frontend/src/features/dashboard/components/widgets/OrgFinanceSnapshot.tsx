@@ -1,8 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { DollarSign, ArrowUpRight, ArrowDownRight, FileText, ArrowLeft, ArrowRight } from "lucide-react";
+import { DollarSign, ArrowUpRight, ArrowDownRight, ArrowLeft, ArrowRight } from "lucide-react";
 import Card, { CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
-import Button from "@/components/ui/Button";
 import type { FinanceSummary, TuitionInvoice } from "../../types/crm.types";
 
 export interface OrgFinanceSnapshotProps {
@@ -22,8 +21,6 @@ export const OrgFinanceSnapshot: React.FC<OrgFinanceSnapshotProps> = ({
   const revenue = summaryData?.revenue || 0;
   const expenses = summaryData?.expenses || 0;
   const outstanding = summaryData?.outstanding || 0;
-  const netBalance = revenue - expenses;
-
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat(localeTag, {
       style: "currency",

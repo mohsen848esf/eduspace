@@ -237,10 +237,14 @@ class AssignmentSubmissionSerializer(serializers.ModelSerializer):
     student_username = serializers.CharField(source='student.username', read_only=True)
     student_full_name = serializers.CharField(source='student.full_name', read_only=True)
     assignment_title = serializers.CharField(source='assignment.title', read_only=True)
+    assignment_class = serializers.IntegerField(
+        source='assignment.academy_class_id',
+        read_only=True,
+    )
 
     class Meta:
         model = AssignmentSubmission
-        fields = ('id', 'assignment', 'assignment_title', 'student', 'student_username', 'student_full_name', 'status', 'submitted_at', 'submission_file', 'submission_text', 'grade', 'feedback', 'graded_by', 'graded_at')
+        fields = ('id', 'assignment', 'assignment_title', 'assignment_class', 'student', 'student_username', 'student_full_name', 'status', 'submitted_at', 'submission_file', 'submission_text', 'grade', 'feedback', 'graded_by', 'graded_at')
         read_only_fields = ('id', 'student', 'status', 'submitted_at', 'graded_by', 'graded_at')
 
     def validate(self, attrs):

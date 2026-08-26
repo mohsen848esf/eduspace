@@ -19,7 +19,6 @@ import { useLobbyHost } from "../hooks/useLobbyHost";
 import { type LayoutMode } from "../store/roomLayoutStore";
 import { useRoomStore } from "../store/roomStore";
 import toast from "react-hot-toast";
-import DockStackFanOut from "./dock/DockStackFanOut";
 import ReactionsPopover from "./reactions/ReactionsPopover";
 
 interface RoomControlsProps {
@@ -110,11 +109,13 @@ const splitSizes = {
   lg: { height: "h-12", mainWidth: "min-w-[48px]", arrowWidth: "w-8" },
 };
 
+const MUTED_AUDIO_BARS = Array<number>(20).fill(4);
+
 // ── Split Button (mic/cam with modern rotating chevron) ──
 function SplitBtn({
   iconOn,
   iconOff,
-  label: _label,
+  label,
   tooltipMain,
   tooltipArrow,
   onMain,
@@ -151,6 +152,7 @@ function SplitBtn({
       <Tooltip content={tooltipMain}>
         <button
           type="button"
+          aria-label={label}
           onClick={onMain}
           className={cn(
             "flex items-center justify-center h-full px-2.5 rounded-s-2xl border-none cursor-pointer text-base md:text-lg",
@@ -199,10 +201,7 @@ function AudioVisualizer({ isMicOn }: { isMicOn: boolean }) {
     let active = true;
     let localStream: MediaStream | null = null;
 
-    if (!isMicOn) {
-      setBars(Array(20).fill(4));
-      return;
-    }
+    if (!isMicOn) return;
 
     navigator.mediaDevices
       .getUserMedia({ audio: true })
@@ -246,7 +245,7 @@ function AudioVisualizer({ isMicOn }: { isMicOn: boolean }) {
 
   return (
     <div className="flex items-end gap-0.5 h-10 mb-3 px-1 bg-[var(--s3)] rounded-lg p-2">
-      {bars.map((h, i) => (
+      {(isMicOn ? bars : MUTED_AUDIO_BARS).map((h, i) => (
         <div
           key={i}
           className={cn(
@@ -567,7 +566,6 @@ export default function RoomControls({
   const [micPopoverOpen, setMicPopoverOpen] = useState(false);
   const [camPopoverOpen, setCamPopoverOpen] = useState(false);
   const [reactionsOpen, setReactionsOpen] = useState(false);
-  const [toolsStackOpen, setToolsStackOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const currentTime = useCurrentTime();
