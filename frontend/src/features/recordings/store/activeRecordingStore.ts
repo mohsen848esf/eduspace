@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import type { RoomRecordingStatus, RoomRecordingPermission } from "../api/recordings.api";
 
+type RecordingStatusUpdate =
+  | RoomRecordingStatus
+  | ((current: RoomRecordingStatus) => RoomRecordingStatus);
+
 interface ActiveRecordingState {
   status: RoomRecordingStatus;
   permission: RoomRecordingPermission;
@@ -11,7 +15,7 @@ interface ActiveRecordingState {
    * on once the call ends. Cleared after navigation.
    */
   pendingEditToken: string | null;
-  setStatus: (status: RoomRecordingStatus) => void;
+  setStatus: (update: RecordingStatusUpdate) => void;
   setPermission: (permission: RoomRecordingPermission) => void;
   setInFlight: (token: string | null) => void;
   setPendingEdit: (token: string | null) => void;
@@ -27,7 +31,10 @@ export const useActiveRecordingStore = create<ActiveRecordingState>((set) => ({
   permission: { can_control: false, is_host: false, grants: null },
   inFlightToken: null,
   pendingEditToken: null,
-  setStatus: (status) => set({ status }),
+  setStatus: (update) =>
+    set((state) => ({
+      status: typeof update === "function" ? update(state.status) : update,
+    })),
   setPermission: (permission) => set({ permission }),
   setInFlight: (token) => set({ inFlightToken: token }),
   setPendingEdit: (token) => set({ pendingEditToken: token }),

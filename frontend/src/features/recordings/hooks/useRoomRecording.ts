@@ -4,8 +4,6 @@ import toast from "react-hot-toast";
 import recordingsApi, {
   type Recording,
   type RecordingQuality,
-  type RoomRecordingPermission,
-  type RoomRecordingStatus,
 } from "../api/recordings.api";
 import { useActiveRecordingStore } from "../store/activeRecordingStore";
 
@@ -24,6 +22,26 @@ interface UseRoomRecordingOptions {
   roomCode: string | null;
   isHost: boolean;
 }
+
+interface RecordingApiError {
+  name?: string;
+  response?: {
+    status?: number;
+    data?: {
+      error?: string;
+    };
+  };
+}
+
+interface ExtendedDisplayMediaOptions extends DisplayMediaStreamOptions {
+  preferCurrentTab?: boolean;
+  selfBrowserSurface?: "include" | "exclude";
+}
+
+const asRecordingApiError = (error: unknown): RecordingApiError =>
+  typeof error === "object" && error !== null
+    ? (error as RecordingApiError)
+    : {};
 
 // Module-level registry so multiple mounting components share a single polling loop
 const pollRegistry = new Map<
@@ -49,6 +67,7 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
   const permission = useActiveRecordingStore((s) => s.permission);
   const setPermission = useActiveRecordingStore((s) => s.setPermission);
   const [isMutating, setIsMutating] = useState(false);
+  const mountedRef = useRef(true);
   const lastTokenRef = useRef<string | null>(null);
   const setInFlight = useActiveRecordingStore((s) => s.setInFlight);
   const setPendingEdit = useActiveRecordingStore((s) => s.setPendingEdit);
@@ -60,7 +79,7 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
   const micStreamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const chunkIndexRef = useRef<number>(0);
-  const uploadPromisesRef = useRef<Promise<any>[]>([]);
+  const uploadPromisesRef = useRef<Promise<unknown>[]>([]);
   const activeTokenRef = useRef<string | null>(null);
   const activeModeRef = useRef<"server" | "client-upload" | "client-download" | null>(null);
   const localBlobsRef = useRef<Blob[]>([]);
@@ -68,6 +87,13 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
   // The host implicitly can always control. For non-hosts, the server
   // is the source of truth via the polled permission endpoint.
   const canControl = isHost || permission.can_control;
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // Reflect status changes into the cross-component store.
   useEffect(() => {
@@ -209,10 +235,11 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
         setStatus({ status: next.status, recording: next });
         window.setTimeout(refresh, 500);
         return next;
-      } catch (err: any) {
-        const detail = err?.response?.data?.error;
+      } catch (err: unknown) {
+        const apiError = asRecordingApiError(err);
+        const detail = apiError.response?.data?.error;
         if (
-          err?.response?.status === 409 &&
+          apiError.response?.status === 409 &&
           /still starting/i.test(detail || "")
         ) {
           toast.error(t("controls.tooEarly"));
@@ -224,7 +251,7 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
         setIsMutating(false);
       }
     },
-    [roomCode, isMutating, refresh, t],
+    [roomCode, isMutating, refresh, setStatus, t],
   );
 
   const cleanupClientRecording = useCallback(() => {
@@ -292,12 +319,15 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
         }
 
         // 1. Try to acquire DisplayMedia for Client-Side Recording
-        const displayStream = await navigator.mediaDevices.getDisplayMedia({
-          video: { displaySurface: "browser" } as any,
+        const displayMediaOptions: ExtendedDisplayMediaOptions = {
+          video: { displaySurface: "browser" },
           audio: true,
           preferCurrentTab: true,
           selfBrowserSurface: "include",
-        } as any);
+        };
+        const displayStream = await navigator.mediaDevices.getDisplayMedia(
+          displayMediaOptions,
+        );
 
         let combinedStream = displayStream;
 
@@ -310,7 +340,10 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
           const micAudioTracks = micStream.getAudioTracks();
 
           if (displayAudioTracks.length > 0 && micAudioTracks.length > 0) {
-            const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+            const AudioCtxClass =
+              window.AudioContext ||
+              (window as typeof window & { webkitAudioContext: typeof AudioContext })
+                .webkitAudioContext;
             const audioCtx = new AudioCtxClass();
             audioCtxRef.current = audioCtx;
 
@@ -349,7 +382,7 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
         let recorder: MediaRecorder;
         try {
           recorder = new MediaRecorder(combinedStream, options);
-        } catch (e) {
+        } catch {
           recorder = new MediaRecorder(combinedStream);
         }
 
@@ -384,7 +417,7 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
             if (token) {
               try {
                 const next = await recordingsApi.completeClient(token);
-                if (!cancelled.current) {
+                if (mountedRef.current) {
                   setStatus({ status: next.status, recording: next });
                   setInFlight(null);
                   setPendingEdit(token);
@@ -415,7 +448,7 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
                 console.error("Failed to clean up temporary recording database entry", e);
               }
             }
-            if (!cancelled.current) {
+            if (mountedRef.current) {
               setStatus({ status: "idle", recording: null });
               setInFlight(null);
             }
@@ -435,10 +468,11 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
 
         toast.success(t("controls.started", "Recording started (Client-side)"), { icon: "🎥" });
         return initRec;
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const apiError = asRecordingApiError(err);
         console.warn("Client-side recording failed or cancelled", err);
         setIsMutating(false);
-        if (err.name === "NotAllowedError") {
+        if (apiError.name === "NotAllowedError") {
           // User cancelled screen selection - stop the flow and don't fallback
           return null;
         }
@@ -456,7 +490,17 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
         setIsMutating(false);
       }
     },
-    [roomCode, isMutating, wrapMutation, setInFlight, setPendingEdit, t, stop],
+    [
+      roomCode,
+      isMutating,
+      wrapMutation,
+      setStatus,
+      setInFlight,
+      setPendingEdit,
+      t,
+      stop,
+      cleanupClientRecording,
+    ],
   );
 
   const pause = useCallback(
@@ -476,7 +520,7 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
         return wrapMutation(() => recordingsApi.pause(roomCode!), "errorPause");
       }
     },
-    [roomCode, isClientRecording, wrapMutation, t],
+    [roomCode, isClientRecording, wrapMutation, setStatus, t],
   );
 
   const resume = useCallback(
@@ -496,7 +540,7 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
         return wrapMutation(() => recordingsApi.resume(roomCode!), "errorResume");
       }
     },
-    [roomCode, isClientRecording, wrapMutation, t],
+    [roomCode, isClientRecording, wrapMutation, setStatus, t],
   );
 
   return {
