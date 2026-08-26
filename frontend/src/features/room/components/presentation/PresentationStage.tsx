@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useRoomContext, useLocalParticipant } from "@livekit/components-react";
+import { useRoomContext } from "@livekit/components-react";
 import { useRoomStore } from "../../store/roomStore";
 import { roomApi } from "../../api/room.api";
 import { Tooltip } from "../../../../components/ui/Tooltip";
@@ -9,7 +9,6 @@ import { Minus, Maximize2, Minimize2, ExternalLink } from "lucide-react";
 
 export const PresentationStage: React.FC = () => {
   const room = useRoomContext();
-  const { localParticipant } = useLocalParticipant();
   const {
     roomCode,
     activePresentation,
@@ -18,6 +17,10 @@ export const PresentationStage: React.FC = () => {
     setPresentationCurrentPage,
     isHost,
     isCoHost,
+    isGuest,
+    guestAccessToken,
+    lockDocumentPresentation,
+    canUploadPresentation,
   } = useRoomStore();
 
   const [zoom, setZoom] = useState<number>(100);
@@ -25,11 +28,10 @@ export const PresentationStage: React.FC = () => {
   const stageContainerRef = React.useRef<HTMLDivElement>(null);
 
   const canModerate = isHost || isCoHost;
+  const hasMutationCredential = !isGuest || Boolean(guestAccessToken);
   const isPresenter =
-    canModerate ||
-    (activePresentation?.uploader_name &&
-      (localParticipant?.name === activePresentation.uploader_name ||
-        localParticipant?.identity === activePresentation.uploader_name));
+    hasMutationCredential &&
+    (canModerate || !lockDocumentPresentation || canUploadPresentation);
 
   // Sync page updates over LiveKit data channel
   const handlePageChange = useCallback(
@@ -41,7 +43,12 @@ export const PresentationStage: React.FC = () => {
       setPresentationCurrentPage(targetPage);
 
       try {
-        await roomApi.setPresentationPage(roomCode, activePresentation.id, targetPage);
+        await roomApi.setPresentationPage(
+          roomCode,
+          activePresentation.id,
+          targetPage,
+          guestAccessToken,
+        );
 
         // Broadcast page change to all participants
         if (room?.localParticipant) {
@@ -59,7 +66,7 @@ export const PresentationStage: React.FC = () => {
         console.error("Failed to sync presentation page", err);
       }
     },
-    [activePresentation, roomCode, room, setPresentationCurrentPage],
+    [activePresentation, roomCode, room, setPresentationCurrentPage, guestAccessToken],
   );
 
   // Minimize presentation
@@ -74,7 +81,12 @@ export const PresentationStage: React.FC = () => {
   const handleStopPresentation = useCallback(async () => {
     if (!roomCode || !activePresentation) return;
     try {
-      await roomApi.setActivePresentation(roomCode, activePresentation.id, false);
+      await roomApi.setActivePresentation(
+        roomCode,
+        activePresentation.id,
+        false,
+        guestAccessToken,
+      );
       setActivePresentation(null);
 
       // Broadcast presentation stopped
@@ -92,7 +104,7 @@ export const PresentationStage: React.FC = () => {
     } catch (err) {
       console.error("Failed to stop presentation", err);
     }
-  }, [roomCode, activePresentation, room, setActivePresentation]);
+  }, [roomCode, activePresentation, room, setActivePresentation, guestAccessToken]);
 
   // Fullscreen toggle
   const toggleFullscreen = () => {

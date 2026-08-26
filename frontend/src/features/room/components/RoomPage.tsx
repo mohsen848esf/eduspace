@@ -77,21 +77,29 @@ function RoomContent({
   const game = useGameBoard();
   const whiteboard = useWhiteboard();
   const reactions = useReactions();
+  const handleGameDataMessage = game.handleDataMessage;
+  const handleWhiteboardDataMessage = whiteboard.handleDataMessage;
+  const handleReactionDataMessage = reactions.handleDataMessage;
   const room = useRoomContext();
 
   // Wire LiveKit data channel into the game, whiteboard, and reactions hooks.
   useEffect(() => {
     if (!room) return;
-    const handler = (payload: Uint8Array, participant?: any) => {
-      game.handleDataMessage(payload, participant);
-      whiteboard.handleDataMessage(payload, participant);
-      reactions.handleDataMessage(payload, participant);
+    const handler = (payload: Uint8Array, participant?: unknown) => {
+      handleGameDataMessage(payload, participant);
+      handleWhiteboardDataMessage(payload, participant);
+      handleReactionDataMessage(payload, participant);
     };
     room.on("dataReceived", handler);
     return () => {
       room.off("dataReceived", handler);
     };
-  }, [room, game.handleDataMessage, whiteboard.handleDataMessage, reactions.handleDataMessage]);
+  }, [
+    room,
+    handleGameDataMessage,
+    handleWhiteboardDataMessage,
+    handleReactionDataMessage,
+  ]);
 
   // Monitor connection quality — auto-disable camera on poor networks.
   // This keeps audio alive when bandwidth is critically low.
@@ -186,6 +194,7 @@ export default function RoomPage() {
     useState<PreJoinSettings | null>(null);
 
   const [lobbyRequestId, setLobbyRequestId] = useState<number | null>(null);
+  const [lobbyGuestAccessToken, setLobbyGuestAccessToken] = useState<string | null>(null);
   const [isWaitingInLobby, setIsWaitingInLobby] = useState(false);
   const [roomAccessError, setRoomAccessError] = useState<
     "locked" | "room_ended" | null
@@ -193,9 +202,9 @@ export default function RoomPage() {
 
   const joinedRef = useRef(false);
 
-  const handleJoinAttempt = useCallback(async () => {
+  const handleJoinAttempt = useCallback(async (guestNameOverride?: string) => {
     if (!roomCode) return;
-    const guestName = preJoinSettings?.guestName;
+    const guestName = guestNameOverride ?? preJoinSettings?.guestName;
     try {
       const res = guestName
         ? await joinRoomGuest(roomCode, guestName)
@@ -203,35 +212,24 @@ export default function RoomPage() {
 
       if (res && "waiting" in res && res.waiting) {
         setLobbyRequestId(res.request_id);
+        setLobbyGuestAccessToken(res.guest_access_token || null);
         setIsWaitingInLobby(true);
       }
-    } catch (err: any) {
-      if (err.code === "ROOM_LOCKED" || err.status === 423) {
+    } catch (err: unknown) {
+      const roomError = err as { code?: string; status?: number };
+      if (roomError.code === "ROOM_LOCKED" || roomError.status === 423) {
         setRoomAccessError("locked");
-      } else if (err.status === 410) {
+      } else if (roomError.status === 410) {
         setRoomAccessError("room_ended");
       }
     }
   }, [roomCode, preJoinSettings?.guestName, joinRoom, joinRoomGuest]);
 
-  useEffect(() => {
-    if (preJoinDone) {
-      joinedRef.current = true;
-    }
-  }, [preJoinDone]);
-
-  useEffect(() => {
-    const isLeaving = useRoomStore.getState().isUserLeaving;
-    if (isLeaving || callEnded) return;
-    if (!token && roomCode && preJoinDone && !isWaitingInLobby) {
-      handleJoinAttempt();
-    }
-  }, [roomCode, preJoinDone, token, isWaitingInLobby, handleJoinAttempt, callEnded]);
-
   // Polling when waiting in lobby
   const { status: lobbyStatus, elapsedSeconds } = useLobbyWaiting({
     roomCode: roomCode || "",
     requestId: lobbyRequestId,
+    guestAccessToken: lobbyGuestAccessToken,
     enabled: isWaitingInLobby,
     onAdmitted: (admittedData) => {
       useRoomStore.getState().setRoom({
@@ -242,7 +240,11 @@ export default function RoomPage() {
         isHost: false,
         isGuest: admittedData.isGuest || false,
         guestIdentity: admittedData.guestIdentity || null,
+        guestAccessToken: admittedData.guestAccessToken || null,
+        lockDocumentPresentation: admittedData.lockDocumentPresentation,
+        canUploadPresentation: admittedData.canUploadPresentation,
       });
+      setLobbyGuestAccessToken(null);
       setIsWaitingInLobby(false);
     },
   });
@@ -279,6 +281,7 @@ export default function RoomPage() {
         onRetry={() => {
           setIsWaitingInLobby(false);
           setLobbyRequestId(null);
+          setLobbyGuestAccessToken(null);
           handleJoinAttempt();
         }}
         onLeave={() => {
@@ -339,6 +342,8 @@ export default function RoomPage() {
         onJoin={(settings) => {
           setPreJoinSettings(settings);
           setPreJoinDone(true);
+          joinedRef.current = true;
+          void handleJoinAttempt(settings.guestName);
         }}
         onCancel={() => {
           leaveRoom();

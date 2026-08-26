@@ -1,10 +1,31 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import axios from "axios";
 import { roomApi } from "../api/room.api";
 import { useRoomStore } from "../store/roomStore";
 import type { CreateRoomInput } from "../schemas/room.schema";
 import { useBackgroundStore } from "../store/backgroundStore";
+
+interface ApiErrorBody {
+  error?: string;
+  code?: string;
+}
+
+function readApiError(error: unknown) {
+  if (axios.isAxiosError<ApiErrorBody>(error)) {
+    return {
+      message: error.response?.data?.error || error.message,
+      code: error.response?.data?.code,
+      status: error.response?.status,
+    };
+  }
+  return {
+    message: error instanceof Error ? error.message : undefined,
+    code: undefined,
+    status: undefined,
+  };
+}
 
 export function useRoom() {
   const navigate = useNavigate();
@@ -29,8 +50,9 @@ export function useRoom() {
         });
         navigate(`/room/${res.room_code}`);
         return res;
-      } catch (err: any) {
-        const msg = err.response?.data?.error || err.message || t("join.createFailed");
+      } catch (err: unknown) {
+        const apiError = readApiError(err);
+        const msg = apiError.message || t("join.createFailed");
         setError(msg);
         console.error("Failed to create room:", err);
         throw err;
@@ -57,19 +79,33 @@ export function useRoom() {
             roomCode: res.room_code,
             roomName: res.name,
             isHost: res.is_host || false,
+            isCoHost: res.is_co_host || false,
             isGuest: false,
             requireApproval: res.require_approval,
             isLocked: res.is_locked,
+            maxParticipants: res.max_participants,
+            durationLimitMinutes: res.duration_limit_minutes,
+            isDurationLimited: res.is_duration_limited,
+            muteMicOnJoin: res.mute_mic_on_join,
+            muteCamOnJoin: res.mute_cam_on_join,
+            lockScreenShare: res.lock_screen_share,
+            lockMicrophone: res.lock_microphone,
+            lockCamera: res.lock_camera,
+            lockDocumentPresentation: res.lock_document_presentation,
+            canShareScreen: res.can_share_screen,
+            canUseCamera: res.can_use_camera,
+            canUseMicrophone: res.can_use_microphone,
+            canUploadPresentation: res.can_upload_presentation,
           });
         }
         return res;
-      } catch (err: any) {
-        const errorCode = err.response?.data?.code;
-        const msg = err.response?.data?.error || t("join.joinFailed");
+      } catch (err: unknown) {
+        const apiError = readApiError(err);
+        const msg = apiError.message || t("join.joinFailed");
         setError(msg);
         throw Object.assign(new Error(msg), {
-          code: errorCode,
-          status: err.response?.status,
+          code: apiError.code,
+          status: apiError.status,
         });
       } finally {
         setIsLoading(false);
@@ -96,18 +132,32 @@ export function useRoom() {
             isHost: false,
             isGuest: true,
             guestIdentity: res.guest_identity,
+            guestAccessToken: res.guest_access_token,
             requireApproval: res.require_approval,
             isLocked: res.is_locked,
+            maxParticipants: res.max_participants,
+            durationLimitMinutes: res.duration_limit_minutes,
+            isDurationLimited: res.is_duration_limited,
+            muteMicOnJoin: res.mute_mic_on_join,
+            muteCamOnJoin: res.mute_cam_on_join,
+            lockScreenShare: res.lock_screen_share,
+            lockMicrophone: res.lock_microphone,
+            lockCamera: res.lock_camera,
+            lockDocumentPresentation: res.lock_document_presentation,
+            canShareScreen: res.can_share_screen,
+            canUseCamera: res.can_use_camera,
+            canUseMicrophone: res.can_use_microphone,
+            canUploadPresentation: res.can_upload_presentation,
           });
         }
         return res;
-      } catch (err: any) {
-        const errorCode = err.response?.data?.code;
-        const msg = err.response?.data?.error || t("join.joinFailed");
+      } catch (err: unknown) {
+        const apiError = readApiError(err);
+        const msg = apiError.message || t("join.joinFailed");
         setError(msg);
         throw Object.assign(new Error(msg), {
-          code: errorCode,
-          status: err.response?.status,
+          code: apiError.code,
+          status: apiError.status,
         });
       } finally {
         setIsLoading(false);

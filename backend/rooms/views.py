@@ -15,6 +15,12 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Room, RoomParticipant, LobbyRequest, PresentationDocument
+from .services.guest_access import (
+    InvalidGuestAccessToken,
+    decode_guest_access_token,
+    issue_guest_access_token,
+)
+from .services.presentation import PresentationAccessError, PresentationService
 
 
 def generate_room_code():
@@ -343,6 +349,10 @@ def guest_join_room(request, room_code):
 
     # If approval required, create a lobby request and wait.
     if room.require_approval:
+        guest_access_token = issue_guest_access_token(
+            room_code=room.room_code,
+            guest_identity=guest_identity,
+        )
         lobby_req = LobbyRequest.objects.create(
             room=room,
             user=None,
@@ -357,6 +367,7 @@ def guest_join_room(request, room_code):
                 'waiting': True,
                 'request_id': lobby_req.id,
                 'guest_identity': guest_identity,
+                'guest_access_token': guest_access_token,
                 'room_code': room.room_code,
                 'name': room.name,
             },
@@ -381,6 +392,10 @@ def guest_join_room(request, room_code):
         guest_identity=guest_identity,
         guest_name=display_name,
     )
+    guest_access_token = issue_guest_access_token(
+        room_code=room.room_code,
+        guest_identity=guest_identity,
+    )
 
     return Response({
         'room_code': room.room_code,
@@ -391,6 +406,7 @@ def guest_join_room(request, room_code):
         'is_co_host': False,
         'is_guest': True,
         'guest_identity': guest_identity,
+        'guest_access_token': guest_access_token,
         'max_participants': room.max_participants,
         'duration_limit_minutes': room.duration_limit_minutes,
         'is_duration_limited': room.is_duration_limited,
@@ -1007,7 +1023,8 @@ def lobby_status(request, room_code, request_id):
     Polling endpoint for a waiting participant.
     Returns the current status of their lobby request.
     When admitted, includes the LiveKit token so they can connect.
-    No authentication required (guests are unauthenticated).
+    Guests authenticate this polling request with their signed, room-scoped
+    guest access token; authenticated users may only poll their own request.
     """
     try:
         room = Room.objects.get(room_code=room_code)
@@ -1022,6 +1039,29 @@ def lobby_status(request, room_code, request_id):
         lobby_req = LobbyRequest.objects.get(id=request_id, room=room)
     except LobbyRequest.DoesNotExist:
         return Response({'error': 'Request not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    guest_access_token = request.headers.get('X-Guest-Access-Token')
+    if lobby_req.is_guest:
+        try:
+            token_identity = decode_guest_access_token(
+                token=guest_access_token,
+                room_code=room.room_code,
+            )
+        except InvalidGuestAccessToken:
+            return Response({
+                'error': 'Invalid or expired guest access token',
+                'code': 'INVALID_GUEST_ACCESS_TOKEN',
+            }, status=status.HTTP_401_UNAUTHORIZED)
+        if token_identity != lobby_req.guest_identity:
+            return Response({
+                'error': 'Guest access token does not match this lobby request',
+                'code': 'GUEST_ACCESS_TOKEN_MISMATCH',
+            }, status=status.HTTP_403_FORBIDDEN)
+    elif not request.user.is_authenticated or request.user.id != lobby_req.user_id:
+        return Response({
+            'error': 'Only the requesting user can poll this lobby request',
+            'code': 'LOBBY_REQUEST_OWNER_REQUIRED',
+        }, status=status.HTTP_403_FORBIDDEN)
 
     # Auto-expire if too old.
     if lobby_req.is_expired:
@@ -1038,8 +1078,25 @@ def lobby_status(request, room_code, request_id):
         response_data['token'] = lobby_req.livekit_token
         response_data['livekit_url'] = settings.LIVEKIT_WS_URL
         response_data['is_guest'] = lobby_req.is_guest
+        participant_filter = (
+            {'guest_identity': lobby_req.guest_identity}
+            if lobby_req.is_guest
+            else {'user': lobby_req.user}
+        )
+        participant = RoomParticipant.objects.filter(
+            room=room,
+            is_active=True,
+            **participant_filter,
+        ).first()
+        response_data.update({
+            'lock_document_presentation': room.lock_document_presentation,
+            'can_upload_presentation': (
+                participant.can_upload_presentation if participant else False
+            ),
+        })
         if lobby_req.is_guest:
             response_data['guest_identity'] = lobby_req.guest_identity
+            response_data['guest_access_token'] = guest_access_token
 
     return Response(response_data)
 
@@ -1257,6 +1314,17 @@ def list_co_hosts(request, room_code):
 # Presentation & Document Stage Views
 # ---------------------------------------------------------------------------
 
+def _guest_access_token_from_request(request):
+    return request.headers.get('X-Guest-Access-Token')
+
+
+def _presentation_access_error_response(exc):
+    return Response({
+        'error': exc.message,
+        'code': exc.code,
+    }, status=exc.status_code)
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def upload_presentation(request, room_code):
@@ -1270,27 +1338,15 @@ def upload_presentation(request, room_code):
     except Room.DoesNotExist:
         return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    if room.status == Room.Status.ENDED:
-        return Response({'error': 'Room has ended'}, status=status.HTTP_410_GONE)
-
     user = request.user if request.user and request.user.is_authenticated else None
-    guest_identity = request.data.get('guest_identity')
-
-    participant = None
-    if user:
-        participant = RoomParticipant.objects.filter(room=room, user=user, is_active=True).first()
-    elif guest_identity:
-        participant = RoomParticipant.objects.filter(room=room, guest_identity=guest_identity, is_active=True).first()
-
-    # Permission check
-    can_moderate = room.can_manage_room(user) if user else False
-    if not can_moderate:
-        if room.lock_document_presentation:
-            if not participant or not participant.can_upload_presentation:
-                return Response({
-                    'error': 'امکان آپلود و ارائه فایل توسط برگزارکننده قفل است.',
-                    'code': 'PRESENTATION_LOCKED',
-                }, status=status.HTTP_403_FORBIDDEN)
+    try:
+        actor = PresentationService.authorize_control(
+            room=room,
+            user=request.user,
+            guest_access_token=_guest_access_token_from_request(request),
+        )
+    except PresentationAccessError as exc:
+        return _presentation_access_error_response(exc)
 
     uploaded_file = request.FILES.get('file')
     if not uploaded_file:
@@ -1310,7 +1366,7 @@ def upload_presentation(request, room_code):
         file_type = PresentationDocument.FileType.SLIDE
 
     title = request.data.get('title') or uploaded_file.name
-    guest_name = request.data.get('guest_name') or (participant.guest_name if participant else 'مهمان')
+    guest_name = actor.participant.guest_name if actor.participant and actor.participant.is_guest else None
 
     total_pages = int(request.data.get('total_pages', 1))
 
@@ -1381,20 +1437,33 @@ def set_active_presentation(request, room_code, doc_id):
     except Room.DoesNotExist:
         return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    is_active = request.data.get('is_active', True)
+    try:
+        PresentationService.authorize_control(
+            room=room,
+            user=request.user,
+            guest_access_token=_guest_access_token_from_request(request),
+        )
+    except PresentationAccessError as exc:
+        return _presentation_access_error_response(exc)
 
-    if not is_active or doc_id == 0 or str(doc_id) == '0':
-        room.presentations.update(is_active_on_stage=False)
-        return Response({'message': 'Presentation stopped', 'is_active': False})
+    is_active = request.data.get('is_active', True)
+    if not isinstance(is_active, bool):
+        return Response({
+            'error': 'is_active must be a boolean',
+            'code': 'INVALID_IS_ACTIVE',
+        }, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        doc = room.presentations.get(id=doc_id)
+        doc = PresentationService.set_active(
+            room=room,
+            document_id=doc_id,
+            is_active=is_active,
+        )
     except PresentationDocument.DoesNotExist:
         return Response({'error': 'Presentation not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    room.presentations.update(is_active_on_stage=False)
-    doc.is_active_on_stage = True
-    doc.save(update_fields=['is_active_on_stage'])
+    if doc is None:
+        return Response({'message': 'Presentation stopped', 'is_active': False})
 
     file_url = request.build_absolute_uri(doc.file.url) if doc.file else ''
     return Response({
@@ -1414,13 +1483,34 @@ def set_active_presentation(request, room_code, doc_id):
 def set_presentation_page(request, room_code, doc_id):
     try:
         room = Room.objects.get(room_code=room_code)
-        doc = room.presentations.get(id=doc_id)
-    except (Room.DoesNotExist, PresentationDocument.DoesNotExist):
-        return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    page = int(request.data.get('page', 1))
-    doc.current_page = max(1, min(doc.total_pages, page))
-    doc.save(update_fields=['current_page'])
+    try:
+        PresentationService.authorize_control(
+            room=room,
+            user=request.user,
+            guest_access_token=_guest_access_token_from_request(request),
+        )
+    except PresentationAccessError as exc:
+        return _presentation_access_error_response(exc)
+
+    try:
+        page = int(request.data.get('page', 1))
+    except (TypeError, ValueError):
+        return Response({
+            'error': 'page must be an integer',
+            'code': 'INVALID_PAGE',
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        doc = PresentationService.set_page(
+            room=room,
+            document_id=doc_id,
+            page=page,
+        )
+    except PresentationDocument.DoesNotExist:
+        return Response({'error': 'Presentation not found'}, status=status.HTTP_404_NOT_FOUND)
 
     return Response({
         'id': doc.id,

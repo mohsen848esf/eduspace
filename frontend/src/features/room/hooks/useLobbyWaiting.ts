@@ -12,6 +12,7 @@ export type LobbyWaitingStatus =
 interface UseLobbyWaitingOptions {
   roomCode: string;
   requestId: number | null;
+  guestAccessToken?: string | null;
   enabled: boolean;
   onAdmitted: (data: {
     token: string;
@@ -20,12 +21,16 @@ interface UseLobbyWaitingOptions {
     name: string;
     isGuest?: boolean;
     guestIdentity?: string;
+    guestAccessToken?: string;
+    lockDocumentPresentation?: boolean;
+    canUploadPresentation?: boolean;
   }) => void;
 }
 
 export function useLobbyWaiting({
   roomCode,
   requestId,
+  guestAccessToken,
   enabled,
   onAdmitted,
 }: UseLobbyWaitingOptions) {
@@ -33,14 +38,17 @@ export function useLobbyWaiting({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const consecutiveErrorsRef = useRef(0);
   const onAdmittedRef = useRef(onAdmitted);
-  onAdmittedRef.current = onAdmitted;
+
+  useEffect(() => {
+    onAdmittedRef.current = onAdmitted;
+  }, [onAdmitted]);
 
   // Elapsed timer
   useEffect(() => {
     if (!enabled || !requestId || status !== "pending") return;
-    setElapsedSeconds(0);
+    const startedAt = Date.now();
     const interval = setInterval(() => {
-      setElapsedSeconds((prev) => prev + 1);
+      setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
     }, 1000);
     return () => clearInterval(interval);
   }, [enabled, requestId, status]);
@@ -50,11 +58,11 @@ export function useLobbyWaiting({
     if (!enabled || !requestId || !roomCode) return;
 
     let isMounted = true;
-    let pollTimeout: any = null;
+    let pollTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const poll = async () => {
       try {
-        const res = await roomApi.lobbyStatus(roomCode, requestId);
+        const res = await roomApi.lobbyStatus(roomCode, requestId, guestAccessToken);
         if (!isMounted) return;
 
         consecutiveErrorsRef.current = 0;
@@ -69,6 +77,9 @@ export function useLobbyWaiting({
             name: res.name,
             isGuest: res.is_guest,
             guestIdentity: res.guest_identity,
+            guestAccessToken: res.guest_access_token || guestAccessToken || undefined,
+            lockDocumentPresentation: res.lock_document_presentation,
+            canUploadPresentation: res.can_upload_presentation,
           });
           return;
         }
@@ -83,7 +94,7 @@ export function useLobbyWaiting({
         }
 
         setStatus("pending");
-      } catch (err: any) {
+      } catch {
         if (!isMounted) return;
         consecutiveErrorsRef.current += 1;
         // If 3 consecutive network failures occur
@@ -105,7 +116,7 @@ export function useLobbyWaiting({
       isMounted = false;
       if (pollTimeout) clearTimeout(pollTimeout);
     };
-  }, [roomCode, requestId, enabled]);
+  }, [roomCode, requestId, enabled, guestAccessToken]);
 
   return {
     status,

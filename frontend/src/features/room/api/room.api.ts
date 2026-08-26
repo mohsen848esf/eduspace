@@ -22,6 +22,7 @@ export interface LobbyWaitingResponse {
   room_code: string;
   name: string;
   guest_identity?: string; // only for guests
+  guest_access_token?: string; // signed, room-scoped guest REST credential
 }
 
 // Returned by lobby/status/<id>/
@@ -34,6 +35,9 @@ export interface LobbyStatusResponse {
   livekit_url?: string;
   is_guest?: boolean;
   guest_identity?: string;
+  guest_access_token?: string;
+  lock_document_presentation?: boolean;
+  can_upload_presentation?: boolean;
 }
 
 export interface LobbyRequest {
@@ -110,9 +114,13 @@ export const roomApi = {
   lobbyStatus: async (
     room_code: string,
     request_id: number,
+    guest_access_token?: string | null,
   ): Promise<LobbyStatusResponse> => {
     const res = await client.get(
       `/rooms/${room_code}/lobby/status/${request_id}/`,
+      guest_access_token
+        ? { headers: { "X-Guest-Access-Token": guest_access_token } }
+        : undefined,
     );
     return res.data;
   },
@@ -185,9 +193,15 @@ export const roomApi = {
   uploadPresentation: async (
     room_code: string,
     formData: FormData,
+    guest_access_token?: string | null,
   ): Promise<PresentationDocument> => {
     const res = await client.post(`/rooms/${room_code}/presentations/upload/`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
+      headers: {
+        "Content-Type": "multipart/form-data",
+        ...(guest_access_token
+          ? { "X-Guest-Access-Token": guest_access_token }
+          : {}),
+      },
     });
     return res.data;
   },
@@ -203,10 +217,13 @@ export const roomApi = {
     room_code: string,
     docId: number,
     isActive: boolean = true,
+    guest_access_token?: string | null,
   ): Promise<PresentationDocument | { message: string; is_active: boolean }> => {
     const res = await client.post(`/rooms/${room_code}/presentations/${docId}/present/`, {
       is_active: isActive,
-    });
+    }, guest_access_token
+      ? { headers: { "X-Guest-Access-Token": guest_access_token } }
+      : undefined);
     return res.data;
   },
 
@@ -214,10 +231,13 @@ export const roomApi = {
     room_code: string,
     docId: number,
     page: number,
+    guest_access_token?: string | null,
   ): Promise<{ id: number; current_page: number; total_pages: number }> => {
     const res = await client.post(`/rooms/${room_code}/presentations/${docId}/page/`, {
       page,
-    });
+    }, guest_access_token
+      ? { headers: { "X-Guest-Access-Token": guest_access_token } }
+      : undefined);
     return res.data;
   },
 

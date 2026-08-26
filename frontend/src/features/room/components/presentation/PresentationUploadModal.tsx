@@ -4,6 +4,7 @@ import { useRoomStore } from "../../store/roomStore";
 import { roomApi } from "../../api/room.api";
 import type { PresentationDocument } from "../../schemas/room.schema";
 import toast from "react-hot-toast";
+import axios from "axios";
 
 interface PresentationUploadModalProps {
   isOpen: boolean;
@@ -23,6 +24,8 @@ export const PresentationUploadModal: React.FC<PresentationUploadModalProps> = (
     isCoHost,
     lockDocumentPresentation,
     canUploadPresentation,
+    isGuest,
+    guestAccessToken,
     presentationsList,
     setPresentationsList,
     setActivePresentation,
@@ -34,7 +37,10 @@ export const PresentationUploadModal: React.FC<PresentationUploadModalProps> = (
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const canModerate = isHost || isCoHost;
-  const isAllowedToUpload = canModerate || !lockDocumentPresentation || canUploadPresentation;
+  const hasMutationCredential = !isGuest || Boolean(guestAccessToken);
+  const isAllowedToUpload =
+    hasMutationCredential &&
+    (canModerate || !lockDocumentPresentation || canUploadPresentation);
 
   // Load existing room presentations
   useEffect(() => {
@@ -70,14 +76,21 @@ export const PresentationUploadModal: React.FC<PresentationUploadModalProps> = (
     formData.append("title", docTitle.trim() || selectedFile.name);
 
     try {
-      const newDoc = await roomApi.uploadPresentation(roomCode, formData);
+      const newDoc = await roomApi.uploadPresentation(
+        roomCode,
+        formData,
+        guestAccessToken,
+      );
       setPresentationsList([newDoc, ...presentationsList]);
       setSelectedFile(null);
       setDocTitle("");
       toast.success("فایل با موفقیت بارگذاری شد.");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Upload failed", err);
-      toast.error(err?.response?.data?.error || "خطا در بارگذاری فایل.");
+      const message = axios.isAxiosError<{ error?: string }>(err)
+        ? err.response?.data?.error
+        : undefined;
+      toast.error(message || "خطا در بارگذاری فایل.");
     } finally {
       setIsUploading(false);
     }
@@ -86,7 +99,12 @@ export const PresentationUploadModal: React.FC<PresentationUploadModalProps> = (
   const handleStartPresenting = async (doc: PresentationDocument) => {
     if (!roomCode) return;
     try {
-      const activeDoc = await roomApi.setActivePresentation(roomCode, doc.id, true);
+      const activeDoc = await roomApi.setActivePresentation(
+        roomCode,
+        doc.id,
+        true,
+        guestAccessToken,
+      );
       const castDoc = activeDoc as PresentationDocument;
       setActivePresentation(castDoc);
 

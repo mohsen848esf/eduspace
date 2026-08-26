@@ -38,6 +38,7 @@ export interface RoomResponse {
   is_co_host?: boolean;
   is_guest?: boolean;
   guest_identity?: string;
+  guest_access_token?: string;
   require_approval?: boolean;
   is_locked?: boolean;
   max_participants?: number;

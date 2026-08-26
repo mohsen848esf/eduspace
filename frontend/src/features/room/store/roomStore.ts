@@ -11,6 +11,7 @@ interface RoomState {
   coHosts: string[];
   isGuest: boolean;
   guestIdentity: string | null;
+  guestAccessToken: string | null;
   requireApproval: boolean;
   isLocked: boolean;
   maxParticipants: number;
@@ -72,6 +73,7 @@ interface RoomState {
     coHosts?: string[];
     isGuest?: boolean;
     guestIdentity?: string | null;
+    guestAccessToken?: string | null;
     requireApproval?: boolean;
     isLocked?: boolean;
     maxParticipants?: number;
@@ -103,6 +105,7 @@ export const useRoomStore = create<RoomState>((set) => ({
   coHosts: [],
   isGuest: false,
   guestIdentity: null,
+  guestAccessToken: null,
   requireApproval: false,
   isLocked: false,
   maxParticipants: 25,
@@ -234,6 +237,7 @@ export const useRoomStore = create<RoomState>((set) => ({
       coHosts: data.coHosts || [],
       isGuest: data.isGuest || false,
       guestIdentity: data.guestIdentity || null,
+      guestAccessToken: data.guestAccessToken || null,
       requireApproval: data.requireApproval || false,
       isLocked: data.isLocked || false,
       maxParticipants: data.maxParticipants || 25,
@@ -263,6 +267,7 @@ export const useRoomStore = create<RoomState>((set) => ({
       coHosts: [],
       isGuest: false,
       guestIdentity: null,
+      guestAccessToken: null,
       requireApproval: false,
       isLocked: false,
       maxParticipants: 25,

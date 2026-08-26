@@ -49,6 +49,7 @@ class GuestJoinAPITests(APITestCase):
         self.assertIn("token", data)
         self.assertIsNotNone(data["token"])
         self.assertIn("guest_identity", data)
+        self.assertIn("guest_access_token", data)
 
         # Check database participant created
         participant = RoomParticipant.objects.get(guest_identity=data["guest_identity"])
@@ -56,6 +57,42 @@ class GuestJoinAPITests(APITestCase):
         self.assertEqual(participant.guest_name, "Guest Student")
         self.assertIsNone(participant.user)
         self.assertTrue(participant.is_active)
+
+    def test_guest_lobby_polling_requires_matching_signed_token(self):
+        self.active_room.require_approval = True
+        self.active_room.save(update_fields=["require_approval"])
+        join_response = self.client.post(
+            reverse("guest_join_room", kwargs={"room_code": self.active_room.room_code}),
+            {"display_name": "Waiting Guest"},
+            format="json",
+        )
+        self.assertEqual(join_response.status_code, status.HTTP_202_ACCEPTED)
+        guest_token = join_response.data["guest_access_token"]
+        request_id = join_response.data["request_id"]
+        status_url = reverse("lobby_status", kwargs={
+            "room_code": self.active_room.room_code,
+            "request_id": request_id,
+        })
+
+        unsigned_response = self.client.get(status_url)
+        self.assertEqual(unsigned_response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        self.client.force_authenticate(user=self.host_user)
+        admit_response = self.client.post(reverse("lobby_admit", kwargs={
+            "room_code": self.active_room.room_code,
+            "request_id": request_id,
+        }))
+        self.assertEqual(admit_response.status_code, status.HTTP_200_OK)
+        self.client.force_authenticate(user=None)
+
+        admitted_response = self.client.get(
+            status_url,
+            HTTP_X_GUEST_ACCESS_TOKEN=guest_token,
+        )
+        self.assertEqual(admitted_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(admitted_response.data["status"], "admitted")
+        self.assertEqual(admitted_response.data["guest_access_token"], guest_token)
+        self.assertIn("token", admitted_response.data)
 
     def test_guest_join_rejects_empty_name(self):
         url = reverse("guest_join_room", kwargs={"room_code": self.active_room.room_code})
