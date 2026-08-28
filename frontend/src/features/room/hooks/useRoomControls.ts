@@ -7,6 +7,9 @@ import client from "../../../lib/api/client";
 import { useRoomStore } from "../store/roomStore";
 import { createAudioContext } from "@/lib/browser/audioContext";
 
+/** Minimum milliseconds between two permission requests of the same type */
+const PERMISSION_REQUEST_COOLDOWN_MS = 15_000;
+
 function playChime() {
   try {
     const audioCtx = createAudioContext();
@@ -146,36 +149,65 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
     }
   }, [localParticipant, initialCamOn]);
 
-  const {
-    isHost,
-    isCoHost,
-    lockMicrophone,
-    lockCamera,
-    lockScreenShare,
-    canUseMicrophone,
-    canUseCamera,
-    canShareScreen,
-  } = useRoomStore();
+  const isHost = useRoomStore((s) => s.isHost);
+  const isCoHost = useRoomStore((s) => s.isCoHost);
+  const lockMicrophone = useRoomStore((s) => s.lockMicrophone);
+  const lockCamera = useRoomStore((s) => s.lockCamera);
+  const lockScreenShare = useRoomStore((s) => s.lockScreenShare);
+  const canUseMicrophone = useRoomStore((s) => s.canUseMicrophone);
+  const canUseCamera = useRoomStore((s) => s.canUseCamera);
+  const canShareScreen = useRoomStore((s) => s.canShareScreen);
   const canModerate = isHost || isCoHost;
+
+  // Sync isMicOn and isCamOn whenever localParticipant track states change reactively
+  const { isMicrophoneEnabled, isCameraEnabled } = useLocalParticipant();
+  useEffect(() => {
+    if (isMicrophoneEnabled !== undefined) {
+      setIsMicOn(isMicrophoneEnabled);
+    }
+  }, [isMicrophoneEnabled]);
+
+  useEffect(() => {
+    if (isCameraEnabled !== undefined) {
+      setIsCamOn(isCameraEnabled);
+    }
+  }, [isCameraEnabled]);
+
+  // Cooldown tracking per permission type to prevent spam requests
+  const lastPermissionRequestRef = useRef<Record<string, number>>({
+    microphone: 0,
+    camera: 0,
+    screen_share: 0,
+  });
 
   const toggleMic = useCallback(async () => {
     if (!localParticipant) return;
     const newState = !isMicOn;
 
-    const isBlocked = !canModerate && (lockMicrophone || !canUseMicrophone);
+    // KEY FIX: isBlocked now ONLY checks canUseMicrophone.
+    // When lockMicrophone=true and host hasn't granted individual permission → canUseMicrophone=false → blocked.
+    // When lockMicrophone=true but host granted individual permission → canUseMicrophone=true → NOT blocked.
+    const isBlocked = !canModerate && !canUseMicrophone;
     if (newState && isBlocked) {
-      toast("میکروفون توسط برگزارکننده قفل است. در حال ارسال درخواست مجوز...", {
-        icon: "🔒",
-      });
+      // Cooldown: only send a new request if the previous one was > 15s ago
+      const now = Date.now();
+      const lastRequest = lastPermissionRequestRef.current.microphone;
+      if (now - lastRequest < PERMISSION_REQUEST_COOLDOWN_MS) {
+        toast("درخواست میکروفون قبلاً ارسال شد. لطفاً منتظر پاسخ برگزارکننده باشید.", { icon: "⏳" });
+        return;
+      }
+      lastPermissionRequestRef.current.microphone = now;
+
+      toast("میکروفون توسط برگزارکننده قفل است. درخواست مجوز ارسال شد.", { icon: "🔒" });
       const encoder = new TextEncoder();
       const data = encoder.encode(
         JSON.stringify({
           type: "PERMISSION_REQUEST",
-          id: `${localParticipant.identity}-microphone-${Date.now()}`,
+          id: `${localParticipant.identity}-microphone-${now}`,
           identity: localParticipant.identity,
           displayName: localParticipant.name || localParticipant.identity,
           permission: "microphone",
-          timestamp: Date.now(),
+          timestamp: now,
         }),
       );
       await room.localParticipant.publishData(data, { reliable: true });
@@ -184,26 +216,33 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
 
     await localParticipant.setMicrophoneEnabled(newState);
     setIsMicOn(newState);
-  }, [localParticipant, isMicOn, canModerate, lockMicrophone, canUseMicrophone, room]);
+  }, [localParticipant, isMicOn, canModerate, canUseMicrophone, room]);
 
   const toggleCam = useCallback(async () => {
     if (!localParticipant) return;
     const newState = !isCamOn;
 
-    const isBlocked = !canModerate && (lockCamera || !canUseCamera);
+    // KEY FIX: same as toggleMic — only check canUseCamera
+    const isBlocked = !canModerate && !canUseCamera;
     if (newState && isBlocked) {
-      toast("دوربین توسط برگزارکننده قفل است. در حال ارسال درخواست مجوز...", {
-        icon: "🔒",
-      });
+      const now = Date.now();
+      const lastRequest = lastPermissionRequestRef.current.camera;
+      if (now - lastRequest < PERMISSION_REQUEST_COOLDOWN_MS) {
+        toast("درخواست دوربین قبلاً ارسال شد. لطفاً منتظر پاسخ برگزارکننده باشید.", { icon: "⏳" });
+        return;
+      }
+      lastPermissionRequestRef.current.camera = now;
+
+      toast("دوربین توسط برگزارکننده قفل است. درخواست مجوز ارسال شد.", { icon: "🔒" });
       const encoder = new TextEncoder();
       const data = encoder.encode(
         JSON.stringify({
           type: "PERMISSION_REQUEST",
-          id: `${localParticipant.identity}-camera-${Date.now()}`,
+          id: `${localParticipant.identity}-camera-${now}`,
           identity: localParticipant.identity,
           displayName: localParticipant.name || localParticipant.identity,
           permission: "camera",
-          timestamp: Date.now(),
+          timestamp: now,
         }),
       );
       await room.localParticipant.publishData(data, { reliable: true });
@@ -212,26 +251,33 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
 
     await localParticipant.setCameraEnabled(newState);
     setIsCamOn(newState);
-  }, [localParticipant, isCamOn, canModerate, lockCamera, canUseCamera, room]);
+  }, [localParticipant, isCamOn, canModerate, canUseCamera, room]);
 
   const toggleScreenShare = useCallback(async () => {
     if (!localParticipant) return;
 
     if (!isScreenSharing) {
-      const isBlocked = !canModerate && (lockScreenShare || !canShareScreen);
+      // KEY FIX: only check canShareScreen (not lockScreenShare)
+      const isBlocked = !canModerate && !canShareScreen;
       if (isBlocked) {
-        toast("اشتراک صفحه توسط برگزارکننده قفل است. در حال ارسال درخواست مجوز...", {
-          icon: "🔒",
-        });
+        const now = Date.now();
+        const lastRequest = lastPermissionRequestRef.current.screen_share;
+        if (now - lastRequest < PERMISSION_REQUEST_COOLDOWN_MS) {
+          toast("درخواست اشتراک صفحه قبلاً ارسال شد. لطفاً منتظر پاسخ برگزارکننده باشید.", { icon: "⏳" });
+          return;
+        }
+        lastPermissionRequestRef.current.screen_share = now;
+
+        toast("اشتراک صفحه توسط برگزارکننده قفل است. درخواست مجوز ارسال شد.", { icon: "🔒" });
         const encoder = new TextEncoder();
         const data = encoder.encode(
           JSON.stringify({
             type: "PERMISSION_REQUEST",
-            id: `${localParticipant.identity}-screen_share-${Date.now()}`,
+            id: `${localParticipant.identity}-screen_share-${now}`,
             identity: localParticipant.identity,
             displayName: localParticipant.name || localParticipant.identity,
             permission: "screen_share",
-            timestamp: Date.now(),
+            timestamp: now,
           }),
         );
         await room.localParticipant.publishData(data, { reliable: true });
@@ -246,7 +292,7 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
       await localParticipant.setScreenShareEnabled(false);
     }
     setIsScreenSharing((prev) => !prev);
-  }, [localParticipant, isScreenSharing, canModerate, lockScreenShare, canShareScreen, room]);
+  }, [localParticipant, isScreenSharing, canModerate, canShareScreen, room]);
 
   const toggleSidebar = useCallback((tab: SidebarTab) => {
     setSidebarTab((prev) => (prev === tab ? null : tab));

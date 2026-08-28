@@ -78,28 +78,39 @@ export default function PreJoinScreen({
   // Hook 3: Room Info & Participants
   const { roomInfo } = usePreJoinRoomInfo(roomCode);
 
-  // Enforce room-level mute/lock settings for non-moderators
-  useEffect(() => {
-    if (!roomInfo) return;
-    const isModerator =
-      roomInfo.is_host ||
+  // Derived moderator and lock flags (pure computations, no state loop)
+  const isModerator = Boolean(
+    roomInfo?.is_host ||
       (user &&
-        (roomInfo.host?.id === user.id ||
-          roomInfo.host_id === user.id ||
-          roomInfo.co_hosts?.some(
+        (roomInfo?.host?.id === user.id ||
+          roomInfo?.host_id === user.id ||
+          roomInfo?.co_hosts?.some(
             (c: { id?: number; username?: string } | string) =>
-              (typeof c === "object" ? c.id === user.id || c.username === user.username : c === user.username)
-          )));
+              (typeof c === "object"
+                ? c.id === user.id || c.username === user.username
+                : c === user.username)
+          )))
+  );
 
-    if (!isModerator) {
-      if (roomInfo.mute_mic_on_join || roomInfo.lock_microphone) {
-        setMicEnabled(false);
-      }
-      if (roomInfo.mute_cam_on_join || roomInfo.lock_camera) {
-        setCamEnabled(false);
-      }
+  const isMicLocked = !isModerator && Boolean(roomInfo?.lock_microphone);
+  const isCamLocked = !isModerator && Boolean(roomInfo?.lock_camera);
+
+  // Enforce room-level initial mute/lock settings once room info is known
+  useEffect(() => {
+    if (!roomInfo || isModerator) return;
+    if (roomInfo.lock_microphone || roomInfo.mute_mic_on_join) {
+      setMicEnabled(false);
     }
-  }, [roomInfo, user]);
+    if (roomInfo.lock_camera || roomInfo.mute_cam_on_join) {
+      setCamEnabled(false);
+    }
+  }, [
+    roomInfo?.lock_microphone,
+    roomInfo?.mute_mic_on_join,
+    roomInfo?.lock_camera,
+    roomInfo?.mute_cam_on_join,
+    isModerator,
+  ]);
 
   const handleJoinNow = async () => {
     await stopTrack();
@@ -133,8 +144,11 @@ export default function PreJoinScreen({
               camEnabled={camEnabled}
               micEnabled={micEnabled}
               cameraError={cameraError}
-              onToggleCam={() => setCamEnabled((prev) => !prev)}
-              onToggleMic={() => setMicEnabled((prev) => !prev)}
+              // When room lock is active, toggles are no-ops (locked icon shown by PreJoinPreview)
+              onToggleCam={isCamLocked ? undefined : () => setCamEnabled((prev) => !prev)}
+              onToggleMic={isMicLocked ? undefined : () => setMicEnabled((prev) => !prev)}
+              isMicLocked={isMicLocked}
+              isCamLocked={isCamLocked}
               isMirrored={isMirrored}
               onToggleMirror={() => setIsMirrored((prev) => !prev)}
               onOpenSettings={() => setIsSettingsOpen(true)}

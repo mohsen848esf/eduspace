@@ -569,8 +569,11 @@ export default function RoomControls({
   const [copied, setCopied] = useState(false);
 
   const currentTime = useCurrentTime();
-  const { roomCode: storeRoomCode, isHost, isCoHost } = useRoomStore();
+  const { roomCode: storeRoomCode, isHost, isCoHost, lockScreenShare, canShareScreen } = useRoomStore();
   const activeRoomCode = roomCode || storeRoomCode || "";
+  const canModerate = isHost || isCoHost;
+  // Non-moderators can only see screen share button if they have explicit permission
+  const showScreenShare = canModerate || !lockScreenShare || canShareScreen;
 
   const [lobbyPanelOpen, setLobbyPanelOpen] = useState(false);
   const lobby = useLobbyHost({
@@ -701,14 +704,16 @@ export default function RoomControls({
           }
         />
 
-        <CtrlBtn
-          icon={Icons.screenShare}
-          label={t("controls.share")}
-          tooltip={t("tooltips.screenShare")}
-          onClick={onToggleScreenShare}
-          isOn={isScreenSharing}
-          size={size}
-        />
+        {showScreenShare && (
+          <CtrlBtn
+            icon={Icons.screenShare}
+            label={t("controls.share")}
+            tooltip={t("tooltips.screenShare")}
+            onClick={onToggleScreenShare}
+            isOn={isScreenSharing}
+            size={size}
+          />
+        )}
 
         {/* Reactions Button with Floating Emojis Popover */}
         <div className="relative">
