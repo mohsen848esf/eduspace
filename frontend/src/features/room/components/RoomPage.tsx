@@ -411,6 +411,16 @@ export default function RoomPage() {
         options={{
           adaptiveStream: true,
           dynacast: true,
+          // Persist the device selections made in PreJoinScreen
+          audioCaptureDefaults: preJoinSettings?.selectedMic
+            ? { deviceId: preJoinSettings.selectedMic }
+            : undefined,
+          videoCaptureDefaults: preJoinSettings?.selectedCam
+            ? { deviceId: preJoinSettings.selectedCam }
+            : undefined,
+          audioOutputDefaults: preJoinSettings?.selectedSpeaker
+            ? { deviceId: preJoinSettings.selectedSpeaker }
+            : undefined,
           publishDefaults: {
             simulcast: true,
             videoSimulcastLayers: [
@@ -434,4 +444,5 @@ export default function RoomPage() {
       </LiveKitRoom>
     </div>
   );
+
 }

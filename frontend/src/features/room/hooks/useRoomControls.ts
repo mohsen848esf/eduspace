@@ -402,26 +402,42 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
             useRoomStore.getState().isHost || useRoomStore.getState().isCoHost;
 
           if (!isModerator && localParticipant) {
-            if (settings.lockMicrophone) {
+            // Lock activated → restrict + notify
+            if (settings.lockMicrophone === true) {
               useRoomStore.getState().setMediaPermissions({ canUseMicrophone: false });
               localParticipant.setMicrophoneEnabled(false);
               setIsMicOn(false);
               toast("میکروفون توسط برگزارکننده قفل شد.", { icon: "🔒" });
             }
-            if (settings.lockCamera) {
+            if (settings.lockCamera === true) {
               useRoomStore.getState().setMediaPermissions({ canUseCamera: false });
               localParticipant.setCameraEnabled(false);
               setIsCamOn(false);
               toast("وب‌کم توسط برگزارکننده قفل شد.", { icon: "🔒" });
             }
-            if (settings.lockScreenShare) {
+            if (settings.lockScreenShare === true) {
               useRoomStore.getState().setMediaPermissions({ canShareScreen: false });
               localParticipant.setScreenShareEnabled(false);
               setIsScreenSharing(false);
               toast("اشتراک صفحه توسط برگزارکننده قفل شد.", { icon: "🔒" });
             }
+
+            // Lock removed → restore permission + notify
+            if (settings.lockMicrophone === false) {
+              useRoomStore.getState().setMediaPermissions({ canUseMicrophone: true });
+              toast("میکروفون آزاد شد. می‌توانید آن را روشن کنید.", { icon: "🎙️" });
+            }
+            if (settings.lockCamera === false) {
+              useRoomStore.getState().setMediaPermissions({ canUseCamera: true });
+              toast("دوربین آزاد شد. می‌توانید آن را روشن کنید.", { icon: "📷" });
+            }
+            if (settings.lockScreenShare === false) {
+              useRoomStore.getState().setMediaPermissions({ canShareScreen: true });
+              toast("اشتراک صفحه آزاد شد. می‌توانید صفحه‌تان را به اشتراک بگذارید.", { icon: "🖥️" });
+            }
           }
         }
+
 
         if (data.type === "ROLE_CHANGED") {
           if (data.identity === localParticipant?.identity) {

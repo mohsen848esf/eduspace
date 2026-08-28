@@ -1,5 +1,11 @@
 import { getApiErrorData } from "@/lib/api/errors";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   useLocalParticipant,
@@ -37,6 +43,9 @@ export default function ParticipantsPanel() {
     lowerAllHands,
     grantCoHost,
     revokeCoHost,
+    muteParticipant,
+    kickParticipant,
+    grantScreenShare,
     canModerate,
     coHosts,
   } = useHostControls();
@@ -210,10 +219,13 @@ export default function ParticipantsPanel() {
   }) => {
     const name = participant.name || participant.identity;
     const gradient = getAvatarGradient(participant.identity);
-    const { mutedByHost } = useRoomStore();
+    const { mutedByHost, lockScreenShare } = useRoomStore();
     const isMutedByHost = mutedByHost?.has(participant.identity);
     const isPCoHost = isParticipantCoHost(participant);
     const isPHost = isParticipantHost(participant);
+
+    const [menuOpen, setMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
 
     // Parse participant metadata
     let handRaised = false;
@@ -232,6 +244,22 @@ export default function ParticipantsPanel() {
     const isMicMuted = !audioTrackPub || audioTrackPub.isMuted;
     const isCamOff = !videoTrackPub || videoTrackPub.isMuted;
 
+    // Close menu on outside click
+    useEffect(() => {
+      if (!menuOpen) return;
+      const handleOutside = (e: MouseEvent) => {
+        if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+          setMenuOpen(false);
+        }
+      };
+      document.addEventListener("mousedown", handleOutside);
+      return () => document.removeEventListener("mousedown", handleOutside);
+    }, [menuOpen]);
+
+    const isRemote = participant instanceof RemoteParticipant;
+    // Show kebab only for moderators on remote (non-local) participants
+    const showKebab = canModerate && !isLocal && isRemote;
+
     return (
       <div
         className={cn(
@@ -240,6 +268,7 @@ export default function ParticipantsPanel() {
           isLocal && "bg-[var(--s2)]",
         )}
       >
+        {/* Avatar */}
         <div
           className={cn(
             "w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 relative",
@@ -253,6 +282,8 @@ export default function ParticipantsPanel() {
             </span>
           )}
         </div>
+
+        {/* Name + badges */}
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
           <span className="text-xs font-medium text-[var(--t1)] truncate">
             {isLocal ? `${name} (${t("tile.you") || "You"})` : name}
@@ -269,77 +300,15 @@ export default function ParticipantsPanel() {
           )}
         </div>
 
+        {/* Hand raised indicator */}
         {handRaised && (
           <span className="text-amber-500 text-xs animate-pulse" title={t("controls.raiseHand")}>
             ✋
           </span>
         )}
 
-        <div className="flex gap-1 items-center ms-auto flex-shrink-0">
-          {/* Host-only Co-Host delegation toggle */}
-          {isHost && !isLocal && (
-            <button
-              type="button"
-              onClick={() => {
-                if (isPCoHost) {
-                  revokeCoHost(participant.identity);
-                } else {
-                  grantCoHost(participant.identity);
-                }
-              }}
-              title={isPCoHost ? "عزل از همیار میزبان" : "انتصاب به عنوان همیار میزبان"}
-              className={cn(
-                "h-5 px-1.5 rounded-md border-none cursor-pointer flex items-center text-[9px] font-bold transition-colors",
-                isPCoHost
-                  ? "bg-emerald-500/20 text-emerald-300 hover:bg-rose-500/20 hover:text-rose-300"
-                  : "bg-[var(--s4)] text-[var(--t3)] hover:bg-emerald-500/20 hover:text-emerald-300",
-              )}
-            >
-              {isPCoHost ? "همیار ✓" : "+ همیار"}
-            </button>
-          )}
-
-          {/* Moderator: toggle presentation upload grant */}
-          {canModerate && !isLocal && (
-            <button
-              type="button"
-              onClick={() => togglePresentationGrant(participant.identity)}
-              title={presentationGrants.has(participant.identity) ? "لغو اجازه ارائه فایل" : "اجازه ارائه فایل"}
-              className={cn(
-                "h-5 px-1.5 rounded-md border-none cursor-pointer flex items-center text-[9px] font-bold transition-colors",
-                presentationGrants.has(participant.identity)
-                  ? "bg-indigo-500/20 text-indigo-300 hover:bg-rose-500/20 hover:text-rose-300"
-                  : "bg-[var(--s4)] text-[var(--t3)] hover:bg-indigo-500/20 hover:text-indigo-300",
-              )}
-            >
-              {presentationGrants.has(participant.identity) ? "ارائه ✓" : "+ ارائه"}
-            </button>
-          )}
-
-          {/* Host-only: toggle to grant/revoke recording control. */}
-          {isHost && !isLocal && (
-            <RecordingGrantToggle
-              username={participant.identity}
-              granted={grantedUsernames.has(participant.identity)}
-              busy={grantBusy === participant.identity}
-              onToggle={(next) => toggleGrant(participant.identity, next)}
-              t={t}
-            />
-          )}
-
-          {canModerate && participant instanceof RemoteParticipant && handRaised && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                lowerParticipantHand(participant);
-              }}
-              title={t("host.lowerHand") || "Lower Hand"}
-              className="h-5 px-1.5 rounded-md border-none cursor-pointer flex items-center bg-[var(--amber)]/15 text-[var(--amber)] hover:bg-[var(--amber)]/25 text-[9px] font-bold transition-colors"
-            >
-              LOWER
-            </button>
-          )}
+        {/* Status icons (always visible) */}
+        <div className="flex gap-1 items-center flex-shrink-0">
           <span
             className={cn(
               "text-xs",
@@ -357,6 +326,138 @@ export default function ParticipantsPanel() {
             {isCamOff ? Icons.cameraOff : Icons.camera}
           </span>
         </div>
+
+        {/* ⋮ Kebab menu — moderators only, remote participants only */}
+        {showKebab && (
+          <div className="relative flex-shrink-0" ref={menuRef}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen((prev) => !prev);
+              }}
+              className={cn(
+                "w-6 h-6 rounded-md flex items-center justify-center border-none cursor-pointer transition-all",
+                "text-[var(--t3)] hover:text-[var(--t1)] hover:bg-[var(--s4)]",
+                menuOpen && "bg-[var(--s4)] text-[var(--t1)]",
+              )}
+              title="اقدامات"
+              aria-label={`منوی اقدامات برای ${name}`}
+            >
+              <span className="text-xs leading-none">⋮</span>
+            </button>
+
+            {menuOpen && (
+              <div
+                className={cn(
+                  "absolute end-0 top-full mt-1 z-50 w-52",
+                  "bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl overflow-hidden",
+                  "animate-in fade-in zoom-in-95 duration-100",
+                )}
+                style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}
+              >
+                {/* Mute / Unmute */}
+                <DropdownItem
+                  icon={isMutedByHost ? "🎙️" : "🔇"}
+                  label={isMutedByHost ? "رفع سکوت میکروفون" : "سکوت میکروفون"}
+                  onClick={() => {
+                    muteParticipant(participant as RemoteParticipant);
+                    setMenuOpen(false);
+                  }}
+                />
+
+                {/* Lower hand — only when hand is raised */}
+                {handRaised && (
+                  <DropdownItem
+                    icon="✋"
+                    label={t("host.lowerHand") || "پایین آوردن دست"}
+                    onClick={() => {
+                      lowerParticipantHand(participant as RemoteParticipant);
+                      setMenuOpen(false);
+                    }}
+                  />
+                )}
+
+                {/* Co-host toggle — only host can do this */}
+                {isHost && (
+                  <DropdownItem
+                    icon={isPCoHost ? "🛡️" : "➕"}
+                    label={isPCoHost ? "عزل از همیار میزبان" : "انتصاب به همیار میزبان"}
+                    onClick={() => {
+                      if (isPCoHost) revokeCoHost(participant.identity);
+                      else grantCoHost(participant.identity);
+                      setMenuOpen(false);
+                    }}
+                    variant={isPCoHost ? "danger-soft" : "default"}
+                  />
+                )}
+
+                {/* Presentation permission */}
+                <DropdownItem
+                  icon={presentationGrants.has(participant.identity) ? "📄" : "📄"}
+                  label={
+                    presentationGrants.has(participant.identity)
+                      ? "لغو اجازه ارائه فایل"
+                      : "اجازه ارائه فایل"
+                  }
+                  onClick={() => {
+                    togglePresentationGrant(participant.identity);
+                    setMenuOpen(false);
+                  }}
+                  variant={presentationGrants.has(participant.identity) ? "danger-soft" : "default"}
+                />
+
+                {/* Grant screen share — only visible when lockScreenShare is active */}
+                {lockScreenShare && (
+                  <DropdownItem
+                    icon="🖥️"
+                    label="اجازه اشتراک صفحه"
+                    onClick={() => {
+                      grantScreenShare(participant as RemoteParticipant);
+                      setMenuOpen(false);
+                    }}
+                    variant="success"
+                  />
+                )}
+
+                {/* Recording grant — host only */}
+                {isHost && (
+                  <DropdownItem
+                    icon="🔴"
+                    label={
+                      grantedUsernames.has(participant.identity)
+                        ? t("recordingGrant.revoke", { username: name })
+                        : t("recordingGrant.grant", { username: name })
+                    }
+                    onClick={() => {
+                      toggleGrant(
+                        participant.identity,
+                        !grantedUsernames.has(participant.identity),
+                      );
+                      setMenuOpen(false);
+                    }}
+                    disabled={grantBusy === participant.identity}
+                    variant={grantedUsernames.has(participant.identity) ? "danger-soft" : "default"}
+                  />
+                )}
+
+                {/* Divider */}
+                <div className="my-1 border-t border-[var(--b)]" />
+
+                {/* Kick */}
+                <DropdownItem
+                  icon="🚪"
+                  label="اخراج از تماس"
+                  onClick={() => {
+                    kickParticipant(participant as RemoteParticipant);
+                    setMenuOpen(false);
+                  }}
+                  variant="danger"
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -491,60 +592,54 @@ export default function ParticipantsPanel() {
   );
 }
 
-interface RecordingGrantToggleProps {
-  username: string;
-  granted: boolean;
-  busy: boolean;
-  onToggle: (next: boolean) => void;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+// ---------------------------------------------------------------------------
+// Internal: Dropdown item component
+// ---------------------------------------------------------------------------
+
+type DropdownVariant = "default" | "danger" | "danger-soft" | "success";
+
+interface DropdownItemProps {
+  icon: string;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  variant?: DropdownVariant;
 }
 
-/**
- * Tiny pill the host clicks to grant or revoke recording control for a
- * participant. Visually it's a red dot + "REC" so it reads as "this
- * person can record" at a glance, with a strong unset state to make
- * the toggle obvious. Wraps the whole thing in a tooltip via title for
- * keyboard users — we already have a styled Tooltip component but it
- * needs an absolutely positioned anchor and would shift the row layout.
- */
-function RecordingGrantToggle({
-  username,
-  granted,
-  busy,
-  onToggle,
-  t,
-}: RecordingGrantToggleProps) {
-  const label = granted
-    ? t("recordingGrant.revoke", { username })
-    : t("recordingGrant.grant", { username });
+function DropdownItem({
+  icon,
+  label,
+  onClick,
+  disabled = false,
+  variant = "default",
+}: DropdownItemProps) {
+  const colorClass: Record<DropdownVariant, string> = {
+    default:
+      "text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s3)]",
+    danger:
+      "text-[var(--red)] hover:bg-[var(--red)]/10",
+    "danger-soft":
+      "text-rose-400 hover:bg-rose-500/10",
+    success:
+      "text-emerald-400 hover:bg-emerald-500/10",
+  };
+
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={(e) => {
         e.stopPropagation();
-        onToggle(!granted);
+        onClick();
       }}
-      disabled={busy}
-      aria-pressed={granted}
-      aria-label={label}
-      title={label}
       className={cn(
-        "h-5 px-1.5 rounded-md border-none cursor-pointer flex items-center gap-1",
-        "text-[9px] font-bold uppercase tracking-wider transition-colors",
-        granted
-          ? "bg-[var(--red)]/15 text-[var(--red)]"
-          : "bg-[var(--s4)] text-[var(--t3)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
-        busy && "opacity-60 cursor-wait",
+        "w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium border-none cursor-pointer transition-colors text-start",
+        colorClass[variant],
+        disabled && "opacity-40 cursor-wait pointer-events-none",
       )}
     >
-      <span
-        className={cn(
-          "w-1.5 h-1.5 rounded-full",
-          granted ? "bg-[var(--red)]" : "bg-[var(--t3)]/60",
-        )}
-        aria-hidden
-      />
-      REC
+      <span className="text-sm leading-none">{icon}</span>
+      <span>{label}</span>
     </button>
   );
 }
