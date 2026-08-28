@@ -1,6 +1,5 @@
 # LiveKit server configuration for the EduSpace dev stack.
-# Keys must match LIVEKIT_API_KEY / LIVEKIT_API_SECRET in backend/.env
-# (and the matching api_key/api_secret used by the egress worker).
+# API credentials are injected by Docker Compose through LIVEKIT_KEYS.
 port: 7880
 
 rtc:
@@ -23,9 +22,6 @@ rtc:
   # Packet loss recovery: allow the SFU to request retransmissions.
   # This improves stability on lossy networks without adding latency overhead.
   allow_tcp_fallback: true
-
-keys:
-  devkey: devsecret
 
 redis:
   address: redis:6379

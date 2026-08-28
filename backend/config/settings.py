@@ -6,6 +6,8 @@ import sys
 from corsheaders.defaults import default_headers
 from dotenv import load_dotenv
 
+from config.security import validate_signing_secret
+
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -229,9 +231,14 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
 # can rotate them without code changes. Defaults stay safe for the local
 # dev stack defined in docker-compose.yml.
 LIVEKIT_API_KEY = os.getenv('LIVEKIT_API_KEY', 'devkey')
-LIVEKIT_API_SECRET = os.getenv(
-    'LIVEKIT_API_SECRET',
-    'devsecret',
+_LOCAL_DEV_LIVEKIT_API_SECRET = 'eduspace-local-livekit-secret-change-before-production'
+LIVEKIT_API_SECRET = validate_signing_secret(
+    os.getenv(
+        'LIVEKIT_API_SECRET',
+        _LOCAL_DEV_LIVEKIT_API_SECRET,
+    ),
+    setting_name='LIVEKIT_API_SECRET',
+    forbidden_values=() if DEBUG else (_LOCAL_DEV_LIVEKIT_API_SECRET,),
 )
 LIVEKIT_HOST_URL = os.getenv('LIVEKIT_HOST_URL', 'http://localhost:7880')
 LIVEKIT_WS_URL = os.getenv('LIVEKIT_WS_URL', 'ws://localhost:7880')

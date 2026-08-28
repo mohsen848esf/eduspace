@@ -77,9 +77,11 @@ git clone https://github.com/YOUR_USERNAME/eduspace.git
 cd eduspace
 ```
 
-### 2. Start infrastructure
+### 2. Configure and start infrastructure
 ```bash
-docker compose up -d
+cp backend/.env.example backend/.env
+# Set unique secrets in backend/.env before any non-local deployment.
+docker compose --env-file backend/.env up -d
 ```
 
 ### 3. Backend setup
@@ -177,11 +179,11 @@ window.parent.postMessage({ type: 'SCORE_UPDATE', payload: { score: 100 } }, '*'
 ## 🔧 Configuration
 
 ### LiveKit Keys (production)
-```yaml
-# docker-compose.yml
-livekit:
-  command: ["--keys", "your-api-key: your-secret-key"]
-```
+
+Set `LIVEKIT_API_KEY` and a random `LIVEKIT_API_SECRET` of at least 32 bytes in
+the deployment environment. Compose injects the same values into LiveKit and
+Egress; Django rejects short secrets and rejects the local placeholder when
+`DEBUG=False`.
 
 ### Environment Variables
 ```env
@@ -191,7 +193,7 @@ DB_NAME=eduspace
 DB_USER=edu
 DB_PASSWORD=your-password
 LIVEKIT_API_KEY=your-key
-LIVEKIT_API_SECRET=your-secret
+LIVEKIT_API_SECRET=replace-with-a-random-secret-at-least-32-bytes
 GOTENBERG_URL=http://localhost:3000
 ```
 
