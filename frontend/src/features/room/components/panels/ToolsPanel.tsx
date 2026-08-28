@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "../../../../lib/utils";
-import { useRoomGame } from "../../hooks/useRoomGameContext";
-import { useRoomWhiteboard } from "../../hooks/useRoomWhiteboardContext";
+import { useRoomGame } from "../../hooks/useRoomGame";
+import { useRoomWhiteboard } from "../../hooks/useRoomWhiteboard";
 import { useRoomStore } from "../../store/roomStore";
 import MiniAppSelectorModal from "../MiniAppSelectorModal";
 

@@ -11,7 +11,7 @@ import { Tooltip } from "../../../../components/ui/Tooltip";
 import { cn } from "../../../../lib/utils";
 import type { CallTile } from "../../hooks/useCallTiles";
 
-export function getInitials(name: string): string {
+function getInitials(name: string): string {
   if (!name) return "";
   const clean = name.replace(/[()[\]{}]/g, " ").trim();
   const parts = clean.split(/\s+/).filter(Boolean);
@@ -20,7 +20,7 @@ export function getInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export function getAvatarGradient(identity: string): string {
+function getAvatarGradient(identity: string): string {
   const gradients = [
     "from-[#0284c7] to-[#38bdf8]",
     "from-[#059669] to-[#34d399]",
@@ -32,7 +32,7 @@ export function getAvatarGradient(identity: string): string {
   return gradients[(identity || "").charCodeAt(0) % gradients.length];
 }
 
-export function getCamRef(participant: Participant, tracks: any[]) {
+function getCamRef(participant: Participant, tracks: any[]) {
   return tracks.find(
     (t) =>
       t.participant.identity === participant.identity &&
@@ -40,7 +40,7 @@ export function getCamRef(participant: Participant, tracks: any[]) {
   );
 }
 
-export function getScreenRef(participant: Participant, tracks: any[]) {
+function getScreenRef(participant: Participant, tracks: any[]) {
   return tracks.find(
     (t) =>
       t.participant.identity === participant.identity &&

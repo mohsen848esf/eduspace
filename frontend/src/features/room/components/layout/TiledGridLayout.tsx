@@ -109,7 +109,7 @@ export default function TiledGridLayout({
   }
 
   // ── PARTITION ITEMS INTO ROWS ACCORDING TO PARTICIPANT COUNT ──
-  let rowDistribution: number[] = [];
+  let rowDistribution: number[];
 
   if (renderCount === 2) {
     rowDistribution = isLandscape ? [2] : [1, 1];

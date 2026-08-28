@@ -46,24 +46,21 @@ export default function ThemeScopeController() {
       const branding = orgContext?.organization?.branding;
 
       // Determine active mode from user preference & org branding
-      let activeMode: ThemeMode = theme;
-      if (branding?.default_theme) {
-        if (isDark) {
-          activeMode = branding.default_theme.startsWith("dark")
+      const activeMode: ThemeMode = branding?.default_theme
+        ? isDark
+          ? branding.default_theme.startsWith("dark")
             ? branding.default_theme
             : branding.is_tinted !== false
-            ? "dark-tinted"
-            : "dark";
-        } else {
-          activeMode = branding.default_theme.startsWith("light")
+              ? "dark-tinted"
+              : "dark"
+          : branding.default_theme.startsWith("light")
             ? branding.default_theme
             : branding.is_tinted !== false
-            ? "light-tinted"
-            : "light";
-        }
-      } else {
-        activeMode = isDark ? "dark" : "light";
-      }
+              ? "light-tinted"
+              : "light"
+        : isDark
+          ? "dark"
+          : "light";
 
       applyOrgThemeToDOM(branding, activeMode);
     }

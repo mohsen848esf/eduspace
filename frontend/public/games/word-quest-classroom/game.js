@@ -2167,27 +2167,5 @@ Play yours →`;
       }
     });
 
-    // DevTools detection via debugger
-    let isDevToolsOpen = false;
-    const checkDevTools = () => {
-      const start = performance.now();
-      /* eslint no-debugger: "warn" */
-      debugger; // This line triggers DevTools if open
-      const end = performance.now();
-      if (end - start > 100) {
-        isDevToolsOpen = true;
-        // Hide game content when DevTools detected
-        document.body.style.display = 'none';
-        document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f172a;color:#fff;font-family:sans-serif;"><div style="text-align:center;"><h1>DevTools detected</h1><p>Game access is restricted.</p></div></div>';
-      } else if (isDevToolsOpen) {
-        isDevToolsOpen = false;
-        document.body.style.display = '';
-      }
-    };
-
-    // Check periodically
-    setInterval(checkDevTools, 2000);
-    // Also check on focus
-    window.addEventListener('focus', checkDevTools);
   })();
 })();

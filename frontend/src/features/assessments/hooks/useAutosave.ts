@@ -116,7 +116,7 @@ export function useAutosave({ submissionId, answers }: UseAutosaveProps) {
 
   // Option select handler
   const selectOption = useCallback((answerId: number, optionId: string, isSingleChoice: boolean, currentAnswerState: AnswerState) => {
-    let newSelected: string[] = [];
+    let newSelected: string[];
     if (isSingleChoice) {
       newSelected = [optionId];
     } else {

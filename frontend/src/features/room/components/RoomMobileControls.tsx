@@ -4,7 +4,7 @@ import { Tooltip } from "../../../components/ui/Tooltip";
 import { Icons } from "../../../lib/constants/icons";
 import { cn } from "../../../lib/utils";
 import { type LayoutMode } from "../store/roomLayoutStore";
-import { useRoomWhiteboard } from "../hooks/useRoomWhiteboardContext";
+import { useRoomWhiteboard } from "../hooks/useRoomWhiteboard";
 import ReactionsPopover from "./reactions/ReactionsPopover";
 
 type PanelId = "people" | "chat" | "tools";

@@ -68,7 +68,6 @@ export function useAccessGuard({
         // and not owner / not superuser) and 404 (deleted) both mean the
         // current viewer has lost access.
         if (status === 403 || status === 404) {
-          // eslint-disable-next-line no-console
           console.info(
             "[recording] access revoked for token=%s (status=%d)",
             token,

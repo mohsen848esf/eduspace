@@ -151,7 +151,7 @@ export default function TakeAssessmentPage() {
   const handleConfirmSubmit = async () => {
     try {
       await flushPendingSave();
-    } catch (err) {
+    } catch {
       alert("An error occurred while saving your latest answers. Please try submitting again.");
       return;
     }

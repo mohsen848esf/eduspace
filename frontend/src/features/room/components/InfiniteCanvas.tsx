@@ -26,7 +26,7 @@ interface InfiniteCanvasProps {
 }
 
 // Help compute smooth pencil path curves
-export function getSvgPathFromPoints(points: Point[]): string {
+function getSvgPathFromPoints(points: Point[]): string {
   if (points.length === 0) return "";
   if (points.length === 1) return `M ${points[0].x} ${points[0].y} L ${points[0].x} ${points[0].y}`;
 
@@ -40,7 +40,7 @@ export function getSvgPathFromPoints(points: Point[]): string {
   return d;
 }
 
-export function getEmbedUrl(url: string): string {
+function getEmbedUrl(url: string): string {
   try {
     const u = new URL(url);
     if (u.hostname.includes("youtube.com") || u.hostname.includes("youtu.be")) {

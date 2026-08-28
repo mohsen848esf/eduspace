@@ -14,7 +14,7 @@ export interface PreJoinEffectsPickerProps {
   onClose?: () => void;
 }
 
-export const BG_PRESETS: {
+const BG_PRESETS: {
   id: BackgroundType;
   labelKey: string;
   previewUrl?: string;

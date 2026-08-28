@@ -95,7 +95,7 @@ export default function QuestionList({ bank, onBack }: QuestionListProps) {
     e.preventDefault();
     if (!text.trim()) return;
 
-    let correct_payload: any = null;
+    let correct_payload: any;
     if (qType === "single_choice" || qType === "multiple_choice") {
       correct_payload = correctAnswers;
     } else {

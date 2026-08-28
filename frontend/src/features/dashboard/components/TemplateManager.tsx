@@ -162,7 +162,7 @@ export default function TemplateManager() {
         context,
       });
       setRenderedPreview(res.data);
-    } catch (err: any) {
+    } catch {
       toast.error(isFarsi ? "خطا در پیش‌نمایش" : "Failed to render preview");
     } finally {
       setLoadingPreview(false);

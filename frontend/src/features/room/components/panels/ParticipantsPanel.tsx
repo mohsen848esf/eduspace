@@ -137,7 +137,9 @@ export default function ParticipantsPanel() {
       try {
         const meta = JSON.parse(p.metadata);
         if (meta.is_host || meta.role === "host") return true;
-      } catch {}
+      } catch {
+        // Ignore malformed participant metadata and use role state instead.
+      }
     }
     return false;
   };
@@ -149,7 +151,9 @@ export default function ParticipantsPanel() {
       try {
         const meta = JSON.parse(p.metadata);
         if (meta.is_co_host || meta.role === "co_host") return true;
-      } catch {}
+      } catch {
+        // Ignore malformed participant metadata and use role state instead.
+      }
     }
     return false;
   };
@@ -216,7 +220,9 @@ export default function ParticipantsPanel() {
       try {
         const meta = JSON.parse(participant.metadata);
         handRaised = !!meta.handRaised;
-      } catch {}
+      } catch {
+        // Malformed metadata means there is no trustworthy hand-raise state.
+      }
     }
 
     // Real publication state

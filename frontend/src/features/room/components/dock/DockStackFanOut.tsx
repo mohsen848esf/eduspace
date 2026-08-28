@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "../../../../lib/utils";
 import { Tooltip } from "../../../../components/ui/Tooltip";
 import { Icons } from "../../../../lib/constants/icons";
-import { useRoomWhiteboard } from "../../hooks/useRoomWhiteboardContext";
+import { useRoomWhiteboard } from "../../hooks/useRoomWhiteboard";
 import { useRoomStore } from "../../store/roomStore";
 
 interface DockStackFanOutProps {

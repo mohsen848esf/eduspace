@@ -297,7 +297,7 @@ export function useWhiteboard() {
             break;
           }
         }
-      } catch (e) {
+      } catch {
         /* ignore parsing errors */
       }
     },

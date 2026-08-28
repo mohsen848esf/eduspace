@@ -232,10 +232,10 @@ function NotificationRow({
   const isUnread = item.readAt === null;
   const data = item.data;
 
-  let title = "";
-  let subtitle = "";
-  let actionLabel = "";
-  let icon: React.ReactNode = null;
+  let title: string;
+  let subtitle: string;
+  let actionLabel: string;
+  let icon: React.ReactNode;
 
   if (item.kind === "ROOM_INVITE") {
     icon = Icons.camera;

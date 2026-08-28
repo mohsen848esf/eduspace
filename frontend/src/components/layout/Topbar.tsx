@@ -9,7 +9,7 @@ import { useLocale } from "../../i18n/useLocale";
 import NotificationsPopover from "./NotificationsPopover";
 import GlobalSearchModal from "./GlobalSearchModal";
 import { useRoom } from "../../features/room/hooks/useRoom";
-import { usePageHelp } from "../help/PageHelpProvider";
+import { usePageHelp } from "../help/usePageHelp";
 import {
   GraduationCap,
   HelpCircle,

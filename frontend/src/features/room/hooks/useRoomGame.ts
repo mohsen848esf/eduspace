@@ -1,23 +1,5 @@
-import { createContext, useContext } from "react";
-import { useGameBoard } from "./useGameBoard";
-
-type RoomGameContextValue = ReturnType<typeof useGameBoard>;
-
-const RoomGameContext = createContext<RoomGameContextValue | null>(null);
-
-export function RoomGameProvider({
-  value,
-  children,
-}: {
-  value: RoomGameContextValue;
-  children: React.ReactNode;
-}) {
-  return (
-    <RoomGameContext.Provider value={value}>
-      {children}
-    </RoomGameContext.Provider>
-  );
-}
+import { useContext } from "react";
+import { RoomGameContext, type RoomGameContextValue } from "./roomGameContext";
 
 const defaultGameContext: RoomGameContextValue = {
   gameBoard: {
@@ -42,6 +24,5 @@ const defaultGameContext: RoomGameContextValue = {
 };
 
 export function useRoomGame(): RoomGameContextValue {
-  const ctx = useContext(RoomGameContext);
-  return ctx || defaultGameContext;
+  return useContext(RoomGameContext) ?? defaultGameContext;
 }

@@ -106,7 +106,9 @@ export default function OrganizationsView() {
       const detailed = await sysAdminApi.getOrganization(org.id);
       setSelectedOrg(detailed);
       setOrgs(orgs.map(o => o.id === org.id ? detailed : o));
-    } catch (err) {}
+    } catch {
+      // Keep the already loaded organization when detail refresh fails.
+    }
   };
 
   return (
