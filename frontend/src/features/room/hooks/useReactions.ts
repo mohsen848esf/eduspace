@@ -105,9 +105,10 @@ export function useReactions() {
 
   // Clean up all pending timeouts on unmount
   useEffect(() => {
+    const pendingTimeouts = timeoutsRef.current;
     return () => {
-      timeoutsRef.current.forEach((t) => clearTimeout(t));
-      timeoutsRef.current.clear();
+      pendingTimeouts.forEach((t) => clearTimeout(t));
+      pendingTimeouts.clear();
     };
   }, []);
 

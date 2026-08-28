@@ -20,6 +20,7 @@ export function useAutosave({ submissionId, answers }: UseAutosaveProps) {
   const updateAnswerMutation = useUpdateAnswer();
   const [localAnswers, setLocalAnswers] = useState<Record<number, AnswerState>>({});
   const [autosaveStatus, setAutosaveStatus] = useState<"saved" | "saving" | "error">("saved");
+  const [hasPendingSave, setHasPendingSave] = useState(false);
 
   const isInitializedRef = useRef(false);
   const debounceTimersRef = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
@@ -80,6 +81,7 @@ export function useAutosave({ submissionId, answers }: UseAutosaveProps) {
             setAutosaveStatus("saved");
             if (pendingSaveRef.current?.answerId === answerId) {
               pendingSaveRef.current = null;
+              setHasPendingSave(false);
             }
           },
           onError: () => setAutosaveStatus("error"),
@@ -108,6 +110,7 @@ export function useAutosave({ submissionId, answers }: UseAutosaveProps) {
       });
       setAutosaveStatus("saved");
       pendingSaveRef.current = null;
+      setHasPendingSave(false);
     } catch (err) {
       setAutosaveStatus("error");
       throw err;
@@ -143,6 +146,7 @@ export function useAutosave({ submissionId, answers }: UseAutosaveProps) {
       selected: newSelected,
       text: currentAnswerState.text_answer,
     };
+    setHasPendingSave(true);
 
     triggerAutosave(answerId, newSelected, currentAnswerState.text_answer);
   }, [triggerAutosave]);
@@ -164,6 +168,7 @@ export function useAutosave({ submissionId, answers }: UseAutosaveProps) {
       selected: currentAnswerState.selected_options,
       text,
     };
+    setHasPendingSave(true);
 
     triggerAutosave(answerId, currentAnswerState.selected_options, text);
   }, [triggerAutosave]);
@@ -193,7 +198,7 @@ export function useAutosave({ submissionId, answers }: UseAutosaveProps) {
     selectOption,
     changeTextAnswer,
     flushPendingSave,
-    hasPendingSave: !!pendingSaveRef.current,
+    hasPendingSave,
     clearLocalCache,
   };
 }

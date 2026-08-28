@@ -106,8 +106,6 @@ export default function MiniAppsPage() {
   // the backend catalog rarely changes during a session.
   useEffect(() => {
     let cancelled = false;
-    setGames(null);
-    setError(null);
     gamesApi
       .list()
       .then((data) => {

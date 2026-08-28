@@ -159,19 +159,22 @@ export default function MiniAppSelectorModal({
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    setGames(null);
-    setSelectedId(null);
-    setActiveCategory("all");
-    gamesApi
-      .list()
-      .then((data) => {
-        if (!cancelled) setGames(data);
-      })
-      .catch(() => {
-        if (!cancelled) setGames([]);
-      });
+    const loadTimer = window.setTimeout(() => {
+      setGames(null);
+      setSelectedId(null);
+      setActiveCategory("all");
+      gamesApi
+        .list()
+        .then((data) => {
+          if (!cancelled) setGames(data);
+        })
+        .catch(() => {
+          if (!cancelled) setGames([]);
+        });
+    }, 0);
     return () => {
       cancelled = true;
+      window.clearTimeout(loadTimer);
     };
   }, [open]);
 

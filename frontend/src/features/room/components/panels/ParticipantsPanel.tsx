@@ -1,5 +1,5 @@
 import { getApiErrorData } from "@/lib/api/errors";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useLocalParticipant,
@@ -130,7 +130,7 @@ export default function ParticipantsPanel() {
     }
   };
 
-  const isParticipantHost = (p: Participant) => {
+  const isParticipantHost = useCallback((p: Participant) => {
     if (p.identity === localParticipant.identity) {
       return isHost;
     }
@@ -143,9 +143,9 @@ export default function ParticipantsPanel() {
       }
     }
     return false;
-  };
+  }, [isHost, localParticipant.identity]);
 
-  const isParticipantCoHost = (p: Participant) => {
+  const isParticipantCoHost = useCallback((p: Participant) => {
     if (isParticipantHost(p)) return false;
     if (coHosts.includes(p.identity)) return true;
     if (p.metadata) {
@@ -157,15 +157,15 @@ export default function ParticipantsPanel() {
       }
     }
     return false;
-  };
+  }, [coHosts, isParticipantHost]);
 
   const hosts = useMemo(
     () => participants.filter((p) => isParticipantHost(p) || isParticipantCoHost(p)),
-    [participants, isHost, coHosts, localParticipant.identity],
+    [participants, isParticipantHost, isParticipantCoHost],
   );
   const others = useMemo(
     () => participants.filter((p) => !isParticipantHost(p) && !isParticipantCoHost(p)),
-    [participants, isHost, coHosts, localParticipant.identity],
+    [participants, isParticipantHost, isParticipantCoHost],
   );
 
   const getHandRaiseInfo = (p: Participant) => {

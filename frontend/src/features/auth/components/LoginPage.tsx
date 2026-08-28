@@ -17,7 +17,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     clearError();
-  }, []);
+  }, [clearError]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--s0)] text-[var(--t1)] px-4 py-6 md:p-4">

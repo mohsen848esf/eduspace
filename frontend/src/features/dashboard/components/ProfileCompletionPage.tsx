@@ -43,9 +43,13 @@ export default function ProfileCompletionPage() {
   // Sync state with user data
   useEffect(() => {
     if (user) {
-      setFullName(user.full_name || "");
-      setEmail(user.email || "");
+      const syncTimer = window.setTimeout(() => {
+        setFullName(user.full_name || "");
+        setEmail(user.email || "");
+      }, 0);
+      return () => window.clearTimeout(syncTimer);
     }
+    return undefined;
   }, [user]);
 
   // Profile update mutation

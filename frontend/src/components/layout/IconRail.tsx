@@ -28,6 +28,7 @@ interface IconRailProps {
 export default function IconRail({ activeId, onNavigate }: IconRailProps) {
   const { t } = useTranslation("dashboard");
   const { user } = useAuthStore();
+  const { hasAnyPermission, activeRole } = useOrgPermission();
 
   const renderItem = (item: NavItem) => {
     const isActive = activeId === item.id;
@@ -100,8 +101,6 @@ export default function IconRail({ activeId, onNavigate }: IconRailProps) {
       <div className="h-px w-8 bg-[var(--b)] my-1" />
 
       {(() => {
-        const { hasAnyPermission, activeRole } = useOrgPermission();
-
         const filterNavItem = (item: NavItem): boolean => {
           if (item.permissions && !hasAnyPermission(item.permissions)) return false;
           if (item.roles) {

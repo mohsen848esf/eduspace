@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   useLocalParticipant,
   useParticipants,
@@ -131,40 +131,23 @@ export function useCallTiles(): UseCallTilesResult {
       }
     }
     return out;
-  }, [participants, tracks, localParticipant.identity]);
+  }, [participants, tracks]);
 
-  const [pinnedKey, setPinnedKey] = useState<string | null>(null);
-  const userOverrodeRef = useRef(false);
+  const screens = tiles.filter((tile) => tile.kind === "screen");
+  const screenSignature = screens.map((tile) => tile.key).join("|");
+  const [pinOverride, setPinOverride] = useState<{
+    screenSignature: string;
+    key: string | null;
+  } | null>(null);
+  const hasCurrentOverride = pinOverride?.screenSignature === screenSignature;
+  const overriddenKey =
+    pinOverride?.key && tiles.some((tile) => tile.key === pinOverride.key)
+      ? pinOverride.key
+      : null;
+  const pinnedKey = hasCurrentOverride ? overriddenKey : screens[0]?.key ?? null;
 
-  // Auto-pin the first screen tile that shows up, unless the user has
-  // explicitly unpinned. The override flag resets whenever no screen
-  // tile is present at all so future shares can re-trigger auto-pin.
-  useEffect(() => {
-    const screens = tiles.filter((t) => t.kind === "screen");
-
-    if (screens.length === 0) {
-      // No share present. Clear any stale pin and reset the override
-      // so the next share can auto-pin.
-      if (pinnedKey !== null) setPinnedKey(null);
-      userOverrodeRef.current = false;
-      return;
-    }
-
-    // If the currently pinned tile is gone (e.g. tile re-keyed because
-    // the participant rejoined), refresh to the newest screen.
-    const pinnedExists =
-      pinnedKey !== null && tiles.some((t) => t.key === pinnedKey);
-
-    if (!pinnedExists && !userOverrodeRef.current) {
-      setPinnedKey(screens[0].key);
-    }
-  }, [tiles, pinnedKey]);
-
-  // Wrap the setter so the auto-pin policy can tell user-driven changes
-  // apart from its own writes.
   const userSetPinnedKey = (key: string | null) => {
-    userOverrodeRef.current = true;
-    setPinnedKey(key);
+    setPinOverride({ screenSignature, key });
   };
 
   return {

@@ -45,7 +45,6 @@ export default function InviteModal({ onClose }: InviteModalProps) {
   // Search users (only if in an organization)
   useEffect(() => {
     if (!hasOrg || !search.trim()) {
-      setUsers([]);
       return;
     }
 
@@ -63,6 +62,8 @@ export default function InviteModal({ onClose }: InviteModalProps) {
 
     return () => clearTimeout(timeout);
   }, [search, hasOrg]);
+
+  const visibleUsers = hasOrg && search.trim() ? users : [];
 
   const copyLink = async () => {
     await navigator.clipboard.writeText(inviteLink);
@@ -196,9 +197,9 @@ export default function InviteModal({ onClose }: InviteModalProps) {
             </div>
 
             {/* Results */}
-            {users.length > 0 && (
+            {visibleUsers.length > 0 && (
               <div className="mt-2 flex flex-col gap-1 max-h-[40vh] overflow-y-auto">
-                {users.map((user) => (
+                {visibleUsers.map((user) => (
                   <div
                     key={user.id}
                     className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-[var(--s3)] transition-colors"
@@ -242,7 +243,7 @@ export default function InviteModal({ onClose }: InviteModalProps) {
               </div>
             )}
 
-            {search.trim() && !isSearching && users.length === 0 && (
+            {search.trim() && !isSearching && visibleUsers.length === 0 && (
               <div className="mt-2 text-center py-4">
                 <p className="text-xs text-[var(--t3)]">
                   {t("invite.noUsers")}

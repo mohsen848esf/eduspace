@@ -148,16 +148,12 @@ export default function ClassesPage() {
   useEffect(() => {
     if (userSearchQuery.length >= 2) {
       crmApi.searchUsers(userSearchQuery, "teacher").then(setSearchResults);
-    } else {
-      setSearchResults([]);
     }
   }, [userSearchQuery]);
 
   useEffect(() => {
     if (mentorSearchQuery.length >= 2) {
       crmApi.searchUsers(mentorSearchQuery, "mentor").then(setMentorSearchResults);
-    } else {
-      setMentorSearchResults([]);
     }
   }, [mentorSearchQuery]);
 
@@ -720,6 +716,7 @@ export default function ClassesPage() {
                     value={userSearchQuery}
                     onChange={(e) => {
                       setUserSearchQuery(e.target.value);
+                      if (e.target.value.length < 2) setSearchResults([]);
                       if (!e.target.value) setClassForm({ ...classForm, teacher: "" });
                     }}
                     placeholder={isFarsi ? "نام مدرس را بنویسید (حداقل ۲ کاراکتر)" : "Type teacher name..."}
@@ -752,6 +749,7 @@ export default function ClassesPage() {
                     value={mentorSearchQuery}
                     onChange={(e) => {
                       setMentorSearchQuery(e.target.value);
+                      if (e.target.value.length < 2) setMentorSearchResults([]);
                       if (!e.target.value) setClassForm({ ...classForm, mentor: "" });
                     }}
                     placeholder={isFarsi ? "نام منتور را بنویسید (حداقل ۲ کاراکتر)" : "Type mentor name..."}
@@ -1075,8 +1073,6 @@ function EnrollmentManagerModal({ cls, isFarsi, onClose }: EnrollmentManagerModa
   useEffect(() => {
     if (studentSearch.length >= 2) {
       crmApi.searchUsers(studentSearch, "student").then(setSearchResults);
-    } else {
-      setSearchResults([]);
     }
   }, [studentSearch]);
 
@@ -1122,7 +1118,7 @@ function EnrollmentManagerModal({ cls, isFarsi, onClose }: EnrollmentManagerModa
           </label>
           <Input
             value={studentSearch}
-            onChange={(e) => setStudentSearch(e.target.value)}
+            onChange={(e) => { setStudentSearch(e.target.value); if (e.target.value.length < 2) setSearchResults([]); }}
             placeholder={isFarsi ? "نام یا نام کاربری دانشجو (حداقل ۲ کاراکتر)..." : "Search student by name/username..."}
           />
           {searchResults.length > 0 && (

@@ -76,18 +76,19 @@ export default function OrgAppearanceSettings({
 
   // Sync state if organization prop changes
   useEffect(() => {
-    if (organization.branding) {
-      setPrimaryColor(organization.branding.primary_color || "#00D084");
-      setSecondaryColor(organization.branding.secondary_color || "#FFB000");
-      setThemeMode(organization.branding.default_theme || "dark-tinted");
-      setSlogan(
-        organization.branding.slogan || "English for Better Opportunities"
-      );
-      setCustomTokens(organization.branding.custom_tokens || {});
-    }
-    if (organization.logo) {
-      setLogoPreview(organization.logo);
-    }
+    const syncTimer = window.setTimeout(() => {
+      if (organization.branding) {
+        setPrimaryColor(organization.branding.primary_color || "#00D084");
+        setSecondaryColor(organization.branding.secondary_color || "#FFB000");
+        setThemeMode(organization.branding.default_theme || "dark-tinted");
+        setSlogan(
+          organization.branding.slogan || "English for Better Opportunities"
+        );
+        setCustomTokens(organization.branding.custom_tokens || {});
+      }
+      if (organization.logo) setLogoPreview(organization.logo);
+    }, 0);
+    return () => window.clearTimeout(syncTimer);
   }, [organization]);
 
   // Compute live 3-Tier Design Tokens dynamically

@@ -1,5 +1,5 @@
 import { getApiErrorData } from "@/lib/api/errors";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { sysAdminApi, type SystemConfig } from "../api/sysadmin.api";
 
 export default function SystemSettingsView() {
@@ -17,7 +17,7 @@ export default function SystemSettingsView() {
   const [createForm, setCreateForm] = useState({ key: "", value: "", description: "" });
   const [editForm, setEditForm] = useState({ value: "", description: "" });
 
-  const loadConfigs = () => {
+  const loadConfigs = useCallback(() => {
     setLoading(true);
     sysAdminApi.getConfigs({ search })
       .then(setConfigs)
@@ -25,11 +25,12 @@ export default function SystemSettingsView() {
         setError(getApiErrorData(error)?.detail || "Failed to load configs"),
       )
       .finally(() => setLoading(false));
-  };
+  }, [search]);
 
   useEffect(() => {
-    loadConfigs();
-  }, [search]);
+    const timer = window.setTimeout(loadConfigs, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadConfigs]);
 
   // Create Config
   const handleCreateSubmit = async (e: React.FormEvent) => {

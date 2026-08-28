@@ -32,9 +32,12 @@ export function useLobbyHost({ roomCode, isHost, canModerate }: UseLobbyHostOpti
   useEffect(() => {
     if (!roomCode || !isAllowed) return;
 
-    fetchLobby();
+    const initialPoll = window.setTimeout(fetchLobby, 0);
     const interval = setInterval(fetchLobby, 3000);
-    return () => clearInterval(interval);
+    return () => {
+      window.clearTimeout(initialPoll);
+      clearInterval(interval);
+    };
   }, [roomCode, isAllowed, fetchLobby]);
 
   const admit = useCallback(

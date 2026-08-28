@@ -37,11 +37,6 @@ export default function AttendanceExplorer() {
   useEffect(() => {
     if (studentQuery.length >= 2) {
       crmApi.searchUsers(studentQuery, "student").then(setStudentSearchResults);
-    } else {
-      setStudentSearchResults([]);
-      if (studentQuery.length === 0) {
-        setSelectedStudentId(null);
-      }
     }
   }, [studentQuery]);
 
@@ -140,7 +135,12 @@ export default function AttendanceExplorer() {
             <div className="relative">
               <Input
                 value={studentQuery}
-                onChange={(e) => setStudentQuery(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setStudentQuery(value);
+                  if (value.length < 2) setStudentSearchResults([]);
+                  if (!value) setSelectedStudentId(null);
+                }}
                 placeholder={isFarsi ? "نام دانشجو..." : "Student name..."}
                 className="w-full"
               />

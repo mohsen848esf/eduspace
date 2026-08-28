@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import client from "../../../lib/api/client";
 import { toast } from "react-hot-toast";
@@ -63,13 +63,12 @@ export default function NotificationSettingsContent() {
   });
 
   // Local state to manage optimistic switches
-  const [localPrefs, setLocalPrefs] = useState<Preference[]>([]);
-
-  useEffect(() => {
-    if (preferences) {
-      setLocalPrefs(preferences);
-    }
-  }, [preferences]);
+  const [preferenceOverrides, setPreferenceOverrides] = useState<
+    Record<string, Preference>
+  >({});
+  const localPrefs = (preferences || []).map(
+    (preference) => preferenceOverrides[preference.category] || preference,
+  );
 
   // Mutation to update preferences
   const updatePreferenceMutation = useMutation({
@@ -87,9 +86,7 @@ export default function NotificationSettingsContent() {
     },
     onError: () => {
       toast.error(isFarsi ? "خطا در ذخیره تنظیمات" : "Failed to save settings");
-      if (preferences) {
-        setLocalPrefs(preferences);
-      }
+      setPreferenceOverrides({});
     },
   });
 
@@ -106,7 +103,7 @@ export default function NotificationSettingsContent() {
     };
 
     // Optimistically update local state
-    setLocalPrefs((prev) => prev.map((p) => (p.category === category ? updated : p)));
+    setPreferenceOverrides((prev) => ({ ...prev, [category]: updated }));
 
     // Fire mutation
     updatePreferenceMutation.mutate(updated);

@@ -64,9 +64,6 @@ export default function RecordingPlayer({
 
   useEffect(() => {
     let cancelled = false;
-    setIsLoading(true);
-    setError(null);
-    setBlobUrl(null);
 
     const fetchVideo = async () => {
       try {
@@ -88,10 +85,16 @@ export default function RecordingPlayer({
       }
     };
 
-    fetchVideo();
+    const loadTimer = window.setTimeout(() => {
+      setIsLoading(true);
+      setError(null);
+      setBlobUrl(null);
+      void fetchVideo();
+    }, 0);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(loadTimer);
     };
   }, [token, quality]);
 

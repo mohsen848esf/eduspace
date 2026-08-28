@@ -42,6 +42,7 @@ export default function DrawerNavList({
   const { t } = useTranslation(["dashboard", "auth"]);
   const navigate = useNavigate();
   const { logout, user } = useAuthStore();
+  const { hasAnyPermission, activeRole } = useOrgPermission();
 
   const handleClick = (item: NavItem) => {
     if (item.to) {
@@ -84,8 +85,6 @@ export default function DrawerNavList({
 
       <DrawerBody className="p-3 space-y-3">
         {(() => {
-          const { hasAnyPermission, activeRole } = useOrgPermission();
-
           const filterNavItem = (item: NavItem): boolean => {
             if (item.permissions && !hasAnyPermission(item.permissions)) return false;
             if (item.roles) {

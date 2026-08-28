@@ -30,7 +30,7 @@ function ChatListener({ roomCode }: { roomCode: string }) {
         });
       }
     });
-  }, [chatMessages, roomCode]);
+  }, [chatMessages, roomCode, addMessage]);
 
   return null;
 }

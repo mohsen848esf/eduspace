@@ -37,7 +37,10 @@ export function useAntiCheat({ submissionId, status, antiCheatToken, onTabLoss }
   // 2. Focus loss tracking
   const isStarted = status === "started";
   const submissionStatusRef = useRef<string | undefined>(status);
-  submissionStatusRef.current = status;
+
+  useEffect(() => {
+    submissionStatusRef.current = status;
+  }, [status]);
 
   useEffect(() => {
     if (!isStarted) return;

@@ -66,6 +66,10 @@ function getEmbedUrl(url: string): string {
   return url;
 }
 
+function createCanvasElementIdentity(): { id: string; timestamp: number } {
+  return { id: `el_${crypto.randomUUID()}`, timestamp: Date.now() };
+}
+
 export default function InfiniteCanvas({
   elements,
   selectedIds,
@@ -83,6 +87,7 @@ export default function InfiniteCanvas({
 }: InfiniteCanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 1000, height: 600 });
 
   // Viewport transformation state
   const [viewport, setViewport] = useState<ViewportState>({ panX: 0, panY: 0, zoom: 1 });
@@ -110,6 +115,20 @@ export default function InfiniteCanvas({
   const [editingText, setEditingText] = useState("");
 
   const GRID_SIZE = 40;
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+      setCanvasSize({
+        width: entry.contentRect.width || 1000,
+        height: entry.contentRect.height || 600,
+      });
+    });
+    observer.observe(svg);
+    return () => observer.disconnect();
+  }, []);
 
   // Key listeners for spacebar pan & deletion
   useEffect(() => {
@@ -289,7 +308,7 @@ export default function InfiniteCanvas({
     // Start drawing shape/sticky/text/pencil
     setIsDrawing(true);
     startPointRef.current = pos;
-    const id = "el_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
+    const { id, timestamp } = createCanvasElementIdentity();
     drawingIdRef.current = id;
 
     const snapVal = (v: number) => (snapToGrid ? Math.round(v / GRID_SIZE) * GRID_SIZE : v);
@@ -310,7 +329,7 @@ export default function InfiniteCanvas({
       strokeWidth: lineWidth,
       opacity,
       creatorId: localParticipantIdentity,
-      timestamp: Date.now(),
+      timestamp,
     };
 
     if (activeTool === "pencil" || activeTool === "highlighter") {
@@ -563,8 +582,8 @@ export default function InfiniteCanvas({
       const yTop = el.y;
       const yBottom = el.y + el.height;
 
-      const svgWidth = svgRef.current?.clientWidth || 1000;
-      const svgHeight = svgRef.current?.clientHeight || 600;
+      const svgWidth = canvasSize.width;
+      const svgHeight = canvasSize.height;
       const vpLeft = -viewport.panX / viewport.zoom;
       const vpRight = (svgWidth - viewport.panX) / viewport.zoom;
       const vpTop = -viewport.panY / viewport.zoom;

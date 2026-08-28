@@ -12,13 +12,11 @@ export function usePreJoinRoomInfo(roomCode: string) {
     let cancelled = false;
 
     if (!roomCode) {
-      setIsLoading(false);
       return;
     }
 
     const fetchInfo = async () => {
       try {
-        setIsLoading(true);
         const data = await roomApi.getRoom(roomCode);
         if (!cancelled) {
           setRoomInfo(data);
@@ -35,12 +33,16 @@ export function usePreJoinRoomInfo(roomCode: string) {
       }
     };
 
-    fetchInfo();
+    const fetchTimer = window.setTimeout(() => {
+      setIsLoading(true);
+      void fetchInfo();
+    }, 0);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(fetchTimer);
     };
   }, [roomCode]);
 
-  return { roomInfo, isLoading, error };
+  return { roomInfo, isLoading: roomCode ? isLoading : false, error };
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { PhoneOff, RotateCcw, Home, Star, CheckCircle2, Timer } from "lucide-react";
 import Button from "../../../components/ui/Button";
@@ -29,7 +29,7 @@ export default function CallEndedScreen({
   const [countdown, setCountdown] = useState(60);
   const exitedRef = useRef(false);
 
-  const handleReturnHome = () => {
+  const handleReturnHome = useCallback(() => {
     if (exitedRef.current) return;
     exitedRef.current = true;
     if (onExit) {
@@ -37,7 +37,7 @@ export default function CallEndedScreen({
     } else {
       navigate(isAuthenticated ? "/dashboard" : "/login");
     }
-  };
+  }, [isAuthenticated, navigate, onExit]);
 
   // 60-second countdown timer for auto-redirect
   useEffect(() => {
@@ -53,7 +53,7 @@ export default function CallEndedScreen({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [handleReturnHome]);
 
   const handleRate = (stars: number) => {
     setRating(stars);

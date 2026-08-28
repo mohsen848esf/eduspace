@@ -50,45 +50,48 @@ function useElapsed(
   activeSinceKey: string | null,
   isActiveTicking: boolean,
 ): number {
-  const [now, setNow] = useState(() => Date.now());
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const accumulatedRef = useRef(0); // total seconds of past active intervals
   const anchorRef = useRef<number | null>(null); // ms when current run started
   const lastKey = useRef<string | null>(null);
 
-  // Reset on recording change.
   useEffect(() => {
-    if (lastKey.current !== activeSinceKey) {
-      accumulatedRef.current = 0;
-      anchorRef.current = null;
-      lastKey.current = activeSinceKey;
-    }
-  }, [activeSinceKey]);
+    let intervalId: number | null = null;
+    const startTimer = window.setTimeout(() => {
+      if (lastKey.current !== activeSinceKey) {
+        accumulatedRef.current = 0;
+        anchorRef.current = null;
+        lastKey.current = activeSinceKey;
+      }
 
-  // Manage anchor + ticking.
-  useEffect(() => {
-    if (isActiveTicking) {
-      // Resume / start: set a fresh anchor and tick once a second.
-      anchorRef.current = Date.now();
-      const id = window.setInterval(() => setNow(Date.now()), 1000);
-      return () => {
-        // On pause / unmount, fold the elapsed run into the accumulator.
-        if (anchorRef.current !== null) {
-          accumulatedRef.current += (Date.now() - anchorRef.current) / 1000;
-          anchorRef.current = null;
-        }
-        window.clearInterval(id);
+      const updateDisplay = () => {
+        const liveSeconds =
+          isActiveTicking && anchorRef.current !== null
+            ? (Date.now() - anchorRef.current) / 1000
+            : 0;
+        setElapsedSeconds(
+          Math.max(0, Math.floor(accumulatedRef.current + liveSeconds)),
+        );
       };
-    }
-    // Already paused: no anchor, no interval.
-    return undefined;
+
+      if (isActiveTicking) {
+        anchorRef.current = Date.now();
+        intervalId = window.setInterval(updateDisplay, 1000);
+      }
+      updateDisplay();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(startTimer);
+      if (intervalId !== null) window.clearInterval(intervalId);
+      if (isActiveTicking && anchorRef.current !== null) {
+        accumulatedRef.current += (Date.now() - anchorRef.current) / 1000;
+        anchorRef.current = null;
+      }
+    };
   }, [isActiveTicking, activeSinceKey]);
 
-  if (!activeSinceKey) return 0;
-  const live =
-    isActiveTicking && anchorRef.current !== null
-      ? (now - anchorRef.current) / 1000
-      : 0;
-  return Math.max(0, Math.floor(accumulatedRef.current + live));
+  return activeSinceKey ? elapsedSeconds : 0;
 }
 
 export default function RecordControls({

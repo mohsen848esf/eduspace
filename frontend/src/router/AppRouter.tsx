@@ -26,13 +26,13 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchMe();
-  }, []);
+  }, [fetchMe]);
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchOrgContext();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchOrgContext]);
 
   if (!isInitialized || (isAuthenticated && !isOrgContextInitialized)) {
     return (

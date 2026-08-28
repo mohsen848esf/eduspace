@@ -226,16 +226,12 @@ export default function ClassDetailPage() {
   useEffect(() => {
     if (teacherSearch.length >= 2) {
       crmApi.searchUsers(teacherSearch, "teacher").then(setTeacherResults);
-    } else {
-      setTeacherResults([]);
     }
   }, [teacherSearch]);
 
   useEffect(() => {
     if (mentorSearch.length >= 2) {
       crmApi.searchUsers(mentorSearch, "mentor").then(setMentorResults);
-    } else {
-      setMentorResults([]);
     }
   }, [mentorSearch]);
 
@@ -321,8 +317,6 @@ export default function ClassDetailPage() {
   useEffect(() => {
     if (studentSearch.length >= 2) {
       crmApi.searchUsers(studentSearch, "student").then(setStudentResults);
-    } else {
-      setStudentResults([]);
     }
   }, [studentSearch]);
 
@@ -996,7 +990,7 @@ export default function ClassDetailPage() {
               <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">{isFarsi ? "جستجوی مدرس" : "Teacher"}</label>
               <Input
                 value={teacherSearch}
-                onChange={(e) => { setTeacherSearch(e.target.value); if (!e.target.value) setClassForm({ ...classForm, teacher: "" }); }}
+                onChange={(e) => { setTeacherSearch(e.target.value); if (e.target.value.length < 2) setTeacherResults([]); if (!e.target.value) setClassForm({ ...classForm, teacher: "" }); }}
                 placeholder={isFarsi ? "نام مدرس..." : "Search teacher..."}
               />
               {teacherResults.length > 0 && (
@@ -1016,7 +1010,7 @@ export default function ClassDetailPage() {
               <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">{isFarsi ? "جستجوی منتور" : "Mentor"}</label>
               <Input
                 value={mentorSearch}
-                onChange={(e) => { setMentorSearch(e.target.value); if (!e.target.value) setClassForm({ ...classForm, mentor: "" }); }}
+                onChange={(e) => { setMentorSearch(e.target.value); if (e.target.value.length < 2) setMentorResults([]); if (!e.target.value) setClassForm({ ...classForm, mentor: "" }); }}
                 placeholder={isFarsi ? "نام منتور..." : "Search mentor..."}
               />
               {mentorResults.length > 0 && (
@@ -1136,7 +1130,7 @@ export default function ClassDetailPage() {
               </label>
               <Input
                 value={studentSearch}
-                onChange={(e) => setStudentSearch(e.target.value)}
+                onChange={(e) => { setStudentSearch(e.target.value); if (e.target.value.length < 2) setStudentResults([]); }}
                 placeholder={isFarsi ? "نام یا نام کاربری دانشجو..." : "Search student by name..."}
               />
               {studentResults.length > 0 && (

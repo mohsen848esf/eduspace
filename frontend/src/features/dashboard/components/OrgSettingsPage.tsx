@@ -188,20 +188,21 @@ export default function OrgSettingsPage() {
   // Sync state with query result
   useEffect(() => {
     if (activeOrg) {
-      setOrgName(activeOrg.name);
-      setApprovalRequired(!!activeOrg.approval_required_to_join);
-      setLogoPreview(activeOrg.logo || null);
-      setLogoFile(null);
+      const syncTimer = window.setTimeout(() => {
+        setOrgName(activeOrg.name);
+        setApprovalRequired(!!activeOrg.approval_required_to_join);
+        setLogoPreview(activeOrg.logo || null);
+        setLogoFile(null);
+      }, 0);
+      return () => window.clearTimeout(syncTimer);
     }
+    return undefined;
   }, [activeOrg]);
 
-  // Set default role when roles load
-  useEffect(() => {
-    if (roles.length > 0 && !inviteRoleId) {
-      const student = roles.find(r => r.name.toLowerCase().includes("student"));
-      setInviteRoleId(student ? student.id : roles[0].id);
-    }
-  }, [roles, inviteRoleId]);
+  const defaultInviteRole = roles.find((role) =>
+    role.name.toLowerCase().includes("student"),
+  )?.id ?? roles[0]?.id ?? null;
+  const effectiveInviteRoleId = inviteRoleId ?? defaultInviteRole;
 
   // Mutations
   const updateOrgMutation = useMutation({
@@ -366,7 +367,7 @@ export default function OrgSettingsPage() {
 
   const handleInviteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteUser.trim() || !inviteRoleId) {
+    if (!inviteUser.trim() || !effectiveInviteRoleId) {
       toast.error(isFarsi ? "لطفاً اطلاعات را به طور کامل وارد کنید" : "Please fill in all required fields");
       return;
     }
@@ -374,7 +375,7 @@ export default function OrgSettingsPage() {
     inviteMemberMutation.mutate({
       username: isEmail ? undefined : inviteUser,
       email: isEmail ? inviteUser : undefined,
-      role: inviteRoleId,
+      role: effectiveInviteRoleId,
       contract_type: inviteContract,
       expires_at: inviteExpires || null,
     });
@@ -1286,7 +1287,7 @@ export default function OrgSettingsPage() {
                     {isFarsi ? "نقش" : "Role"}
                   </label>
                   <select
-                    value={inviteRoleId || ""}
+                    value={effectiveInviteRoleId || ""}
                     onChange={(e) => setInviteRoleId(Number(e.target.value))}
                     className="w-full h-10 px-3 rounded-xl bg-[var(--s3)] border border-[var(--b)] text-xs text-[var(--t1)] focus:outline-none focus:border-[var(--brand-text)]"
                     required

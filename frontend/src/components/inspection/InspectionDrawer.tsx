@@ -48,7 +48,7 @@ type InspectionEntityData =
   | TuitionInvoice
   | Assignment;
 
-export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
+const InspectionDrawerContent: React.FC<InspectionDrawerProps> = ({
   open,
   onOpenChange,
   entityType,
@@ -56,12 +56,12 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
 }) => {
   const { language } = useLocale();
   const isFarsi = language === "fa";
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(open && entityType && entityId));
   const [data, setData] = useState<InspectionEntityData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [localType, setLocalType] = useState<InspectionEntityType>(null);
-  const [localId, setLocalId] = useState<string | number | null>(null);
+  const [localType, setLocalType] = useState<InspectionEntityType>(entityType);
+  const [localId, setLocalId] = useState<string | number | null>(entityId);
   const [history, setHistory] = useState<
     { type: InspectionEntityType; id: string | number | null }[]
   >([]);
@@ -69,15 +69,11 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
   const [studentEnrollments, setStudentEnrollments] = useState<Enrollment[]>([]);
   const [studentInvoices, setStudentInvoices] = useState<TuitionInvoice[]>([]);
   const [mentorStudents, setMentorStudents] = useState<Enrollment[]>([]);
-  const [loadingExtra, setLoadingExtra] = useState(false);
+  const [loadingExtra, setLoadingExtra] = useState(
+    open && (entityType === "student" || entityType === "mentor"),
+  );
   const [attendanceRate, setAttendanceRate] = useState<number | null>(null);
   const [missingAssignments, setMissingAssignments] = useState<number | null>(null);
-
-  useEffect(() => {
-    setLocalType(entityType);
-    setLocalId(entityId);
-    setHistory([]);
-  }, [entityType, entityId, open]);
 
   const navigateTo = (type: InspectionEntityType, id: string | number) => {
     if (localType && localId) {
@@ -85,6 +81,12 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
     }
     setLocalType(type);
     setLocalId(id);
+    setData(null);
+    setError(null);
+    setLoading(true);
+    setLoadingExtra(type === "student" || type === "mentor");
+    setAttendanceRate(null);
+    setMissingAssignments(null);
   };
 
   const navigateBack = () => {
@@ -93,20 +95,18 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
     setHistory((prev) => prev.slice(0, -1));
     setLocalType(previous.type);
     setLocalId(previous.id);
+    setData(null);
+    setError(null);
+    setLoading(true);
+    setLoadingExtra(previous.type === "student" || previous.type === "mentor");
+    setAttendanceRate(null);
+    setMissingAssignments(null);
   };
 
   useEffect(() => {
-    if (!open || !localType || !localId) {
-      setData(null);
-      setError(null);
-      setAttendanceRate(null);
-      setMissingAssignments(null);
-      return;
-    }
+    if (!open || !localType || !localId) return;
 
     const fetchEntityDetails = async () => {
-      setLoading(true);
-      setError(null);
       try {
         let endpoint = "";
         let match: OrgMember | undefined;
@@ -154,7 +154,6 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
     if (!open || !localType || !localId || !data) return;
 
     const fetchExtraData = async () => {
-      setLoadingExtra(true);
       try {
         const member = data as OrgMember;
         const userId = member.user || member.user_details?.id || localId;
@@ -421,5 +420,12 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
     </Drawer>
   );
 };
+
+export const InspectionDrawer: React.FC<InspectionDrawerProps> = (props) => (
+  <InspectionDrawerContent
+    key={`${props.open}:${props.entityType ?? "none"}:${props.entityId ?? "none"}`}
+    {...props}
+  />
+);
 
 export default InspectionDrawer;

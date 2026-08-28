@@ -1,5 +1,5 @@
 import { getApiErrorData } from "@/lib/api/errors";
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSubmission, useGradeSubmission, useAssessmentAnalytics } from "../hooks";
 import type { AnswerGradeInput, SubmissionGrades } from "../types";
@@ -16,23 +16,30 @@ export default function ReviewSubmissionPage() {
     submission?.assessment.id ?? 0
   );
 
-  const [grades, setGrades] = useState<SubmissionGrades>({});
+  const [gradeOverrides, setGradeOverrides] = useState<{
+    submissionId: number;
+    grades: SubmissionGrades;
+  }>({ submissionId: parsedId, grades: {} });
   const [validationErrors, setValidationErrors] = useState<Record<number, string>>({});
 
-  // Initialize grades state when submission loads
-  useEffect(() => {
-    if (submission && submission.answers) {
-      const initialGrades: typeof grades = {};
-      submission.answers.forEach((ans) => {
-        initialGrades[ans.question] = {
+  const initialGrades = useMemo<SubmissionGrades>(() => {
+    const initial: SubmissionGrades = {};
+    submission?.answers.forEach((ans) => {
+        initial[ans.question] = {
           score: ans.score,
           is_correct: ans.is_correct,
           teacher_notes: ans.teacher_notes || "",
         };
-      });
-      setGrades(initialGrades);
-    }
+    });
+    return initial;
   }, [submission]);
+  const grades = useMemo(
+    () => ({
+      ...initialGrades,
+      ...(gradeOverrides.submissionId === parsedId ? gradeOverrides.grades : {}),
+    }),
+    [initialGrades, gradeOverrides, parsedId],
+  );
 
   if (isLoading) {
     return (
@@ -93,9 +100,12 @@ export default function ReviewSubmissionPage() {
       }
     }
 
-    setGrades(prev => ({
-      ...prev,
-      [questionId]: updated,
+    setGradeOverrides((prev) => ({
+      submissionId: parsedId,
+      grades: {
+        ...(prev.submissionId === parsedId ? prev.grades : {}),
+        [questionId]: updated,
+      },
     }));
   };
 

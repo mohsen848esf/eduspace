@@ -48,7 +48,8 @@ export function useRecordings(initialFilter: RecordingsFilter = "all") {
   }, [filter, debouncedSearchQuery]);
 
   useEffect(() => {
-    refresh();
+    const refreshTimer = window.setTimeout(refresh, 0);
+    return () => window.clearTimeout(refreshTimer);
   }, [refresh]);
 
   return { items, isLoading, filter, setFilter, searchQuery, setSearchQuery, refresh };

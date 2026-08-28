@@ -45,8 +45,7 @@ export default function RecordingViewPage() {
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
-    setIsLoading(true);
-    recordingsApi
+    const loadTimer = window.setTimeout(() => recordingsApi
       .detail(token)
       .then((data) => {
         if (cancelled) return;
@@ -62,9 +61,10 @@ export default function RecordingViewPage() {
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
-      });
+      }), 0);
     return () => {
       cancelled = true;
+      window.clearTimeout(loadTimer);
     };
   }, [token, navigate, t]);
 

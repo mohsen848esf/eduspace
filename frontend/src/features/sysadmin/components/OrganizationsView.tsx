@@ -1,5 +1,5 @@
 import { getApiErrorData } from "@/lib/api/errors";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { sysAdminApi, type OrganizationAdmin } from "../api/sysadmin.api";
 
 export default function OrganizationsView() {
@@ -25,7 +25,7 @@ export default function OrganizationsView() {
   });
   const [suspensionReason, setSuspensionReason] = useState("");
 
-  const loadOrganizations = () => {
+  const loadOrganizations = useCallback(() => {
     setLoading(true);
     sysAdminApi.getOrganizations({ search })
       .then(setOrgs)
@@ -33,11 +33,12 @@ export default function OrganizationsView() {
         setError(getApiErrorData(error)?.detail || "Failed to load organizations"),
       )
       .finally(() => setLoading(false));
-  };
+  }, [search]);
 
   useEffect(() => {
-    loadOrganizations();
-  }, [search]);
+    const timer = window.setTimeout(loadOrganizations, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadOrganizations]);
 
   // Open Quota Modal
   const handleOpenQuota = (org: OrganizationAdmin) => {

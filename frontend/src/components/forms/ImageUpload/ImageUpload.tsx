@@ -110,14 +110,14 @@ export default function ImageUpload({
   const [scaleX, setScaleX] = useState(1);
   const [scaleY, setScaleY] = useState(1);
 
-  // Make sure we clean up imageSrc when modal is closed
-  useEffect(() => {
-    if (!isModalOpen) {
+  const handleModalOpenChange = (nextOpen: boolean) => {
+    setIsModalOpen(nextOpen);
+    if (!nextOpen) {
       setImageSrc(null);
       setScaleX(1);
       setScaleY(1);
     }
-  }, [isModalOpen]);
+  };
 
   const handleFile = async (file: File) => {
     if (disabled) return;
@@ -224,7 +224,7 @@ export default function ImageUpload({
           type: mimeType,
         });
         onChange(croppedFile);
-        setIsModalOpen(false);
+        handleModalOpenChange(false);
       }
     }, mimeType, preset === "logo" ? undefined : 0.9);
   };
@@ -295,7 +295,7 @@ export default function ImageUpload({
         {/* RADIX MODAL EDITOR WITH DARK GLASSMORPHIC UX */}
         <Modal
           open={isModalOpen}
-          onOpenChange={setIsModalOpen}
+          onOpenChange={handleModalOpenChange}
           panelClassName="max-w-2xl bg-black/95 backdrop-blur-xl border border-white/10 text-white rounded-2xl shadow-2xl p-0 overflow-hidden"
         >
           <ModalHeader className="border-white/10 px-6 py-4">
@@ -396,7 +396,7 @@ export default function ImageUpload({
           <ModalFooter className="border-white/10 px-6 py-4 bg-white/5">
             <Button
               variant="secondary"
-              onClick={() => setIsModalOpen(false)}
+              onClick={() => handleModalOpenChange(false)}
               className="bg-transparent border-white/15 text-white hover:bg-white/10"
             >
               {isFarsi ? "انصراف" : "Cancel"}

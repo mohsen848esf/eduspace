@@ -34,13 +34,15 @@ export default function RecordingThumbnail({
 
   useEffect(() => {
     cancelledRef.current = false;
-    setFailed(false);
+    const resetTimer = window.setTimeout(() => setFailed(false), 0);
 
     const cacheKey = CACHE_PREFIX + token;
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
-      setSrc(cached);
+      const cachedTimer = window.setTimeout(() => setSrc(cached), 0);
       return () => {
+        window.clearTimeout(resetTimer);
+        window.clearTimeout(cachedTimer);
         cancelledRef.current = true;
       };
     }
@@ -129,6 +131,7 @@ export default function RecordingThumbnail({
     capture();
 
     return () => {
+      window.clearTimeout(resetTimer);
       cancelledRef.current = true;
       controller.abort();
       window.clearTimeout(timer);

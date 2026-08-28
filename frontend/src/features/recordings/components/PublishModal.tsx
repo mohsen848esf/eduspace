@@ -41,11 +41,13 @@ interface PublishModalProps {
   }) => Promise<void> | void;
 }
 
+const EMPTY_USERS: User[] = [];
+
 export default function PublishModal({
   open,
   recordingToken,
   roomCode,
-  initialSelected = [],
+  initialSelected = EMPTY_USERS,
   initialLinkShared = false,
   onClose,
   onPublish,
@@ -65,19 +67,19 @@ export default function PublishModal({
   // Reset internal state when reopened so we don't leak across recordings.
   useEffect(() => {
     if (!open) return;
-    setSelected(initialSelected);
-    setLinkShared(initialLinkShared);
-    setSearch("");
-    setResults([]);
-    setLinkCopied(false);
+    const resetTimer = window.setTimeout(() => {
+      setSelected(initialSelected);
+      setLinkShared(initialLinkShared);
+      setSearch("");
+      setResults([]);
+      setLinkCopied(false);
+    }, 0);
+    return () => window.clearTimeout(resetTimer);
   }, [open, initialSelected, initialLinkShared]);
 
   // Fetch the call's participant history once when opened with a room.
   useEffect(() => {
-    if (!open || !roomCode) {
-      setCallParticipants([]);
-      return;
-    }
+    if (!open || !roomCode) return;
     let cancelled = false;
     roomApi
       .participantsHistory(roomCode)
@@ -105,12 +107,9 @@ export default function PublishModal({
   useEffect(() => {
     if (!open) return;
     const term = search.trim();
-    if (!term) {
-      setResults([]);
-      return;
-    }
-    setIsSearching(true);
+    if (!term) return;
     const id = window.setTimeout(async () => {
+      setIsSearching(true);
       try {
         const res = await client.get(`/auth/search/`, { params: { q: term } });
         setResults(res.data);
@@ -122,6 +121,9 @@ export default function PublishModal({
     }, 350);
     return () => window.clearTimeout(id);
   }, [search, open]);
+
+  const visibleCallParticipants = open && roomCode ? callParticipants : [];
+  const visibleResults = search.trim() ? results : [];
 
   const selectedIds = useMemo(
     () => new Set(selected.map((u) => u.id)),
@@ -139,7 +141,7 @@ export default function PublishModal({
   const selectAllParticipants = () => {
     setSelected((prev) => {
       const map = new Map(prev.map((u) => [u.id, u] as const));
-      for (const cp of callParticipants) map.set(cp.id, cp);
+      for (const cp of visibleCallParticipants) map.set(cp.id, cp);
       return [...map.values()];
     });
   };
@@ -184,7 +186,7 @@ export default function PublishModal({
 
       <ModalBody>
         {/* Call participants */}
-        {callParticipants.length > 0 && (
+        {visibleCallParticipants.length > 0 && (
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-[var(--t3)] uppercase tracking-wider">
@@ -207,7 +209,7 @@ export default function PublishModal({
               </div>
             </div>
             <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
-              {callParticipants.map((p) => {
+              {visibleCallParticipants.map((p) => {
                 const checked = selectedIds.has(p.id);
                 return (
                   <button
@@ -263,12 +265,12 @@ export default function PublishModal({
 
         {/* Search results */}
         <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
-          {search.trim() && !isSearching && results.length === 0 && (
+          {search.trim() && !isSearching && visibleResults.length === 0 && (
             <p className="text-xs text-[var(--t3)] text-center py-3">
               {t("recordings:publishModal.noResults")}
             </p>
           )}
-          {results.map((u) => {
+          {visibleResults.map((u) => {
             const checked = selectedIds.has(u.id);
             return (
               <button

@@ -33,13 +33,6 @@ export default function LedgerPage() {
   const isInspectDrawerOpen = !!inspectType && !!inspectId;
 
   const [invoiceIdParam, setInvoiceIdParam] = useQueryParamState("invoice_id", "");
-  useEffect(() => {
-    if (invoiceIdParam) {
-      setInspectType("invoice");
-      setInspectId(invoiceIdParam);
-      setInvoiceIdParam(null);
-    }
-  }, [invoiceIdParam]);
 
   const [actionParam, setActionParam] = useQueryParamState("action", "");
   const [studentIdParam, setStudentIdParam] = useQueryParamState("student_id", "");
@@ -49,31 +42,6 @@ export default function LedgerPage() {
     queryKey: ["classes"],
     queryFn: crmApi.getClasses,
   });
-
-  useEffect(() => {
-    if (actionParam === "issue_invoice" && studentIdParam) {
-      setDrawerType("invoice");
-      setEditId(null);
-      setSelectedReceipt(null);
-      setInvoiceForm({
-        student: studentIdParam,
-        academy_class: classes[0]?.id.toString() || "",
-        amount: "0",
-        status: "unpaid",
-        due_date: ""
-      });
-      setLineItems([{ description: "", quantity: 1, unit_price: "" }]);
-      if (studentNameParam) {
-        setUserSearchQuery(studentNameParam);
-      }
-      setIsDrawerOpen(true);
-
-      // Clean query params to prevent auto-opening on refresh/navigation
-      setActionParam(null);
-      setStudentIdParam(null);
-      setStudentNameParam(null);
-    }
-  }, [actionParam, studentIdParam, studentNameParam, classes]);
 
   // Invoices Filter & Pagination States
   const [invoiceSearch, setInvoiceSearch] = useQueryParamState("student", "");
@@ -259,25 +227,61 @@ export default function LedgerPage() {
   const receiptInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!invoiceIdParam) return;
+    const inspectTimer = window.setTimeout(() => {
+      setInspectType("invoice");
+      setInspectId(invoiceIdParam);
+      setInvoiceIdParam(null);
+    }, 0);
+    return () => window.clearTimeout(inspectTimer);
+  }, [invoiceIdParam, setInspectId, setInspectType, setInvoiceIdParam]);
+
+  useEffect(() => {
+    if (actionParam !== "issue_invoice" || !studentIdParam) return;
+    const drawerTimer = window.setTimeout(() => {
+      setDrawerType("invoice");
+      setEditId(null);
+      setSelectedReceipt(null);
+      setInvoiceForm({
+        student: studentIdParam,
+        academy_class: classes[0]?.id.toString() || "",
+        amount: "0",
+        status: "unpaid",
+        due_date: "",
+      });
+      setLineItems([{ description: "", quantity: 1, unit_price: "" }]);
+      if (studentNameParam) setUserSearchQuery(studentNameParam);
+      setIsDrawerOpen(true);
+      setActionParam(null);
+      setStudentIdParam(null);
+      setStudentNameParam(null);
+    }, 0);
+    return () => window.clearTimeout(drawerTimer);
+  }, [
+    actionParam,
+    studentIdParam,
+    studentNameParam,
+    classes,
+    setActionParam,
+    setStudentIdParam,
+    setStudentNameParam,
+  ]);
+
+  useEffect(() => {
     if (userSearchQuery.length >= 2) {
       const roleFilter = drawerType === "invoice" ? "student" : undefined;
       crmApi.searchUsers(userSearchQuery, roleFilter).then(setSearchResults);
-    } else {
-      setSearchResults([]);
     }
   }, [userSearchQuery, drawerType]);
 
-  // Recalculate invoice total sum whenever line items change
-  useEffect(() => {
-    if (drawerType === "invoice" && lineItems.length > 0) {
-      const sum = lineItems.reduce((acc, item) => {
-        const price = parseFloat(item.unit_price) || 0;
-        const qty = item.quantity || 1;
-        return acc + price * qty;
-      }, 0);
-      setInvoiceForm(prev => ({ ...prev, amount: sum.toString() }));
-    }
-  }, [lineItems, drawerType]);
+  const calculatedInvoiceAmount = lineItems.reduce((acc, item) => {
+    const price = parseFloat(item.unit_price) || 0;
+    return acc + price * (item.quantity || 1);
+  }, 0).toString();
+  const effectiveInvoiceAmount =
+    drawerType === "invoice" && lineItems.length > 0
+      ? calculatedInvoiceAmount
+      : invoiceForm.amount;
 
   const openCreateDrawer = (type: "invoice" | "expense") => {
     setDrawerType(type);
@@ -338,7 +342,7 @@ export default function LedgerPage() {
       const payload = {
         student: parseInt(invoiceForm.student),
         academy_class: invoiceForm.academy_class ? parseInt(invoiceForm.academy_class) : null,
-        amount: invoiceForm.amount,
+        amount: effectiveInvoiceAmount,
         status: invoiceForm.status,
         due_date: invoiceForm.due_date || null,
         items: lineItems
@@ -1074,6 +1078,7 @@ export default function LedgerPage() {
                 value={userSearchQuery}
                 onChange={(e) => {
                   setUserSearchQuery(e.target.value);
+                  if (e.target.value.length < 2) setSearchResults([]);
                   if (!e.target.value) setInvoiceForm({ ...invoiceForm, student: "" });
                 }}
                 placeholder={isFarsi ? "نام دانشجو..." : "Type student name..."}
@@ -1119,7 +1124,7 @@ export default function LedgerPage() {
             <Input
               label={isFarsi ? "مبلغ کل (دلار) - محاسبه خودکار" : "Total Amount ($) - Auto calculated"}
               type="number"
-              value={invoiceForm.amount}
+              value={effectiveInvoiceAmount}
               readOnly
               disabled
               required
@@ -1300,6 +1305,7 @@ export default function LedgerPage() {
                 value={userSearchQuery}
                 onChange={(e) => {
                   setUserSearchQuery(e.target.value);
+                  if (e.target.value.length < 2) setSearchResults([]);
                   if (!e.target.value) setExpenseForm({ ...expenseForm, recipient: "" });
                 }}
                 placeholder={isFarsi ? "جستجوی کاربر..." : "Search user..."}

@@ -82,11 +82,11 @@ export default function RecordingEditPage() {
       }
     };
 
-    setIsLoading(true);
-    fetchOnce();
+    const initialFetch = window.setTimeout(fetchOnce, 0);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(initialFetch);
       if (pollTimer != null) window.clearTimeout(pollTimer);
     };
   }, [token, navigate, t]);

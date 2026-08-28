@@ -12,7 +12,6 @@ export function useExamTimer({ startedAt, durationMinutes, status, onTimeout }: 
 
   useEffect(() => {
     if (!startedAt || !durationMinutes || status !== "started") {
-      setTimeLeft(null);
       return;
     }
 
@@ -32,10 +31,13 @@ export function useExamTimer({ startedAt, durationMinutes, status, onTimeout }: 
       }
     };
 
-    updateTimer();
+    const initialTimer = window.setTimeout(updateTimer, 0);
     const interval = setInterval(updateTimer, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      window.clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
   }, [startedAt, durationMinutes, status, onTimeout]);
 
   const formatTime = (seconds: number) => {
@@ -44,5 +46,9 @@ export function useExamTimer({ startedAt, durationMinutes, status, onTimeout }: 
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  return { timeLeft, formatTime };
+  return {
+    timeLeft:
+      startedAt && durationMinutes && status === "started" ? timeLeft : null,
+    formatTime,
+  };
 }

@@ -1,5 +1,5 @@
 import { getApiErrorData } from "@/lib/api/errors";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AppShell from "../../../components/layout/AppShell";
 import { billingApi } from "../api/billing.api";
 import type { OrganizationSubscription, SubscriptionPlan } from "../api/billing.api";
@@ -32,7 +32,7 @@ export default function SubscriptionPage() {
   const [isCheckoutLoading, setIsCheckoutLoading] = useState<string | null>(null);
   const [isPortalLoading, setIsPortalLoading] = useState(false);
 
-  async function loadBillingData() {
+  const loadBillingData = useCallback(async () => {
     try {
       setLoading(true);
       const [plansData, subData] = await Promise.all([
@@ -47,11 +47,12 @@ export default function SubscriptionPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    loadBillingData();
-  }, []);
+    const loadTimer = window.setTimeout(loadBillingData, 0);
+    return () => window.clearTimeout(loadTimer);
+  }, [loadBillingData]);
 
   const handlePortalRedirect = async () => {
     try {
@@ -59,7 +60,7 @@ export default function SubscriptionPage() {
       const res = await billingApi.createCustomerPortal({
         return_url: window.location.href,
       });
-      window.location.href = res.portal_url;
+      window.location.assign(res.portal_url);
     } catch (error: unknown) {
       console.error("Portal error", error);
       toast.error(getApiErrorData(error)?.detail || "Failed to launch customer portal.");
@@ -86,7 +87,7 @@ export default function SubscriptionPage() {
       });
       
       toast.loading("Redirecting to checkout session...");
-      window.location.href = res.checkout_url;
+      window.location.assign(res.checkout_url);
     } catch (error: unknown) {
       console.error("Checkout session failed", error);
       toast.error(getApiErrorData(error)?.detail || "Checkout session initialization failed.");
@@ -102,12 +103,14 @@ export default function SubscriptionPage() {
       toast.success("Subscription updated successfully!");
       // Clean query parameters
       window.history.replaceState({}, document.title, window.location.pathname);
-      loadBillingData();
+      const reloadTimer = window.setTimeout(loadBillingData, 0);
+      return () => window.clearTimeout(reloadTimer);
     } else if (params.get("canceled") === "true") {
       toast.error("Checkout process canceled.");
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, []);
+    return undefined;
+  }, [loadBillingData]);
 
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {

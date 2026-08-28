@@ -24,14 +24,10 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
   // Debounced search query
   useEffect(() => {
     if (!open) return;
-    if (query.trim().length < 2) {
-      setResults(null);
-      setLoading(false);
-      return;
-    }
+    if (query.trim().length < 2) return;
 
-    setLoading(true);
     const timer = setTimeout(async () => {
+      setLoading(true);
       try {
         const data = await authApi.globalSearch(query.trim());
         setResults(data);
@@ -48,11 +44,16 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
   // Focus input when modal opens
   useEffect(() => {
     if (open) {
-      setQuery("");
-      setResults(null);
-      setActiveIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 100);
+      const focusTimer = setTimeout(() => {
+        setQuery("");
+        setResults(null);
+        setActiveIndex(0);
+        setLoading(false);
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(focusTimer);
     }
+    return undefined;
   }, [open]);
 
   // Handle outside click & Escape key
@@ -166,11 +167,6 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     return items;
   }, [results]);
 
-  // Adjust activeIndex if flattened items count changes
-  useEffect(() => {
-    setActiveIndex(0);
-  }, [flattenedItems.length]);
-
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (flattenedItems.length === 0) return;
@@ -224,7 +220,15 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
             ref={inputRef}
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              const nextQuery = e.target.value;
+              setQuery(nextQuery);
+              setActiveIndex(0);
+              if (nextQuery.trim().length < 2) {
+                setResults(null);
+                setLoading(false);
+              }
+            }}
             onKeyDown={handleKeyDown}
             placeholder={t("topbar.searchPlaceholder", "Search students, teachers, courses, classes...")}
             className="flex-1 bg-transparent border-none text-[var(--t1)] placeholder-[var(--t3)] text-sm focus:outline-none"

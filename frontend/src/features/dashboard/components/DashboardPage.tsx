@@ -28,19 +28,21 @@ export default function DashboardPage() {
   const location = useLocation();
 
   // Guest flow modal state
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showJoinModal, setShowJoinModal] = useState(false);
+  const initialAction = new URLSearchParams(location.search).get("action");
+  const [showCreateModal, setShowCreateModal] = useState(initialAction === "create-org");
+  const [showJoinModal, setShowJoinModal] = useState(initialAction === "join-org");
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    if (params.get("action") === "create-org") {
-      setShowCreateModal(true);
+    const action = params.get("action");
+    if (action !== "create-org" && action !== "join-org") return;
+    const actionTimer = window.setTimeout(() => {
+      if (action === "create-org") setShowCreateModal(true);
+      if (action === "join-org") setShowJoinModal(true);
       navigate(location.pathname, { replace: true });
-    } else if (params.get("action") === "join-org") {
-      setShowJoinModal(true);
-      navigate(location.pathname, { replace: true });
-    }
-  }, [location.search, navigate]);
+    }, 0);
+    return () => window.clearTimeout(actionTimer);
+  }, [location.search, location.pathname, navigate]);
 
   const isFarsi = language === "fa";
   const localeTag = isFarsi ? "fa-IR" : "en-US";

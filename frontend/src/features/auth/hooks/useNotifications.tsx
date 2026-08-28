@@ -59,6 +59,7 @@ export function useNotifications() {
   const hydrate = useNotificationsStore((s) => s.hydrate);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeout = useRef<number>(0);
+  const connectRef = useRef<(() => void) | null>(null);
   const isUnmounted = useRef(false);
 
   const handleNotification = useCallback(
@@ -355,13 +356,17 @@ export function useNotifications() {
       );
       reconnectTimeout.current += 1;
       console.log(`Reconnecting in ${delay}ms...`);
-      setTimeout(connect, delay);
+      setTimeout(() => connectRef.current?.(), delay);
     };
 
     ws.onerror = () => {
       ws.close();
     };
   }, [isAuthenticated, handleNotification, hydrate]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   useEffect(() => {
     isUnmounted.current = false;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { sysAdminApi, type OperatorAuditLog } from "../api/sysadmin.api";
 import { getApiErrorMessage } from "../../../lib/api/errors";
 
@@ -8,17 +8,18 @@ export default function AuditLogsView() {
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
 
-  const loadLogs = () => {
+  const loadLogs = useCallback(() => {
     setLoading(true);
     sysAdminApi.getAuditLogs({ search })
       .then(setLogs)
       .catch((error: unknown) => setError(getApiErrorMessage(error, "Failed to load audit logs")))
       .finally(() => setLoading(false));
-  };
+  }, [search]);
 
   useEffect(() => {
-    loadLogs();
-  }, [search]);
+    const timer = window.setTimeout(loadLogs, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadLogs]);
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">

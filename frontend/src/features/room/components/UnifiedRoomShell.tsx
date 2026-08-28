@@ -115,7 +115,7 @@ export default function UnifiedRoomShell({
     window.addEventListener("eduspace:open-people-tab", handler);
     return () =>
       window.removeEventListener("eduspace:open-people-tab", handler);
-  }, [isMobile, controls.toggleSidebar, setActivePanel]);
+  }, [isMobile, controls, setActivePanel]);
 
   const { isHost, isCoHost, activePresentation, isPresentationMinimized } =
     useRoomStore();

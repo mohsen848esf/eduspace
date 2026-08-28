@@ -372,8 +372,6 @@ export default function MembersPage() {
   useEffect(() => {
     if (userSearchQuery.length >= 2) {
       crmApi.searchUsers(userSearchQuery, "student").then(setSearchResults);
-    } else {
-      setSearchResults([]);
     }
   }, [userSearchQuery]);
 
@@ -934,6 +932,7 @@ export default function MembersPage() {
                 value={userSearchQuery}
                 onChange={(e) => {
                   setUserSearchQuery(e.target.value);
+                  if (e.target.value.length < 2) setSearchResults([]);
                   if (!e.target.value) setEnrollmentForm({ ...enrollmentForm, student: "" });
                 }}
                 placeholder={isFarsi ? "نام دانشجو را بنویسید" : "Type student name..."}

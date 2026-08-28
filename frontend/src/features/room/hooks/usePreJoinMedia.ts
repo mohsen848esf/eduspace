@@ -50,9 +50,10 @@ export function usePreJoinMedia(micEnabled: boolean) {
   }, []);
 
   useEffect(() => {
-    loadDevices();
+    const initialLoad = window.setTimeout(loadDevices, 0);
     navigator.mediaDevices?.addEventListener?.("devicechange", loadDevices);
     return () => {
+      window.clearTimeout(initialLoad);
       navigator.mediaDevices?.removeEventListener?.("devicechange", loadDevices);
     };
   }, [loadDevices]);
@@ -62,8 +63,6 @@ export function usePreJoinMedia(micEnabled: boolean) {
     let active = true;
 
     if (!micEnabled) {
-      setAudioLevel(0);
-      setAudioBars(Array(16).fill(4));
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
@@ -137,7 +136,7 @@ export function usePreJoinMedia(micEnabled: boolean) {
         audioCtxRef.current.close().catch(() => {});
       }
     };
-  }, [micEnabled, selectedMic]);
+  }, [micEnabled, selectedMic, loadDevices]);
 
   // 3. Synthesizer Speaker Test Tone (C5 -> E5 -> G5 chime)
   const playSpeakerTestSound = useCallback(async () => {
@@ -191,8 +190,8 @@ export function usePreJoinMedia(micEnabled: boolean) {
     setSelectedCam,
     setSelectedSpeaker,
     isLoadingDevices,
-    audioLevel,
-    audioBars,
+    audioLevel: micEnabled ? audioLevel : 0,
+    audioBars: micEnabled ? audioBars : Array(16).fill(4),
     playSpeakerTestSound,
     isPlayingTestSound,
   };
