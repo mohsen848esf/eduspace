@@ -1114,11 +1114,37 @@ def lobby_status(request, room_code, request_id):
             is_active=True,
             **participant_filter,
         ).first()
+        is_co_host = (
+            False if lobby_req.is_guest
+            else RoomParticipant.objects.filter(
+                room=room,
+                user=lobby_req.user,
+                role=RoomParticipant.Role.CO_HOST,
+            ).exists()
+        )
         response_data.update({
+            # Room lock & mute settings
+            'mute_mic_on_join': room.mute_mic_on_join,
+            'mute_cam_on_join': room.mute_cam_on_join,
+            'lock_screen_share': room.lock_screen_share,
+            'lock_microphone': room.lock_microphone,
+            'lock_camera': room.lock_camera,
             'lock_document_presentation': room.lock_document_presentation,
+            # Participant-level permissions
             'can_upload_presentation': (
                 participant.can_upload_presentation if participant else False
             ),
+            'can_share_screen': (
+                participant.can_share_screen if participant else (not room.lock_screen_share)
+            ),
+            'can_use_microphone': (
+                participant.can_use_microphone if participant else (not room.lock_microphone)
+            ),
+            'can_use_camera': (
+                participant.can_use_camera if participant else (not room.lock_camera)
+            ),
+            # Role
+            'is_co_host': is_co_host,
         })
         if lobby_req.is_guest:
             response_data['guest_identity'] = lobby_req.guest_identity

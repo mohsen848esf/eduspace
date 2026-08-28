@@ -75,7 +75,11 @@ client.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
+    // Lobby status polling is authenticated via X-Guest-Access-Token, not JWT.
+    // Skip the refresh/redirect flow for these requests so the useLobbyWaiting
+    // hook can handle auth errors gracefully without forcing a login redirect.
+    const isLobbyPoll = original?.url?.includes("/lobby/status/");
+    if (error.response?.status === 401 && !original._retry && !isLobbyPoll) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });

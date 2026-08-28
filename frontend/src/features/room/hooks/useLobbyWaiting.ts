@@ -20,10 +20,21 @@ interface UseLobbyWaitingOptions {
     roomCode: string;
     name: string;
     isGuest?: boolean;
+    isCoHost?: boolean;
     guestIdentity?: string;
     guestAccessToken?: string;
+    // Room settings
+    muteMicOnJoin?: boolean;
+    muteCamOnJoin?: boolean;
+    lockScreenShare?: boolean;
+    lockMicrophone?: boolean;
+    lockCamera?: boolean;
     lockDocumentPresentation?: boolean;
+    // Participant permissions
     canUploadPresentation?: boolean;
+    canShareScreen?: boolean;
+    canUseMicrophone?: boolean;
+    canUseCamera?: boolean;
   }) => void;
 }
 
@@ -76,10 +87,19 @@ export function useLobbyWaiting({
             roomCode: res.room_code,
             name: res.name,
             isGuest: res.is_guest,
+            isCoHost: res.is_co_host,
             guestIdentity: res.guest_identity,
             guestAccessToken: res.guest_access_token || guestAccessToken || undefined,
+            muteMicOnJoin: res.mute_mic_on_join,
+            muteCamOnJoin: res.mute_cam_on_join,
+            lockScreenShare: res.lock_screen_share,
+            lockMicrophone: res.lock_microphone,
+            lockCamera: res.lock_camera,
             lockDocumentPresentation: res.lock_document_presentation,
             canUploadPresentation: res.can_upload_presentation,
+            canShareScreen: res.can_share_screen,
+            canUseMicrophone: res.can_use_microphone,
+            canUseCamera: res.can_use_camera,
           });
           return;
         }

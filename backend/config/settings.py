@@ -222,6 +222,7 @@ if DEBUG:
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'x-organization-slug',
+    'x-guest-access-token',
 ]
 
 # ---------------------------------------------------------------------------
