@@ -128,19 +128,46 @@ function RoomContent({
     };
   }, [disconnect]);
 
-  // Virtual background setup once the local participant camera is active.
+  // Virtual background setup once the local participant camera track is published.
+  // We poll because the camera track may not be available immediately after mount —
+  // LiveKit publishes it asynchronously after the room connection is established.
   useEffect(() => {
     if (setupDone.current) return;
+    const bg = preJoinSettings?.background ?? "none";
+    if (bg === "none" || !preJoinSettings?.camEnabled) return;
     if (!localParticipant) return;
-    const bg = preJoinSettings?.background || "none";
-    if (bg !== "none" && preJoinSettings?.camEnabled) {
-      setupDone.current = true;
-      const timer = setTimeout(() => {
-        changeBackground(bg).catch(() => {});
-      }, 300);
-      return () => clearTimeout(timer);
-    }
+
+    let attempts = 0;
+    const MAX_ATTEMPTS = 20; // up to ~4 seconds
+    const INTERVAL_MS = 200;
+
+    const tryApply = async () => {
+      attempts++;
+      try {
+        await changeBackground(bg);
+        // changeBackground succeeds silently even if track isn't ready yet,
+        // so verify the track exists before marking as done.
+        const camPub = localParticipant.getTrackPublication(Track.Source.Camera);
+        if (camPub?.track) {
+          setupDone.current = true;
+          clearInterval(intervalId);
+        } else if (attempts >= MAX_ATTEMPTS) {
+          clearInterval(intervalId);
+        }
+      } catch {
+        if (attempts >= MAX_ATTEMPTS) clearInterval(intervalId);
+      }
+    };
+
+    // Kick off immediately, then retry on interval
+    void tryApply();
+    const intervalId = setInterval(() => {
+      if (!setupDone.current) void tryApply();
+    }, INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
   }, [localParticipant, preJoinSettings, changeBackground]);
+
 
   const sharedShellProps = {
     controls: {
