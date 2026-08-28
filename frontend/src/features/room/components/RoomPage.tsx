@@ -251,14 +251,28 @@ export default function RoomPage() {
         roomCode: admittedData.roomCode,
         roomName: admittedData.name,
         isHost: false,
+        isCoHost: admittedData.isCoHost || false,
         isGuest: admittedData.isGuest || false,
         guestIdentity: admittedData.guestIdentity || null,
         guestAccessToken: admittedData.guestAccessToken || null,
+        // Room settings
+        muteMicOnJoin: admittedData.muteMicOnJoin,
+        muteCamOnJoin: admittedData.muteCamOnJoin,
+        lockScreenShare: admittedData.lockScreenShare,
+        lockMicrophone: admittedData.lockMicrophone,
+        lockCamera: admittedData.lockCamera,
         lockDocumentPresentation: admittedData.lockDocumentPresentation,
+        // Participant permissions
         canUploadPresentation: admittedData.canUploadPresentation,
+        canShareScreen: admittedData.canShareScreen,
+        canUseMicrophone: admittedData.canUseMicrophone,
+        canUseCamera: admittedData.canUseCamera,
       });
       setLobbyGuestAccessToken(null);
       setIsWaitingInLobby(false);
+      // Mark pre-join as done — lobby-admitted users bypass the pre-join screen
+      // and connect directly using the token provided by the host's admit action.
+      setPreJoinDone(true);
     },
   });
 

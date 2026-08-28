@@ -34,10 +34,21 @@ export interface LobbyStatusResponse {
   token?: string;
   livekit_url?: string;
   is_guest?: boolean;
+  is_co_host?: boolean;
   guest_identity?: string;
   guest_access_token?: string;
+  // Room settings
+  mute_mic_on_join?: boolean;
+  mute_cam_on_join?: boolean;
+  lock_screen_share?: boolean;
+  lock_microphone?: boolean;
+  lock_camera?: boolean;
   lock_document_presentation?: boolean;
+  // Participant permissions
   can_upload_presentation?: boolean;
+  can_share_screen?: boolean;
+  can_use_microphone?: boolean;
+  can_use_camera?: boolean;
 }
 
 export interface LobbyRequest {
