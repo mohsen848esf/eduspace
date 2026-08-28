@@ -2,10 +2,15 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Receipt, BookOpen, ArrowRight } from "lucide-react";
 import type { InspectorViewerProps } from "../types";
+import type { OrgMember } from "@/features/auth/api/auth.api";
+import type {
+  Enrollment,
+  TuitionInvoice,
+} from "@/features/dashboard/types/crm.types";
 
-export interface StudentInspectorProps extends InspectorViewerProps {
-  studentEnrollments: any[];
-  studentInvoices: any[];
+export interface StudentInspectorProps extends InspectorViewerProps<OrgMember> {
+  studentEnrollments: Enrollment[];
+  studentInvoices: TuitionInvoice[];
   attendanceRate: number | null;
   missingAssignments: number | null;
   loadingExtra: boolean;
@@ -58,11 +63,11 @@ export const StudentInspector: React.FC<StudentInspectorProps> = ({
   );
 
   const outstandingInvoices = studentInvoices.filter(
-    (inv: any) => inv.status !== "paid" && inv.status !== "cancelled"
+    (invoice) => invoice.status !== "paid" && invoice.status !== "cancelled",
   );
   const totalOutstanding = outstandingInvoices.reduce(
-    (sum: number, inv: any) => sum + parseFloat(inv.amount || "0"),
-    0
+    (sum, invoice) => sum + parseFloat(invoice.amount || "0"),
+    0,
   );
 
   return (
@@ -178,7 +183,7 @@ export const StudentInspector: React.FC<StudentInspectorProps> = ({
           </div>
         ) : (
           <div className="space-y-2">
-            {studentEnrollments.map((enroll: any) => (
+            {studentEnrollments.map((enroll) => (
               <div
                 key={enroll.id}
                 className="flex justify-between items-center p-3 rounded-xl bg-[var(--s2)] border border-[var(--b)] hover:border-[var(--brand)]/20 transition-all text-xs"
@@ -246,7 +251,7 @@ export const StudentInspector: React.FC<StudentInspectorProps> = ({
 
             {outstandingInvoices.length > 0 && (
               <div className="space-y-2">
-                {outstandingInvoices.map((inv: any) => (
+                {outstandingInvoices.map((inv) => (
                   <div
                     key={inv.id}
                     className="flex justify-between items-center p-3 rounded-xl bg-[var(--s2)] border border-[var(--b)] text-xs"

@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useEffect, useState } from "react";
 import { sysAdminApi, type OrganizationAdmin } from "../api/sysadmin.api";
 
@@ -28,7 +29,9 @@ export default function OrganizationsView() {
     setLoading(true);
     sysAdminApi.getOrganizations({ search })
       .then(setOrgs)
-      .catch((err) => setError(err.response?.data?.detail || "Failed to load organizations"))
+      .catch((error: unknown) =>
+        setError(getApiErrorData(error)?.detail || "Failed to load organizations"),
+      )
       .finally(() => setLoading(false));
   };
 
@@ -62,8 +65,8 @@ export default function OrganizationsView() {
       });
       setOrgs(orgs.map(o => o.id === selectedOrg.id ? updated : o));
       setIsQuotaModalOpen(false);
-    } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to update quota");
+    } catch (error: unknown) {
+      alert(getApiErrorData(error)?.detail || "Failed to update quota");
     }
   };
 
@@ -81,8 +84,8 @@ export default function OrganizationsView() {
       const updated = await sysAdminApi.suspendOrganization(selectedOrg.id, suspensionReason);
       setOrgs(orgs.map(o => o.id === selectedOrg.id ? updated : o));
       setIsSuspendModalOpen(false);
-    } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to suspend organization");
+    } catch (error: unknown) {
+      alert(getApiErrorData(error)?.detail || "Failed to suspend organization");
     }
   };
 
@@ -92,8 +95,8 @@ export default function OrganizationsView() {
     try {
       const updated = await sysAdminApi.restoreOrganization(org.id);
       setOrgs(orgs.map(o => o.id === org.id ? updated : o));
-    } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to restore organization");
+    } catch (error: unknown) {
+      alert(getApiErrorData(error)?.detail || "Failed to restore organization");
     }
   };
 

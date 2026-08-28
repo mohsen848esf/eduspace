@@ -111,7 +111,7 @@ export function parseBrandingMarkdown(content: string): {
 
     // Parse simple key-value YAML line by line
     const lines = rawYaml.split("\n");
-    const result: Record<string, any> = {};
+    const result: Record<string, string> = {};
     const customTokens: Record<string, string> = {};
     let inCustomTokens = false;
 
@@ -198,10 +198,12 @@ export function parseBrandingMarkdown(content: string): {
       branding,
       orgName,
     };
-  } catch (err: any) {
+  } catch (error: unknown) {
     return {
       success: false,
-      error: `خطا در پردازش فایل مارک‌داون: ${err?.message || "فرمت نامعتبر است."}`,
+      error: `خطا در پردازش فایل مارک‌داون: ${
+        error instanceof Error ? error.message : "فرمت نامعتبر است."
+      }`,
     };
   }
 }

@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import React, { useEffect, useState } from "react";
 import { Drawer, DrawerHeader, DrawerTitle, DrawerBody, DrawerClose } from "../layout/Drawer";
 import { useLocale } from "@/i18n/useLocale";
@@ -24,6 +25,28 @@ import ClassInspector from "./viewers/ClassInspector";
 import SessionInspector from "./viewers/SessionInspector";
 import InvoiceInspector from "./viewers/InvoiceInspector";
 import AssignmentInspector from "./viewers/AssignmentInspector";
+import type { OrgMember } from "@/features/auth/api/auth.api";
+import type {
+  AcademyClass,
+  Course,
+  Enrollment,
+  TuitionInvoice,
+} from "@/features/dashboard/types/crm.types";
+import type { Attendance, Session } from "@/features/sessions/types";
+import type {
+  Assignment,
+  AssignmentSubmission,
+} from "@/features/assessments/types";
+import { unwrapList, type PaginatedResponse } from "@/lib/api/pagination";
+import { countMissingAssignments } from "./inspectionMetrics";
+
+type InspectionEntityData =
+  | OrgMember
+  | Course
+  | AcademyClass
+  | Session
+  | TuitionInvoice
+  | Assignment;
 
 export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
   open,
@@ -34,7 +57,7 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
   const { language } = useLocale();
   const isFarsi = language === "fa";
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<InspectionEntityData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [localType, setLocalType] = useState<InspectionEntityType>(null);
@@ -43,9 +66,9 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
     { type: InspectionEntityType; id: string | number | null }[]
   >([]);
 
-  const [studentEnrollments, setStudentEnrollments] = useState<any[]>([]);
-  const [studentInvoices, setStudentInvoices] = useState<any[]>([]);
-  const [mentorStudents, setMentorStudents] = useState<any[]>([]);
+  const [studentEnrollments, setStudentEnrollments] = useState<Enrollment[]>([]);
+  const [studentInvoices, setStudentInvoices] = useState<TuitionInvoice[]>([]);
+  const [mentorStudents, setMentorStudents] = useState<Enrollment[]>([]);
   const [loadingExtra, setLoadingExtra] = useState(false);
   const [attendanceRate, setAttendanceRate] = useState<number | null>(null);
   const [missingAssignments, setMissingAssignments] = useState<number | null>(null);
@@ -86,12 +109,15 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
       setError(null);
       try {
         let endpoint = "";
-        let match: any = null;
+        let match: OrgMember | undefined;
         if (localType === "student" || localType === "teacher" || localType === "mentor") {
-          const res = await client.get("/auth/org-members/");
-          const members = res.data || [];
+          const res = await client.get<OrgMember[] | PaginatedResponse<OrgMember>>(
+            "/auth/org-members/",
+          );
+          const members = unwrapList(res.data);
           match = members.find(
-            (m: any) => m.user === Number(localId) || m.id === Number(localId)
+            (member) =>
+              member.user === Number(localId) || member.id === Number(localId),
           );
           if (match) {
             setData(match);
@@ -111,11 +137,11 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
         }
 
         if (endpoint) {
-          const response = await client.get(endpoint);
+          const response = await client.get<InspectionEntityData>(endpoint);
           setData(response.data);
         }
-      } catch (err: any) {
-        setError(err.response?.data?.detail || "Failed to load entity details");
+      } catch (error: unknown) {
+        setError(getApiErrorData(error)?.detail || "Failed to load entity details");
       } finally {
         setLoading(false);
       }
@@ -130,28 +156,37 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
     const fetchExtraData = async () => {
       setLoadingExtra(true);
       try {
-        const userId = data.user || data.user_details?.id || localId;
+        const member = data as OrgMember;
+        const userId = member.user || member.user_details?.id || localId;
 
         if (localType === "student") {
           try {
-            const enrollRes = await client.get(`/auth/enrollments/?student=${userId}`);
-            setStudentEnrollments(enrollRes.data?.results || enrollRes.data || []);
+            const enrollRes = await client.get<
+              Enrollment[] | PaginatedResponse<Enrollment>
+            >(`/auth/enrollments/?student=${userId}`);
+            setStudentEnrollments(unwrapList(enrollRes.data));
           } catch {
             setStudentEnrollments([]);
           }
 
           try {
-            const invRes = await client.get(`/auth/invoices/?student=${userId}`);
-            setStudentInvoices(invRes.data?.results || invRes.data || []);
+            const invRes = await client.get<
+              TuitionInvoice[] | PaginatedResponse<TuitionInvoice>
+            >(`/auth/invoices/?student=${userId}`);
+            setStudentInvoices(unwrapList(invRes.data));
           } catch {
             setStudentInvoices([]);
           }
 
           try {
-            const attRes = await client.get(`/sessions/attendance/?student=${userId}`);
-            const attList = attRes.data?.results || attRes.data || [];
+            const attRes = await client.get<
+              Attendance[] | PaginatedResponse<Attendance>
+            >(`/sessions/attendance/?student=${userId}`);
+            const attList = unwrapList(attRes.data);
             if (attList.length > 0) {
-              const present = attList.filter((a: any) => a.status === "present").length;
+              const present = attList.filter(
+                (attendance) => attendance.status === "present",
+              ).length;
               setAttendanceRate(Math.round((present / attList.length) * 100));
             } else {
               setAttendanceRate(null);
@@ -161,25 +196,26 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
           }
 
           try {
-            const assignRes = await client.get(`/assessments/assignments/`);
-            const allAssignments = assignRes.data?.results || assignRes.data || [];
-            const subRes = await client.get(`/assessments/submissions/?student=${userId}`);
-            const mySubs = subRes.data?.results || subRes.data || [];
-            const submittedIds = new Set(mySubs.map((s: any) => s.assignment));
-            const missing = allAssignments.filter(
-              (a: any) =>
-                !submittedIds.has(a.id) &&
-                a.due_date &&
-                new Date(a.due_date).getTime() < Date.now()
-            ).length;
-            setMissingAssignments(missing);
+            const assignRes = await client.get<
+              Assignment[] | PaginatedResponse<Assignment>
+            >(`/assessments/assignments/`);
+            const allAssignments = unwrapList(assignRes.data);
+            const subRes = await client.get<
+              AssignmentSubmission[] | PaginatedResponse<AssignmentSubmission>
+            >(`/assessments/assignment-submissions/?student=${userId}`);
+            const mySubs = unwrapList(subRes.data);
+            setMissingAssignments(
+              countMissingAssignments(allAssignments, mySubs, Number(userId)),
+            );
           } catch {
             setMissingAssignments(null);
           }
         } else if (localType === "mentor") {
           try {
-            const enrollRes = await client.get(`/auth/enrollments/?mentor=${userId}`);
-            setMentorStudents(enrollRes.data?.results || enrollRes.data || []);
+            const enrollRes = await client.get<
+              Enrollment[] | PaginatedResponse<Enrollment>
+            >(`/auth/enrollments/?mentor=${userId}`);
+            setMentorStudents(unwrapList(enrollRes.data));
           } catch {
             setMentorStudents([]);
           }
@@ -272,7 +308,7 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
       case "student":
         return (
           <StudentInspector
-            data={data}
+            data={data as OrgMember}
             isFarsi={isFarsi}
             onNavigate={navigateTo}
             studentEnrollments={studentEnrollments}
@@ -286,7 +322,7 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
       case "teacher":
         return (
           <TeacherInspector
-            data={data}
+            data={data as OrgMember}
             isFarsi={isFarsi}
             onNavigate={navigateTo}
             onOpenChange={onOpenChange}
@@ -295,7 +331,7 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
       case "mentor":
         return (
           <MentorInspector
-            data={data}
+            data={data as OrgMember}
             isFarsi={isFarsi}
             onNavigate={navigateTo}
             mentorStudents={mentorStudents}
@@ -305,7 +341,7 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
       case "course":
         return (
           <CourseInspector
-            data={data}
+            data={data as Course}
             isFarsi={isFarsi}
             onNavigate={navigateTo}
             onOpenChange={onOpenChange}
@@ -314,7 +350,7 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
       case "class":
         return (
           <ClassInspector
-            data={data}
+            data={data as AcademyClass}
             isFarsi={isFarsi}
             onNavigate={navigateTo}
             onOpenChange={onOpenChange}
@@ -323,7 +359,7 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
       case "session":
         return (
           <SessionInspector
-            data={data}
+            data={data as Session}
             isFarsi={isFarsi}
             onNavigate={navigateTo}
             onOpenChange={onOpenChange}
@@ -332,7 +368,7 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
       case "invoice":
         return (
           <InvoiceInspector
-            data={data}
+            data={data as TuitionInvoice}
             isFarsi={isFarsi}
             onNavigate={navigateTo}
             onOpenChange={onOpenChange}
@@ -341,7 +377,7 @@ export const InspectionDrawer: React.FC<InspectionDrawerProps> = ({
       case "assignment":
         return (
           <AssignmentInspector
-            data={data}
+            data={data as Assignment}
             isFarsi={isFarsi}
             onNavigate={navigateTo}
             onOpenChange={onOpenChange}

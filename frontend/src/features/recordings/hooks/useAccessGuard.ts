@@ -1,3 +1,4 @@
+import { getApiErrorStatus } from "@/lib/api/errors";
 import { useEffect, useRef, useState } from "react";
 import client from "../../../lib/api/client";
 
@@ -62,8 +63,8 @@ export function useAccessGuard({
         await client.get(`/recordings/${token}/`, {
           params: { _: Date.now() },
         });
-      } catch (err: any) {
-        const status = err?.response?.status;
+      } catch (error: unknown) {
+        const status = getApiErrorStatus(error);
         // 403 (unpublished / removed from visible_to / link-share turned off
         // and not owner / not superuser) and 404 (deleted) both mean the
         // current viewer has lost access.

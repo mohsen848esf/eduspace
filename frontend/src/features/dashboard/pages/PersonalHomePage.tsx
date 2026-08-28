@@ -426,7 +426,7 @@ export default function PersonalHomePage() {
             </h4>
 
             <div className="divide-y divide-[var(--b)]">
-              {invitations.map((invite: any) => (
+              {invitations.map((invite) => (
                 <div
                   key={invite.id}
                   className="py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"

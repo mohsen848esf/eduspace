@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useState } from "react";
 import { reportsApi } from "../api/reports.api";
 import { Download, Award, Receipt, CalendarRange } from "lucide-react";
@@ -15,9 +16,9 @@ export default function ReportsExportWidget() {
       toast.loading(`Compiling and downloading ${type} report...`, { id: `export-${type}` });
       await reportsApi.exportReport(type);
       toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} report downloaded successfully!`, { id: `export-${type}` });
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.response?.data?.detail || `Failed to download ${type} report. Check permissions.`, { id: `export-${type}` });
+    } catch (error: unknown) {
+      console.error(error);
+      toast.error(getApiErrorData(error)?.detail || `Failed to download ${type} report. Check permissions.`, { id: `export-${type}` });
     } finally {
       setActiveExport(null);
     }

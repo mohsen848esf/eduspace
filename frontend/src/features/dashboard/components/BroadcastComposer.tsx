@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import client from "../../../lib/api/client";
@@ -32,8 +33,8 @@ export default function BroadcastComposer({ classId, className, isFarsi, onClose
       toast.success(isFarsi ? "پیام با موفقیت ارسال شد" : "Broadcast sent successfully");
       onClose();
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ارسال پیام" : "Failed to send broadcast"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ارسال پیام" : "Failed to send broadcast"));
     },
   });
 

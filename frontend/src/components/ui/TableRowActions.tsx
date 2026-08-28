@@ -35,7 +35,10 @@ export function TableRowActions({ actions, align = "end", isFarsi = false }: Tab
     if (React.isValidElement(icon)) {
       return icon;
     }
-    return React.createElement(icon as any, { className: "w-3.5 h-3.5" });
+    return React.createElement(
+      icon as React.ElementType<{ className?: string }>,
+      { className: "w-3.5 h-3.5" },
+    );
   };
 
   return (
@@ -130,7 +133,10 @@ export function TableRowActions({ actions, align = "end", isFarsi = false }: Tab
                       React.isValidElement(IconComp) ? (
                         IconComp
                       ) : (
-                        React.createElement(IconComp as any, { className: "w-3.5 h-3.5 flex-shrink-0" })
+                        React.createElement(
+                          IconComp as React.ElementType<{ className?: string }>,
+                          { className: "w-3.5 h-3.5 flex-shrink-0" },
+                        )
                       )
                     ) : null}
                     <span className="truncate">{action.label}</span>

@@ -6,6 +6,10 @@ import {
   type PencilElement,
   type StickyElement,
   type TextElement,
+  type BaseElement,
+  type ElementType,
+  type MediaElement,
+  type WhiteboardOperation,
 } from "../types/whiteboard";
 import { cn } from "../../../lib/utils";
 
@@ -21,7 +25,7 @@ interface InfiniteCanvasProps {
   snapToGrid: boolean;
   onElementsChange: (elements: Record<string, CanvasElement>) => void;
   onSelectedIdsChange: (ids: string[]) => void;
-  broadcastOp: (op: any) => void;
+  broadcastOp: (op: WhiteboardOperation) => void;
   localParticipantIdentity: string;
 }
 
@@ -290,7 +294,13 @@ export default function InfiniteCanvas({
 
     const snapVal = (v: number) => (snapToGrid ? Math.round(v / GRID_SIZE) * GRID_SIZE : v);
 
-    const baseEl: any = {
+    const baseEl: Omit<BaseElement, "type"> & {
+      type?: ElementType;
+      points?: Point[];
+      text?: string;
+      fontSize?: number;
+      align?: "left" | "center" | "right";
+    } = {
       id,
       x: pos.x,
       y: pos.y,
@@ -342,7 +352,8 @@ export default function InfiniteCanvas({
       baseEl.align = "left";
     }
 
-    onElementsChange({ ...elements, [id]: baseEl });
+    if (!baseEl.type) return;
+    onElementsChange({ ...elements, [id]: baseEl as CanvasElement });
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
@@ -760,7 +771,7 @@ export default function InfiniteCanvas({
         case "image":
           elementNode = (
             <image
-              href={(el as any).url}
+              href={(el as MediaElement).url}
               x={0}
               y={0}
               width={el.width}
@@ -772,7 +783,7 @@ export default function InfiniteCanvas({
           break;
 
         case "video": {
-          const embedUrl = getEmbedUrl((el as any).url);
+          const embedUrl = getEmbedUrl((el as MediaElement).url);
           elementNode = (
             <g data-element-id={el.id}>
               <rect

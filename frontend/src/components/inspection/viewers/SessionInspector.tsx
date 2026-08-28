@@ -2,8 +2,9 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Video, Clock, ArrowRight } from "lucide-react";
 import type { InspectorViewerProps } from "../types";
+import type { Session } from "@/features/sessions/types";
 
-export interface SessionInspectorProps extends InspectorViewerProps {
+export interface SessionInspectorProps extends InspectorViewerProps<Session> {
   onOpenChange: (open: boolean) => void;
 }
 
@@ -35,10 +36,10 @@ export const SessionInspector: React.FC<SessionInspectorProps> = ({
               onClick={() => onNavigate("class", data.academy_class)}
               className="font-bold text-[var(--brand)] hover:underline bg-transparent border-none p-0 cursor-pointer text-xs"
             >
-              {data.class_name || `#${data.academy_class}`}
+              {data.academy_class_name || `#${data.academy_class}`}
             </button>
           ) : (
-            <strong>{data.class_name || "—"}</strong>
+            <strong>{data.academy_class_name || "—"}</strong>
           )}
         </p>
       </div>
@@ -59,7 +60,7 @@ export const SessionInspector: React.FC<SessionInspectorProps> = ({
               {isFarsi ? "کد اتاق" : "Room Code"}
             </span>
             <span className="font-bold text-[var(--t1)] font-mono">
-              {data.active_room_code || data.room || "—"}
+              {data.active_room_code || data.active_room || "—"}
             </span>
           </div>
           <div>
@@ -75,7 +76,9 @@ export const SessionInspector: React.FC<SessionInspectorProps> = ({
               {isFarsi ? "مدت زمان" : "Duration"}
             </span>
             <span className="font-bold text-[var(--t1)]">
-              {data.duration_minutes ? `${data.duration_minutes} min` : "—"}
+              {data.scheduled_start && data.scheduled_end
+                ? `${Math.max(0, Math.round((new Date(data.scheduled_end).getTime() - new Date(data.scheduled_start).getTime()) / 60_000))} min`
+                : "—"}
             </span>
           </div>
         </div>

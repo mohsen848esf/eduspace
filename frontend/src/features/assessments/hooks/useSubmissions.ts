@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { assessmentsApi } from "../api/assessments.api";
-import type { Submission } from "../types";
+import type { Submission, SubmissionGrades } from "../types";
 
 export function useStartAssessment() {
   const queryClient = useQueryClient();
@@ -43,7 +43,7 @@ export function useSubmitSubmission() {
 export function useGradeSubmission() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, gradesDict }: { id: number; gradesDict: Record<number, any> }) =>
+    mutationFn: ({ id, gradesDict }: { id: number; gradesDict: SubmissionGrades }) =>
       assessmentsApi.gradeSubmission(id, gradesDict),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["submission", id] });

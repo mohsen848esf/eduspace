@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRoomContext, useLocalParticipant } from "@livekit/components-react";
 import { useRoomStore } from "../store/roomStore";
 import toast from "react-hot-toast";
+import type { Participant, RemoteParticipant } from "livekit-client";
+import type { WhiteboardEventListener } from "../types/whiteboard";
 
 export interface WhiteboardState {
   isActive: boolean;
@@ -130,12 +132,10 @@ export function useWhiteboard() {
     [isHost, sendMessage],
   );
 
-  const listenersRef = useRef<
-    Set<(type: string, payload: any, fromIdentity?: string) => void>
-  >(new Set());
+  const listenersRef = useRef<Set<WhiteboardEventListener>>(new Set());
 
   const subscribeWhiteboardEvents = useCallback(
-    (fn: (type: string, payload: any, fromIdentity?: string) => void) => {
+    (fn: WhiteboardEventListener) => {
       listenersRef.current.add(fn);
       return () => {
         listenersRef.current.delete(fn);
@@ -145,7 +145,7 @@ export function useWhiteboard() {
   );
 
   const broadcastWhiteboardEvent = useCallback(
-    async (type: string, payload: any, reliable = true) => {
+    async (type: string, payload: unknown, reliable = true) => {
       // Local fan-out first
       listenersRef.current.forEach((fn) => {
         try {
@@ -170,7 +170,7 @@ export function useWhiteboard() {
   );
 
   const handleDataMessage = useCallback(
-    (payload: Uint8Array, participant: any) => {
+    (payload: Uint8Array, participant?: Participant) => {
       try {
         const decoder = new TextDecoder();
         const { type, payload: data } = JSON.parse(decoder.decode(payload));
@@ -308,7 +308,7 @@ export function useWhiteboard() {
   useEffect(() => {
     if (!room) return;
 
-    const onParticipantConnected = (remotePart: any) => {
+    const onParticipantConnected = (remotePart: RemoteParticipant) => {
       if (isHostRef.current && whiteboardRef.current.isActive) {
         sendMessage(
           WHITEBOARD_MESSAGES.WHITEBOARD_LAUNCH,

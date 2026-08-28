@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useState } from "react";
 import { reportsApi } from "../../dashboard/api/reports.api";
 import { Download, UserX, AlertTriangle, Lock, ShieldAlert } from "lucide-react";
@@ -16,9 +17,9 @@ export default function GDPRControl() {
       toast.loading("Compiling your personal data records...", { id: "gdpr-export" });
       await reportsApi.requestGDPRData();
       toast.success("Data export compiled and downloaded successfully!", { id: "gdpr-export" });
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.response?.data?.detail || "Failed to compile data export.", { id: "gdpr-export" });
+    } catch (error: unknown) {
+      console.error(error);
+      toast.error(getApiErrorData(error)?.detail || "Failed to compile data export.", { id: "gdpr-export" });
     } finally {
       setIsExporting(false);
     }
@@ -47,9 +48,9 @@ export default function GDPRControl() {
         localStorage.clear();
         window.location.href = "/login";
       }, 3000);
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.response?.data?.detail || "Account erasure request failed.", { id: "gdpr-delete" });
+    } catch (error: unknown) {
+      console.error(error);
+      toast.error(getApiErrorData(error)?.detail || "Account erasure request failed.", { id: "gdpr-delete" });
     } finally {
       setIsDeleting(false);
     }

@@ -24,8 +24,8 @@ export default function BillingDashboard({
         setLoading(true);
         const data = await billingApi.getInvoices();
         setInvoices(data);
-      } catch (err: any) {
-        console.error("Failed to load invoices", err);
+      } catch (error: unknown) {
+        console.error("Failed to load invoices", error);
         setError("Failed to load billing history. Please try again later.");
       } finally {
         setLoading(false);

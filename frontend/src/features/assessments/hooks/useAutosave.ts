@@ -22,7 +22,7 @@ export function useAutosave({ submissionId, answers }: UseAutosaveProps) {
   const [autosaveStatus, setAutosaveStatus] = useState<"saved" | "saving" | "error">("saved");
 
   const isInitializedRef = useRef(false);
-  const debounceTimersRef = useRef<Record<number, any>>({});
+  const debounceTimersRef = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const pendingSaveRef = useRef<{ answerId: number; selected: string[] | null; text: string | null } | null>(null);
 
   // Initialize local answers state on load, merging with localStorage draft if available

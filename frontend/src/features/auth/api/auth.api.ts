@@ -254,8 +254,8 @@ export interface AuditLog {
   action: string;
   entity_type: string;
   entity_id: number;
-  before_state: Record<string, any> | null;
-  after_state: Record<string, any> | null;
+  before_state: Record<string, unknown> | null;
+  after_state: Record<string, unknown> | null;
   ip_address: string | null;
   user_agent: string;
   created_at: string;

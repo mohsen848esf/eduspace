@@ -1,6 +1,8 @@
 import { type ReactionParticle } from "../../hooks/useReactions";
 import { cn } from "../../../../lib/utils";
 
+type ReactionStyle = React.CSSProperties & { "--sway": string };
+
 interface ReactionOverlayProps {
   particles: ReactionParticle[];
 }
@@ -18,8 +20,8 @@ export default function ReactionOverlay({ particles }: ReactionOverlayProps) {
             left: `${p.x}%`,
             animationDuration: `${p.speed}s`,
             transform: `scale(${p.scale}) rotate(${p.rotation}deg)`,
-            ["--sway" as any]: `${p.swayAmount}px`,
-          }}
+            "--sway": `${p.swayAmount}px`,
+          } as ReactionStyle}
         >
           {/* Floating Emoji */}
           <span

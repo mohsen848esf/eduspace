@@ -1,10 +1,11 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useLocalParticipant,
   useParticipants,
 } from "@livekit/components-react";
-import { Track } from "livekit-client";
+import { RemoteParticipant, Track, type Participant } from "livekit-client";
 import toast from "react-hot-toast";
 import { Icons } from "../../../../lib/constants/icons";
 import { cn } from "../../../../lib/utils";
@@ -121,15 +122,15 @@ export default function ParticipantsPanel() {
           ? t("recordingGrant.toastGranted", { username })
           : t("recordingGrant.toastRevoked", { username }),
       );
-    } catch (err: any) {
-      const detail = err?.response?.data?.error;
+    } catch (error: unknown) {
+      const detail = getApiErrorData(error)?.error;
       toast.error(detail || t("recordingGrant.toastFailed"));
     } finally {
       setGrantBusy(null);
     }
   };
 
-  const isParticipantHost = (p: any) => {
+  const isParticipantHost = (p: Participant) => {
     if (p.identity === localParticipant.identity) {
       return isHost;
     }
@@ -144,7 +145,7 @@ export default function ParticipantsPanel() {
     return false;
   };
 
-  const isParticipantCoHost = (p: any) => {
+  const isParticipantCoHost = (p: Participant) => {
     if (isParticipantHost(p)) return false;
     if (coHosts.includes(p.identity)) return true;
     if (p.metadata) {
@@ -167,7 +168,7 @@ export default function ParticipantsPanel() {
     [participants, isHost, coHosts, localParticipant.identity],
   );
 
-  const getHandRaiseInfo = (p: any) => {
+  const getHandRaiseInfo = (p: Participant) => {
     if (!p.metadata) return { raised: false, at: 0 };
     try {
       const meta = JSON.parse(p.metadata);
@@ -204,7 +205,7 @@ export default function ParticipantsPanel() {
     participant,
     isLocal,
   }: {
-    participant: any;
+    participant: Participant;
     isLocal?: boolean;
   }) => {
     const name = participant.name || participant.identity;
@@ -326,7 +327,7 @@ export default function ParticipantsPanel() {
             />
           )}
 
-          {canModerate && !isLocal && handRaised && (
+          {canModerate && participant instanceof RemoteParticipant && handRaised && (
             <button
               type="button"
               onClick={(e) => {

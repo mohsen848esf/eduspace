@@ -1,7 +1,9 @@
+import type { DriveStep } from "driver.js";
+
 export interface TourConfig {
   id: string;
   version: string;
-  steps: (isRTL: boolean) => any[];
+  steps: (isRTL: boolean) => DriveStep[];
 }
 
 export const toursList: Record<string, TourConfig> = {

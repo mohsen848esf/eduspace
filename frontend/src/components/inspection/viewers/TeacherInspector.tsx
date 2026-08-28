@@ -2,8 +2,9 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Calendar, Clock, ArrowRight } from "lucide-react";
 import type { InspectorViewerProps } from "../types";
+import type { OrgMember } from "@/features/auth/api/auth.api";
 
-export interface TeacherInspectorProps extends InspectorViewerProps {
+export interface TeacherInspectorProps extends InspectorViewerProps<OrgMember> {
   onOpenChange: (open: boolean) => void;
 }
 

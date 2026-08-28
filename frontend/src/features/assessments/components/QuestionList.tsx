@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import React, { useState } from "react";
 import {
   useQuestions,
@@ -95,7 +96,7 @@ export default function QuestionList({ bank, onBack }: QuestionListProps) {
     e.preventDefault();
     if (!text.trim()) return;
 
-    let correct_payload: any;
+    let correct_payload: Question["correct_answer"];
     if (qType === "single_choice" || qType === "multiple_choice") {
       correct_payload = correctAnswers;
     } else {
@@ -146,8 +147,8 @@ export default function QuestionList({ bank, onBack }: QuestionListProps) {
   const handleDelete = (id: number) => {
     if (window.confirm("Are you sure you want to permanently delete this question? This will fail if the question is archived or has history.")) {
       deleteQuestionMutation.mutate(id, {
-        onError: (err: any) => {
-          alert(err.response?.data?.detail || "Question has history or is archived and cannot be deleted physically.");
+        onError: (error: unknown) => {
+          alert(getApiErrorData(error)?.detail || "Question has history or is archived and cannot be deleted physically.");
         },
       });
     }

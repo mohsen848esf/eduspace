@@ -1,5 +1,6 @@
 import client from "../../../lib/api/client";
-import type { QuestionBank, Question, Assessment, Submission, StudentAnswer, Assignment, AssignmentSubmission } from "../types";
+import type { QuestionBank, Question, Assessment, AssessmentWritePayload, Submission, SubmissionGrades, StudentAnswer, Assignment, AssignmentSubmission } from "../types";
+import { unwrapList, type PaginatedResponse } from "@/lib/api/pagination";
 
 export const assessmentsApi = {
   // QuestionBanks API
@@ -45,11 +46,11 @@ export const assessmentsApi = {
     const res = await client.get(`/assessments/assessments/${id}/`);
     return res.data;
   },
-  createAssessment: async (data: Partial<Assessment>): Promise<Assessment> => {
+  createAssessment: async (data: AssessmentWritePayload): Promise<Assessment> => {
     const res = await client.post("/assessments/assessments/", data);
     return res.data;
   },
-  updateAssessment: async (id: number, data: Partial<Assessment>): Promise<Assessment> => {
+  updateAssessment: async (id: number, data: Partial<AssessmentWritePayload>): Promise<Assessment> => {
     const res = await client.patch(`/assessments/assessments/${id}/`, data);
     return res.data;
   },
@@ -82,7 +83,10 @@ export const assessmentsApi = {
     const res = await client.post(`/assessments/submissions/${id}/submit/`);
     return res.data;
   },
-  gradeSubmission: async (id: number, gradesDict: Record<number, any>): Promise<Submission> => {
+  gradeSubmission: async (
+    id: number,
+    gradesDict: SubmissionGrades,
+  ): Promise<Submission> => {
     const res = await client.post(`/assessments/submissions/${id}/grade/`, { grades_dict: gradesDict });
     return res.data;
   },
@@ -131,11 +135,10 @@ export const assessmentsApi = {
 
   // Assignment Submissions API
   getAssignmentSubmissions: async (params?: { assignment_id?: number; class_id?: number }): Promise<AssignmentSubmission[]> => {
-    const res = await client.get("/assessments/assignment-submissions/", { params });
-    if (res.data && typeof res.data === "object" && "results" in res.data) {
-      return (res.data as any).results;
-    }
-    return res.data;
+    const res = await client.get<
+      AssignmentSubmission[] | PaginatedResponse<AssignmentSubmission>
+    >("/assessments/assignment-submissions/", { params });
+    return unwrapList(res.data);
   },
   getAssignmentSubmission: async (id: number): Promise<AssignmentSubmission> => {
     const res = await client.get(`/assessments/assignment-submissions/${id}/`);

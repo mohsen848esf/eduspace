@@ -2,13 +2,13 @@ import { useState } from "react";
 import TileView from "./TileView";
 import SummaryOverflowTile from "./SummaryOverflowTile";
 import { useOrientation } from "../../../../hooks/useOrientation";
-import type { CallTile } from "../../hooks/useCallTiles";
+import type { CallTile, UseCallTilesResult } from "../../hooks/useCallTiles";
 import type { RemoteParticipant } from "livekit-client";
 import { cn } from "../../../../lib/utils";
 
 export interface SidebarLayoutProps {
   tiles: CallTile[];
-  tracks: any[];
+  tracks: UseCallTilesResult["tracks"];
   localIdentity: string;
   isHost?: boolean;
   onMute?: (p: RemoteParticipant) => void;

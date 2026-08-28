@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { sysAdminApi, type OperatorAuditLog } from "../api/sysadmin.api";
+import { getApiErrorMessage } from "../../../lib/api/errors";
 
 export default function AuditLogsView() {
   const [logs, setLogs] = useState<OperatorAuditLog[]>([]);
@@ -11,7 +12,7 @@ export default function AuditLogsView() {
     setLoading(true);
     sysAdminApi.getAuditLogs({ search })
       .then(setLogs)
-      .catch((err) => setError(err.response?.data?.detail || "Failed to load audit logs"))
+      .catch((error: unknown) => setError(getApiErrorMessage(error, "Failed to load audit logs")))
       .finally(() => setLoading(false));
   };
 

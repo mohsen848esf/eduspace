@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -32,8 +33,8 @@ export default function CoursesPage() {
       toast.success(isFarsi ? "دوره با موفقیت ایجاد شد" : "Course created successfully");
       setIsModalOpen(false);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ایجاد دوره" : "Failed to create course"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ایجاد دوره" : "Failed to create course"));
     }
   });
 
@@ -44,8 +45,8 @@ export default function CoursesPage() {
       toast.success(isFarsi ? "دوره با موفقیت ویرایش شد" : "Course updated successfully");
       setIsModalOpen(false);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ویرایش دوره" : "Failed to update course"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ویرایش دوره" : "Failed to update course"));
     }
   });
 
@@ -55,8 +56,8 @@ export default function CoursesPage() {
       queryClient.invalidateQueries({ queryKey: ["courses"] });
       toast.success(isFarsi ? "دوره با موفقیت حذف شد" : "Course deleted successfully");
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در حذف دوره" : "Failed to delete course"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در حذف دوره" : "Failed to delete course"));
     }
   });
 

@@ -6,7 +6,13 @@ import { Tooltip } from "../../../components/ui/Tooltip";
 import { Icons } from "../../../lib/constants/icons";
 import { cn } from "../../../lib/utils";
 import toast from "react-hot-toast";
-import { type CanvasElement } from "../types/whiteboard";
+import {
+  type CanvasElement,
+  type MediaElement,
+  type WhiteboardEventListener,
+  type WhiteboardOperation,
+  type WhiteboardSyncPayload,
+} from "../types/whiteboard";
 import InfiniteCanvas from "./InfiniteCanvas";
 
 import { Minus } from "lucide-react";
@@ -21,8 +27,8 @@ interface WhiteboardProps {
   onEnd: () => void;
   onMinimize?: () => void;
   toggleDrawingPermission: (allowed: boolean) => void;
-  broadcastWhiteboardEvent: (type: string, payload: any, reliable?: boolean) => void;
-  subscribeWhiteboardEvents: (fn: (type: string, payload: any, fromIdentity?: string) => void) => () => void;
+  broadcastWhiteboardEvent: (type: string, payload: unknown, reliable?: boolean) => void;
+  subscribeWhiteboardEvents: (fn: WhiteboardEventListener) => () => void;
   requestSyncState: () => void;
 }
 
@@ -148,7 +154,7 @@ export default function Whiteboard({
     return subscribeWhiteboardEvents((type, payload, fromIdentity) => {
       switch (type) {
         case "WHITEBOARD_OP": {
-          const op = payload as any;
+          const op = payload as WhiteboardOperation;
           if (fromIdentity === localParticipant.identity) break;
 
           switch (op.type) {
@@ -218,7 +224,7 @@ export default function Whiteboard({
           break;
 
         case "WHITEBOARD_SYNC": {
-          const syncData = payload as any;
+          const syncData = payload as WhiteboardSyncPayload;
           if (syncData && syncData.elements) {
             setElements(syncData.elements);
             // Seed initial history
@@ -269,7 +275,7 @@ export default function Whiteboard({
   };
 
   // Dispatch operations to participants
-  const handleBroadcastOp = (op: any) => {
+  const handleBroadcastOp = (op: WhiteboardOperation) => {
     const reliable = op.type !== "CURSOR";
     broadcastWhiteboardEvent("WHITEBOARD_OP", op, reliable);
   };
@@ -280,7 +286,7 @@ export default function Whiteboard({
     if (!url) return;
 
     const id = "el_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
-    const newEl: CanvasElement = {
+    const newEl: MediaElement = {
       id,
       type: "video",
       x: 100,
@@ -291,7 +297,7 @@ export default function Whiteboard({
       creatorId: localParticipant.identity,
       timestamp: Date.now(),
       url: url,
-    } as any;
+    };
 
     const nextElements = { ...elements, [id]: newEl };
     handleElementsChange(nextElements);
@@ -310,7 +316,7 @@ export default function Whiteboard({
       const reader = new FileReader();
       reader.onload = () => {
         const id = "el_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
-        const newEl: CanvasElement = {
+        const newEl: MediaElement = {
           id,
           type: "image",
           x: 150,
@@ -321,7 +327,7 @@ export default function Whiteboard({
           creatorId: localParticipant.identity,
           timestamp: Date.now(),
           url: reader.result as string,
-        } as any;
+        };
 
         const nextElements = { ...elements, [id]: newEl };
         handleElementsChange(nextElements);

@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useEffect, useState } from "react";
 import AppShell from "../../../components/layout/AppShell";
 import { billingApi } from "../api/billing.api";
@@ -40,8 +41,8 @@ export default function SubscriptionPage() {
       ]);
       setPlans(plansData);
       setSubscription(subData);
-    } catch (err: any) {
-      console.error("Failed to load subscription details", err);
+    } catch (error: unknown) {
+      console.error("Failed to load subscription details", error);
       setError("Failed to retrieve subscription configuration. Check connection or organization slug.");
     } finally {
       setLoading(false);
@@ -59,9 +60,9 @@ export default function SubscriptionPage() {
         return_url: window.location.href,
       });
       window.location.href = res.portal_url;
-    } catch (err: any) {
-      console.error("Portal error", err);
-      toast.error(err.response?.data?.detail || "Failed to launch customer portal.");
+    } catch (error: unknown) {
+      console.error("Portal error", error);
+      toast.error(getApiErrorData(error)?.detail || "Failed to launch customer portal.");
     } finally {
       setIsPortalLoading(false);
     }
@@ -86,9 +87,9 @@ export default function SubscriptionPage() {
       
       toast.loading("Redirecting to checkout session...");
       window.location.href = res.checkout_url;
-    } catch (err: any) {
-      console.error("Checkout session failed", err);
-      toast.error(err.response?.data?.detail || "Checkout session initialization failed.");
+    } catch (error: unknown) {
+      console.error("Checkout session failed", error);
+      toast.error(getApiErrorData(error)?.detail || "Checkout session initialization failed.");
     } finally {
       setIsCheckoutLoading(null);
     }

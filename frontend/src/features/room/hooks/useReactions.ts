@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useRoomContext, useLocalParticipant } from "@livekit/components-react";
+import type { Participant } from "livekit-client";
 
 export interface ReactionParticle {
   id: string;
@@ -83,7 +84,7 @@ export function useReactions() {
   );
 
   const handleDataMessage = useCallback(
-    (payload: Uint8Array, participant?: any) => {
+    (payload: Uint8Array, participant?: Participant) => {
       try {
         const decoder = new TextDecoder();
         const msg = JSON.parse(decoder.decode(payload));

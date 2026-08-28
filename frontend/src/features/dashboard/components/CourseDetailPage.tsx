@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -78,8 +79,8 @@ export default function CourseDetailPage() {
       toast.success(isFarsi ? "دوره با موفقیت ویرایش شد" : "Course updated");
       setIsEditOpen(false);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ویرایش" : "Failed to update course"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ویرایش" : "Failed to update course"));
     }
   });
 
@@ -90,8 +91,8 @@ export default function CourseDetailPage() {
       toast.success(isFarsi ? "دوره حذف شد" : "Course deleted");
       navigate("/academic/courses");
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در حذف" : "Failed to delete"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در حذف" : "Failed to delete"));
     }
   });
 

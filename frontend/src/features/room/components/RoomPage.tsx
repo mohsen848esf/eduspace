@@ -12,6 +12,7 @@ import {
   AudioPresets,
   ConnectionQuality,
   RoomEvent,
+  type Participant,
 } from "livekit-client";
 import { useRoomStore } from "../store/roomStore";
 import { useRoom } from "../hooks/useRoom";
@@ -85,7 +86,7 @@ function RoomContent({
   // Wire LiveKit data channel into the game, whiteboard, and reactions hooks.
   useEffect(() => {
     if (!room) return;
-    const handler = (payload: Uint8Array, participant?: unknown) => {
+    const handler = (payload: Uint8Array, participant?: Participant) => {
       handleGameDataMessage(payload, participant);
       handleWhiteboardDataMessage(payload, participant);
       handleReactionDataMessage(payload, participant);

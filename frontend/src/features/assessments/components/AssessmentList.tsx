@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -111,7 +112,7 @@ export default function AssessmentList() {
     e.preventDefault();
     if (!title.trim()) return;
 
-    const payload = {
+    const payload: import("../types").AssessmentWritePayload = {
       title,
       description,
       duration_minutes: duration,
@@ -122,13 +123,13 @@ export default function AssessmentList() {
 
     if (editingAssessment) {
       updateMutation.mutate(
-        { id: editingAssessment.id, data: payload as any },
+        { id: editingAssessment.id, data: payload },
         {
           onSuccess: () => setIsOpen(false),
         }
       );
     } else {
-      createMutation.mutate(payload as any, {
+      createMutation.mutate(payload, {
         onSuccess: () => setIsOpen(false),
       });
     }
@@ -163,8 +164,8 @@ export default function AssessmentList() {
         onSuccess: (sub) => {
           navigate(`/assessments/take/${sub.id}`);
         },
-        onError: (err: any) => {
-          alert(err.response?.data?.detail || "Could not start assessment.");
+        onError: (error: unknown) => {
+          alert(getApiErrorData(error)?.detail || "Could not start assessment.");
         },
       });
     }

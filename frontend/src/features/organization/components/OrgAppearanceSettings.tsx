@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
@@ -136,9 +137,9 @@ export default function OrgAppearanceSettings({
       }
       onSuccess?.();
     },
-    onError: (err: any) => {
+    onError: (error: unknown) => {
       toast.error(
-        err?.response?.data?.detail ||
+        getApiErrorData(error)?.detail ||
           (isFarsi
             ? "خطا در ذخیره تنظیمات ظاهر سازمان."
             : "Failed to save organization appearance.")

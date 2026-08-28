@@ -45,7 +45,7 @@ describe("useNotificationsStore user isolation and actions", () => {
   });
 
   it("marks notification as read and calls correct /auth/notifications/ endpoint", async () => {
-    (client.post as any).mockResolvedValue({ data: { success: true } });
+    vi.mocked(client.post).mockResolvedValue({ data: { success: true } });
 
     useNotificationsStore.getState().setUserId(1);
     useNotificationsStore.getState().add(
@@ -62,8 +62,8 @@ describe("useNotificationsStore user isolation and actions", () => {
   });
 
   it("supports batch operations (markReadBatch, markUnreadBatch, deleteBatch)", async () => {
-    (client.post as any).mockResolvedValue({ data: { success: true } });
-    (client.delete as any).mockResolvedValue({ data: { success: true } });
+    vi.mocked(client.post).mockResolvedValue({ data: { success: true } });
+    vi.mocked(client.delete).mockResolvedValue({ data: { success: true } });
 
     useNotificationsStore.getState().setUserId(1);
     useNotificationsStore.getState().add("ROOM_INVITE", { room_code: "A" }, { serverId: 10 });
@@ -89,7 +89,7 @@ describe("useNotificationsStore user isolation and actions", () => {
   });
 
   it("hydrates from /auth/notifications/ endpoint", async () => {
-    (client.get as any).mockResolvedValue({
+    vi.mocked(client.get).mockResolvedValue({
       data: {
         count: 1,
         results: [

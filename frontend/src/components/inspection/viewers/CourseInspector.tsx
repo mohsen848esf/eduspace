@@ -2,8 +2,9 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Calendar, ArrowRight } from "lucide-react";
 import type { InspectorViewerProps } from "../types";
+import type { Course } from "@/features/dashboard/types/crm.types";
 
-export interface CourseInspectorProps extends InspectorViewerProps {
+export interface CourseInspectorProps extends InspectorViewerProps<Course> {
   onOpenChange: (open: boolean) => void;
 }
 

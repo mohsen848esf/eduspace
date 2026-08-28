@@ -4,6 +4,7 @@ import { authApi, type User } from "../api/auth.api";
 import type { LoginInput, RegisterPayload } from "../schemas/auth.schema";
 import { useOrgContextStore } from "./orgContextStore";
 import { useNotificationsStore } from "@/features/notifications/store/notificationsStore";
+import { getApiErrorMessage } from "@/lib/api/errors";
 
 interface AuthState {
   user: User | null;
@@ -34,9 +35,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.setItem("refresh_token", res.refresh);
       useNotificationsStore.getState().setUserId(res.user.id);
       set({ user: res.user, isAuthenticated: true, isLoading: false });
-    } catch (err: any) {
+    } catch (error: unknown) {
       set({
-        error: err.response?.data?.error || i18n.t("auth:errors.loginFailed"),
+        error: getApiErrorMessage(error, i18n.t("auth:errors.loginFailed")),
         isLoading: false,
       });
     }
@@ -50,12 +51,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.setItem("refresh_token", res.refresh);
       useNotificationsStore.getState().setUserId(res.user.id);
       set({ user: res.user, isAuthenticated: true, isLoading: false });
-    } catch (err: any) {
-      const errors = err.response?.data;
-      const message = errors
-        ? Object.values(errors).flat().join(" ")
-        : i18n.t("auth:errors.registerFailed");
-      set({ error: message, isLoading: false });
+    } catch (error: unknown) {
+      set({
+        error: getApiErrorMessage(error, i18n.t("auth:errors.registerFailed")),
+        isLoading: false,
+      });
     }
   },
 

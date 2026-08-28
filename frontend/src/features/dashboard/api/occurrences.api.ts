@@ -1,6 +1,17 @@
 import client from "@/lib/api/client";
 import type { ClassOccurrence } from "../types/crm.types";
 
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  start: string;
+  end: string | null;
+  type: "session" | "occurrence" | "homework";
+  status: string;
+  class_id: number | null;
+  details_url: string | null;
+}
+
 export const occurrencesApi = {
   getOccurrences: async (params?: { class_id?: number; status?: string }): Promise<ClassOccurrence[]> => {
     const res = await client.get("/auth/occurrences/", { params });
@@ -20,8 +31,8 @@ export const occurrencesApi = {
     const res = await client.post(`/auth/occurrences/${id}/cancel/`);
     return res.data;
   },
-  getCalendarEvents: async (): Promise<any[]> => {
-    const res = await client.get("/auth/calendar/");
+  getCalendarEvents: async (): Promise<CalendarEvent[]> => {
+    const res = await client.get<CalendarEvent[]>("/auth/calendar/");
     return res.data;
   },
 };

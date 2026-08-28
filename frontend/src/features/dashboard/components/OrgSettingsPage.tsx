@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
@@ -213,8 +214,8 @@ export default function OrgSettingsPage() {
       }
       toast.success(isFarsi ? "تغییرات سازمان با موفقیت ذخیره شد" : "Organization settings saved successfully");
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ذخیره تغییرات" : "Failed to update organization"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ذخیره تغییرات" : "Failed to update organization"));
     }
   });
 
@@ -227,9 +228,9 @@ export default function OrgSettingsPage() {
       setInviteUser("");
       setInviteExpires("");
     },
-    onError: (err: any) => {
-      const detail = err.response?.data?.detail;
-      const fieldError = err.response?.data?.non_field_errors?.[0];
+    onError: (error: unknown) => {
+      const detail = getApiErrorData(error)?.detail;
+      const fieldError = getApiErrorData(error)?.non_field_errors?.[0];
       toast.error(detail || fieldError || (isFarsi ? "خطا در ارسال دعوت‌نامه" : "Failed to invite member"));
     }
   });
@@ -250,10 +251,10 @@ export default function OrgSettingsPage() {
         expires_at: "",
       });
     },
-    onError: (err: any) => {
-      const detail = err.response?.data?.detail;
-      const fieldError = err.response?.data?.non_field_errors?.[0];
-      const errorMsg = err.response?.data?.[0];
+    onError: (error: unknown) => {
+      const detail = getApiErrorData(error)?.detail;
+      const fieldError = getApiErrorData(error)?.non_field_errors?.[0];
+      const errorMsg = getApiErrorData(error)?.[0];
       toast.error(detail || fieldError || errorMsg || (isFarsi ? "خطا در ایجاد عضو جدید" : "Failed to create member"));
     }
   });
@@ -265,8 +266,8 @@ export default function OrgSettingsPage() {
       queryClient.invalidateQueries({ queryKey: ["orgMembers"] });
       toast.success(isFarsi ? "عضو با موفقیت ویرایش شد" : "Member updated successfully");
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ویرایش عضو" : "Failed to update member"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ویرایش عضو" : "Failed to update member"));
     }
   });
 
@@ -276,8 +277,8 @@ export default function OrgSettingsPage() {
       queryClient.invalidateQueries({ queryKey: ["orgMembers"] });
       toast.success(isFarsi ? "عضو با موفقیت حذف شد" : "Member removed successfully");
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در حذف عضو" : "Failed to remove member"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در حذف عضو" : "Failed to remove member"));
     }
   });
 
@@ -287,8 +288,8 @@ export default function OrgSettingsPage() {
       queryClient.invalidateQueries({ queryKey: ["orgSessions"] });
       toast.success(isFarsi ? "اتصال با موفقیت خاتمه یافت" : "Session revoked successfully");
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در لغو اتصال" : "Failed to revoke session"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در لغو اتصال" : "Failed to revoke session"));
     }
   });
 
@@ -302,8 +303,8 @@ export default function OrgSettingsPage() {
       setNewRoleDesc("");
       setNewRolePerms([]);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ایجاد نقش" : "Failed to create role"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ایجاد نقش" : "Failed to create role"));
     }
   });
 
@@ -314,8 +315,8 @@ export default function OrgSettingsPage() {
       queryClient.invalidateQueries({ queryKey: ["orgRoles"] });
       toast.success(isFarsi ? "نقش با موفقیت بروزرسانی شد" : "Role updated successfully");
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در بروزرسانی نقش" : "Failed to update role"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در بروزرسانی نقش" : "Failed to update role"));
     }
   });
 
@@ -325,8 +326,8 @@ export default function OrgSettingsPage() {
       queryClient.invalidateQueries({ queryKey: ["orgRoles"] });
       toast.success(isFarsi ? "نقش با موفقیت حذف شد" : "Role deleted successfully");
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در حذف نقش" : "Failed to delete role"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در حذف نقش" : "Failed to delete role"));
     }
   });
 
@@ -401,7 +402,7 @@ export default function OrgSettingsPage() {
     if (!selectedMemberForRoleChange) return;
     updateMemberMutation.mutate({
       id: selectedMemberForRoleChange.id,
-      data: { role: newRoleId ? parseInt(newRoleId) : null } as any,
+      data: { role: newRoleId ? parseInt(newRoleId) : null },
     }, {
       onSuccess: () => {
         setIsRoleChangeOpen(false);
@@ -493,7 +494,10 @@ export default function OrgSettingsPage() {
     return { backgroundColor: "var(--s3)", color: "var(--t2)", border: "1px solid var(--b)" };
   };
 
-  const renderStateChanges = (before: Record<string, any> | null, after: Record<string, any> | null) => {
+  const renderStateChanges = (
+    before: Record<string, unknown> | null,
+    after: Record<string, unknown> | null,
+  ) => {
     if (!before && !after) return <div className="text-xs text-[var(--t3)]">{isFarsi ? "اطلاعاتی ثبت نشده است" : "No state recorded"}</div>;
 
     if (!before && after) {

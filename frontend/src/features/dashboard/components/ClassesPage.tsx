@@ -1,8 +1,9 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useState, useEffect, Fragment } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
-import { crmApi, type AcademyClass } from "../api/crm.api";
+import { crmApi, type AcademyClass, type SimpleUser } from "../api/crm.api";
 import { useOrgPermission } from "../../../hooks/useOrgPermission";
 import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
@@ -63,8 +64,8 @@ export default function ClassesPage() {
       toast.success(isFarsi ? "کلاس با موفقیت ایجاد شد" : "Class created successfully");
       setIsModalOpen(false);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ایجاد کلاس" : "Failed to create class"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ایجاد کلاس" : "Failed to create class"));
     }
   });
 
@@ -75,8 +76,8 @@ export default function ClassesPage() {
       toast.success(isFarsi ? "کلاس با موفقیت ویرایش شد" : "Class updated successfully");
       setIsModalOpen(false);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ویرایش کلاس" : "Failed to update class"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ویرایش کلاس" : "Failed to update class"));
     }
   });
 
@@ -86,14 +87,14 @@ export default function ClassesPage() {
       queryClient.invalidateQueries({ queryKey: ["classes"] });
       toast.success(isFarsi ? "کلاس با موفقیت حذف شد" : "Class deleted successfully");
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در حذف کلاس" : "Failed to delete class"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در حذف کلاس" : "Failed to delete class"));
     }
   });
 
   // Autocomplete Search State
   const [userSearchQuery, setUserSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SimpleUser[]>([]);
   const [studentSearch, setStudentSearch] = useState("");
   const [isStudentDropdownOpen, setIsStudentDropdownOpen] = useState(false);
 
@@ -142,7 +143,7 @@ export default function ClassesPage() {
     recurrence_max_occurrences: "",
   });
   const [mentorSearchQuery, setMentorSearchQuery] = useState("");
-  const [mentorSearchResults, setMentorSearchResults] = useState<any[]>([]);
+  const [mentorSearchResults, setMentorSearchResults] = useState<SimpleUser[]>([]);
 
   useEffect(() => {
     if (userSearchQuery.length >= 2) {
@@ -1057,7 +1058,7 @@ interface EnrollmentManagerModalProps {
 function EnrollmentManagerModal({ cls, isFarsi, onClose }: EnrollmentManagerModalProps) {
   const queryClient = useQueryClient();
   const [studentSearch, setStudentSearch] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SimpleUser[]>([]);
 
   // Fetch all enrollments
   const { data: allEnrollments = [], isLoading } = useQuery({
@@ -1088,8 +1089,8 @@ function EnrollmentManagerModal({ cls, isFarsi, onClose }: EnrollmentManagerModa
       setStudentSearch("");
       setSearchResults([]);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ثبت‌نام دانشجو" : "Failed to enroll student"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ثبت‌نام دانشجو" : "Failed to enroll student"));
     },
   });
 
@@ -1099,8 +1100,8 @@ function EnrollmentManagerModal({ cls, isFarsi, onClose }: EnrollmentManagerModa
       queryClient.invalidateQueries({ queryKey: ["enrollments"] });
       toast.success(isFarsi ? "ثبت‌نام دانشجو لغو شد" : "Student enrollment removed successfully");
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در لغو ثبت‌نام" : "Failed to remove enrollment"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در لغو ثبت‌نام" : "Failed to remove enrollment"));
     },
   });
 

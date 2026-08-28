@@ -68,7 +68,7 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
   // Flatten results for keyboard navigation mapping
   const flattenedItems = useMemo(() => {
     if (!results) return [];
-    const searchResults = 'results' in results && results.results ? (results.results as any) : results;
+    const searchResults = results;
 
     const items: Array<{
       type: string;
@@ -80,7 +80,7 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     }> = [];
 
     // Students
-    (searchResults.students || []).forEach((s: any) => {
+    searchResults.students.forEach((s) => {
       items.push({
         type: "student",
         id: s.id,
@@ -92,7 +92,7 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     });
 
     // Teachers
-    (searchResults.teachers || []).forEach((th: any) => {
+    searchResults.teachers.forEach((th) => {
       items.push({
         type: "teacher",
         id: th.id,
@@ -104,7 +104,7 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     });
 
     // Courses
-    (searchResults.courses || []).forEach((c: any) => {
+    searchResults.courses.forEach((c) => {
       items.push({
         type: "course",
         id: c.id,
@@ -116,7 +116,7 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     });
 
     // Classes
-    (searchResults.classes || []).forEach((cl: any) => {
+    searchResults.classes.forEach((cl) => {
       items.push({
         type: "class",
         id: cl.id,
@@ -128,7 +128,7 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     });
 
     // Sessions
-    (searchResults.sessions || []).forEach((se: any) => {
+    searchResults.sessions.forEach((se) => {
       items.push({
         type: "session",
         id: se.id,
@@ -140,7 +140,7 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     });
 
     // Assessments
-    (searchResults.assessments || []).forEach((a: any) => {
+    searchResults.assessments.forEach((a) => {
       items.push({
         type: "assessment",
         id: a.id,
@@ -152,7 +152,7 @@ export default function GlobalSearchModal({ open, onClose }: GlobalSearchModalPr
     });
 
     // Invoices
-    (searchResults.invoices || []).forEach((inv: any) => {
+    searchResults.invoices.forEach((inv) => {
       items.push({
         type: "invoice",
         id: inv.id,

@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -14,6 +15,7 @@ import AppShell from "../../../components/layout/AppShell";
 import { useLocale } from "../../../i18n/useLocale";
 import { Calendar, Download, CheckCircle, Clock, Award, ShieldAlert, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import InspectionDrawer from "../../../components/ui/InspectionDrawer";
+import type { AssignmentSubmission } from "../types";
 
 export default function AssignmentDetailPage() {
   const { assignmentId } = useParams<{ assignmentId: string }>();
@@ -87,8 +89,8 @@ export default function AssignmentDetailPage() {
       setSubmissionText("");
       setSubmissionFile(null);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ارسال پاسخ" : "Failed to submit assignment"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ارسال پاسخ" : "Failed to submit assignment"));
     }
   });
 
@@ -104,7 +106,8 @@ export default function AssignmentDetailPage() {
   };
 
   // ── Teacher grading states & mutations ───────────────────────────
-  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
+  const [selectedSubmission, setSelectedSubmission] =
+    useState<AssignmentSubmission | null>(null);
   const [isGradingOpen, setIsGradingOpen] = useState(false);
   const [grade, setGrade] = useState("100");
   const [feedback, setFeedback] = useState("");
@@ -115,13 +118,13 @@ export default function AssignmentDetailPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["assignment-submissions-all", id] });
       toast.success(isFarsi ? "نمره با موفقیت ثبت شد" : "Submission graded successfully!");
-      setSelectedSubmission((prev: any) => ({
-        ...prev,
+      setSelectedSubmission((previous) => ({
+        ...previous!,
         ...data,
       }));
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ثبت نمره" : "Failed to save grade"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ثبت نمره" : "Failed to save grade"));
     }
   });
 
@@ -137,7 +140,7 @@ export default function AssignmentDetailPage() {
     });
   };
 
-  const openGradingModal = (sub: any) => {
+  const openGradingModal = (sub: AssignmentSubmission) => {
     setSelectedSubmission(sub);
     setGrade(sub.grade || "100");
     setFeedback(sub.feedback || "");

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { assessmentsApi } from "../api/assessments.api";
-import type { Assessment } from "../types";
+import type { Assessment, AssessmentWritePayload } from "../types";
 
 export function useAssessments() {
   return useQuery<Assessment[]>({
@@ -20,7 +20,7 @@ export function useAssessment(id: number) {
 export function useCreateAssessment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: Partial<Assessment>) => assessmentsApi.createAssessment(data),
+    mutationFn: (data: AssessmentWritePayload) => assessmentsApi.createAssessment(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["assessments"] });
     },
@@ -30,7 +30,7 @@ export function useCreateAssessment() {
 export function useUpdateAssessment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Assessment> }) =>
+    mutationFn: ({ id, data }: { id: number; data: Partial<AssessmentWritePayload> }) =>
       assessmentsApi.updateAssessment(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["assessments"] });

@@ -1,8 +1,9 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
-import { crmApi, type AcademyClass } from "../api/crm.api";
+import { crmApi, type AcademyClass, type SimpleUser } from "../api/crm.api";
 import { useSessions } from "../../sessions/hooks/useSessions";
 import { useOrgPermission } from "../../../hooks/useOrgPermission";
 import { useAuthStore } from "../../auth/store/authStore";
@@ -103,8 +104,8 @@ export default function ClassDetailPage() {
       toast.success(isFarsi ? "جلسه کلاس با موفقیت شروع شد" : "Class session started successfully");
       navigate(`/rooms/${data.room_code}?token=${data.token}`);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در شروع جلسه کلاس" : "Failed to start class session"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در شروع جلسه کلاس" : "Failed to start class session"));
     }
   });
 
@@ -114,8 +115,8 @@ export default function ClassDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["occurrences", id] });
       toast.success(isFarsi ? "جلسه کلاس با موفقیت خاتمه یافت" : "Class session completed");
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در خاتمه دادن جلسه" : "Failed to complete session"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در خاتمه دادن جلسه" : "Failed to complete session"));
     }
   });
 
@@ -125,8 +126,8 @@ export default function ClassDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["occurrences", id] });
       toast.success(isFarsi ? "جلسه کلاس با موفقیت لغو شد" : "Class session cancelled");
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در لغو جلسه" : "Failed to cancel session"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در لغو جلسه" : "Failed to cancel session"));
     }
   });
 
@@ -150,8 +151,8 @@ export default function ClassDetailPage() {
       setAssignmentForm({ title: "", description: "", due_date: "", session: "" });
       setAssignmentAttachment(null);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ایجاد تکلیف" : "Failed to create assignment"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ایجاد تکلیف" : "Failed to create assignment"));
     }
   });
 
@@ -164,8 +165,8 @@ export default function ClassDetailPage() {
       setSubmissionForm({ submission_text: "" });
       setSubmissionFile(null);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ارسال پاسخ" : "Failed to submit homework"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ارسال پاسخ" : "Failed to submit homework"));
     }
   });
 
@@ -218,9 +219,9 @@ export default function ClassDetailPage() {
     max_students: ""
   });
   const [teacherSearch, setTeacherSearch] = useState("");
-  const [teacherResults, setTeacherResults] = useState<any[]>([]);
+  const [teacherResults, setTeacherResults] = useState<SimpleUser[]>([]);
   const [mentorSearch, setMentorSearch] = useState("");
-  const [mentorResults, setMentorResults] = useState<any[]>([]);
+  const [mentorResults, setMentorResults] = useState<SimpleUser[]>([]);
 
   useEffect(() => {
     if (teacherSearch.length >= 2) {
@@ -266,8 +267,8 @@ export default function ClassDetailPage() {
       toast.success(isFarsi ? "کلاس با موفقیت ویرایش شد" : "Class updated");
       setIsEditOpen(false);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ویرایش" : "Failed to update class"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ویرایش" : "Failed to update class"));
     }
   });
 
@@ -278,8 +279,8 @@ export default function ClassDetailPage() {
       toast.success(isFarsi ? "کلاس حذف شد" : "Class deleted");
       navigate("/academic/classes");
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در حذف" : "Failed to delete"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در حذف" : "Failed to delete"));
     }
   });
 
@@ -291,8 +292,8 @@ export default function ClassDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       navigate(`/room/${data.active_room_code}`);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || err.response?.data?.error || (isFarsi ? "خطا در شروع کلاس" : "Failed to start class"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || getApiErrorData(error)?.error || (isFarsi ? "خطا در شروع کلاس" : "Failed to start class"));
     }
   });
 
@@ -314,7 +315,7 @@ export default function ClassDetailPage() {
 
   // ── Enroll Student ───────────────────────────────────────────────
   const [studentSearch, setStudentSearch] = useState("");
-  const [studentResults, setStudentResults] = useState<any[]>([]);
+  const [studentResults, setStudentResults] = useState<SimpleUser[]>([]);
   const [isEnrollOpen, setIsEnrollOpen] = useState(false);
 
   useEffect(() => {
@@ -333,8 +334,8 @@ export default function ClassDetailPage() {
       setStudentSearch("");
       setStudentResults([]);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ثبت‌نام" : "Failed to enroll"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ثبت‌نام" : "Failed to enroll"));
     }
   });
 
@@ -562,7 +563,10 @@ export default function ClassDetailPage() {
 
                   {/* Next Occurrence Callout */}
                   {(() => {
-                    const upcoming = occurrences.filter((o: any) => o.status === 'scheduled' || o.status === 'live');
+                    const upcoming = occurrences.filter(
+                      (occurrence) =>
+                        occurrence.status === "scheduled" || occurrence.status === "live",
+                    );
                     if (upcoming.length === 0) return null;
                     const next = upcoming[0];
                     const isNextLive = next.status === 'live';
@@ -641,7 +645,7 @@ export default function ClassDetailPage() {
                             </td>
                           </tr>
                         ) : (
-                          occurrences.map((o: any) => (
+                          occurrences.map((o) => (
                             <tr key={o.id} className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors">
                               <td className="p-3 font-semibold text-[var(--t1)]">
                                 {new Date(o.scheduled_start).toLocaleDateString(isFarsi ? "fa-IR" : "en-US")}
@@ -668,11 +672,21 @@ export default function ClassDetailPage() {
                               </td>
                               <td className="p-3 text-right flex items-center justify-end gap-1">
                                 {o.status === 'live' ? (
-                                  <Link to={`/room/${o.room_code}`}>
-                                    <button className="text-[10px] font-semibold text-[var(--green)] hover:underline bg-transparent border-none cursor-pointer">
-                                      {isFarsi ? "ورود" : "Join"}
-                                    </button>
-                                  </Link>
+                                  <>
+                                    <Link to={`/room/${o.room_code}`}>
+                                      <button className="text-[10px] font-semibold text-[var(--green)] hover:underline bg-transparent border-none cursor-pointer">
+                                        {isFarsi ? "ورود" : "Join"}
+                                      </button>
+                                    </Link>
+                                    {(isAdmin || (isTeacher && isMyClass)) && (
+                                      <button
+                                        onClick={() => completeOccurrenceMutation.mutate(o.id)}
+                                        className="text-[10px] font-semibold text-[var(--brand)] hover:underline bg-transparent border-none cursor-pointer"
+                                      >
+                                        {isFarsi ? "خاتمه" : "Complete"}
+                                      </button>
+                                    )}
+                                  </>
                                 ) : o.status === 'scheduled' && (isAdmin || (isTeacher && isMyClass)) ? (
                                   <>
                                     <button 
@@ -690,13 +704,6 @@ export default function ClassDetailPage() {
                                       {isFarsi ? "لغو" : "Cancel"}
                                     </button>
                                   </>
-                                ) : o.status === 'live' && (isAdmin || (isTeacher && isMyClass)) ? (
-                                  <button 
-                                    onClick={() => completeOccurrenceMutation.mutate(o.id)}
-                                    className="text-[10px] font-semibold text-[var(--brand)] hover:underline bg-transparent border-none cursor-pointer"
-                                  >
-                                    {isFarsi ? "خاتمه" : "Complete"}
-                                  </button>
                                 ) : "—"}
                               </td>
                             </tr>
@@ -1221,13 +1228,13 @@ export default function ClassDetailPage() {
               >
                 <option value="">{isFarsi ? "تکلیف کلی کلاس (بدون جلسه خاص)" : "Class Homework (No specific session)"}</option>
                 {cls?.scheduling_mode === 'automatic' ? (
-                  occurrences.map((o: any) => (
+                  occurrences.map((o) => (
                     <option key={o.id} value={o.id}>
                       Session - {new Date(o.scheduled_start).toLocaleDateString(language === 'fa' ? 'fa-IR' : 'en-US')} ({new Date(o.scheduled_start).toLocaleTimeString(language === 'fa' ? 'fa-IR' : 'en-US', { hour: '2-digit', minute: '2-digit' })})
                     </option>
                   ))
                 ) : (
-                  classSessions.map((s: any) => (
+                  classSessions.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.title} ({new Date(s.scheduled_start || s.created_at).toLocaleDateString(language === 'fa' ? 'fa-IR' : 'en-US')})
                     </option>

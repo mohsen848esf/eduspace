@@ -2,8 +2,9 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { FileText, ArrowRight } from "lucide-react";
 import type { InspectorViewerProps } from "../types";
+import type { Assignment } from "@/features/assessments/types";
 
-export interface AssignmentInspectorProps extends InspectorViewerProps {
+export interface AssignmentInspectorProps extends InspectorViewerProps<Assignment> {
   onOpenChange: (open: boolean) => void;
 }
 

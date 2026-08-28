@@ -1,8 +1,10 @@
 import React from "react";
 import type { InspectorViewerProps } from "../types";
+import type { OrgMember } from "@/features/auth/api/auth.api";
+import type { Enrollment } from "@/features/dashboard/types/crm.types";
 
-export interface MentorInspectorProps extends InspectorViewerProps {
-  mentorStudents: any[];
+export interface MentorInspectorProps extends InspectorViewerProps<OrgMember> {
+  mentorStudents: Enrollment[];
   loadingExtra: boolean;
 }
 
@@ -107,7 +109,7 @@ export const MentorInspector: React.FC<MentorInspectorProps> = ({
           </div>
         ) : (
           <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-            {mentorStudents.map((enroll: any) => (
+            {mentorStudents.map((enroll) => (
               <div
                 key={enroll.id}
                 className="flex justify-between items-center p-3 rounded-xl bg-[var(--s2)] border border-[var(--b)] text-xs"

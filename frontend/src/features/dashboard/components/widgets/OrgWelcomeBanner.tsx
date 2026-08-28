@@ -2,10 +2,11 @@ import React from "react";
 import { Clock, ShieldCheck, Sparkles } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import { getMediaUrl } from "@/lib/api/client";
+import type { OrgContext, User } from "@/features/auth/api/auth.api";
 
 export interface OrgWelcomeBannerProps {
-  user: any;
-  activeOrg: any;
+  user: User | null;
+  activeOrg: OrgContext["organization"];
   activeRole: string | null;
   isFarsi: boolean;
   localeTag: string;

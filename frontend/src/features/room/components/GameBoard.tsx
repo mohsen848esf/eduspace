@@ -5,6 +5,7 @@ import {
   useLocalParticipant,
   VideoTrack,
   useTracks,
+  isTrackReference,
 } from "@livekit/components-react";
 import { Track, type Participant } from "livekit-client";
 import { type GameBoardState } from "../hooks/useGameBoard";
@@ -107,10 +108,7 @@ function ParticipantStrip({
             tr.source === Track.Source.Camera,
         );
         const hasVideo =
-          camTrack &&
-          "publication" in camTrack &&
-          camTrack.publication &&
-          !camTrack.publication.isMuted;
+          camTrack && isTrackReference(camTrack) && !camTrack.publication.isMuted;
 
         return (
           <div
@@ -121,9 +119,9 @@ function ParticipantStrip({
                 "ring-2 ring-[var(--brand)] ring-offset-1 ring-offset-[var(--s1)]",
             )}
           >
-            {hasVideo && camTrack ? (
+            {hasVideo && camTrack && isTrackReference(camTrack) ? (
               <VideoTrack
-                trackRef={camTrack as any}
+                trackRef={camTrack}
                 className={cn(
                   "w-full h-full object-cover",
                   entry.isLocal && "scale-x-[-1]",

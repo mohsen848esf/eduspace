@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,6 +16,7 @@ import { useQueryParamState } from "../../../hooks/useQueryParamState";
 import { useAuthStore } from "../../auth/store/authStore";
 import InspectionDrawer from "../../../components/ui/InspectionDrawer";
 import { TableRowActions } from "../../../components/ui/TableRowActions";
+import { parseInspectionEntityType } from "@/components/inspection/types";
 
 type SubTab = "enrollments" | "directory" | "roles";
 type StatusFilter = "all" | "active" | "inactive";
@@ -109,7 +111,7 @@ export default function MembersPage() {
     if (!selectedMemberForRoleChange) return;
     updateMemberMutation.mutate({
       id: selectedMemberForRoleChange.id,
-      data: { role: newRoleId ? parseInt(newRoleId) : null } as any,
+      data: { role: newRoleId ? parseInt(newRoleId) : null },
     }, {
       onSuccess: () => {
         setIsRoleChangeOpen(false);
@@ -180,8 +182,12 @@ export default function MembersPage() {
   const filteredEnrollments = useMemo(() => {
     let result = enrollments;
     if (myMentoredOnly && user) {
-      const mentoredClassIds = classes.filter((c: any) => c.mentor === user.id).map((c: any) => c.id);
-      result = result.filter((e: any) => mentoredClassIds.includes(e.academy_class));
+      const mentoredClassIds = classes
+        .filter((academyClass) => academyClass.mentor === user.id)
+        .map((academyClass) => academyClass.id);
+      result = result.filter((enrollment) =>
+        mentoredClassIds.includes(enrollment.academy_class),
+      );
     }
     return result;
   }, [enrollments, myMentoredOnly, classes, user]);
@@ -198,8 +204,8 @@ export default function MembersPage() {
       toast.success(isFarsi ? "ثبت‌نام با موفقیت انجام شد" : "Enrollment created successfully");
       setIsModalOpen(false);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ثبت‌نام" : "Failed to enroll student"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ثبت‌نام" : "Failed to enroll student"));
     }
   });
 
@@ -210,8 +216,8 @@ export default function MembersPage() {
       toast.success(isFarsi ? "ثبت‌نام با موفقیت ویرایش شد" : "Enrollment updated successfully");
       setIsModalOpen(false);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ویرایش ثبت‌نام" : "Failed to update enrollment"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ویرایش ثبت‌نام" : "Failed to update enrollment"));
     }
   });
 
@@ -221,8 +227,8 @@ export default function MembersPage() {
       queryClient.invalidateQueries({ queryKey: ["enrollments"] });
       toast.success(isFarsi ? "لغو ثبت‌نام با موفقیت انجام شد" : "Enrollment deleted successfully");
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در لغو ثبت‌نام" : "Failed to delete enrollment"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در لغو ثبت‌نام" : "Failed to delete enrollment"));
     }
   });
 
@@ -237,8 +243,8 @@ export default function MembersPage() {
       setIsInviteModalOpen(false);
       setInviteForm({ username: "", email: "", role: "", contract_type: "full_time" });
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.detail || err.response?.data?.[0] || (isFarsi ? "خطا در ارسال دعوت‌نامه" : "Failed to invite member");
+    onError: (error: unknown) => {
+      const msg = getApiErrorData(error)?.detail || getApiErrorData(error)?.[0] || (isFarsi ? "خطا در ارسال دعوت‌نامه" : "Failed to invite member");
       toast.error(typeof msg === "string" ? msg : JSON.stringify(msg));
     }
   });
@@ -258,8 +264,8 @@ export default function MembersPage() {
         contract_type: "full_time"
       });
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.detail || err.response?.data?.[0] || (isFarsi ? "خطا در ایجاد عضو جدید" : "Failed to create member");
+    onError: (error: unknown) => {
+      const msg = getApiErrorData(error)?.detail || getApiErrorData(error)?.[0] || (isFarsi ? "خطا در ایجاد عضو جدید" : "Failed to create member");
       toast.error(typeof msg === "string" ? msg : JSON.stringify(msg));
     }
   });
@@ -297,8 +303,8 @@ export default function MembersPage() {
       setIsRoleModalOpen(false);
       setRoleForm({ name: "", description: "", permissions: [] });
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.name?.[0] || err.response?.data?.detail || (isFarsi ? "خطا در ایجاد نقش" : "Failed to create role");
+    onError: (error: unknown) => {
+      const msg = getApiErrorData(error)?.name?.[0] || getApiErrorData(error)?.detail || (isFarsi ? "خطا در ایجاد نقش" : "Failed to create role");
       toast.error(msg);
     }
   });
@@ -312,8 +318,8 @@ export default function MembersPage() {
       setIsRoleModalOpen(false);
       setRoleForm({ name: "", description: "", permissions: [] });
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.name?.[0] || err.response?.data?.detail || (isFarsi ? "خطا در ویرایش نقش" : "Failed to update role");
+    onError: (error: unknown) => {
+      const msg = getApiErrorData(error)?.name?.[0] || getApiErrorData(error)?.detail || (isFarsi ? "خطا در ویرایش نقش" : "Failed to update role");
       toast.error(msg);
     }
   });
@@ -324,8 +330,8 @@ export default function MembersPage() {
       queryClient.invalidateQueries({ queryKey: ["roles"] });
       toast.success(isFarsi ? "نقش حذف شد" : "Role deleted");
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.error || err.response?.data?.detail || (isFarsi ? "خطا در حذف نقش" : "Failed to delete role");
+    onError: (error: unknown) => {
+      const msg = getApiErrorData(error)?.error || getApiErrorData(error)?.detail || (isFarsi ? "خطا در حذف نقش" : "Failed to delete role");
       toast.error(msg);
     }
   });
@@ -510,7 +516,7 @@ export default function MembersPage() {
                 )}
               </div>
 
-              {classes.some((c: any) => c.mentor === user?.id) && (
+              {classes.some((academyClass) => academyClass.mentor === user?.id) && (
                 <div className="flex items-center gap-2 p-4 bg-[var(--s1)]/40 border-b border-[var(--b)] text-xs text-[var(--t1)]">
                   <label className="flex items-center gap-2 font-medium cursor-pointer">
                     <input
@@ -711,7 +717,7 @@ export default function MembersPage() {
                     </thead>
                     <tbody>
                       {filteredMembers.map((m) => {
-                        const u = m.user_details || {} as any;
+                        const u = m.user_details;
                         return (
                           <tr key={m.id} className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors text-left">
                             <td className="p-4">
@@ -767,7 +773,7 @@ export default function MembersPage() {
                                       onClick: () => {
                                         updateMemberMutation.mutate({
                                           id: m.id,
-                                          data: { is_active: !m.is_active } as any,
+                                          data: { is_active: !m.is_active },
                                         });
                                       },
                                       isEdit: true,
@@ -974,7 +980,12 @@ export default function MembersPage() {
                 <select
                   className="w-full bg-[var(--s2)] text-[var(--t1)] text-sm border border-[var(--b)] rounded-xl px-4 py-2.5 outline-none focus:border-[var(--brand)] transition-colors"
                   value={enrollmentForm.completion_status}
-                  onChange={(e) => setEnrollmentForm({ ...enrollmentForm, completion_status: e.target.value as any })}
+                  onChange={(e) =>
+                    setEnrollmentForm({
+                      ...enrollmentForm,
+                      completion_status: e.target.value as NonNullable<Enrollment["completion_status"]>,
+                    })
+                  }
                   required
                 >
                   <option value="in_progress">{isFarsi ? "در حال یادگیری" : "In Progress"}</option>
@@ -1332,7 +1343,7 @@ export default function MembersPage() {
             setInspectId(null);
           }
         }}
-        entityType={inspectType as any}
+        entityType={parseInspectionEntityType(inspectType)}
         entityId={inspectId}
       />
     </AppShell>

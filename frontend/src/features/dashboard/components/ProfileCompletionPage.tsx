@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import client from "../../../lib/api/client";
@@ -12,6 +13,17 @@ import Spinner from "../../../components/ui/Spinner";
 import GDPRControl from "../../auth/components/GDPRControl";
 import { ImageUpload } from "../../../components/forms/ImageUpload";
 
+interface Certificate {
+  id: number;
+  certificate_number: string;
+  academy_class: number;
+  class_name: string;
+  course_title: string;
+  issued_at: string;
+  student_full_name?: string;
+  student_username?: string;
+}
+
 export default function ProfileCompletionPage() {
   const { language } = useLocale();
   const isFarsi = language === "fa";
@@ -23,7 +35,7 @@ export default function ProfileCompletionPage() {
   const { data: certificates = [], isLoading: loadingCerts } = useQuery({
     queryKey: ["certificates"],
     queryFn: async () => {
-      const res = await client.get("/auth/certificates/");
+      const res = await client.get<Certificate[]>("/auth/certificates/");
       return res.data;
     },
   });
@@ -43,8 +55,8 @@ export default function ProfileCompletionPage() {
       await fetchMe();
       toast.success(isFarsi ? "پروفایل با موفقیت بروزرسانی شد" : "Profile updated successfully");
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در بروزرسانی پروفایل" : "Failed to update profile"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در بروزرسانی پروفایل" : "Failed to update profile"));
     }
   });
 
@@ -181,7 +193,7 @@ export default function ProfileCompletionPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {certificates.map((cert: any) => (
+              {certificates.map((cert) => (
                 <div
                   key={cert.id}
                   className="p-5 border border-[var(--b)] rounded-xl bg-[var(--s3)] flex flex-col justify-between gap-4 relative overflow-hidden"

@@ -9,7 +9,7 @@ import { Track, RemoteParticipant, type Participant } from "livekit-client";
 import { Icons } from "../../../../lib/constants/icons";
 import { Tooltip } from "../../../../components/ui/Tooltip";
 import { cn } from "../../../../lib/utils";
-import type { CallTile } from "../../hooks/useCallTiles";
+import type { CallTile, UseCallTilesResult } from "../../hooks/useCallTiles";
 
 function getInitials(name: string): string {
   if (!name) return "";
@@ -32,7 +32,7 @@ function getAvatarGradient(identity: string): string {
   return gradients[(identity || "").charCodeAt(0) % gradients.length];
 }
 
-function getCamRef(participant: Participant, tracks: any[]) {
+function getCamRef(participant: Participant, tracks: UseCallTilesResult["tracks"]) {
   return tracks.find(
     (t) =>
       t.participant.identity === participant.identity &&
@@ -40,7 +40,7 @@ function getCamRef(participant: Participant, tracks: any[]) {
   );
 }
 
-function getScreenRef(participant: Participant, tracks: any[]) {
+function getScreenRef(participant: Participant, tracks: UseCallTilesResult["tracks"]) {
   return tracks.find(
     (t) =>
       t.participant.identity === participant.identity &&
@@ -50,7 +50,7 @@ function getScreenRef(participant: Participant, tracks: any[]) {
 
 export interface TileViewProps {
   tile: CallTile;
-  tracks: any[];
+  tracks: UseCallTilesResult["tracks"];
   localIdentity: string;
   isHost?: boolean;
   onMute?: (p: RemoteParticipant) => void;
@@ -102,8 +102,8 @@ export default function TileView({
   const camRef = getCamRef(participant, tracks);
   const screenRef = getScreenRef(participant, tracks);
 
-  const isLocalCamActive = isLocal && (participant as any).isCameraEnabled;
-  const isLocalScreenActive = isLocal && (participant as any).isScreenShareEnabled;
+  const isLocalCamActive = isLocal && participant.isCameraEnabled;
+  const isLocalScreenActive = isLocal && participant.isScreenShareEnabled;
 
   const hasCam =
     (camRef && isTrackReference(camRef) && !camRef.publication?.isMuted) ||
@@ -115,8 +115,12 @@ export default function TileView({
     isLocalScreenActive;
 
   // Decide which track to render
-  const primaryTrack =
+  const primaryTrackCandidate =
     kind === "screen" ? (hasScreen ? screenRef : null) : hasCam ? camRef : null;
+  const primaryTrack =
+    primaryTrackCandidate && isTrackReference(primaryTrackCandidate)
+      ? primaryTrackCandidate
+      : null;
 
   // Screen share uses object-contain with black bars; Camera uses object-cover with centered face
   const fitClass =

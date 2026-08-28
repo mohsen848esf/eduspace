@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { sysAdminApi, type DashboardMetrics } from "../api/sysadmin.api";
 import { useLocale } from "../../../i18n/useLocale";
 import { toast } from "react-hot-toast";
+import { getApiErrorMessage } from "../../../lib/api/errors";
 import {
   Users,
   Database,
@@ -23,7 +24,7 @@ export default function PlatformMetricsView() {
   useEffect(() => {
     sysAdminApi.getMetrics()
       .then(setMetrics)
-      .catch((err) => setError(err.response?.data?.detail || "Failed to load metrics"))
+      .catch((error: unknown) => setError(getApiErrorMessage(error, "Failed to load metrics")))
       .finally(() => setLoading(false));
   }, []);
 

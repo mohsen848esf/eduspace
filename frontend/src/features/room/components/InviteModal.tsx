@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Icons } from "../../../lib/constants/icons";
@@ -87,9 +88,9 @@ export default function InviteModal({ onClose }: InviteModalProps) {
           return next;
         });
       }, 10_000);
-    } catch (err: any) {
+    } catch (error: unknown) {
       toast.error(t("invite.failed"));
-      setError(err.response?.data?.error || t("invite.failed"));
+      setError(getApiErrorData(error)?.error || t("invite.failed"));
     } finally {
       setInviting(null);
     }

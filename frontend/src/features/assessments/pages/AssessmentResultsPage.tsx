@@ -40,7 +40,8 @@ export default function AssessmentResultsPage() {
 
   // Sum total max points of all questions
   const totalMaxPoints = submission.assessment.questions.reduce(
-    (acc: number, q: any) => acc + parseFloat(q.points),
+    (total, assessmentQuestion) =>
+      total + parseFloat(assessmentQuestion.points),
     0
   );
 
@@ -112,8 +113,10 @@ export default function AssessmentResultsPage() {
         {/* Question-by-Question Breakdown */}
         <h2 className="text-xl font-bold text-white mb-6">Detailed Sheet Review</h2>
         <div className="space-y-6">
-          {submission.assessment.questions.map((aq: any, idx: number) => {
-            const studentAns = submission.answers.find((a: any) => a.question === aq.question.id);
+          {submission.assessment.questions.map((aq, idx) => {
+            const studentAns = submission.answers.find(
+              (answer) => answer.question === aq.question.id,
+            );
             const scoreVal = studentAns ? parseFloat(studentAns.score) : 0;
             const maxVal = parseFloat(aq.points);
             const isCorrect = studentAns ? studentAns.is_correct : false;
@@ -151,7 +154,7 @@ export default function AssessmentResultsPage() {
                 <div className="space-y-3">
                   {(aq.question.question_type === "single_choice" ||
                     aq.question.question_type === "multiple_choice") &&
-                    aq.question.options.map((opt: any) => {
+                    aq.question.options.map((opt) => {
                       const wasSelected = studentAns?.selected_options?.includes(opt.id) || false;
                       return (
                         <div

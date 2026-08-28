@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -56,8 +57,8 @@ export default function AttendanceModal({
       toast.success(isFarsi ? "ضبط کلاس شروع شد" : "Recording started");
       refetchRecStatus();
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.error || (isFarsi ? "خطا در شروع ضبط" : "Failed to start recording"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.error || (isFarsi ? "خطا در شروع ضبط" : "Failed to start recording"));
     }
   });
 
@@ -67,8 +68,8 @@ export default function AttendanceModal({
       toast.success(isFarsi ? "ضبط کلاس متوقف شد" : "Recording stopped");
       refetchRecStatus();
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.error || (isFarsi ? "خطا در توقف ضبط" : "Failed to stop recording"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.error || (isFarsi ? "خطا در توقف ضبط" : "Failed to stop recording"));
     }
   });
 
@@ -82,8 +83,8 @@ export default function AttendanceModal({
       onSuccess: () => {
         toast.success(isFarsi ? "تغییرات گروهی اعمال شد" : "Bulk updates applied successfully");
       },
-      onError: (err: any) => {
-        toast.error(err.response?.data?.error || (isFarsi ? "خطا در ویرایش گروهی" : "Bulk update failed"));
+      onError: (error: unknown) => {
+        toast.error(getApiErrorData(error)?.error || (isFarsi ? "خطا در ویرایش گروهی" : "Bulk update failed"));
       },
     });
   };

@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import EmptyState from "@/components/ui/EmptyState";
 import type { NotificationItem } from "../store/notificationsStore";
+import type { TFunction } from "i18next";
 
 export interface InboxListProps {
   items: NotificationItem[];
@@ -28,7 +29,7 @@ export interface InboxListProps {
   localeTag?: string;
 }
 
-function getNotificationDetails(item: NotificationItem, t: any) {
+function getNotificationDetails(item: NotificationItem, t: TFunction) {
   const { kind, data } = item;
 
   switch (kind) {
@@ -101,7 +102,7 @@ function getNotificationDetails(item: NotificationItem, t: any) {
   }
 }
 
-function formatTimestamp(ms: number, t: any, localeTag = "fa-IR"): string {
+function formatTimestamp(ms: number, t: TFunction, localeTag = "fa-IR"): string {
   const diff = Date.now() - ms;
   const min = Math.floor(diff / 60_000);
   if (min < 1) return t("notifications:inbox.detail.justNow", { defaultValue: "Just now" });

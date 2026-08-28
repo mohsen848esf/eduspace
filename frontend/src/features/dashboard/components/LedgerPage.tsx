@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -14,6 +15,7 @@ import AppShell from "../../../components/layout/AppShell";
 import { useLocale } from "../../../i18n/useLocale";
 import { useQueryParamState } from "../../../hooks/useQueryParamState";
 import InspectionDrawer from "../../../components/ui/InspectionDrawer";
+import { parseInspectionEntityType } from "@/components/inspection/types";
 
 export default function LedgerPage() {
   const { language } = useLocale();
@@ -128,7 +130,9 @@ export default function LedgerPage() {
 
   const invoices = invoicesData?.results || [];
   const expenses = expensesData?.results || [];
-  const selectedClassFilter = classes.find((c: any) => c.id === parseInt(classIdParam || "0"));
+  const selectedClassFilter = classes.find(
+    (academyClass) => academyClass.id === parseInt(classIdParam || "0"),
+  );
 
   // Mutations
   const createInvoiceMutation = useMutation({
@@ -139,8 +143,8 @@ export default function LedgerPage() {
       toast.success(isFarsi ? "فاکتور با موفقیت صادر شد" : "Invoice created successfully");
       setIsDrawerOpen(false);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در صدور فاکتور" : "Failed to create invoice"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در صدور فاکتور" : "Failed to create invoice"));
     }
   });
 
@@ -153,8 +157,8 @@ export default function LedgerPage() {
       setIsDrawerOpen(false);
       setIsPaymentModalOpen(false);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در بروزرسانی فاکتور" : "Failed to update invoice"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در بروزرسانی فاکتور" : "Failed to update invoice"));
     }
   });
 
@@ -166,8 +170,8 @@ export default function LedgerPage() {
       toast.success(isFarsi ? "هزینه ثبت شد" : "Expense recorded successfully");
       setIsDrawerOpen(false);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ثبت هزینه" : "Failed to record expense"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ثبت هزینه" : "Failed to record expense"));
     }
   });
 
@@ -179,8 +183,8 @@ export default function LedgerPage() {
       toast.success(isFarsi ? "هزینه با موفقیت ویرایش شد" : "Expense updated successfully");
       setIsDrawerOpen(false);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ویرایش هزینه" : "Failed to update expense"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ویرایش هزینه" : "Failed to update expense"));
     }
   });
 
@@ -191,8 +195,8 @@ export default function LedgerPage() {
       queryClient.invalidateQueries({ queryKey: ["financeSummary"] });
       toast.success(isFarsi ? "هزینه حذف شد" : "Expense deleted successfully");
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در حذف هزینه" : "Failed to delete expense"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در حذف هزینه" : "Failed to delete expense"));
     }
   });
 
@@ -203,8 +207,8 @@ export default function LedgerPage() {
       queryClient.invalidateQueries({ queryKey: ["financeSummary"] });
       toast.success(isFarsi ? "هزینه با موفقیت تأیید شد" : "Expense approved successfully");
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در تأیید هزینه" : "Failed to approve expense"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در تأیید هزینه" : "Failed to approve expense"));
     }
   });
 
@@ -218,8 +222,20 @@ export default function LedgerPage() {
   const [editId, setEditId] = useState<number | null>(null);
 
   // Forms State
-  const [invoiceForm, setInvoiceForm] = useState({ student: "", academy_class: "", amount: "", status: "unpaid" as const, due_date: "" });
-  const [expenseForm, setExpenseForm] = useState({ amount: "", category: "rent" as const, description: "", recipient: "", incurred_at: "" });
+  const [invoiceForm, setInvoiceForm] = useState<{
+    student: string;
+    academy_class: string;
+    amount: string;
+    status: TuitionInvoice["status"];
+    due_date: string;
+  }>({ student: "", academy_class: "", amount: "", status: "unpaid", due_date: "" });
+  const [expenseForm, setExpenseForm] = useState<{
+    amount: string;
+    category: ExpenseItem["category"];
+    description: string;
+    recipient: string;
+    incurred_at: string;
+  }>({ amount: "", category: "rent", description: "", recipient: "", incurred_at: "" });
   
   // Line items and payment / receipts state
   const [lineItems, setLineItems] = useState<TuitionInvoiceItem[]>([]);
@@ -278,34 +294,39 @@ export default function LedgerPage() {
     setIsDrawerOpen(true);
   };
 
-  const openEditDrawer = (type: "invoice" | "expense", item: any) => {
+  const openEditDrawer = (
+    type: "invoice" | "expense",
+    item: TuitionInvoice | ExpenseItem,
+  ) => {
     setDrawerType(type);
     setEditId(item.id);
     setUserSearchQuery("");
     setSearchResults([]);
     setSelectedReceipt(null);
     if (type === "invoice") {
+      const invoice = item as TuitionInvoice;
       setInvoiceForm({
-        student: item.student.toString(),
-        academy_class: item.academy_class?.toString() || "",
-        amount: item.amount,
-        status: item.status,
-        due_date: item.due_date || ""
+        student: invoice.student.toString(),
+        academy_class: invoice.academy_class?.toString() || "",
+        amount: invoice.amount,
+        status: invoice.status,
+        due_date: invoice.due_date || ""
       });
-      setLineItems(item.items || []);
-      if (item.student_full_name || item.student_username) {
-        setUserSearchQuery(item.student_full_name || item.student_username);
+      setLineItems(invoice.items || []);
+      if (invoice.student_full_name || invoice.student_username) {
+        setUserSearchQuery(invoice.student_full_name || invoice.student_username || "");
       }
     } else {
+      const expense = item as ExpenseItem;
       setExpenseForm({
-        amount: item.amount,
-        category: item.category,
-        description: item.description,
-        recipient: item.recipient?.toString() || "",
-        incurred_at: item.incurred_at ? item.incurred_at.split("T")[0] : ""
+        amount: expense.amount,
+        category: expense.category,
+        description: expense.description,
+        recipient: expense.recipient?.toString() || "",
+        incurred_at: expense.incurred_at ? expense.incurred_at.split("T")[0] : ""
       });
-      if (item.recipient_full_name || item.recipient_username) {
-        setUserSearchQuery(item.recipient_full_name || item.recipient_username);
+      if (expense.recipient_full_name || expense.recipient_username) {
+        setUserSearchQuery(expense.recipient_full_name || expense.recipient_username || "");
       }
     }
     setIsDrawerOpen(true);
@@ -1183,7 +1204,12 @@ export default function LedgerPage() {
               <select
                 className="w-full bg-[var(--s2)] text-[var(--t1)] text-sm border border-[var(--b)] rounded-xl px-4 py-2.5 outline-none focus:border-[var(--brand)] transition-colors"
                 value={invoiceForm.status}
-                onChange={(e) => setInvoiceForm({ ...invoiceForm, status: e.target.value as any })}
+                onChange={(e) =>
+                  setInvoiceForm({
+                    ...invoiceForm,
+                    status: e.target.value as TuitionInvoice["status"],
+                  })
+                }
                 required
               >
                 <option value="unpaid">Unpaid</option>
@@ -1242,7 +1268,12 @@ export default function LedgerPage() {
               <select
                 className="w-full bg-[var(--s2)] text-[var(--t1)] text-sm border border-[var(--b)] rounded-xl px-4 py-2.5 outline-none focus:border-[var(--brand)] transition-colors"
                 value={expenseForm.category}
-                onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value as any })}
+                onChange={(e) =>
+                  setExpenseForm({
+                    ...expenseForm,
+                    category: e.target.value as ExpenseItem["category"],
+                  })
+                }
                 required
               >
                 <option value="rent">Rent</option>
@@ -1374,7 +1405,11 @@ export default function LedgerPage() {
               <select
                 className="w-full bg-[var(--s2)] text-[var(--t1)] text-sm border border-[var(--b)] rounded-xl px-4 py-2.5 outline-none focus:border-[var(--brand)] transition-colors"
                 value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value as any)}
+                onChange={(e) =>
+                  setPaymentMethod(
+                    e.target.value as "cash" | "bank_transfer" | "online",
+                  )
+                }
                 required
               >
                 <option value="cash">{isFarsi ? "نقدی" : "Cash"}</option>
@@ -1390,7 +1425,11 @@ export default function LedgerPage() {
               <select
                 className="w-full bg-[var(--s2)] text-[var(--t1)] text-sm border border-[var(--b)] rounded-xl px-4 py-2.5 outline-none focus:border-[var(--brand)] transition-colors"
                 value={invoicePaymentStatus}
-                onChange={(e) => setInvoicePaymentStatus(e.target.value as any)}
+                onChange={(e) =>
+                  setInvoicePaymentStatus(
+                    e.target.value as "paid" | "partial" | "refunded",
+                  )
+                }
                 required
               >
                 <option value="paid">{isFarsi ? "تسویه کامل (Paid)" : "Full Settlement (Paid)"}</option>
@@ -1508,7 +1547,7 @@ export default function LedgerPage() {
             setInspectId(null);
           }
         }}
-        entityType={inspectType as any}
+        entityType={parseInspectionEntityType(inspectType)}
         entityId={inspectId}
       />
     </AppShell>

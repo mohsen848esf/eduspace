@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createAudioContext } from "@/lib/browser/audioContext";
 
 export interface MediaDevicesState {
   microphones: MediaDeviceInfo[];
@@ -85,7 +86,7 @@ export function usePreJoinMedia(micEnabled: boolean) {
         streamRef.current = stream;
         loadDevices();
 
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const ctx = createAudioContext();
         audioCtxRef.current = ctx;
         const source = ctx.createMediaStreamSource(stream);
         const analyser = ctx.createAnalyser();
@@ -144,7 +145,7 @@ export function usePreJoinMedia(micEnabled: boolean) {
     setIsPlayingTestSound(true);
 
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const ctx = createAudioContext();
       const frequencies = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
 
       frequencies.forEach((freq, idx) => {

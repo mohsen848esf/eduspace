@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import client from "../../../lib/api/client";
@@ -63,8 +64,8 @@ export default function TemplateManager() {
       toast.success(isFarsi ? "قالب با موفقیت ایجاد شد" : "Template created successfully");
       setIsModalOpen(false);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ایجاد قالب" : "Failed to create template"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ایجاد قالب" : "Failed to create template"));
     },
   });
 
@@ -78,8 +79,8 @@ export default function TemplateManager() {
       toast.success(isFarsi ? "قالب با موفقیت ویرایش شد" : "Template updated successfully");
       setIsModalOpen(false);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در ویرایش قالب" : "Failed to update template"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ویرایش قالب" : "Failed to update template"));
     },
   });
 
@@ -91,8 +92,8 @@ export default function TemplateManager() {
       queryClient.invalidateQueries({ queryKey: ["notificationTemplates"] });
       toast.success(isFarsi ? "قالب با موفقیت حذف شد" : "Template deleted successfully");
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.detail || (isFarsi ? "خطا در حذف قالب" : "Failed to delete template"));
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در حذف قالب" : "Failed to delete template"));
     },
   });
 

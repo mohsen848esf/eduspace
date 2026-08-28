@@ -2,8 +2,9 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Clock, ArrowRight } from "lucide-react";
 import type { InspectorViewerProps } from "../types";
+import type { AcademyClass } from "@/features/dashboard/types/crm.types";
 
-export interface ClassInspectorProps extends InspectorViewerProps {
+export interface ClassInspectorProps extends InspectorViewerProps<AcademyClass> {
   onOpenChange: (open: boolean) => void;
 }
 
@@ -46,7 +47,7 @@ export const ClassInspector: React.FC<ClassInspectorProps> = ({
             </span>
             {data.teacher ? (
               <button
-                onClick={() => onNavigate("teacher", data.teacher)}
+                onClick={() => onNavigate("teacher", data.teacher!)}
                 className="font-bold text-[var(--brand)] hover:underline bg-transparent border-none p-0 cursor-pointer text-left text-xs"
               >
                 {data.teacher_name || "Unassigned"}
@@ -63,7 +64,7 @@ export const ClassInspector: React.FC<ClassInspectorProps> = ({
             </span>
             {data.mentor ? (
               <button
-                onClick={() => onNavigate("mentor", data.mentor)}
+                onClick={() => onNavigate("mentor", data.mentor!)}
                 className="font-bold text-[var(--brand)] hover:underline bg-transparent border-none p-0 cursor-pointer text-left text-xs"
               >
                 {data.mentor_name || "Unassigned"}

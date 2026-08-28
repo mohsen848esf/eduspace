@@ -1,12 +1,12 @@
 import { useState } from "react";
 import TileView from "./TileView";
-import type { CallTile } from "../../hooks/useCallTiles";
+import type { CallTile, UseCallTilesResult } from "../../hooks/useCallTiles";
 import type { RemoteParticipant } from "livekit-client";
 import { cn } from "../../../../lib/utils";
 
 export interface SpotlightLayoutProps {
   tiles: CallTile[];
-  tracks: any[];
+  tracks: UseCallTilesResult["tracks"];
   localIdentity: string;
   isHost?: boolean;
   onMute?: (p: RemoteParticipant) => void;

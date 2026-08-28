@@ -2,8 +2,9 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Receipt, ArrowRight } from "lucide-react";
 import type { InspectorViewerProps } from "../types";
+import type { TuitionInvoice } from "@/features/dashboard/types/crm.types";
 
-export interface InvoiceInspectorProps extends InspectorViewerProps {
+export interface InvoiceInspectorProps extends InspectorViewerProps<TuitionInvoice> {
   onOpenChange: (open: boolean) => void;
 }
 
@@ -65,7 +66,7 @@ export const InvoiceInspector: React.FC<InvoiceInspectorProps> = ({
             </span>
             {data.academy_class ? (
               <button
-                onClick={() => onNavigate("class", data.academy_class)}
+                onClick={() => onNavigate("class", data.academy_class!)}
                 className="font-bold text-[var(--brand)] hover:underline bg-transparent border-none p-0 cursor-pointer text-left text-xs truncate block w-full"
               >
                 {data.class_name || "—"}

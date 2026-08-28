@@ -49,6 +49,15 @@ export interface Assessment {
   updated_at?: string;
 }
 
+export interface AssessmentWritePayload {
+  title: string;
+  description: string;
+  duration_minutes: number;
+  passing_score: string;
+  session: number | null;
+  questions: Array<{ question_id: number; order: number; points: string }>;
+}
+
 export type SubmissionStatus = "started" | "submitted" | "graded";
 
 export interface StudentAnswer {
@@ -61,6 +70,14 @@ export interface StudentAnswer {
   is_correct: boolean;
   teacher_notes?: string;
 }
+
+export interface AnswerGradeInput {
+  score: string;
+  is_correct: boolean;
+  teacher_notes: string;
+}
+
+export type SubmissionGrades = Record<number, AnswerGradeInput>;
 
 export interface Submission {
   id: number;

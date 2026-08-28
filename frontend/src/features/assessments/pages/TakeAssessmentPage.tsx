@@ -126,7 +126,9 @@ export default function TakeAssessmentPage() {
   }
 
   const currentAq = submission.assessment.questions[activeQuestionIndex];
-  const currentAnswer = submission.answers.find((ans: any) => ans.question === currentAq.question.id);
+  const currentAnswer = submission.answers.find(
+    (answer) => answer.question === currentAq.question.id,
+  );
 
   const localState = (currentAnswer && localAnswers[currentAnswer.id]) || 
     (currentAnswer 
@@ -202,8 +204,10 @@ export default function TakeAssessmentPage() {
           <div>
             <h3 className="text-slate-400 font-bold uppercase text-xs tracking-widest mb-4">Question Panel</h3>
             <div className="grid grid-cols-4 gap-3">
-              {submission.assessment.questions.map((aq: any, idx: number) => {
-                const ans = submission.answers.find((a: any) => a.question === aq.question.id);
+              {submission.assessment.questions.map((aq, idx) => {
+                const ans = submission.answers.find(
+                  (answer) => answer.question === aq.question.id,
+                );
                 const localAns = ans ? localAnswers[ans.id] : null;
                 const isAnswered = (localAns && (localAns.selected_options?.length || localAns.text_answer?.trim())) ||
                                    (ans && (ans.selected_options?.length || ans.text_answer?.trim()));
@@ -259,7 +263,7 @@ export default function TakeAssessmentPage() {
             <div className="space-y-4">
               {(currentAq.question.question_type === "single_choice" ||
                 currentAq.question.question_type === "multiple_choice") &&
-                currentAq.question.options.map((opt: any) => {
+                currentAq.question.options.map((opt) => {
                   const isChecked = localState.selected_options?.includes(opt.id) || false;
                   return (
                     <div

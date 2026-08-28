@@ -6,6 +6,7 @@ import { useRoomStore } from "../store/roomStore";
 import { useChatStore } from "../store/chatStore";
 import recordingsApi from "../../recordings/api/recordings.api";
 import { useActiveRecordingStore } from "../../recordings/store/activeRecordingStore";
+import { ConnectionState } from "livekit-client";
 
 interface DisconnectOptions {
   /**
@@ -66,7 +67,7 @@ export function useRoomDisconnect() {
       }
 
       // Avoid double disconnection or running on null context/already disconnected rooms
-      if (!room || !room.localParticipant || (room.state as any) === "disconnected") {
+      if (!room || !room.localParticipant || room.state === ConnectionState.Disconnected) {
         return;
       }
 
@@ -82,9 +83,7 @@ export function useRoomDisconnect() {
                 .then(() => {
                   try {
                     // Call LiveKit's SDK level stop method which handles hardware release
-                    if (typeof (pub.track as any).stop === "function") {
-                      (pub.track as any).stop();
-                    }
+                    pub.track?.stop();
                   } catch (e) {
                     console.error("Failed to stop local track:", e);
                   }
@@ -96,10 +95,7 @@ export function useRoomDisconnect() {
 
         await Promise.all(stopPromises);
 
-        // Disconnect LiveKit if still connected.
-        if ((room.state as any) !== "disconnected") {
-          await room.disconnect(true);
-        }
+        await room.disconnect(true);
 
         // Small wait so the browser refreshes the recording indicator.
         await new Promise((r) => setTimeout(r, 500));

@@ -53,7 +53,7 @@ export interface OperatorAuditLog {
   action: string;
   organization: number | null;
   organization_name: string | null;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   created_at: string;
 }
 

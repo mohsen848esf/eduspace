@@ -1,6 +1,8 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSubmission, useGradeSubmission, useAssessmentAnalytics } from "../hooks";
+import type { AnswerGradeInput, SubmissionGrades } from "../types";
 
 export default function ReviewSubmissionPage() {
   const { submissionId } = useParams<{ submissionId: string }>();
@@ -14,14 +16,14 @@ export default function ReviewSubmissionPage() {
     submission?.assessment.id ?? 0
   );
 
-  const [grades, setGrades] = useState<Record<number, { score: string; is_correct: boolean; teacher_notes: string }>>({});
+  const [grades, setGrades] = useState<SubmissionGrades>({});
   const [validationErrors, setValidationErrors] = useState<Record<number, string>>({});
 
   // Initialize grades state when submission loads
   useEffect(() => {
     if (submission && submission.answers) {
       const initialGrades: typeof grades = {};
-      submission.answers.forEach((ans: any) => {
+      submission.answers.forEach((ans) => {
         initialGrades[ans.question] = {
           score: ans.score,
           is_correct: ans.is_correct,
@@ -57,13 +59,18 @@ export default function ReviewSubmissionPage() {
     );
   }
 
-  const handleGradeChange = (questionId: number, field: "score" | "is_correct" | "teacher_notes", value: any, maxPoints: number) => {
+  const handleGradeChange = <Field extends keyof AnswerGradeInput>(
+    questionId: number,
+    field: Field,
+    value: AnswerGradeInput[Field],
+    maxPoints: number,
+  ) => {
     const current = grades[questionId] || { score: "0.00", is_correct: false, teacher_notes: "" };
     const updated = { ...current, [field]: value };
 
     // Validate score boundary
     if (field === "score") {
-      const num = parseFloat(value);
+      const num = parseFloat(String(value));
       if (isNaN(num)) {
         setValidationErrors(prev => ({ ...prev, [questionId]: "Score must be a number." }));
       } else if (num < 0) {
@@ -109,8 +116,8 @@ export default function ReviewSubmissionPage() {
             alert("Submission graded successfully!");
             navigate("/dashboard");
           },
-          onError: (err: any) => {
-            alert(err.response?.data?.detail || "An error occurred during manual grading.");
+          onError: (error: unknown) => {
+            alert(getApiErrorData(error)?.detail || "An error occurred during manual grading.");
           },
         }
       );
@@ -118,7 +125,8 @@ export default function ReviewSubmissionPage() {
   };
 
   const totalMaxPoints = submission.assessment.questions.reduce(
-    (acc: number, q: any) => acc + parseFloat(q.points),
+    (total, assessmentQuestion) =>
+      total + parseFloat(assessmentQuestion.points),
     0
   );
 
@@ -257,8 +265,10 @@ export default function ReviewSubmissionPage() {
         {/* Detailed Question Review Sheets */}
         <h2 className="text-xl font-bold text-white mb-6">Student Answer Sheets</h2>
         <div className="space-y-8">
-          {submission.assessment.questions.map((aq: any, idx: number) => {
-            const studentAns = submission.answers.find((a: any) => a.question === aq.question.id);
+          {submission.assessment.questions.map((aq, idx) => {
+            const studentAns = submission.answers.find(
+              (answer) => answer.question === aq.question.id,
+            );
             const maxPointsNum = parseFloat(aq.points);
             const currentGrade = grades[aq.question.id] || { score: "0.00", is_correct: false, teacher_notes: "" };
             const errorMsg = validationErrors[aq.question.id];
@@ -285,7 +295,7 @@ export default function ReviewSubmissionPage() {
                   <div className="space-y-4">
                     {(aq.question.question_type === "single_choice" ||
                       aq.question.question_type === "multiple_choice") &&
-                      aq.question.options.map((opt: any) => {
+                      aq.question.options.map((opt) => {
                         const wasSelected = studentAns?.selected_options?.includes(opt.id) || false;
                         const isCorrectKey = Array.isArray(aq.question.correct_answer)
                           ? aq.question.correct_answer.includes(opt.id)

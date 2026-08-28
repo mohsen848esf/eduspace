@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -54,10 +55,10 @@ export default function JoinOrgPage() {
             navigate("/dashboard");
           }
         }, 3000);
-      } catch (err: any) {
+      } catch (error: unknown) {
         if (!active) return;
         setStatus("error");
-        const errMsg = err.response?.data?.error || err.response?.data?.detail || "Failed to join organization";
+        const errMsg = getApiErrorData(error)?.error || getApiErrorData(error)?.detail || "Failed to join organization";
         setMessage(typeof errMsg === "string" ? errMsg : JSON.stringify(errMsg));
       }
     }

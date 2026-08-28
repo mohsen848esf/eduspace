@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -114,8 +115,8 @@ export default function RecordingEditPage() {
       // Force RecordingPlayer to re-fetch with the trimmed file.
       setPreviewKey((k) => k + 1);
       toast.success(t("editor.saved"));
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || t("editor.saveError"));
+    } catch (error: unknown) {
+      toast.error(getApiErrorData(error)?.error || t("editor.saveError"));
     } finally {
       setIsSaving(false);
     }

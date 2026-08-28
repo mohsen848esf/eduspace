@@ -4,6 +4,28 @@ import { useAuthStore } from "../store/authStore";
 import { useNotificationsStore } from "../store/notificationsStore";
 import toast from "react-hot-toast";
 
+interface NotificationWirePayload extends Record<string, unknown> {
+  id?: number;
+  type?: string;
+  kind?: string;
+  created_at?: string;
+  duration_seconds?: number;
+  from?: string;
+  room_code?: string;
+  room_name?: string;
+  recording_token?: string;
+  watch_link?: string;
+  invite_link?: string;
+  assessment_title?: string;
+  score?: string | number;
+  total_points?: string | number;
+  invoice_number?: string;
+  amount?: string | number;
+  status?: string;
+  class_name?: string;
+  host_name?: string;
+}
+
 function formatNotificationDuration(seconds: number | undefined): string {
   if (!seconds || seconds < 1) return "0:00";
   const m = Math.floor(seconds / 60);
@@ -14,7 +36,7 @@ function formatNotificationDuration(seconds: number | undefined): string {
 }
 
 export function getWebSocketUrl(path: string): string {
-  const envUrl = (import.meta as any).env?.VITE_WS_URL;
+  const envUrl = import.meta.env.VITE_WS_URL;
   let base: string;
   if (envUrl) {
     base = envUrl.endsWith("/") ? envUrl.slice(0, -1) : envUrl;
@@ -40,7 +62,7 @@ export function useNotifications() {
   const isUnmounted = useRef(false);
 
   const handleNotification = useCallback(
-    (notification: any) => {
+    (notification: NotificationWirePayload) => {
       // Persist into the inbox first so the user can come back to it
       // even if they miss the toast. The store de-dupes by serverId
       // when present, otherwise by a 5-second kind+payload window, so
@@ -96,7 +118,9 @@ export function useNotifications() {
                 <button
                   onClick={() => {
                     toast.dismiss(toastInstance.id);
-                    window.location.href = notification.invite_link;
+                    if (notification.invite_link) {
+                      window.location.href = notification.invite_link;
+                    }
                   }}
                   className="flex-1 bg-indigo-600 text-white text-xs font-semibold py-1.5 rounded-lg"
                 >

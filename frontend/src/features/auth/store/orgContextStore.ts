@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { authApi, type OrgContext } from "../api/auth.api";
+import { getApiErrorMessage } from "@/lib/api/errors";
 
 interface OrgContextState {
   orgContext: OrgContext | null;
@@ -27,9 +28,9 @@ export const useOrgContextStore = create<OrgContextState>((set, get) => ({
     try {
       const context = await authApi.getOrgContext();
       set({ orgContext: context, isInitialized: true, isLoading: false });
-    } catch (err: any) {
+    } catch (error: unknown) {
       set({
-        error: err.response?.data?.error || err.response?.data?.detail || "Failed to fetch organization context",
+        error: getApiErrorMessage(error, "Failed to fetch organization context"),
         isLoading: false,
         isInitialized: true,
       });

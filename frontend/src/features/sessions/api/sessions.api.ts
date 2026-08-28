@@ -1,13 +1,14 @@
 import client from "../../../lib/api/client";
 import type { Session, Attendance } from "../types";
+import { unwrapList, type PaginatedResponse } from "@/lib/api/pagination";
 
 export const sessionsApi = {
   getSessions: async (params?: { class_id?: number; status?: string }): Promise<Session[]> => {
-    const res = await client.get("/auth/sessions/", { params });
-    if (res.data && typeof res.data === "object" && "results" in res.data) {
-      return (res.data as any).results;
-    }
-    return res.data;
+    const res = await client.get<Session[] | PaginatedResponse<Session>>(
+      "/auth/sessions/",
+      { params },
+    );
+    return unwrapList(res.data);
   },
 
   getSession: async (id: number): Promise<Session> => {

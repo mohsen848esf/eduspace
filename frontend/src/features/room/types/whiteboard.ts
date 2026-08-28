@@ -76,3 +76,26 @@ export interface ViewportState {
   panY: number;
   zoom: number;
 }
+
+export type WhiteboardOperation =
+  | { type: "CREATE"; element: CanvasElement }
+  | {
+      type: "UPDATE";
+      id: string;
+      updates: Partial<CanvasElement> & { timestamp: number };
+    }
+  | { type: "DELETE"; ids: string[] }
+  | { type: "CURSOR"; x: number; y: number }
+  | { type: "SYNC_ALL"; elements: Record<string, CanvasElement> };
+
+export interface WhiteboardSyncPayload {
+  hostIdentity?: string;
+  isDrawingAllowed?: boolean;
+  elements?: Record<string, CanvasElement>;
+}
+
+export type WhiteboardEventListener = (
+  type: string,
+  payload: unknown,
+  fromIdentity?: string,
+) => void;

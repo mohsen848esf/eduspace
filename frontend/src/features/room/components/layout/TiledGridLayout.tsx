@@ -3,12 +3,12 @@ import TileView from "./TileView";
 import SummaryOverflowTile from "./SummaryOverflowTile";
 import { useRoomLayoutStore } from "../../store/roomLayoutStore";
 import { useOrientation } from "../../../../hooks/useOrientation";
-import type { CallTile } from "../../hooks/useCallTiles";
+import type { CallTile, UseCallTilesResult } from "../../hooks/useCallTiles";
 import type { RemoteParticipant } from "livekit-client";
 
 export interface TiledGridLayoutProps {
   tiles: CallTile[];
-  tracks: any[];
+  tracks: UseCallTilesResult["tracks"];
   localIdentity: string;
   isHost?: boolean;
   onMute?: (p: RemoteParticipant) => void;

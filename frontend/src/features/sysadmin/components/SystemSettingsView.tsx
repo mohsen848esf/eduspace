@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useEffect, useState } from "react";
 import { sysAdminApi, type SystemConfig } from "../api/sysadmin.api";
 
@@ -20,7 +21,9 @@ export default function SystemSettingsView() {
     setLoading(true);
     sysAdminApi.getConfigs({ search })
       .then(setConfigs)
-      .catch((err) => setError(err.response?.data?.detail || "Failed to load configs"))
+      .catch((error: unknown) =>
+        setError(getApiErrorData(error)?.detail || "Failed to load configs"),
+      )
       .finally(() => setLoading(false));
   };
 
@@ -36,8 +39,8 @@ export default function SystemSettingsView() {
       setConfigs([created, ...configs]);
       setCreateForm({ key: "", value: "", description: "" });
       setIsCreateOpen(false);
-    } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to create configuration");
+    } catch (error: unknown) {
+      alert(getApiErrorData(error)?.detail || "Failed to create configuration");
     }
   };
 
@@ -56,8 +59,8 @@ export default function SystemSettingsView() {
       const updated = await sysAdminApi.updateConfig(selectedConfig.id, editForm);
       setConfigs(configs.map(c => c.id === selectedConfig.id ? updated : c));
       setIsEditOpen(false);
-    } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to update configuration");
+    } catch (error: unknown) {
+      alert(getApiErrorData(error)?.detail || "Failed to update configuration");
     }
   };
 
@@ -67,8 +70,8 @@ export default function SystemSettingsView() {
     try {
       await sysAdminApi.deleteConfig(config.id);
       setConfigs(configs.filter(c => c.id !== config.id));
-    } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to delete configuration");
+    } catch (error: unknown) {
+      alert(getApiErrorData(error)?.detail || "Failed to delete configuration");
     }
   };
 

@@ -14,7 +14,10 @@ interface RecordingCardProps {
   selectionMode?: boolean;
 }
 
-function formatDuration(seconds: number, t: (k: string, v?: any) => string) {
+function formatDuration(
+  seconds: number,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
   if (seconds < 60) return t("card.durationShort", { seconds });
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;

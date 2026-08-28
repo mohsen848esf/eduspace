@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useState, useEffect } from "react";
 import { roomApi } from "../api/room.api";
 import type { RoomInfo } from "../schemas/room.schema";
@@ -23,9 +24,9 @@ export function usePreJoinRoomInfo(roomCode: string) {
           setRoomInfo(data);
           setError(null);
         }
-      } catch (err: any) {
+      } catch (error: unknown) {
         if (!cancelled) {
-          setError(err?.response?.data?.detail || err?.message || "Failed to load room details");
+          setError(getApiErrorData(error)?.detail || (error instanceof Error ? error.message : undefined) || "Failed to load room details");
         }
       } finally {
         if (!cancelled) {

@@ -1,3 +1,4 @@
+import { getApiErrorData } from "@/lib/api/errors";
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -147,8 +148,8 @@ export default function SessionDetailPage() {
           navigate(`/room/${data.active_room_code}`);
         }
       },
-      onError: (err: any) => {
-        toast.error(err.response?.data?.error || (isFarsi ? "خطا در شروع کلاس" : "Failed to start session"));
+      onError: (error: unknown) => {
+        toast.error(getApiErrorData(error)?.error || (isFarsi ? "خطا در شروع کلاس" : "Failed to start session"));
       },
     });
   };
@@ -159,8 +160,8 @@ export default function SessionDetailPage() {
         onSuccess: () => {
           toast.success(isFarsi ? "کلاس پایان یافت" : "Session completed successfully");
         },
-        onError: (err: any) => {
-          toast.error(err.response?.data?.error || (isFarsi ? "خطا در ثبت پایان کلاس" : "Failed to complete session"));
+        onError: (error: unknown) => {
+          toast.error(getApiErrorData(error)?.error || (isFarsi ? "خطا در ثبت پایان کلاس" : "Failed to complete session"));
         },
       });
     }
@@ -172,8 +173,8 @@ export default function SessionDetailPage() {
         onSuccess: () => {
           toast.success(isFarsi ? "جلسه لغو شد" : "Session cancelled successfully");
         },
-        onError: (err: any) => {
-          toast.error(err.response?.data?.error || (isFarsi ? "خطا در لغو جلسه" : "Failed to cancel session"));
+        onError: (error: unknown) => {
+          toast.error(getApiErrorData(error)?.error || (isFarsi ? "خطا در لغو جلسه" : "Failed to cancel session"));
         },
       });
     }
