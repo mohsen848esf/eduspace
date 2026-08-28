@@ -259,18 +259,37 @@ def join_room(request, room_code):
         if is_host
         else (RoomParticipant.Role.CO_HOST if is_co_host else RoomParticipant.Role.PARTICIPANT)
     )
+    is_moderator = is_host or is_co_host
     participant, created = RoomParticipant.objects.get_or_create(
         room=room,
         user=request.user,
-        defaults={'role': target_role, 'can_upload_presentation': (is_host or is_co_host)},
+        defaults={
+            'role': target_role,
+            'can_upload_presentation': is_moderator or (not room.lock_document_presentation),
+            'can_share_screen': is_moderator or (not room.lock_screen_share),
+            'can_use_microphone': is_moderator or (not room.lock_microphone),
+            'can_use_camera': is_moderator or (not room.lock_camera),
+        },
     )
 
     if not created:
         participant.is_active = True
         participant.left_at = None
         participant.role = target_role
-        if is_host or is_co_host:
+        if is_moderator:
             participant.can_upload_presentation = True
+            participant.can_share_screen = True
+            participant.can_use_microphone = True
+            participant.can_use_camera = True
+        else:
+            if room.lock_microphone:
+                participant.can_use_microphone = False
+            if room.lock_camera:
+                participant.can_use_camera = False
+            if room.lock_screen_share:
+                participant.can_share_screen = False
+            if room.lock_document_presentation:
+                participant.can_upload_presentation = False
         participant.save()
 
     token = generate_livekit_token(
@@ -386,7 +405,10 @@ def guest_join_room(request, room_code):
         is_guest=True,
         role=RoomParticipant.Role.GUEST,
         is_active=True,
-        can_upload_presentation=False,
+        can_upload_presentation=not room.lock_document_presentation,
+        can_share_screen=not room.lock_screen_share,
+        can_use_microphone=not room.lock_microphone,
+        can_use_camera=not room.lock_camera,
     )
 
     token = generate_livekit_token(
@@ -1153,6 +1175,19 @@ def room_settings(request, room_code):
 
     if updated:
         room.save(update_fields=updated)
+        # When locks are enabled, revoke active permissions from regular participants
+        regular_participants = RoomParticipant.objects.filter(
+            room=room,
+            role__in=[RoomParticipant.Role.PARTICIPANT, RoomParticipant.Role.GUEST]
+        )
+        if 'lock_microphone' in request.data and room.lock_microphone:
+            regular_participants.update(can_use_microphone=False)
+        if 'lock_camera' in request.data and room.lock_camera:
+            regular_participants.update(can_use_camera=False)
+        if 'lock_screen_share' in request.data and room.lock_screen_share:
+            regular_participants.update(can_share_screen=False)
+        if 'lock_document_presentation' in request.data and room.lock_document_presentation:
+            regular_participants.update(can_upload_presentation=False)
 
     return Response({
         'room_code': room.room_code,

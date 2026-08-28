@@ -187,7 +187,19 @@ function RoomContent({
 export default function RoomPage() {
   const { t } = useTranslation(["room", "common"]);
   const { roomCode } = useParams<{ roomCode: string }>();
-  const { token, livekitUrl, roomName } = useRoomStore();
+  const {
+    token,
+    livekitUrl,
+    roomName,
+    isHost,
+    isCoHost,
+    muteMicOnJoin,
+    muteCamOnJoin,
+    lockMicrophone,
+    lockCamera,
+    canUseMicrophone,
+    canUseCamera,
+  } = useRoomStore();
   const { joinRoom, joinRoomGuest, leaveRoom, isLoading, error, clearError } = useRoom();
   const [preJoinDone, setPreJoinDone] = useState(false);
   const [callEnded, setCallEnded] = useState(false);
@@ -361,14 +373,27 @@ export default function RoomPage() {
     );
   }
 
+  const isModerator = isHost || isCoHost;
+  const initialCamOn = isModerator
+    ? (preJoinSettings?.camEnabled ?? true)
+    : (muteCamOnJoin || lockCamera || !canUseCamera)
+      ? false
+      : (preJoinSettings?.camEnabled ?? true);
+
+  const initialMicOn = isModerator
+    ? (preJoinSettings?.micEnabled ?? true)
+    : (muteMicOnJoin || lockMicrophone || !canUseMicrophone)
+      ? false
+      : (preJoinSettings?.micEnabled ?? true);
+
   return (
     <div className="w-screen h-screen bg-[var(--s0)] text-[var(--t1)] overflow-hidden">
       <LiveKitRoom
         token={token}
         serverUrl={livekitUrl}
         connect={true}
-        video={preJoinSettings?.camEnabled ?? true}
-        audio={preJoinSettings?.micEnabled ?? true}
+        video={initialCamOn}
+        audio={initialMicOn}
         options={{
           adaptiveStream: true,
           dynacast: true,

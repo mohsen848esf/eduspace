@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePreJoinTrack } from "../../hooks/usePreJoinTrack";
 import { usePreJoinMedia } from "../../hooks/usePreJoinMedia";
 import { usePreJoinRoomInfo } from "../../hooks/usePreJoinRoomInfo";
@@ -78,7 +78,29 @@ export default function PreJoinScreen({
   // Hook 3: Room Info & Participants
   const { roomInfo } = usePreJoinRoomInfo(roomCode);
 
-  // Handlers
+  // Enforce room-level mute/lock settings for non-moderators
+  useEffect(() => {
+    if (!roomInfo) return;
+    const isModerator =
+      roomInfo.is_host ||
+      (user &&
+        (roomInfo.host?.id === user.id ||
+          roomInfo.host_id === user.id ||
+          roomInfo.co_hosts?.some(
+            (c: { id?: number; username?: string } | string) =>
+              (typeof c === "object" ? c.id === user.id || c.username === user.username : c === user.username)
+          )));
+
+    if (!isModerator) {
+      if (roomInfo.mute_mic_on_join || roomInfo.lock_microphone) {
+        setMicEnabled(false);
+      }
+      if (roomInfo.mute_cam_on_join || roomInfo.lock_camera) {
+        setCamEnabled(false);
+      }
+    }
+  }, [roomInfo, user]);
+
   const handleJoinNow = async () => {
     await stopTrack();
     // Only persist and pass guestName for unauthenticated users.

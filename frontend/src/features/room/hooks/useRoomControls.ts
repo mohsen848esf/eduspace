@@ -162,7 +162,8 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
     if (!localParticipant) return;
     const newState = !isMicOn;
 
-    if (newState && !canModerate && lockMicrophone && !canUseMicrophone) {
+    const isBlocked = !canModerate && (lockMicrophone || !canUseMicrophone);
+    if (newState && isBlocked) {
       toast("میکروفون توسط برگزارکننده قفل است. در حال ارسال درخواست مجوز...", {
         icon: "🔒",
       });
@@ -189,7 +190,8 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
     if (!localParticipant) return;
     const newState = !isCamOn;
 
-    if (newState && !canModerate && lockCamera && !canUseCamera) {
+    const isBlocked = !canModerate && (lockCamera || !canUseCamera);
+    if (newState && isBlocked) {
       toast("دوربین توسط برگزارکننده قفل است. در حال ارسال درخواست مجوز...", {
         icon: "🔒",
       });
@@ -216,7 +218,8 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
     if (!localParticipant) return;
 
     if (!isScreenSharing) {
-      if (!canModerate && lockScreenShare && !canShareScreen) {
+      const isBlocked = !canModerate && (lockScreenShare || !canShareScreen);
+      if (isBlocked) {
         toast("اشتراک صفحه توسط برگزارکننده قفل است. در حال ارسال درخواست مجوز...", {
           icon: "🔒",
         });
@@ -339,6 +342,39 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
           localParticipant.setCameraEnabled(false);
           setIsCamOn(false);
           toast(t("host.hostTurnedOffCamera"), { icon: "📵" });
+        }
+
+        if (data.type === "ROOM_SETTINGS_CHANGED" && data.settings) {
+          const settings = data.settings as {
+            lockMicrophone?: boolean;
+            lockCamera?: boolean;
+            lockScreenShare?: boolean;
+          };
+          useRoomStore.getState().setRoomSettings(settings);
+
+          const isModerator =
+            useRoomStore.getState().isHost || useRoomStore.getState().isCoHost;
+
+          if (!isModerator && localParticipant) {
+            if (settings.lockMicrophone) {
+              useRoomStore.getState().setMediaPermissions({ canUseMicrophone: false });
+              localParticipant.setMicrophoneEnabled(false);
+              setIsMicOn(false);
+              toast("میکروفون توسط برگزارکننده قفل شد.", { icon: "🔒" });
+            }
+            if (settings.lockCamera) {
+              useRoomStore.getState().setMediaPermissions({ canUseCamera: false });
+              localParticipant.setCameraEnabled(false);
+              setIsCamOn(false);
+              toast("وب‌کم توسط برگزارکننده قفل شد.", { icon: "🔒" });
+            }
+            if (settings.lockScreenShare) {
+              useRoomStore.getState().setMediaPermissions({ canShareScreen: false });
+              localParticipant.setScreenShareEnabled(false);
+              setIsScreenSharing(false);
+              toast("اشتراک صفحه توسط برگزارکننده قفل شد.", { icon: "🔒" });
+            }
+          }
         }
 
         if (data.type === "ROLE_CHANGED") {

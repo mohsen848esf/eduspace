@@ -99,6 +99,25 @@ export default function SettingsPanel({
       if (key === "lock_microphone") setRoomSettings({ lockMicrophone: val });
       if (key === "lock_camera") setRoomSettings({ lockCamera: val });
       if (key === "lock_document_presentation") setRoomSettings({ lockDocumentPresentation: val });
+
+      // Broadcast settings change to all in-call participants in real time
+      if (room?.localParticipant) {
+        const payload = {
+          type: "ROOM_SETTINGS_CHANGED",
+          settings: {
+            muteMicOnJoin: key === "mute_mic_on_join" ? val : muteMicOnJoin,
+            muteCamOnJoin: key === "mute_cam_on_join" ? val : muteCamOnJoin,
+            lockScreenShare: key === "lock_screen_share" ? val : lockScreenShare,
+            lockMicrophone: key === "lock_microphone" ? val : lockMicrophone,
+            lockCamera: key === "lock_camera" ? val : lockCamera,
+            lockDocumentPresentation:
+              key === "lock_document_presentation" ? val : lockDocumentPresentation,
+          },
+        };
+        const encoder = new TextEncoder();
+        const data = encoder.encode(JSON.stringify(payload));
+        await room.localParticipant.publishData(data, { reliable: true });
+      }
     } catch {
       // Swallowed
     } finally {
