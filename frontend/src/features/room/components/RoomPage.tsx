@@ -10,8 +10,6 @@ import {
 import {
   VideoPresets,
   AudioPresets,
-  ConnectionQuality,
-  RoomEvent,
   type Participant,
 } from "livekit-client";
 import { useRoomStore } from "../store/roomStore";
@@ -33,6 +31,7 @@ import { useRoomLayoutStore } from "../store/roomLayoutStore";
 import { LobbyWaitingScreen } from "./LobbyWaitingScreen";
 import { useLobbyWaiting } from "../hooks/useLobbyWaiting";
 import CallEndedScreen from "./CallEndedScreen";
+import { observePublishedCameraTracks } from "../lib/backgroundProcessing";
 
 function RoomContent({
   preJoinSettings,
@@ -46,7 +45,6 @@ function RoomContent({
   const layout = useRoomLayoutStore((s) => s.layoutMode);
   const setLayout = useRoomLayoutStore((s) => s.setLayoutMode);
   const { localParticipant } = useLocalParticipant();
-  const setupDone = useRef(false);
   const { disconnect } = useRoomDisconnect();
   const { roomCode } = useRoomStore();
   const { changeBackground } = useBackgroundBlur();
@@ -102,25 +100,6 @@ function RoomContent({
     handleReactionDataMessage,
   ]);
 
-  // Monitor connection quality — auto-disable camera on poor networks.
-  // This keeps audio alive when bandwidth is critically low.
-  useEffect(() => {
-    if (!room) return;
-    const handleQuality = (quality: ConnectionQuality) => {
-      if (quality === ConnectionQuality.Poor) {
-        // If camera is on and quality is critically poor, mute video to save bandwidth.
-        // The user's mic stays active so they can still communicate.
-        if (room.localParticipant.isCameraEnabled) {
-          room.localParticipant.setCameraEnabled(false);
-        }
-      }
-    };
-    room.localParticipant.on(RoomEvent.ConnectionQualityChanged, handleQuality);
-    return () => {
-      room.localParticipant.off(RoomEvent.ConnectionQualityChanged, handleQuality);
-    };
-  }, [room]);
-
   // Clean up and release media devices when the room page is unmounted (navigating away)
   useEffect(() => {
     return () => {
@@ -128,46 +107,18 @@ function RoomContent({
     };
   }, [disconnect]);
 
-  // Virtual background setup once the local participant camera track is published.
-  // We poll because the camera track may not be available immediately after mount —
-  // LiveKit publishes it asynchronously after the room connection is established.
+  // Reapply the selected background to each camera track LiveKit publishes.
+  // The pre-join track is intentionally released before joining, so the room gets
+  // a different track. Event-driven setup avoids overlapping processor swaps.
   useEffect(() => {
-    if (setupDone.current) return;
-    const bg = preJoinSettings?.background ?? "none";
-    if (bg === "none" || !preJoinSettings?.camEnabled) return;
     if (!localParticipant) return;
 
-    let attempts = 0;
-    const MAX_ATTEMPTS = 20; // up to ~4 seconds
-    const INTERVAL_MS = 200;
-
-    const tryApply = async () => {
-      attempts++;
-      try {
-        await changeBackground(bg);
-        // changeBackground succeeds silently even if track isn't ready yet,
-        // so verify the track exists before marking as done.
-        const camPub = localParticipant.getTrackPublication(Track.Source.Camera);
-        if (camPub?.track) {
-          setupDone.current = true;
-          clearInterval(intervalId);
-        } else if (attempts >= MAX_ATTEMPTS) {
-          clearInterval(intervalId);
-        }
-      } catch {
-        if (attempts >= MAX_ATTEMPTS) clearInterval(intervalId);
-      }
-    };
-
-    // Kick off immediately, then retry on interval
-    void tryApply();
-    const intervalId = setInterval(() => {
-      if (!setupDone.current) void tryApply();
-    }, INTERVAL_MS);
-
-    return () => clearInterval(intervalId);
-  }, [localParticipant, preJoinSettings, changeBackground]);
-
+    return observePublishedCameraTracks(localParticipant, (cameraTrack) => {
+      const selectedBackground = useBackgroundStore.getState().background;
+      if (selectedBackground === "none") return Promise.resolve(true);
+      return changeBackground(selectedBackground, cameraTrack);
+    });
+  }, [localParticipant, changeBackground]);
 
   const sharedShellProps = {
     controls: {
@@ -445,7 +396,7 @@ export default function RoomPage() {
           videoCaptureDefaults: preJoinSettings?.selectedCam
             ? { deviceId: preJoinSettings.selectedCam }
             : undefined,
-          audioOutputDefaults: preJoinSettings?.selectedSpeaker
+          audioOutput: preJoinSettings?.selectedSpeaker
             ? { deviceId: preJoinSettings.selectedSpeaker }
             : undefined,
           publishDefaults: {

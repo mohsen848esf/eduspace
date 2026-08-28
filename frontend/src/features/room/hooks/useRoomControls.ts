@@ -46,11 +46,15 @@ export type SidebarTab = "participants" | "chat" | "tools" | null;
 
 export function useRoomControls(initialCamOn = true, initialMicOn = true) {
   const { t } = useTranslation("room");
-  const { localParticipant } = useLocalParticipant();
+  const {
+    localParticipant,
+    isMicrophoneEnabled,
+    isCameraEnabled,
+  } = useLocalParticipant();
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("participants");
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [isMicOn, setIsMicOn] = useState(initialMicOn);
-  const [isCamOn, setIsCamOn] = useState(initialCamOn);
+  const isMicOn = isMicrophoneEnabled ?? initialMicOn;
+  const isCamOn = isCameraEnabled ?? initialCamOn;
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [isPushToTalk, setIsPushToTalk] = useState(false);
   const room = useRoomContext();
@@ -151,27 +155,10 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
 
   const isHost = useRoomStore((s) => s.isHost);
   const isCoHost = useRoomStore((s) => s.isCoHost);
-  const lockMicrophone = useRoomStore((s) => s.lockMicrophone);
-  const lockCamera = useRoomStore((s) => s.lockCamera);
-  const lockScreenShare = useRoomStore((s) => s.lockScreenShare);
   const canUseMicrophone = useRoomStore((s) => s.canUseMicrophone);
   const canUseCamera = useRoomStore((s) => s.canUseCamera);
   const canShareScreen = useRoomStore((s) => s.canShareScreen);
   const canModerate = isHost || isCoHost;
-
-  // Sync isMicOn and isCamOn whenever localParticipant track states change reactively
-  const { isMicrophoneEnabled, isCameraEnabled } = useLocalParticipant();
-  useEffect(() => {
-    if (isMicrophoneEnabled !== undefined) {
-      setIsMicOn(isMicrophoneEnabled);
-    }
-  }, [isMicrophoneEnabled]);
-
-  useEffect(() => {
-    if (isCameraEnabled !== undefined) {
-      setIsCamOn(isCameraEnabled);
-    }
-  }, [isCameraEnabled]);
 
   // Cooldown tracking per permission type to prevent spam requests
   const lastPermissionRequestRef = useRef<Record<string, number>>({
@@ -215,7 +202,6 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
     }
 
     await localParticipant.setMicrophoneEnabled(newState);
-    setIsMicOn(newState);
   }, [localParticipant, isMicOn, canModerate, canUseMicrophone, room]);
 
   const toggleCam = useCallback(async () => {
@@ -250,7 +236,6 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
     }
 
     await localParticipant.setCameraEnabled(newState);
-    setIsCamOn(newState);
   }, [localParticipant, isCamOn, canModerate, canUseCamera, room]);
 
   const toggleScreenShare = useCallback(async () => {
@@ -334,7 +319,6 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
           micBeforePTT.current = isMicOn;
           if (!isMicOn && localParticipant) {
             await localParticipant.setMicrophoneEnabled(true);
-            setIsMicOn(true);
           }
         }
         return;
@@ -353,7 +337,6 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
         pttActive.current = false;
         if (!micBeforePTT.current && localParticipant) {
           await localParticipant.setMicrophoneEnabled(false);
-          setIsMicOn(false);
         }
       }
     };
@@ -374,19 +357,16 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
 
         if (data.type === "MUTE_AUDIO" && localParticipant) {
           localParticipant.setMicrophoneEnabled(false);
-          setIsMicOn(false);
           toast(t("host.youWereMuted"), { icon: "🔇" });
         }
 
         if (data.type === "UNMUTE_AUDIO" && localParticipant) {
           localParticipant.setMicrophoneEnabled(true);
-          setIsMicOn(true);
           toast(t("host.hostUnmuted"), { icon: "🎙" });
         }
 
         if (data.type === "MUTE_VIDEO" && localParticipant) {
           localParticipant.setCameraEnabled(false);
-          setIsCamOn(false);
           toast(t("host.hostTurnedOffCamera"), { icon: "📵" });
         }
 
@@ -406,13 +386,11 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
             if (settings.lockMicrophone === true) {
               useRoomStore.getState().setMediaPermissions({ canUseMicrophone: false });
               localParticipant.setMicrophoneEnabled(false);
-              setIsMicOn(false);
               toast("میکروفون توسط برگزارکننده قفل شد.", { icon: "🔒" });
             }
             if (settings.lockCamera === true) {
               useRoomStore.getState().setMediaPermissions({ canUseCamera: false });
               localParticipant.setCameraEnabled(false);
-              setIsCamOn(false);
               toast("وب‌کم توسط برگزارکننده قفل شد.", { icon: "🔒" });
             }
             if (settings.lockScreenShare === true) {
@@ -479,7 +457,6 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
     toggleSidebar,
     toggleSettings,
     togglePushToTalk,
-    setIsCamOn,
     handRaised,
     toggleHandRaise,
   };

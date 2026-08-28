@@ -80,16 +80,9 @@ export default function PreJoinScreen({
 
   // Derived moderator and lock flags (pure computations, no state loop)
   const isModerator = Boolean(
-    roomInfo?.is_host ||
-      (user &&
-        (roomInfo?.host?.id === user.id ||
-          roomInfo?.host_id === user.id ||
-          roomInfo?.co_hosts?.some(
-            (c: { id?: number; username?: string } | string) =>
-              (typeof c === "object"
-                ? c.id === user.id || c.username === user.username
-                : c === user.username)
-          )))
+    user &&
+      (roomInfo?.host === user.username ||
+        roomInfo?.co_hosts?.includes(user.username))
   );
 
   const isMicLocked = !isModerator && Boolean(roomInfo?.lock_microphone);
@@ -98,19 +91,16 @@ export default function PreJoinScreen({
   // Enforce room-level initial mute/lock settings once room info is known
   useEffect(() => {
     if (!roomInfo || isModerator) return;
-    if (roomInfo.lock_microphone || roomInfo.mute_mic_on_join) {
-      setMicEnabled(false);
-    }
-    if (roomInfo.lock_camera || roomInfo.mute_cam_on_join) {
-      setCamEnabled(false);
-    }
-  }, [
-    roomInfo?.lock_microphone,
-    roomInfo?.mute_mic_on_join,
-    roomInfo?.lock_camera,
-    roomInfo?.mute_cam_on_join,
-    isModerator,
-  ]);
+    const applyRoomDefaults = window.setTimeout(() => {
+      if (roomInfo.lock_microphone || roomInfo.mute_mic_on_join) {
+        setMicEnabled(false);
+      }
+      if (roomInfo.lock_camera || roomInfo.mute_cam_on_join) {
+        setCamEnabled(false);
+      }
+    }, 0);
+    return () => window.clearTimeout(applyRoomDefaults);
+  }, [roomInfo, isModerator]);
 
   const handleJoinNow = async () => {
     await stopTrack();

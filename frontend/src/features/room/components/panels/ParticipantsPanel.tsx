@@ -373,7 +373,6 @@ export default function ParticipantsPanel() {
     </div>
   );
 }
-
 // ---------------------------------------------------------------------------
 // ParticipantRow — extracted as a proper top-level component to avoid
 // re-creation on every parent render (which was causing the kebab menu
@@ -508,7 +507,7 @@ function ParticipantRow({
         </span>
         {isPHost && (
           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--brand)]/30 flex-shrink-0">
-            {t("topbar.host", "میزبان")}
+            {t("topbar.host", { defaultValue: "میزبان" })}
           </span>
         )}
         {isPCoHost && (
@@ -724,57 +723,6 @@ function DropdownItem({
     >
       <span className="text-sm leading-none">{icon}</span>
       <span>{label}</span>
-    </button>
-  );
-}
-
-interface RecordingGrantToggleProps {
-  username: string;
-  granted: boolean;
-  busy: boolean;
-  onToggle: (next: boolean) => void;
-  t: (key: string, opts?: Record<string, unknown>) => string;
-}
-
-/**
- * @deprecated - Kept for reference; logic is now inside the kebab dropdown.
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function _RecordingGrantToggle({
-  username,
-  granted,
-  busy,
-  onToggle,
-  t,
-}: RecordingGrantToggleProps) {
-  const label = granted
-    ? t("recordingGrant.revoke", { username })
-    : t("recordingGrant.grant", { username });
-  return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        onToggle(!granted);
-      }}
-      disabled={busy}
-      aria-pressed={granted}
-      aria-label={label}
-      title={label}
-      className={cn(
-        "h-5 px-1.5 rounded-md border-none cursor-pointer flex items-center gap-1",
-        "text-[9px] font-bold uppercase tracking-wider transition-colors",
-        granted
-          ? "bg-[var(--red)]/15 text-[var(--red)]"
-          : "bg-[var(--s4)] text-[var(--t3)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
-        busy && "opacity-60 cursor-wait",
-      )}
-    >
-      <span
-        className={cn("w-1.5 h-1.5 rounded-full", granted ? "bg-[var(--red)]" : "bg-[var(--t3)]/60")}
-        aria-hidden
-      />
-      REC
     </button>
   );
 }
