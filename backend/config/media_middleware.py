@@ -24,5 +24,13 @@ class MediaFrameSecurityMiddleware(MiddlewareMixin):
             response['Access-Control-Allow-Origin'] = '*'
             response['Access-Control-Allow-Methods'] = 'GET, HEAD, OPTIONS'
             response['Access-Control-Allow-Headers'] = '*'
+            response['X-Content-Type-Options'] = 'nosniff'
+
+            if request.path.startswith(f'{media_url}room_presentations/'):
+                response['Content-Security-Policy'] = (
+                    "default-src 'none'; img-src 'self' data:; "
+                    "style-src 'unsafe-inline'; "
+                    "frame-ancestors 'self' http://localhost:* http://127.0.0.1:* https://*;"
+                )
             
         return response

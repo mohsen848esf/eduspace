@@ -1,9 +1,31 @@
+import os
 import secrets
+import uuid
 
-from django.conf import settings
-from django.db import models
+from django.db import models, transaction
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 
 from accounts.models import User
+from rooms.storage import PrivatePresentationStorage
+
+
+def _safe_upload_extension(filename: str) -> str:
+    extension = os.path.splitext(filename)[1].lower()
+    return extension if extension in {
+        '.pdf', '.png', '.jpg', '.jpeg', '.webp',
+        '.ppt', '.pptx', '.odp', '.doc', '.docx',
+    } else ''
+
+
+def presentation_output_upload_path(instance, filename: str) -> str:
+    extension = _safe_upload_extension(filename) or '.pdf'
+    return f'room_presentations/{instance.room.room_code}/ready/{uuid.uuid4().hex}{extension}'
+
+
+def presentation_source_upload_path(instance, filename: str) -> str:
+    extension = _safe_upload_extension(filename)
+    return f'{instance.room.room_code}/{uuid.uuid4().hex}{extension}'
 
 
 class Room(models.Model):
@@ -263,16 +285,58 @@ class PresentationDocument(models.Model):
         SLIDE = 'slide', 'Presentation Slide'
         OTHER = 'other', 'Other Document'
 
+    class ProcessingStatus(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        PROCESSING = 'processing', 'Processing'
+        READY = 'ready', 'Ready'
+        FAILED = 'failed', 'Failed'
+
+    class SourceType(models.TextChoices):
+        PDF = 'pdf', 'PDF'
+        PNG = 'png', 'PNG'
+        JPEG = 'jpeg', 'JPEG'
+        WEBP = 'webp', 'WebP'
+        PPT = 'ppt', 'PowerPoint'
+        PPTX = 'pptx', 'PowerPoint Open XML'
+        ODP = 'odp', 'OpenDocument Presentation'
+        DOC = 'doc', 'Word Document'
+        DOCX = 'docx', 'Word Open XML'
+
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='presentations')
     uploader = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     guest_uploader_name = models.CharField(max_length=100, null=True, blank=True)
-    file = models.FileField(upload_to='room_presentations/%Y/%m/')
+    file = models.FileField(
+        upload_to=presentation_output_upload_path,
+        null=True,
+        blank=True,
+    )
+    source_file = models.FileField(
+        upload_to=presentation_source_upload_path,
+        storage=PrivatePresentationStorage(),
+        null=True,
+        blank=True,
+    )
+    source_type = models.CharField(
+        max_length=10,
+        choices=SourceType.choices,
+        blank=True,
+        default='',
+    )
+    original_filename = models.CharField(max_length=255, blank=True, default='')
     title = models.CharField(max_length=255)
     file_type = models.CharField(max_length=20, choices=FileType.choices, default=FileType.PDF)
     file_size_bytes = models.PositiveIntegerField(default=0)
     total_pages = models.PositiveIntegerField(default=1)
     current_page = models.PositiveIntegerField(default=1)
     is_active_on_stage = models.BooleanField(default=False)
+    processing_status = models.CharField(
+        max_length=20,
+        choices=ProcessingStatus.choices,
+        default=ProcessingStatus.READY,
+    )
+    processing_error_code = models.CharField(max_length=64, blank=True, default='')
+    processing_started_at = models.DateTimeField(null=True, blank=True)
+    processing_completed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -286,6 +350,23 @@ class PresentationDocument(models.Model):
         if self.uploader:
             return self.uploader.full_name or self.uploader.username
         return self.guest_uploader_name or "Guest"
+
+
+@receiver(post_delete, sender=PresentationDocument)
+def delete_presentation_files(sender, instance, **kwargs):
+    """Remove public output and private source files after database deletion."""
+    del sender, kwargs
+    files_to_delete = [
+        (field_file.storage, field_file.name)
+        for field_file in (instance.file, instance.source_file)
+        if field_file and field_file.name
+    ]
+
+    def delete_files_after_commit():
+        for storage, name in files_to_delete:
+            storage.delete(name)
+
+    transaction.on_commit(delete_files_after_commit)
 
 
 def _make_recording_token() -> str:

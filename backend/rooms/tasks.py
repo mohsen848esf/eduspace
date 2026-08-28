@@ -6,11 +6,86 @@ from celery.exceptions import SoftTimeLimitExceeded
 from django.conf import settings
 from django.utils import timezone
 from accounts.metrics import CELERY_TASKS_TOTAL
-from rooms.models import Recording, RecordingSegment
+from rooms.models import PresentationDocument, Recording
 from rooms.recording import ffmpeg_ops
 from rooms.recording.s3_utils import upload_recording_to_s3
+from rooms.services.presentation_upload import (
+    GotenbergConversionService,
+    PermanentConversionError,
+    TransientConversionError,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def _mark_presentation_failed(document_pk: int, error_code: str) -> None:
+    PresentationDocument.objects.filter(pk=document_pk).update(
+        processing_status=PresentationDocument.ProcessingStatus.FAILED,
+        processing_error_code=error_code,
+        processing_completed_at=timezone.now(),
+    )
+
+
+@shared_task(
+    bind=True,
+    name='rooms.tasks.convert_presentation_document_task',
+    max_retries=2,
+    soft_time_limit=150,
+    time_limit=180,
+)
+def convert_presentation_document_task(self, document_pk: int):
+    try:
+        document = PresentationDocument.objects.get(pk=document_pk)
+        if document.processing_status == PresentationDocument.ProcessingStatus.READY:
+            return 'Presentation already ready'
+        claimed = PresentationDocument.objects.filter(
+            pk=document_pk,
+            processing_status=PresentationDocument.ProcessingStatus.PENDING,
+        ).update(
+            processing_status=PresentationDocument.ProcessingStatus.PROCESSING,
+            processing_started_at=timezone.now(),
+            processing_error_code='',
+        )
+        if not claimed:
+            return f'Presentation {document_pk} is not pending'
+        document.refresh_from_db()
+        GotenbergConversionService.convert(document)
+        CELERY_TASKS_TOTAL.labels(
+            task_name='convert_presentation_document_task', status='success',
+        ).inc()
+        return f'Presentation {document_pk} converted'
+    except PresentationDocument.DoesNotExist:
+        return f'Presentation {document_pk} no longer exists'
+    except TransientConversionError as exc:
+        if self.request.retries < self.max_retries:
+            PresentationDocument.objects.filter(pk=document_pk).update(
+                processing_status=PresentationDocument.ProcessingStatus.PENDING,
+            )
+            raise self.retry(exc=exc, countdown=5 * (self.request.retries + 1))
+        _mark_presentation_failed(document_pk, str(exc) or 'CONVERSION_FAILED')
+        CELERY_TASKS_TOTAL.labels(
+            task_name='convert_presentation_document_task', status='failure',
+        ).inc()
+        return f'Presentation {document_pk} conversion failed after retries'
+    except PermanentConversionError as exc:
+        _mark_presentation_failed(document_pk, str(exc) or 'CONVERSION_FAILED')
+        CELERY_TASKS_TOTAL.labels(
+            task_name='convert_presentation_document_task', status='failure',
+        ).inc()
+        return f'Presentation {document_pk} rejected'
+    except SoftTimeLimitExceeded:
+        _mark_presentation_failed(document_pk, 'CONVERSION_TIMEOUT')
+        CELERY_TASKS_TOTAL.labels(
+            task_name='convert_presentation_document_task', status='failure',
+        ).inc()
+        raise
+    except Exception:
+        _mark_presentation_failed(document_pk, 'CONVERSION_FAILED')
+        CELERY_TASKS_TOTAL.labels(
+            task_name='convert_presentation_document_task', status='failure',
+        ).inc()
+        logger.exception('Unexpected presentation conversion failure for pk=%s', document_pk)
+        raise
 
 
 @shared_task(

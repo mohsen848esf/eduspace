@@ -21,11 +21,14 @@ export interface PresentationDocument {
   title: string;
   file_url: string;
   file_type: "pdf" | "image" | "slide" | "other";
+  source_type?: "pdf" | "png" | "jpeg" | "webp" | "ppt" | "pptx" | "odp" | "doc" | "docx";
   file_size_bytes?: number;
   total_pages: number;
   current_page: number;
   uploader_name: string;
   is_active_on_stage?: boolean;
+  processing_status: "pending" | "processing" | "ready" | "failed";
+  processing_error_code?: string;
   created_at?: string;
 }
 

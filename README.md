@@ -99,6 +99,11 @@ uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --reload
 
 # Or standard Django (HTTP only)
 python manage.py runserver
+
+# In a separate terminal, run async workers (required for Office-to-PDF conversion)
+celery -A config worker --loglevel=info --queues=default,documents,notifications,recordings,compliance,finance
+
+# On Windows, add: --pool=solo
 ```
 
 ### 5. Frontend setup
@@ -122,6 +127,7 @@ npm run dev
 | PostgreSQL | 5432 | Primary database |
 | Redis | 6379 | Cache & pub/sub |
 | LiveKit | 7880-7882 | Video server |
+| Gotenberg | 127.0.0.1:3000 | Static Office-to-PDF conversion (loopback only) |
 
 ---
 
@@ -186,6 +192,7 @@ DB_USER=edu
 DB_PASSWORD=your-password
 LIVEKIT_API_KEY=your-key
 LIVEKIT_API_SECRET=your-secret
+GOTENBERG_URL=http://localhost:3000
 ```
 
 ---

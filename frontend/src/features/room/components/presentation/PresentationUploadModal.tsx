@@ -6,6 +6,17 @@ import type { PresentationDocument } from "../../schemas/room.schema";
 import toast from "react-hot-toast";
 import axios from "axios";
 
+const PROCESSING_STATUSES = new Set(["pending", "processing"]);
+
+const CONVERSION_ERROR_MESSAGES: Record<string, string> = {
+  QUEUE_UNAVAILABLE: "سرویس پردازش موقتاً در دسترس نیست.",
+  CONVERSION_TIMEOUT: "زمان تبدیل سند بیش از حد مجاز شد.",
+  CONVERSION_FAILED: "تبدیل سند با خطا مواجه شد.",
+  INVALID_FILE_CONTENT: "ساختار فایل معتبر نیست.",
+  DOCUMENT_TOO_COMPLEX: "سند بیش از حد بزرگ یا پیچیده است.",
+  SOURCE_FILE_MISSING: "فایل اصلی برای تبدیل در دسترس نیست.",
+};
+
 interface PresentationUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -34,6 +45,7 @@ export const PresentationUploadModal: React.FC<PresentationUploadModalProps> = (
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [docTitle, setDocTitle] = useState("");
+  const [pollGeneration, setPollGeneration] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const canModerate = isHost || isCoHost;
@@ -42,18 +54,33 @@ export const PresentationUploadModal: React.FC<PresentationUploadModalProps> = (
     hasMutationCredential &&
     (canModerate || !lockDocumentPresentation || canUploadPresentation);
 
-  // Load existing room presentations
+  // Load documents and keep conversion states fresh only while the modal is open.
   useEffect(() => {
     if (!isOpen || !roomCode) return;
-    roomApi
-      .listPresentations(roomCode)
-      .then((res) => {
-        setPresentationsList(res.presentations || []);
-      })
-      .catch((err) => {
+    let isActive = true;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const refresh = async () => {
+      try {
+        const res = await roomApi.listPresentations(roomCode);
+        if (!isActive) return;
+        const documents = res.presentations || [];
+        setPresentationsList(documents);
+        if (documents.some((doc) => PROCESSING_STATUSES.has(doc.processing_status))) {
+          pollTimer = setTimeout(refresh, 2000);
+        }
+      } catch (err) {
         console.error("Failed to load presentations", err);
-      });
-  }, [isOpen, roomCode, setPresentationsList]);
+        if (isActive) pollTimer = setTimeout(refresh, 4000);
+      }
+    };
+
+    void refresh();
+    return () => {
+      isActive = false;
+      if (pollTimer) clearTimeout(pollTimer);
+    };
+  }, [isOpen, roomCode, setPresentationsList, pollGeneration]);
 
   if (!isOpen) return null;
 
@@ -84,7 +111,14 @@ export const PresentationUploadModal: React.FC<PresentationUploadModalProps> = (
       setPresentationsList([newDoc, ...presentationsList]);
       setSelectedFile(null);
       setDocTitle("");
-      toast.success("فایل با موفقیت بارگذاری شد.");
+      if (newDoc.processing_status !== "ready") {
+        setPollGeneration((generation) => generation + 1);
+      }
+      toast.success(
+        newDoc.processing_status === "ready"
+          ? "فایل با موفقیت بارگذاری و آماده ارائه شد."
+          : "فایل بارگذاری شد و در حال تبدیل امن به PDF است.",
+      );
     } catch (err: unknown) {
       console.error("Upload failed", err);
       const message = axios.isAxiosError<{ error?: string }>(err)
@@ -97,7 +131,7 @@ export const PresentationUploadModal: React.FC<PresentationUploadModalProps> = (
   };
 
   const handleStartPresenting = async (doc: PresentationDocument) => {
-    if (!roomCode) return;
+    if (!roomCode || doc.processing_status !== "ready") return;
     try {
       const activeDoc = await roomApi.setActivePresentation(
         roomCode,
@@ -125,6 +159,25 @@ export const PresentationUploadModal: React.FC<PresentationUploadModalProps> = (
     } catch (err) {
       console.error("Failed to start presentation", err);
       toast.error("خطا در شروع ارائه.");
+    }
+  };
+
+  const handleRetryConversion = async (doc: PresentationDocument) => {
+    if (!roomCode || doc.processing_status !== "failed") return;
+    try {
+      const updated = await roomApi.retryPresentationConversion(
+        roomCode,
+        doc.id,
+        guestAccessToken,
+      );
+      setPresentationsList(
+        presentationsList.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setPollGeneration((generation) => generation + 1);
+      toast.success("تبدیل سند دوباره در صف پردازش قرار گرفت.");
+    } catch (err) {
+      console.error("Failed to retry presentation conversion", err);
+      toast.error("امکان تلاش مجدد برای تبدیل سند وجود ندارد.");
     }
   };
 
@@ -189,7 +242,7 @@ export const PresentationUploadModal: React.FC<PresentationUploadModalProps> = (
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.png,.jpg,.jpeg,.webp,.svg,.ppt,.pptx"
+                accept=".pdf,.png,.jpg,.jpeg,.webp,.ppt,.pptx,.odp,.doc,.docx"
                 className="hidden"
                 onChange={handleFileSelect}
               />
@@ -198,7 +251,7 @@ export const PresentationUploadModal: React.FC<PresentationUploadModalProps> = (
                 {selectedFile ? selectedFile.name : "انتخاب فایل PDF، تصویر یا اسلاید"}
               </span>
               <span className="text-[10px] text-[var(--t3)]">
-                فرمت‌های مجاز: PDF, PNG, JPG, WebP, PPTX (حداکثر ۵۰ مگابایت)
+                PDF، تصویر، PowerPoint، ODP و Word — حداکثر ۵۰ مگابایت
               </span>
             </div>
 
@@ -227,7 +280,7 @@ export const PresentationUploadModal: React.FC<PresentationUploadModalProps> = (
         {/* Existing Uploaded Presentations List */}
         <div className="space-y-2">
           <span className="text-xs font-bold text-[var(--t2)] block">
-            فایل‌های آماده ارائه در این اتاق:
+            فایل‌های این اتاق:
           </span>
           <div className="max-h-48 overflow-y-auto space-y-2 pr-1 scrollbar-none">
             {presentationsList.length === 0 ? (
@@ -249,18 +302,45 @@ export const PresentationUploadModal: React.FC<PresentationUploadModalProps> = (
                         {doc.title}
                       </span>
                       <span className="text-[10px] text-[var(--t3)]">
-                        {doc.uploader_name}
+                        {doc.processing_status === "ready"
+                          ? doc.uploader_name
+                          : doc.processing_status === "failed"
+                            ? CONVERSION_ERROR_MESSAGES[doc.processing_error_code || ""] ||
+                              "تبدیل سند ناموفق بود."
+                            : "در حال تبدیل امن به PDF..."}
                       </span>
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleStartPresenting(doc)}
-                    className="flex-shrink-0 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs active:scale-95 border-none"
-                  >
-                    شروع ارائه
-                  </button>
+                  {doc.processing_status === "ready" && isAllowedToUpload ? (
+                    <button
+                      type="button"
+                      onClick={() => handleStartPresenting(doc)}
+                      className="flex-shrink-0 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs active:scale-95 border-none"
+                    >
+                      شروع ارائه
+                    </button>
+                  ) : doc.processing_status === "ready" ? (
+                    <span className="flex-shrink-0 px-3 py-1.5 text-[10px] font-bold rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-300">
+                      آماده نمایش
+                    </span>
+                  ) : doc.processing_status === "failed" && isAllowedToUpload ? (
+                    <button
+                      type="button"
+                      onClick={() => handleRetryConversion(doc)}
+                      className="flex-shrink-0 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer border-none"
+                    >
+                      تلاش مجدد
+                    </button>
+                  ) : doc.processing_status === "failed" ? (
+                    <span className="flex-shrink-0 px-3 py-1.5 text-[10px] font-bold rounded-xl bg-red-500/10 text-red-600 dark:text-red-300">
+                      تبدیل ناموفق
+                    </span>
+                  ) : (
+                    <span className="flex-shrink-0 px-3 py-1.5 text-[10px] font-bold rounded-xl bg-[var(--s3)] text-[var(--t2)]">
+                      در حال پردازش
+                    </span>
+                  )}
                 </div>
               ))
             )}

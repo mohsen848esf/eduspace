@@ -94,6 +94,15 @@ class PresentationService:
             room=locked_room,
             pk=document_id,
         )
+        if (
+            document.processing_status != PresentationDocument.ProcessingStatus.READY
+            or not document.file
+        ):
+            raise PresentationAccessError(
+                message='Presentation is not ready yet',
+                code='PRESENTATION_NOT_READY',
+                status_code=409,
+            )
         locked_room.presentations.exclude(pk=document.pk).update(is_active_on_stage=False)
         if not document.is_active_on_stage:
             document.is_active_on_stage = True

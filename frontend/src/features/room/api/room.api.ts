@@ -241,6 +241,21 @@ export const roomApi = {
     return res.data;
   },
 
+  retryPresentationConversion: async (
+    room_code: string,
+    docId: number,
+    guest_access_token?: string | null,
+  ): Promise<PresentationDocument> => {
+    const res = await client.post(
+      `/rooms/${room_code}/presentations/${docId}/retry/`,
+      {},
+      guest_access_token
+        ? { headers: { "X-Guest-Access-Token": guest_access_token } }
+        : undefined,
+    );
+    return res.data;
+  },
+
   grantPresentationPermission: async (
     room_code: string,
     identity: string,

@@ -26,6 +26,7 @@ urlpatterns = [
     path('<str:room_code>/presentations/upload/', views.upload_presentation, name='upload_presentation'),
     path('<str:room_code>/presentations/<int:doc_id>/present/', views.set_active_presentation, name='set_active_presentation'),
     path('<str:room_code>/presentations/<int:doc_id>/page/', views.set_presentation_page, name='set_presentation_page'),
+    path('<str:room_code>/presentations/<int:doc_id>/retry/', views.retry_presentation_conversion, name='retry_presentation_conversion'),
 
     # --- Co-Host Delegation ---
     path('<str:room_code>/co-hosts/', views.list_co_hosts, name='list_co_hosts'),

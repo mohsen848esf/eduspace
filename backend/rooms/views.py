@@ -6,7 +6,6 @@ import string
 
 from django.conf import settings
 from django.db import models
-from django.db.models import Q
 from django.utils import timezone
 from livekit import api
 from rest_framework import status
@@ -21,6 +20,11 @@ from .services.guest_access import (
     issue_guest_access_token,
 )
 from .services.presentation import PresentationAccessError, PresentationService
+from .services.presentation_upload import (
+    PresentationUploadError,
+    PresentationUploadService,
+)
+from .tasks import convert_presentation_document_task
 
 
 def generate_room_code():
@@ -1325,6 +1329,30 @@ def _presentation_access_error_response(exc):
     }, status=exc.status_code)
 
 
+def _presentation_response_data(request, document):
+    file_url = ''
+    if (
+        document.processing_status == PresentationDocument.ProcessingStatus.READY
+        and document.file
+    ):
+        file_url = request.build_absolute_uri(document.file.url)
+    return {
+        'id': document.id,
+        'title': document.title,
+        'file_url': file_url,
+        'file_type': document.file_type,
+        'source_type': document.source_type,
+        'file_size_bytes': document.file_size_bytes,
+        'total_pages': document.total_pages,
+        'current_page': document.current_page,
+        'uploader_name': document.uploader_name,
+        'is_active_on_stage': document.is_active_on_stage,
+        'processing_status': document.processing_status,
+        'processing_error_code': document.processing_error_code,
+        'created_at': document.created_at.isoformat(),
+    }
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def upload_presentation(request, room_code):
@@ -1349,53 +1377,36 @@ def upload_presentation(request, room_code):
         return _presentation_access_error_response(exc)
 
     uploaded_file = request.FILES.get('file')
-    if not uploaded_file:
-        return Response({'error': 'فایلی برای آپلود ارسال نشده است.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    # 50MB max file size
-    if uploaded_file.size > 50 * 1024 * 1024:
-        return Response({'error': 'حداکثر حجم مجاز فایل ۵۰ مگابایت است.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    filename = uploaded_file.name.lower()
-    file_type = PresentationDocument.FileType.OTHER
-    if filename.endswith(('.pdf',)):
-        file_type = PresentationDocument.FileType.PDF
-    elif filename.endswith(('.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif')):
-        file_type = PresentationDocument.FileType.IMAGE
-    elif filename.endswith(('.ppt', '.pptx', '.odp', '.key')):
-        file_type = PresentationDocument.FileType.SLIDE
-
-    title = request.data.get('title') or uploaded_file.name
     guest_name = actor.participant.guest_name if actor.participant and actor.participant.is_guest else None
+    try:
+        doc, requires_conversion = PresentationUploadService.create_document(
+            room=room,
+            uploaded_file=uploaded_file,
+            title=request.data.get('title', ''),
+            uploader=user,
+            guest_uploader_name=guest_name,
+        )
+    except PresentationUploadError as exc:
+        return Response({
+            'error': exc.message,
+            'code': exc.code,
+        }, status=exc.status_code)
 
-    total_pages = int(request.data.get('total_pages', 1))
+    if requires_conversion:
+        try:
+            convert_presentation_document_task.delay(doc.pk)
+        except Exception:
+            doc.processing_status = PresentationDocument.ProcessingStatus.FAILED
+            doc.processing_error_code = 'QUEUE_UNAVAILABLE'
+            doc.processing_completed_at = timezone.now()
+            doc.save(update_fields=[
+                'processing_status', 'processing_error_code', 'processing_completed_at',
+            ])
 
-    doc = PresentationDocument.objects.create(
-        room=room,
-        uploader=user,
-        guest_uploader_name=guest_name if not user else None,
-        file=uploaded_file,
-        title=title,
-        file_type=file_type,
-        file_size_bytes=uploaded_file.size,
-        total_pages=max(1, total_pages),
-        current_page=1,
+    return Response(
+        _presentation_response_data(request, doc),
+        status=(status.HTTP_202_ACCEPTED if requires_conversion else status.HTTP_201_CREATED),
     )
-
-    file_url = request.build_absolute_uri(doc.file.url) if doc.file else ''
-
-    return Response({
-        'id': doc.id,
-        'title': doc.title,
-        'file_url': file_url,
-        'file_type': doc.file_type,
-        'file_size_bytes': doc.file_size_bytes,
-        'total_pages': doc.total_pages,
-        'current_page': doc.current_page,
-        'uploader_name': doc.uploader_name,
-        'is_active_on_stage': doc.is_active_on_stage,
-        'created_at': doc.created_at.isoformat(),
-    }, status=status.HTTP_201_CREATED)
 
 
 @api_view(['GET'])
@@ -1407,21 +1418,7 @@ def list_presentations(request, room_code):
         return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
 
     docs = room.presentations.all()
-    results = []
-    for d in docs:
-        file_url = request.build_absolute_uri(d.file.url) if d.file else ''
-        results.append({
-            'id': d.id,
-            'title': d.title,
-            'file_url': file_url,
-            'file_type': d.file_type,
-            'file_size_bytes': d.file_size_bytes,
-            'total_pages': d.total_pages,
-            'current_page': d.current_page,
-            'uploader_name': d.uploader_name,
-            'is_active_on_stage': d.is_active_on_stage,
-            'created_at': d.created_at.isoformat(),
-        })
+    results = [_presentation_response_data(request, document) for document in docs]
 
     return Response({'presentations': results})
 
@@ -1459,23 +1456,67 @@ def set_active_presentation(request, room_code, doc_id):
             document_id=doc_id,
             is_active=is_active,
         )
+    except PresentationAccessError as exc:
+        return _presentation_access_error_response(exc)
     except PresentationDocument.DoesNotExist:
         return Response({'error': 'Presentation not found'}, status=status.HTTP_404_NOT_FOUND)
 
     if doc is None:
         return Response({'message': 'Presentation stopped', 'is_active': False})
 
-    file_url = request.build_absolute_uri(doc.file.url) if doc.file else ''
-    return Response({
-        'id': doc.id,
-        'title': doc.title,
-        'file_url': file_url,
-        'file_type': doc.file_type,
-        'total_pages': doc.total_pages,
-        'current_page': doc.current_page,
-        'uploader_name': doc.uploader_name,
-        'is_active_on_stage': True,
-    })
+    return Response(_presentation_response_data(request, doc))
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def retry_presentation_conversion(request, room_code, doc_id):
+    try:
+        room = Room.objects.get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        PresentationService.authorize_control(
+            room=room,
+            user=request.user,
+            guest_access_token=_guest_access_token_from_request(request),
+        )
+    except PresentationAccessError as exc:
+        return _presentation_access_error_response(exc)
+
+    try:
+        document = room.presentations.get(pk=doc_id)
+    except PresentationDocument.DoesNotExist:
+        return Response({'error': 'Presentation not found'}, status=status.HTTP_404_NOT_FOUND)
+    if document.processing_status != PresentationDocument.ProcessingStatus.FAILED:
+        return Response({
+            'error': 'Only failed conversions can be retried',
+            'code': 'CONVERSION_NOT_RETRYABLE',
+        }, status=status.HTTP_409_CONFLICT)
+    if not document.source_file:
+        return Response({
+            'error': 'The original document is no longer available',
+            'code': 'SOURCE_FILE_MISSING',
+        }, status=status.HTTP_409_CONFLICT)
+
+    document.processing_status = PresentationDocument.ProcessingStatus.PENDING
+    document.processing_error_code = ''
+    document.processing_started_at = None
+    document.processing_completed_at = None
+    document.save(update_fields=[
+        'processing_status', 'processing_error_code', 'processing_started_at',
+        'processing_completed_at',
+    ])
+    try:
+        convert_presentation_document_task.delay(document.pk)
+    except Exception:
+        document.processing_status = PresentationDocument.ProcessingStatus.FAILED
+        document.processing_error_code = 'QUEUE_UNAVAILABLE'
+        document.processing_completed_at = timezone.now()
+        document.save(update_fields=[
+            'processing_status', 'processing_error_code', 'processing_completed_at',
+        ])
+    return Response(_presentation_response_data(request, document), status=status.HTTP_202_ACCEPTED)
 
 
 @api_view(['POST'])

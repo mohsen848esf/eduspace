@@ -1,7 +1,10 @@
-from pathlib import Path
-from dotenv import load_dotenv
 from datetime import timedelta
 import os
+from pathlib import Path
+import sys
+
+from corsheaders.defaults import default_headers
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -140,12 +143,23 @@ CELERY_TASK_ROUTES = {
     'notifications.tasks.class_broadcast_task': {'queue': 'notifications'},
     'rooms.tasks.finalize_client_recording_task': {'queue': 'recordings'},
     'rooms.tasks.finalize_recording_task': {'queue': 'recordings'},
+    'rooms.tasks.convert_presentation_document_task': {'queue': 'documents'},
     'accounts.tasks.export_audit_logs_task': {'queue': 'compliance'},
     'accounts.tasks.monthly_generate_billing_and_usage_reports': {'queue': 'finance'},
     'accounts.tasks.weekly_recalculate_reports_and_storage': {'queue': 'finance'},
     'sys_admin.tasks.daily_usage_recalculation': {'queue': 'finance'},
     'billing.tasks.payment_recovery_task': {'queue': 'finance'},
 }
+
+GOTENBERG_URL = os.getenv('GOTENBERG_URL', 'http://localhost:3000').rstrip('/')
+PRESENTATION_MAX_UPLOAD_BYTES = int(os.getenv('PRESENTATION_MAX_UPLOAD_BYTES', 50 * 1024 * 1024))
+PRESENTATION_MAX_OUTPUT_BYTES = int(os.getenv('PRESENTATION_MAX_OUTPUT_BYTES', 100 * 1024 * 1024))
+PRESENTATION_MAX_PAGES = int(os.getenv('PRESENTATION_MAX_PAGES', 300))
+PRESENTATION_MAX_IMAGE_PIXELS = int(os.getenv('PRESENTATION_MAX_IMAGE_PIXELS', 40_000_000))
+PRESENTATION_CONVERSION_TIMEOUT_SECONDS = int(
+    os.getenv('PRESENTATION_CONVERSION_TIMEOUT_SECONDS', 120)
+)
+PRESENTATION_SOURCE_ROOT = BASE_DIR / 'private_media' / 'presentation_sources'
 
 AUTH_USER_MODEL = 'accounts.User'
 
@@ -204,8 +218,6 @@ CORS_ALLOW_CREDENTIALS = True
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 
-
-from corsheaders.defaults import default_headers
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'x-organization-slug',
 ]
@@ -292,7 +304,6 @@ LOGGING = {
 # ---------------------------------------------------------------------------
 # Sentry Error Monitoring
 # ---------------------------------------------------------------------------
-import sys
 TESTING = 'test' in sys.argv
 
 SENTRY_DSN = os.getenv('SENTRY_DSN')

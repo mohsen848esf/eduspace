@@ -27,6 +27,8 @@ PyJWT==2.12.1
 
 # Image handling
 pillow==12.2.0
+pypdf==6.16.2
+olefile==0.47
 
 # LiveKit
 livekit-api==1.1.0
