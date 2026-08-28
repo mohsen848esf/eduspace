@@ -1,5 +1,9 @@
 # EduSpace 🎓
 
+## استقرار روی سرور لینوکس، بدون CI/CD
+
+برای اجرای staging یا production با Docker و چند دستور، [راهنمای فارسی سرور](docs/DEPLOY.fa.md) را بخوانید. تنظیمات سرور مستقل از توسعهٔ لوکال است؛ برای سرور از Compose محلی زیر استفاده نکنید.
+
 **An open-source, self-hosted educational platform** — built for communities where access to international services like Google Meet, Zoom, or Microsoft Teams is restricted or unavailable.
 
 > **Built to run entirely on local/private infrastructure.** No external dependencies. No cloud lock-in. Your data stays with you.

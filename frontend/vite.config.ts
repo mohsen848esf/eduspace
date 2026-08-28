@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": path.resolve(import.meta.dirname, "./src"),
     },
   },
   build: {
@@ -19,6 +19,11 @@ export default defineConfig({
         manualChunks: (id) => {
           const normalizedId = id.replaceAll("\\", "/");
           if (normalizedId.includes("/node_modules/")) {
+            // Keep the RTC SDK lazy and below the async chunk budget even when
+            // newer bundler releases choose to merge it into the room page.
+            if (normalizedId.includes("/node_modules/livekit-client/")) {
+              return "vendor-livekit";
+            }
             if (
               normalizedId.includes("/node_modules/react/") ||
               normalizedId.includes("/node_modules/react-dom/") ||
