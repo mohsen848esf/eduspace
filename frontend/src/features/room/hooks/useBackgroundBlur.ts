@@ -1,11 +1,11 @@
 import { useCallback } from "react";
 import { useLocalParticipant } from "@livekit/components-react";
 import { Track } from "livekit-client";
-import { BackgroundProcessor } from "@livekit/track-processors";
 import {
   useBackgroundStore,
   type BackgroundType,
 } from "../store/backgroundStore";
+import { createBackgroundProcessor } from "../lib/backgroundProcessing";
 
 // Self-hosted background images — no external CDN dependency.
 // Images live in public/backgrounds/ and are served by Vite / Nginx.
@@ -46,14 +46,14 @@ export function useBackgroundBlur() {
 
         let processor;
         if (bg === "blur") {
-          processor = BackgroundProcessor({
+          processor = await createBackgroundProcessor({
             mode: "background-blur",
             blurRadius: 10,
           });
         } else {
           const imageUrl = BG_IMAGES[bg];
           if (!imageUrl) return;
-          processor = BackgroundProcessor({
+          processor = await createBackgroundProcessor({
             mode: "virtual-background",
             imagePath: imageUrl,
           });

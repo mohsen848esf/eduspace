@@ -1,24 +1,33 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createLocalVideoTrack, LocalVideoTrack } from "livekit-client";
-import { supportsBackgroundProcessors } from "@livekit/track-processors";
 import { type BackgroundType, BG_IMAGES } from "./useBackgroundBlur";
 import { useBackgroundStore } from "../store/backgroundStore";
 import { useLocale } from "../../../i18n/useLocale";
 import { toast } from "react-hot-toast";
+import {
+  createBackgroundProcessor,
+  supportsBackgroundProcessing,
+  type BackgroundProcessorInstance,
+} from "../lib/backgroundProcessing";
 
 export function usePreJoinTrack(camEnabled: boolean = true, selectedCam?: string) {
   const { language } = useLocale();
   const [track, setTrack] = useState<LocalVideoTrack | null>(null);
+  const trackRef = useRef<LocalVideoTrack | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [cameraError, setCameraError] = useState<"busy" | "unavailable" | null>(null);
   const { background, setBackground } = useBackgroundStore();
-  const [isSupported] = useState(() => supportsBackgroundProcessors());
-  const processorRef = useRef<any>(null);
+  const [isSupported] = useState(() => supportsBackgroundProcessing());
+  const processorRef = useRef<BackgroundProcessorInstance | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
   const retryCamera = useCallback(() => {
     setRetryCount((prev) => prev + 1);
   }, []);
+
+  useEffect(() => {
+    trackRef.current = track;
+  }, [track]);
 
   // Manage camera track lifecycle reactively
   useEffect(() => {
@@ -26,13 +35,16 @@ export function usePreJoinTrack(camEnabled: boolean = true, selectedCam?: string
     let localTrack: LocalVideoTrack | null = null;
 
     if (!camEnabled) {
+      /* eslint-disable react-hooks/set-state-in-effect -- Disabling the camera must synchronously clear state while releasing the external media track. */
       setCameraError(null);
-      if (track) {
-        track.stopProcessor().catch(() => {});
-        track.mediaStreamTrack?.stop();
-        track.stop();
+      const currentTrack = trackRef.current;
+      if (currentTrack) {
+        currentTrack.stopProcessor().catch(() => {});
+        currentTrack.mediaStreamTrack?.stop();
+        currentTrack.stop();
         setTrack(null);
       }
+      /* eslint-enable react-hooks/set-state-in-effect */
       return;
     }
 
@@ -55,15 +67,17 @@ export function usePreJoinTrack(camEnabled: boolean = true, selectedCam?: string
         localTrack = t;
         setCameraError(null);
         setTrack(t);
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (cancelled) return;
         console.warn("Camera init warning (prejoin):", err);
+        const errorName = err instanceof Error ? err.name : "";
+        const errorMessage = err instanceof Error ? err.message.toLowerCase() : "";
         const isBusy =
-          err?.name === "NotReadableError" ||
-          err?.name === "AbortError" ||
-          err?.name === "TrackStartError" ||
-          err?.message?.toLowerCase?.()?.includes("in use") ||
-          err?.message?.toLowerCase?.()?.includes("could not start video source");
+          errorName === "NotReadableError" ||
+          errorName === "AbortError" ||
+          errorName === "TrackStartError" ||
+          errorMessage.includes("in use") ||
+          errorMessage.includes("could not start video source");
         setCameraError(isBusy ? "busy" : "unavailable");
         setTrack(null);
       }
@@ -104,7 +118,9 @@ export function usePreJoinTrack(camEnabled: boolean = true, selectedCam?: string
       if (videoElRef.current && videoElRef.current !== el) {
         try {
           track?.detach(videoElRef.current);
-        } catch {}
+        } catch {
+          // The previous element may already have detached the track.
+        }
       }
       videoElRef.current = el;
       if (el && track) {
@@ -154,19 +170,16 @@ export function usePreJoinTrack(camEnabled: boolean = true, selectedCam?: string
           return;
         }
 
-        const { BackgroundProcessor } =
-          await import("@livekit/track-processors");
-
         let processor;
         if (bg === "blur") {
-          processor = BackgroundProcessor({
+          processor = await createBackgroundProcessor({
             mode: "background-blur",
             blurRadius: 10,
           });
         } else {
           const imageUrl = BG_IMAGES[bg];
           if (!imageUrl) return;
-          processor = BackgroundProcessor({
+          processor = await createBackgroundProcessor({
             mode: "virtual-background",
             imagePath: imageUrl,
           });
@@ -198,11 +211,6 @@ export function usePreJoinTrack(camEnabled: boolean = true, selectedCam?: string
     },
     [track, isSupported, setBackground, language],
   );
-
-  const trackRef = useRef<LocalVideoTrack | null>(null);
-  useEffect(() => {
-    trackRef.current = track;
-  }, [track]);
 
   // Cleanup processor on unmount
   useEffect(() => {

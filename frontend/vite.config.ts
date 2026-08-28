@@ -11,27 +11,32 @@ export default defineConfig({
     },
   },
   build: {
-    chunkSizeWarningLimit: 600,
+    // The optional HEIC decoder is large when minified but remains lazy-loaded.
+    // `scripts/check-bundle-budget.mjs` enforces tighter gzip budgets by chunk role.
+    chunkSizeWarningLimit: 1400,
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          if (id.includes("node_modules")) {
-            if (id.includes("react") || id.includes("react-dom") || id.includes("react-router-dom")) {
+          const normalizedId = id.replaceAll("\\", "/");
+          if (normalizedId.includes("/node_modules/")) {
+            if (
+              normalizedId.includes("/node_modules/react/") ||
+              normalizedId.includes("/node_modules/react-dom/") ||
+              normalizedId.includes("/node_modules/react-router/") ||
+              normalizedId.includes("/node_modules/react-router-dom/")
+            ) {
               return "vendor-react";
             }
-            if (id.includes("@livekit") || id.includes("livekit-client")) {
-              return "vendor-livekit";
-            }
-            if (id.includes("@tanstack")) {
+            if (normalizedId.includes("/@tanstack/")) {
               return "vendor-query";
             }
-            if (id.includes("@radix-ui")) {
+            if (normalizedId.includes("/@radix-ui/")) {
               return "vendor-radix";
             }
-            if (id.includes("framer-motion")) {
+            if (normalizedId.includes("/framer-motion/")) {
               return "vendor-motion";
             }
-            if (id.includes("lucide-react")) {
+            if (normalizedId.includes("/lucide-react/")) {
               return "vendor-icons";
             }
           }
