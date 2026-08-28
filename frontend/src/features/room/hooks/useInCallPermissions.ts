@@ -148,9 +148,17 @@ export function useInCallPermissions() {
             } else if (permission === "microphone") {
               permName = "استفاده از میکروفون";
               setMediaPermissions({ canUseMicrophone: granted });
+              // KEY FIX: actually enable the mic track so user doesn't have to click again
+              if (granted && localParticipant) {
+                localParticipant.setMicrophoneEnabled(true).catch(console.error);
+              }
             } else if (permission === "camera") {
               permName = "استفاده از وب‌کم";
               setMediaPermissions({ canUseCamera: granted });
+              // KEY FIX: actually enable the camera track
+              if (granted && localParticipant) {
+                localParticipant.setCameraEnabled(true).catch(console.error);
+              }
             } else if (permission === "presentation_upload") {
               permName = "آپلود و ارائه فایل";
               setMediaPermissions({ canUploadPresentation: granted });

@@ -229,30 +229,50 @@ def join_room(request, room_code):
 
     # Host and Co-Hosts always bypass the lobby.
     if not (is_host or is_co_host) and room.require_approval:
-        # Check if there's already a pending/admitted request for this user.
-        existing = LobbyRequest.objects.filter(
+        # Expire any stale DENIED/EXPIRED requests so they don't pollute future lookups.
+        LobbyRequest.objects.filter(
             room=room,
             user=request.user,
-            status__in=[LobbyRequest.Status.PENDING, LobbyRequest.Status.ADMITTED],
+            status__in=[LobbyRequest.Status.DENIED, LobbyRequest.Status.EXPIRED],
+        ).update(status=LobbyRequest.Status.EXPIRED)
+
+        # Check for an already-admitted request — if admitted, fall through and issue token.
+        admitted = LobbyRequest.objects.filter(
+            room=room,
+            user=request.user,
+            status=LobbyRequest.Status.ADMITTED,
         ).first()
-        if not existing:
-            display_name = request.user.full_name or request.user.username
-            existing = LobbyRequest.objects.create(
+        if admitted:
+            # Request was previously admitted; expire it and proceed to issue a fresh token below.
+            admitted.status = LobbyRequest.Status.EXPIRED
+            admitted.save()
+            # Fall through to token issuance below.
+        else:
+            # Check if there's already a pending request for this user.
+            existing = LobbyRequest.objects.filter(
                 room=room,
                 user=request.user,
-                display_name=display_name,
-                is_guest=False,
                 status=LobbyRequest.Status.PENDING,
+            ).first()
+            if not existing:
+                display_name = request.user.full_name or request.user.username
+                existing = LobbyRequest.objects.create(
+                    room=room,
+                    user=request.user,
+                    display_name=display_name,
+                    is_guest=False,
+                    status=LobbyRequest.Status.PENDING,
+                )
+            return Response(
+                {
+                    'waiting': True,
+                    'request_id': existing.id,
+                    'room_code': room.room_code,
+                    'name': room.name,
+                },
+                status=status.HTTP_202_ACCEPTED,
             )
-        return Response(
-            {
-                'waiting': True,
-                'request_id': existing.id,
-                'room_code': room.room_code,
-                'name': room.name,
-            },
-            status=status.HTTP_202_ACCEPTED,
-        )
+
 
     target_role = (
         RoomParticipant.Role.HOST

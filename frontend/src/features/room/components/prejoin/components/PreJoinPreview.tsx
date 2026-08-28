@@ -10,6 +10,7 @@ import {
   FlipHorizontal,
   Volume2,
   VideoOff as CameraOffIcon,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Spinner from "@/components/ui/Spinner";
@@ -23,8 +24,12 @@ export interface PreJoinPreviewProps {
   camEnabled: boolean;
   micEnabled: boolean;
   cameraError?: "busy" | "unavailable" | null;
-  onToggleCam: () => void;
-  onToggleMic: () => void;
+  onToggleCam?: () => void;
+  onToggleMic?: () => void;
+  /** When true, mic button is disabled with a lock icon (host has locked mic for all) */
+  isMicLocked?: boolean;
+  /** When true, cam button is disabled with a lock icon (host has locked camera for all) */
+  isCamLocked?: boolean;
   isMirrored: boolean;
   onToggleMirror: () => void;
   onOpenSettings: () => void;
@@ -45,6 +50,8 @@ export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
   cameraError,
   onToggleCam,
   onToggleMic,
+  isMicLocked = false,
+  isCamLocked = false,
   isMirrored,
   onToggleMirror,
   onOpenSettings,
@@ -215,34 +222,60 @@ export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
       {/* 6. Floating Glassmorphism Controls (Bottom Center) */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 bg-black/70 backdrop-blur-xl px-4 py-2 rounded-2xl border border-white/20 shadow-2xl">
         {/* Mic Toggle */}
-        <Tooltip content={micEnabled ? t("preJoin.muteMic") : t("preJoin.unmuteMic")}>
+        <Tooltip content={
+          isMicLocked
+            ? "میکروفون توسط برگزارکننده قفل شده است"
+            : micEnabled ? t("preJoin.muteMic") : t("preJoin.unmuteMic")
+        }>
           <button
             type="button"
-            onClick={onToggleMic}
+            onClick={isMicLocked ? undefined : onToggleMic}
+            aria-disabled={isMicLocked}
             className={cn(
-              "w-11 h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer",
-              micEnabled
-                ? "bg-white/15 hover:bg-white/25 text-white"
-                : "bg-[var(--red)] hover:bg-[var(--red)]/90 text-white shadow-lg shadow-[var(--red)]/40"
+              "w-11 h-11 rounded-xl flex items-center justify-center transition-all",
+              isMicLocked
+                ? "bg-white/10 text-white/40 cursor-not-allowed"
+                : micEnabled
+                  ? "bg-white/15 hover:bg-white/25 text-white cursor-pointer"
+                  : "bg-[var(--red)] hover:bg-[var(--red)]/90 text-white shadow-lg shadow-[var(--red)]/40 cursor-pointer"
             )}
           >
-            {micEnabled ? <Mic className="w-5 h-5 text-white" /> : <MicOff className="w-5 h-5 text-white" />}
+            {isMicLocked ? (
+              <Lock className="w-4 h-4 text-white/50" />
+            ) : micEnabled ? (
+              <Mic className="w-5 h-5 text-white" />
+            ) : (
+              <MicOff className="w-5 h-5 text-white" />
+            )}
           </button>
         </Tooltip>
 
         {/* Camera Toggle */}
-        <Tooltip content={camEnabled ? t("preJoin.turnOffCamera") : t("preJoin.turnOnCamera")}>
+        <Tooltip content={
+          isCamLocked
+            ? "دوربین توسط برگزارکننده قفل شده است"
+            : camEnabled ? t("preJoin.turnOffCamera") : t("preJoin.turnOnCamera")
+        }>
           <button
             type="button"
-            onClick={onToggleCam}
+            onClick={isCamLocked ? undefined : onToggleCam}
+            aria-disabled={isCamLocked}
             className={cn(
-              "w-11 h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer",
-              camEnabled
-                ? "bg-white/15 hover:bg-white/25 text-white"
-                : "bg-[var(--red)] hover:bg-[var(--red)]/90 text-white shadow-lg shadow-[var(--red)]/40"
+              "w-11 h-11 rounded-xl flex items-center justify-center transition-all",
+              isCamLocked
+                ? "bg-white/10 text-white/40 cursor-not-allowed"
+                : camEnabled
+                  ? "bg-white/15 hover:bg-white/25 text-white cursor-pointer"
+                  : "bg-[var(--red)] hover:bg-[var(--red)]/90 text-white shadow-lg shadow-[var(--red)]/40 cursor-pointer"
             )}
           >
-            {camEnabled ? <Video className="w-5 h-5 text-white" /> : <VideoOff className="w-5 h-5 text-white" />}
+            {isCamLocked ? (
+              <Lock className="w-4 h-4 text-white/50" />
+            ) : camEnabled ? (
+              <Video className="w-5 h-5 text-white" />
+            ) : (
+              <VideoOff className="w-5 h-5 text-white" />
+            )}
           </button>
         </Tooltip>
 
