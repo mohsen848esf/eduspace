@@ -6,6 +6,7 @@ import { Icons } from "../../../lib/constants/icons";
 import { useRoomLayoutStore } from "../store/roomLayoutStore";
 import { useRoomStore } from "../store/roomStore";
 import { roomApi } from "../api/room.api";
+import { PERMISSIONS_INVALIDATED } from "../lib/roomPermissions";
 import {
   useBackgroundBlur,
   type BackgroundType,
@@ -93,6 +94,7 @@ export default function SettingsPanel({
     setIsUpdatingSettings(true);
     try {
       await roomApi.updateSettings(roomCode, { [key]: val });
+      window.dispatchEvent(new Event(PERMISSIONS_INVALIDATED));
       if (key === "mute_mic_on_join") setRoomSettings({ muteMicOnJoin: val });
       if (key === "mute_cam_on_join") setRoomSettings({ muteCamOnJoin: val });
       if (key === "lock_screen_share") setRoomSettings({ lockScreenShare: val });

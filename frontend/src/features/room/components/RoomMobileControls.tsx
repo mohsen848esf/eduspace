@@ -6,6 +6,7 @@ import { cn } from "../../../lib/utils";
 import { type LayoutMode } from "../store/roomLayoutStore";
 import { useRoomWhiteboard } from "../hooks/useRoomWhiteboard";
 import ReactionsPopover from "./reactions/ReactionsPopover";
+import { useRoomStore } from "../store/roomStore";
 
 type PanelId = "people" | "chat" | "tools";
 
@@ -46,6 +47,11 @@ export default function RoomMobileControls({
 }: RoomMobileControlsProps) {
   const { t } = useTranslation("room");
   const [reactionsOpen, setReactionsOpen] = useState(false);
+  const isHost = useRoomStore((s) => s.isHost);
+  const isCoHost = useRoomStore((s) => s.isCoHost);
+  const canShareScreen = useRoomStore((s) => s.canShareScreen);
+  const lockScreenShare = useRoomStore((s) => s.lockScreenShare);
+  const showScreenShare = isHost || isCoHost || !lockScreenShare || canShareScreen || isScreenSharing;
 
   const {
     whiteboard: whiteboardState,
@@ -119,13 +125,13 @@ export default function RoomMobileControls({
         />
 
         {/* Screen Share */}
-        <MobileDockBtn
+        {showScreenShare && <MobileDockBtn
           tooltip={t("tooltips.screenShare")}
           icon={Icons.screenShare}
           onClick={onToggleScreenShare}
           variant={isScreenSharing ? "active" : "default"}
           ariaLabel={t("controls.share")}
-        />
+        />}
 
         {/* Raise Hand */}
         <MobileDockBtn

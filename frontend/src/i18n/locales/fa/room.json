@@ -1,4 +1,12 @@
 {
+  "permissions": {
+    "syncDelayed": "مجوز ذخیره شد. اطلاع‌رسانی لحظه‌ای با تأخیر روبه‌رو شد؛ وضعیت کاربران خودکار به‌روز می‌شود."
+  },
+  "presentationLayout": {
+    "hideParticipants": "پنهان کردن شرکت‌کنندگان",
+    "showParticipants": "نمایش شرکت‌کنندگان",
+    "participants": "شرکت‌کنندگان ارائه"
+  },
   "preJoin": {
     "roomCodeLabel": "کد اتاق:",
     "join": "ورود به جلسه",

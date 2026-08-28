@@ -79,7 +79,9 @@ client.interceptors.response.use(
     // Skip the refresh/redirect flow for these requests so the useLobbyWaiting
     // hook can handle auth errors gracefully without forcing a login redirect.
     const isLobbyPoll = original?.url?.includes("/lobby/status/");
-    if (error.response?.status === 401 && !original._retry && !isLobbyPoll) {
+    const isGuestPermissionPoll = original?.url?.endsWith("/permissions/") &&
+      original?.headers?.["X-Guest-Access-Token"];
+    if (error.response?.status === 401 && !original._retry && !isLobbyPoll && !isGuestPermissionPoll) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });

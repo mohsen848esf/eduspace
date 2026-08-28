@@ -1,5 +1,29 @@
 import { z } from "zod";
 
+const participantCapabilitiesSchema = z.object({
+  can_share_screen: z.boolean(),
+  can_use_microphone: z.boolean(),
+  can_use_camera: z.boolean(),
+  can_upload_presentation: z.boolean(),
+});
+
+export const roomPermissionSnapshotSchema = participantCapabilitiesSchema.extend({
+  room_code: z.string(),
+  identity: z.string(),
+  host_identity: z.string(),
+  co_hosts: z.array(z.string()),
+  is_host: z.boolean(),
+  is_co_host: z.boolean(),
+  lock_screen_share: z.boolean(),
+  lock_microphone: z.boolean(),
+  lock_camera: z.boolean(),
+  lock_document_presentation: z.boolean(),
+  participants: z.array(participantCapabilitiesSchema.extend({ identity: z.string() })),
+});
+
+export type RoomPermissionSnapshot = z.infer<typeof roomPermissionSnapshotSchema>;
+export type RoomPermission = "screen_share" | "microphone" | "camera" | "presentation_upload";
+
 export const createRoomSchema = z.object({
   name: z.string().min(2, "Room name must be at least 2 characters"),
   max_participants: z.number().min(2).max(20).default(20),

@@ -5,7 +5,6 @@ import secrets
 import string
 
 from django.conf import settings
-from django.db import models
 from django.utils import timezone
 from livekit import api
 from rest_framework import status
@@ -20,6 +19,11 @@ from .services.guest_access import (
     issue_guest_access_token,
 )
 from .services.presentation import PresentationAccessError, PresentationService
+from .services.permissions import (
+    RoomPermissionError,
+    grant_permission,
+    permission_snapshot,
+)
 from .services.presentation_upload import (
     PresentationUploadError,
     PresentationUploadService,
@@ -725,19 +729,42 @@ def kick_participant(request, room_code):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def grant_screen_share(request, room_code):
+    """Compatibility route; use the same persisted grant as request approval."""
+    return _grant_room_permission(request, room_code, 'screen_share')
+
+
+def _grant_room_permission(request, room_code, permission_type):
     try:
         room = Room.objects.get(room_code=room_code)
     except Room.DoesNotExist:
         return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+    try:
+        result = grant_permission(
+            room=room, user=request.user, data=request.data,
+            permission_type=permission_type,
+        )
+    except RoomPermissionError as exc:
+        return Response({'error': str(exc), 'code': exc.code}, status=exc.status_code)
+    return Response(result)
 
-    if room.host != request.user:
-        return Response({'error': 'Only host can grant permissions'}, status=status.HTTP_403_FORBIDDEN)
 
-    identity = request.data.get('identity')
-    if not identity:
-        return Response({'error': 'Identity required'}, status=status.HTTP_400_BAD_REQUEST)
-
-    return Response({'message': f'Permission granted to {identity}'})
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def room_permissions(request, room_code):
+    try:
+        room = Room.objects.select_related('host').get(room_code=room_code)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+    try:
+        result = permission_snapshot(
+            room=room, user=request.user,
+            guest_access_token=request.headers.get('X-Guest-Access-Token'),
+        )
+    except RoomPermissionError as exc:
+        return Response({'error': str(exc), 'code': exc.code}, status=exc.status_code)
+    response = Response(result)
+    response['Cache-Control'] = 'no-store'
+    return response
 
 
 @api_view(['POST'])
@@ -1221,19 +1248,20 @@ def room_settings(request, room_code):
 
     if updated:
         room.save(update_fields=updated)
-        # When locks are enabled, revoke active permissions from regular participants
+        # Keep persisted capabilities consistent on both lock and unlock.
         regular_participants = RoomParticipant.objects.filter(
             room=room,
-            role__in=[RoomParticipant.Role.PARTICIPANT, RoomParticipant.Role.GUEST]
+            is_active=True,
+            role__in=[RoomParticipant.Role.PARTICIPANT, RoomParticipant.Role.GUEST],
         )
-        if 'lock_microphone' in request.data and room.lock_microphone:
-            regular_participants.update(can_use_microphone=False)
-        if 'lock_camera' in request.data and room.lock_camera:
-            regular_participants.update(can_use_camera=False)
-        if 'lock_screen_share' in request.data and room.lock_screen_share:
-            regular_participants.update(can_share_screen=False)
-        if 'lock_document_presentation' in request.data and room.lock_document_presentation:
-            regular_participants.update(can_upload_presentation=False)
+        for lock, capability in (
+            ('lock_microphone', 'can_use_microphone'),
+            ('lock_camera', 'can_use_camera'),
+            ('lock_screen_share', 'can_share_screen'),
+            ('lock_document_presentation', 'can_upload_presentation'),
+        ):
+            if lock in request.data:
+                regular_participants.update(**{capability: not getattr(room, lock)})
 
     return Response({
         'room_code': room.room_code,
@@ -1251,53 +1279,9 @@ def room_settings(request, room_code):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def grant_media_permission(request, room_code):
-    """
-    Host or Co-Host grants or revokes a specific media permission (screen_share, microphone, camera)
-    for a participant.
-    """
-    try:
-        room = Room.objects.get(room_code=room_code)
-    except Room.DoesNotExist:
-        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
-
-    if not room.can_manage_room(request.user):
-        return Response({'error': 'Only host or co-hosts can grant media permissions'}, status=status.HTTP_403_FORBIDDEN)
-
-    user_identifier = request.data.get('user_id') or request.data.get('username') or request.data.get('identity')
-    permission_type = request.data.get('permission_type')  # 'screen_share', 'microphone', 'camera'
-    granted = request.data.get('granted', True)
-
-    if not user_identifier or not permission_type:
-        return Response({'error': 'user_identifier and permission_type are required'}, status=status.HTTP_400_BAD_REQUEST)
-
-    participant_qs = RoomParticipant.objects.filter(room=room)
-    if isinstance(user_identifier, int) or str(user_identifier).isdigit():
-        participant_qs = participant_qs.filter(models.Q(user_id=int(user_identifier)) | models.Q(guest_identity=str(user_identifier)))
-    else:
-        participant_qs = participant_qs.filter(models.Q(user__username=user_identifier) | models.Q(guest_identity=user_identifier))
-
-    participant = participant_qs.first()
-    if not participant:
-        return Response({'error': 'Participant not found'}, status=status.HTTP_404_NOT_FOUND)
-
-    if permission_type == 'screen_share':
-        participant.can_share_screen = bool(granted)
-        participant.save(update_fields=['can_share_screen'])
-    elif permission_type == 'microphone':
-        participant.can_use_microphone = bool(granted)
-        participant.save(update_fields=['can_use_microphone'])
-    elif permission_type == 'camera':
-        participant.can_use_camera = bool(granted)
-        participant.save(update_fields=['can_use_camera'])
-    else:
-        return Response({'error': f'Invalid permission type: {permission_type}'}, status=status.HTTP_400_BAD_REQUEST)
-
-    return Response({
-        'message': f'Permission {permission_type} set to {granted} for {user_identifier}',
-        'participant': user_identifier,
-        'permission_type': permission_type,
-        'granted': bool(granted),
-    })
+    return _grant_room_permission(
+        request, room_code, request.data.get('permission_type'),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1644,38 +1628,4 @@ def set_presentation_page(request, room_code, doc_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def grant_presentation_permission(request, room_code):
-    """
-    Host or Co-Host grants or revokes individual document upload/present permission.
-    """
-    try:
-        room = Room.objects.get(room_code=room_code)
-    except Room.DoesNotExist:
-        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
-
-    if not room.can_manage_room(request.user):
-        return Response({'error': 'Only host or co-hosts can grant presentation permissions'}, status=status.HTTP_403_FORBIDDEN)
-
-    user_identifier = request.data.get('user_id') or request.data.get('username') or request.data.get('identity')
-    granted = request.data.get('granted', True)
-
-    if not user_identifier:
-        return Response({'error': 'user_identifier is required'}, status=status.HTTP_400_BAD_REQUEST)
-
-    participant_qs = RoomParticipant.objects.filter(room=room)
-    if isinstance(user_identifier, int) or str(user_identifier).isdigit():
-        participant_qs = participant_qs.filter(models.Q(user_id=int(user_identifier)) | models.Q(guest_identity=str(user_identifier)))
-    else:
-        participant_qs = participant_qs.filter(models.Q(user__username=user_identifier) | models.Q(guest_identity=user_identifier))
-
-    participant = participant_qs.first()
-    if not participant:
-        return Response({'error': 'Participant not found'}, status=status.HTTP_404_NOT_FOUND)
-
-    participant.can_upload_presentation = bool(granted)
-    participant.save(update_fields=['can_upload_presentation'])
-
-    return Response({
-        'message': f'Presentation upload permission set to {granted} for {user_identifier}',
-        'participant': user_identifier,
-        'granted': bool(granted),
-    })
+    return _grant_room_permission(request, room_code, 'presentation_upload')

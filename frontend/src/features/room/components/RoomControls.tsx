@@ -573,7 +573,7 @@ export default function RoomControls({
   const activeRoomCode = roomCode || storeRoomCode || "";
   const canModerate = isHost || isCoHost;
   // Non-moderators can only see screen share button if they have explicit permission
-  const showScreenShare = canModerate || !lockScreenShare || canShareScreen;
+  const showScreenShare = canModerate || !lockScreenShare || canShareScreen || isScreenSharing;
 
   const [lobbyPanelOpen, setLobbyPanelOpen] = useState(false);
   const lobby = useLobbyHost({

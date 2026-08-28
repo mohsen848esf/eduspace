@@ -1,7 +1,8 @@
 import { create } from "zustand";
-import type { PresentationDocument } from "../schemas/room.schema";
+import type { PresentationDocument, RoomPermissionSnapshot } from "../schemas/room.schema";
 
 interface RoomState {
+  permissionSnapshot: RoomPermissionSnapshot | null;
   token: string | null;
   livekitUrl: string | null;
   roomCode: string | null;
@@ -96,6 +97,7 @@ interface RoomState {
 }
 
 export const useRoomStore = create<RoomState>((set) => ({
+  permissionSnapshot: null,
   token: null,
   livekitUrl: null,
   roomCode: null,
@@ -228,6 +230,7 @@ export const useRoomStore = create<RoomState>((set) => ({
     })),
   setRoom: (data) =>
     set({
+      permissionSnapshot: null,
       token: data.token,
       livekitUrl: data.livekitUrl,
       roomCode: data.roomCode,
@@ -258,6 +261,7 @@ export const useRoomStore = create<RoomState>((set) => ({
     }),
   clearRoom: () =>
     set({
+      permissionSnapshot: null,
       token: null,
       livekitUrl: null,
       roomCode: null,

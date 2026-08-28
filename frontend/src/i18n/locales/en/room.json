@@ -1,4 +1,12 @@
 {
+  "permissions": {
+    "syncDelayed": "Permission saved. Live delivery was delayed; participants will resync automatically."
+  },
+  "presentationLayout": {
+    "hideParticipants": "Hide participants",
+    "showParticipants": "Show participants",
+    "participants": "Presentation participants"
+  },
   "preJoin": {
     "roomCodeLabel": "Room code:",
     "join": "Join Now",

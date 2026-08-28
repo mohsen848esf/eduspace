@@ -10,13 +10,14 @@ import { useTranslation } from "react-i18next";
 import {
   useLocalParticipant,
   useParticipants,
+  useRoomContext,
 } from "@livekit/components-react";
 import { RemoteParticipant, Track, type Participant } from "livekit-client";
 import toast from "react-hot-toast";
 import { Icons } from "../../../../lib/constants/icons";
 import { cn } from "../../../../lib/utils";
 import { useRoomStore } from "../../store/roomStore";
-import { roomApi } from "../../api/room.api";
+import { grantRoomPermission } from "../../lib/roomPermissions";
 import recordingsApi, {
   type RecordingGrantUser,
 } from "../../../recordings/api/recordings.api";
@@ -36,6 +37,7 @@ import { useLobbyHost } from "../../hooks/useLobbyHost";
 export default function ParticipantsPanel() {
   const { t } = useTranslation("room");
   const participants = useParticipants();
+  const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
   const { roomCode, isHost } = useRoomStore();
   const {
@@ -56,22 +58,24 @@ export default function ParticipantsPanel() {
   const [showInvite, setShowInvite] = useState(false);
   const [grants, setGrants] = useState<RecordingGrantUser[]>([]);
   const [grantBusy, setGrantBusy] = useState<string | null>(null);
-  const [presentationGrants, setPresentationGrants] = useState<Set<string>>(new Set());
+  const permissionSnapshot = useRoomStore((s) => s.permissionSnapshot);
+  const [presentationGrantBusy, setPresentationGrantBusy] = useState<string | null>(null);
+  const presentationGrants = useMemo(() => new Set(
+    permissionSnapshot?.participants.filter((p) => p.can_upload_presentation).map((p) => p.identity),
+  ), [permissionSnapshot]);
 
   const togglePresentationGrant = async (identity: string) => {
-    if (!roomCode || !canModerate) return;
+    if (!roomCode || !canModerate || !permissionSnapshot || presentationGrantBusy) return;
     const nextVal = !presentationGrants.has(identity);
+    setPresentationGrantBusy(identity);
     try {
-      await roomApi.grantPresentationPermission(roomCode, identity, nextVal);
-      setPresentationGrants((prev) => {
-        const next = new Set(prev);
-        if (nextVal) next.add(identity);
-        else next.delete(identity);
-        return next;
-      });
+      const result = await grantRoomPermission(room, roomCode, identity, "presentation_upload", nextVal);
       toast.success(nextVal ? "اجازه ارائه فایل داده شد." : "اجازه ارائه فایل لغو شد.");
+      if (!result.notified) toast(t("permissions.syncDelayed"));
     } catch {
       toast.error("خطا در تغییر دسترسی ارائه فایل.");
+    } finally {
+      setPresentationGrantBusy(null);
     }
   };
 
@@ -310,6 +314,7 @@ export default function ParticipantsPanel() {
               isParticipantHost={isParticipantHost}
               isParticipantCoHost={isParticipantCoHost}
               presentationGrants={presentationGrants}
+              presentationGrantDisabled={!permissionSnapshot || presentationGrantBusy !== null}
               grantedUsernames={grantedUsernames}
               grantBusy={grantBusy}
               onMute={muteParticipant}
@@ -355,6 +360,7 @@ export default function ParticipantsPanel() {
               isParticipantHost={isParticipantHost}
               isParticipantCoHost={isParticipantCoHost}
               presentationGrants={presentationGrants}
+              presentationGrantDisabled={!permissionSnapshot || presentationGrantBusy !== null}
               grantedUsernames={grantedUsernames}
               grantBusy={grantBusy}
               onMute={muteParticipant}
@@ -389,6 +395,7 @@ interface ParticipantRowProps {
   isParticipantHost: (p: Participant) => boolean;
   isParticipantCoHost: (p: Participant) => boolean;
   presentationGrants: Set<string>;
+  presentationGrantDisabled: boolean;
   grantedUsernames: Set<string>;
   grantBusy: string | null;
   onMute: (p: RemoteParticipant) => void;
@@ -410,6 +417,7 @@ function ParticipantRow({
   isParticipantHost,
   isParticipantCoHost,
   presentationGrants,
+  presentationGrantDisabled,
   grantedUsernames,
   grantBusy,
   onMute,
@@ -620,6 +628,7 @@ function ParticipantRow({
                   setMenuOpen(false);
                 }}
                 variant={presentationGrants.has(participant.identity) ? "danger-soft" : "default"}
+                disabled={presentationGrantDisabled}
               />
 
               {/* Grant screen share — only visible when lockScreenShare is active */}

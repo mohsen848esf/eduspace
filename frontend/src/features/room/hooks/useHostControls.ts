@@ -5,6 +5,7 @@ import { type RemoteParticipant } from "livekit-client";
 import { useRoomStore } from "../store/roomStore";
 import client from "../../../lib/api/client";
 import toast from "react-hot-toast";
+import { grantRoomPermission, PERMISSIONS_INVALIDATED } from "../lib/roomPermissions";
 
 const CONTROL_MESSAGES = {
   MUTE_AUDIO: "MUTE_AUDIO",
@@ -77,18 +78,17 @@ export function useHostControls() {
 
   const grantScreenShare = useCallback(
     async (participant: RemoteParticipant) => {
-      if (!canModerate) return;
+      if (!canModerate || !roomCode) return;
       try {
-        await client.post(`/rooms/${roomCode}/grant-screen-share/`, {
-          identity: participant.identity,
-        });
+        const result = await grantRoomPermission(room, roomCode, participant.identity, "screen_share", true);
         const name = participant.name || participant.identity;
         toast.success(t("host.screenShareGranted", { name }));
+        if (!result.notified) toast(t("permissions.syncDelayed"));
       } catch {
         toast.error(t("host.screenShareFailed"));
       }
     },
-    [canModerate, roomCode, t],
+    [canModerate, roomCode, room, t],
   );
 
   const lowerParticipantHand = useCallback(
@@ -127,6 +127,7 @@ export function useHostControls() {
       try {
         await client.post(`/rooms/${roomCode}/co-hosts/grant/`, { username });
         addCoHost(username);
+        window.dispatchEvent(new Event(PERMISSIONS_INVALIDATED));
 
         // Broadcast real-time role change to all participants
         const encoder = new TextEncoder();
@@ -153,6 +154,7 @@ export function useHostControls() {
       try {
         await client.post(`/rooms/${roomCode}/co-hosts/revoke/`, { username });
         removeCoHost(username);
+        window.dispatchEvent(new Event(PERMISSIONS_INVALIDATED));
 
         // Broadcast real-time role change to all participants
         const encoder = new TextEncoder();

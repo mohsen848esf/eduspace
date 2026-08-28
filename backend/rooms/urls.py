@@ -18,6 +18,7 @@ urlpatterns = [
 
     # --- Access Settings & Media Permissions (host & co-hosts) ---
     path('<str:room_code>/settings/', views.room_settings, name='room_settings'),
+    path('<str:room_code>/permissions/', views.room_permissions, name='room_permissions'),
     path('<str:room_code>/grant-media-permission/', views.grant_media_permission, name='grant_media_permission'),
     path('<str:room_code>/grant-presentation-permission/', views.grant_presentation_permission, name='grant_presentation_permission'),
 

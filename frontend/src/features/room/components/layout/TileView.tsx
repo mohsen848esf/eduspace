@@ -60,6 +60,7 @@ export interface TileViewProps {
   pinnedKey: string | null;
   onTogglePin: (key: string) => void;
   compact?: boolean;
+  showActions?: boolean;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -76,6 +77,7 @@ export default function TileView({
   pinnedKey,
   onTogglePin,
   compact = false,
+  showActions = true,
   className,
   style,
 }: TileViewProps) {
@@ -211,7 +213,7 @@ export default function TileView({
       </div>
 
       {/* Hover Action Overlay */}
-      {hovered && (
+      {showActions && hovered && (
         <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center gap-2.5 fade-in z-20">
           <Tooltip content={pinned ? t("tile.unpin") || "Unpin" : t("tile.pin") || "Pin"}>
             <button

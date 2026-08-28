@@ -1,4 +1,5 @@
 import client from "../../../lib/api/client";
+import { roomPermissionSnapshotSchema } from "../schemas/room.schema";
 import type {
   CreateRoomInput,
   RoomResponse,
@@ -107,6 +108,13 @@ export const roomApi = {
   getRoom: async (room_code: string): Promise<RoomInfo> => {
     const res = await client.get(`/rooms/${room_code}/`);
     return res.data;
+  },
+
+  getPermissions: async (roomCode: string, guestToken?: string | null) => {
+    const res = await client.get(`/rooms/${roomCode}/permissions/`, {
+      headers: guestToken ? { "X-Guest-Access-Token": guestToken } : undefined,
+    });
+    return roomPermissionSnapshotSchema.parse(res.data);
   },
 
   participantsHistory: async (

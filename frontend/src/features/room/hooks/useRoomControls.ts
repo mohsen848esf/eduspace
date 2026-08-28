@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import client from "../../../lib/api/client";
 import { useRoomStore } from "../store/roomStore";
 import { createAudioContext } from "@/lib/browser/audioContext";
+import { isModeratorIdentity } from "../lib/roomPermissions";
 
 /** Minimum milliseconds between two permission requests of the same type */
 const PERMISSION_REQUEST_COOLDOWN_MS = 15_000;
@@ -50,12 +51,13 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
     localParticipant,
     isMicrophoneEnabled,
     isCameraEnabled,
+    isScreenShareEnabled,
   } = useLocalParticipant();
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("participants");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const isMicOn = isMicrophoneEnabled ?? initialMicOn;
   const isCamOn = isCameraEnabled ?? initialCamOn;
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const isScreenSharing = isScreenShareEnabled;
   const [isPushToTalk, setIsPushToTalk] = useState(false);
   const room = useRoomContext();
   const { roomCode } = useRoomStore();
@@ -276,7 +278,6 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
     } else {
       await localParticipant.setScreenShareEnabled(false);
     }
-    setIsScreenSharing((prev) => !prev);
   }, [localParticipant, isScreenSharing, canModerate, canShareScreen, room]);
 
   const toggleSidebar = useCallback((tab: SidebarTab) => {
@@ -350,8 +351,9 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
   }, [toggleMic, toggleCam, isPushToTalk, isMicOn, localParticipant]);
 
   useEffect(() => {
-    const handleData = (payload: Uint8Array) => {
+    const handleData = (payload: Uint8Array, sender?: Participant) => {
       try {
+        if (!isModeratorIdentity(sender?.identity)) return;
         const decoder = new TextDecoder();
         const data = JSON.parse(decoder.decode(payload));
 
@@ -370,70 +372,7 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
           toast(t("host.hostTurnedOffCamera"), { icon: "📵" });
         }
 
-        if (data.type === "ROOM_SETTINGS_CHANGED" && data.settings) {
-          const settings = data.settings as {
-            lockMicrophone?: boolean;
-            lockCamera?: boolean;
-            lockScreenShare?: boolean;
-          };
-          useRoomStore.getState().setRoomSettings(settings);
-
-          const isModerator =
-            useRoomStore.getState().isHost || useRoomStore.getState().isCoHost;
-
-          if (!isModerator && localParticipant) {
-            // Lock activated → restrict + notify
-            if (settings.lockMicrophone === true) {
-              useRoomStore.getState().setMediaPermissions({ canUseMicrophone: false });
-              localParticipant.setMicrophoneEnabled(false);
-              toast("میکروفون توسط برگزارکننده قفل شد.", { icon: "🔒" });
-            }
-            if (settings.lockCamera === true) {
-              useRoomStore.getState().setMediaPermissions({ canUseCamera: false });
-              localParticipant.setCameraEnabled(false);
-              toast("وب‌کم توسط برگزارکننده قفل شد.", { icon: "🔒" });
-            }
-            if (settings.lockScreenShare === true) {
-              useRoomStore.getState().setMediaPermissions({ canShareScreen: false });
-              localParticipant.setScreenShareEnabled(false);
-              setIsScreenSharing(false);
-              toast("اشتراک صفحه توسط برگزارکننده قفل شد.", { icon: "🔒" });
-            }
-
-            // Lock removed → restore permission + notify
-            if (settings.lockMicrophone === false) {
-              useRoomStore.getState().setMediaPermissions({ canUseMicrophone: true });
-              toast("میکروفون آزاد شد. می‌توانید آن را روشن کنید.", { icon: "🎙️" });
-            }
-            if (settings.lockCamera === false) {
-              useRoomStore.getState().setMediaPermissions({ canUseCamera: true });
-              toast("دوربین آزاد شد. می‌توانید آن را روشن کنید.", { icon: "📷" });
-            }
-            if (settings.lockScreenShare === false) {
-              useRoomStore.getState().setMediaPermissions({ canShareScreen: true });
-              toast("اشتراک صفحه آزاد شد. می‌توانید صفحه‌تان را به اشتراک بگذارید.", { icon: "🖥️" });
-            }
-          }
-        }
-
-
-        if (data.type === "ROLE_CHANGED") {
-          if (data.identity === localParticipant?.identity) {
-            const isNowCoHost = data.role === "co_host";
-            useRoomStore.getState().setIsCoHost(isNowCoHost);
-            toast(
-              isNowCoHost
-                ? "شما به عنوان همیار میزبان انتخاب شدید."
-                : "دسترسی همیار میزبان شما تغییر کرد.",
-              { icon: isNowCoHost ? "🛡️" : "ℹ️" },
-            );
-          }
-          if (data.role === "co_host") {
-            useRoomStore.getState().addCoHost(data.identity);
-          } else {
-            useRoomStore.getState().removeCoHost(data.identity);
-          }
-        }
+        // Settings and roles are reconciled from REST by useRoomPermissionSync.
       } catch {
         /* swallow */
       }

@@ -7,6 +7,7 @@ import { useBreakpoint } from "../../../hooks/useBreakpoint";
 import VideoGrid from "./VideoGrid";
 import GameBoard from "./GameBoard";
 import WhiteboardStageLayout from "./layout/WhiteboardStageLayout";
+import PresentationStageLayout from "./layout/PresentationStageLayout";
 import GameInviteToast from "./GameInviteToast";
 import RoomTopbar from "./RoomTopbar";
 import RoomMobileTopbar from "./RoomMobileTopbar";
@@ -29,6 +30,7 @@ import PresentationStage from "./presentation/PresentationStage";
 import PresentationUploadModal from "./presentation/PresentationUploadModal";
 import { useInCallPermissions } from "../hooks/useInCallPermissions";
 import { usePresentationSync } from "../hooks/usePresentationSync";
+import { useRoomPermissionSync } from "../hooks/useRoomPermissionSync";
 import { cn } from "../../../lib/utils";
 import { type LayoutMode } from "../store/roomLayoutStore";
 
@@ -122,6 +124,7 @@ export default function UnifiedRoomShell({
   const canModerate = isHost || isCoHost;
   const inCallPermissions = useInCallPermissions();
   usePresentationSync();
+  useRoomPermissionSync();
   const [presentationModalOpen, setPresentationModalOpen] = useState(false);
 
   // Listen to open-presentation-modal event
@@ -166,7 +169,9 @@ export default function UnifiedRoomShell({
             )}
 
             {activePresentation && !isPresentationMinimized ? (
-              <PresentationStage />
+              <PresentationStageLayout>
+                <PresentationStage />
+              </PresentationStageLayout>
             ) : game.gameBoard.isActive ? (
               <GameBoard
                 gameBoard={game.gameBoard}

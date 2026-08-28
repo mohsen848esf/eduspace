@@ -149,7 +149,7 @@ export const PresentationStage: React.FC = () => {
       )}
     >
       {/* Top Header Bar */}
-      <div className="flex items-center justify-between px-3 sm:px-4 py-2 bg-slate-900/90 backdrop-blur-md border-b border-white/10 text-white z-20 gap-2">
+      <div className="flex flex-wrap shrink-0 items-center justify-between px-3 sm:px-4 py-2 bg-slate-900/90 backdrop-blur-md border-b border-white/10 text-white z-20 gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
           <span className="text-xl shrink-0">
             {isPdf ? "📄" : isImage ? "🖼️" : "📊"}
@@ -241,7 +241,7 @@ export const PresentationStage: React.FC = () => {
       </div>
 
       {/* Main Presentation Viewport */}
-      <div className="relative flex-1 flex items-center justify-center overflow-auto p-2 sm:p-4 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+      <div className="relative flex-1 min-w-0 min-h-0 flex items-center justify-center overflow-auto p-2 sm:p-4 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
         {isPdf ? (
           <div
             className="flex items-center justify-center transition-transform duration-150 ease-out w-full h-full"
@@ -250,25 +250,25 @@ export const PresentationStage: React.FC = () => {
             <iframe
               src={`${activePresentation.file_url}#page=${activePresentation.current_page}&toolbar=0&navpanes=0`}
               title={activePresentation.title}
-              className="w-full max-w-[1200px] h-[78vh] rounded-2xl shadow-2xl border border-white/10 bg-white"
+              className="w-full max-w-[1200px] h-full rounded-2xl shadow-2xl border border-white/10 bg-white"
             />
           </div>
         ) : (
           <div
-            className="flex items-center justify-center transition-transform duration-150 ease-out max-w-full max-h-full"
+            className="flex items-center justify-center transition-transform duration-150 ease-out w-full h-full min-w-0 min-h-0"
             style={{ transform: `scale(${zoom / 100})` }}
           >
             <img
               src={activePresentation.file_url}
               alt={activePresentation.title}
-              className="max-w-[90vw] max-h-[75vh] object-contain rounded-2xl shadow-2xl border border-white/10"
+              className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border border-white/10"
             />
           </div>
         )}
       </div>
 
       {/* Bottom Presenter Toolbar */}
-      <div className="flex items-center justify-between px-6 py-3 bg-slate-900/90 backdrop-blur-md border-t border-white/10 text-white z-20">
+      <div className="flex flex-wrap shrink-0 gap-2 items-center justify-between px-3 sm:px-6 py-3 bg-slate-900/90 backdrop-blur-md border-t border-white/10 text-white z-20">
         {/* Page / Slide indicator */}
         <div className="flex items-center gap-3">
           <span className="text-xs text-slate-300 font-medium">

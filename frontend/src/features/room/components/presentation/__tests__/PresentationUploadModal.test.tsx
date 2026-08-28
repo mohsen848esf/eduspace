@@ -106,4 +106,24 @@ describe("PresentationUploadModal conversion lifecycle", () => {
     expect(screen.queryByRole("button", { name: "تلاش مجدد" })).toBeNull();
     expect(screen.getByText("آماده نمایش")).toBeInTheDocument();
   });
+
+  it("unlocks upload and presentation immediately when a direct grant reaches the open modal", () => {
+    Object.assign(mocks.roomState, {
+      isHost: false, canUploadPresentation: false, isGuest: true, guestAccessToken: "signed-guest",
+    });
+    mocks.failedDocument.processing_status = "ready";
+    const requestPermission = vi.fn();
+    const props = { isOpen: true, onClose: vi.fn(), onRequestPermission: requestPermission };
+    const { rerender } = render(<PresentationUploadModal {...props} />);
+    expect(screen.getByRole("button", { name: "ارسال درخواست اجازه ارائه به میزبان" })).toBeVisible();
+    mocks.roomState.canUploadPresentation = true;
+    rerender(<PresentationUploadModal {...props} />);
+    expect(screen.queryByRole("button", { name: "ارسال درخواست اجازه ارائه به میزبان" })).toBeNull();
+    expect(screen.getByText("انتخاب فایل PDF، تصویر یا اسلاید")).toBeVisible();
+    expect(screen.getByRole("button", { name: "شروع ارائه" })).toBeEnabled();
+    expect(requestPermission).not.toHaveBeenCalled();
+    mocks.roomState.canUploadPresentation = false;
+    rerender(<PresentationUploadModal {...props} />);
+    expect(screen.queryByRole("button", { name: "شروع ارائه" })).toBeNull();
+  });
 });
