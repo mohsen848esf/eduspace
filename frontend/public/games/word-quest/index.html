@@ -678,6 +678,20 @@
         </div>
       </div>
     </div>
+
+    <!-- Generic confirm modal: replaces window.confirm() -->
+    <div class="modal" id="confirm-modal" hidden>
+      <div class="modal-backdrop" data-close></div>
+      <div class="modal-card glass" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+        <h3 id="confirm-modal-title">Are you sure?</h3>
+        <p class="modal-sub" id="confirm-modal-message"></p>
+        <div class="modal-actions">
+          <button class="btn btn--ghost" id="confirm-modal-cancel">Cancel</button>
+          <button class="btn btn--primary" id="confirm-modal-ok">Confirm</button>
+        </div>
+      </div>
+    </div>
+
     <script src="game-bridge.js"></script>
 
     <script src="words.js"></script>

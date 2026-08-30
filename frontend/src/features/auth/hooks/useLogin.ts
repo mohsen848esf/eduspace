@@ -12,7 +12,8 @@ export function useLogin() {
   const { t } = useTranslation("auth");
   const { login, isLoading, error, clearError } = useAuthStore();
 
-  const from = (location.state as any)?.from?.pathname || "/dashboard";
+  const from = (location.state as { from?: { pathname?: string } } | null)?.from
+    ?.pathname || "/dashboard";
 
   const schema = useMemo(() => buildLoginSchema(t), [t]);
 

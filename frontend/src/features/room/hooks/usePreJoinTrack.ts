@@ -1,76 +1,156 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createLocalVideoTrack, LocalVideoTrack } from "livekit-client";
-import { supportsBackgroundProcessors } from "@livekit/track-processors";
-import type { BackgroundType } from "./useBackgroundBlur";
+import { type BackgroundType, BG_IMAGES } from "./useBackgroundBlur";
 import { useBackgroundStore } from "../store/backgroundStore";
+import { useLocale } from "../../../i18n/useLocale";
+import { toast } from "react-hot-toast";
+import {
+  createBackgroundProcessor,
+  supportsBackgroundProcessing,
+  type BackgroundProcessorInstance,
+} from "../lib/backgroundProcessing";
 
-const BG_IMAGES: Partial<Record<BackgroundType, string>> = {
-  office:
-    "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1280&q=80",
-  nature:
-    "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=1280&q=80",
-  studio:
-    "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=1280&q=80",
-  minimal:
-    "https://images.unsplash.com/photo-1557683316-973673baf926?w=1280&q=80",
-};
-
-export function usePreJoinTrack() {
+export function usePreJoinTrack(camEnabled: boolean = true, selectedCam?: string) {
+  const { language } = useLocale();
   const [track, setTrack] = useState<LocalVideoTrack | null>(null);
+  const trackRef = useRef<LocalVideoTrack | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [cameraError, setCameraError] = useState<"busy" | "unavailable" | null>(null);
   const { background, setBackground } = useBackgroundStore();
-  const [isSupported] = useState(() => supportsBackgroundProcessors());
-  const processorRef = useRef<any>(null);
+  const [isSupported] = useState(() => supportsBackgroundProcessing());
+  const processorRef = useRef<BackgroundProcessorInstance | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  // Create track on mount
+  const retryCamera = useCallback(() => {
+    setRetryCount((prev) => prev + 1);
+  }, []);
+
   useEffect(() => {
+    trackRef.current = track;
+  }, [track]);
+
+  // Manage camera track lifecycle reactively
+  useEffect(() => {
+    let cancelled = false;
     let localTrack: LocalVideoTrack | null = null;
+
+    if (!camEnabled) {
+      /* eslint-disable react-hooks/set-state-in-effect -- Disabling the camera must synchronously clear state while releasing the external media track. */
+      setCameraError(null);
+      const currentTrack = trackRef.current;
+      if (currentTrack) {
+        currentTrack.stopProcessor().catch(() => {});
+        currentTrack.mediaStreamTrack?.stop();
+        currentTrack.stop();
+        setTrack(null);
+      }
+      /* eslint-enable react-hooks/set-state-in-effect */
+      return;
+    }
 
     const init = async () => {
       try {
-        localTrack = await createLocalVideoTrack({ facingMode: "user" });
-        setTrack(localTrack);
-      } catch (err) {
-        console.error("Camera init error:", err);
+        const options: Parameters<typeof createLocalVideoTrack>[0] = {
+          facingMode: "user",
+        };
+        if (selectedCam) {
+          options.deviceId = selectedCam;
+        }
+
+        const t = await createLocalVideoTrack(options);
+        if (cancelled) {
+          t.stopProcessor().catch(() => {});
+          t.mediaStreamTrack?.stop();
+          t.stop();
+          return;
+        }
+        localTrack = t;
+        setCameraError(null);
+        setTrack(t);
+      } catch (err: unknown) {
+        if (cancelled) return;
+        console.warn("Camera init warning (prejoin):", err);
+        const errorName = err instanceof Error ? err.name : "";
+        const errorMessage = err instanceof Error ? err.message.toLowerCase() : "";
+        const isBusy =
+          errorName === "NotReadableError" ||
+          errorName === "AbortError" ||
+          errorName === "TrackStartError" ||
+          errorMessage.includes("in use") ||
+          errorMessage.includes("could not start video source");
+        setCameraError(isBusy ? "busy" : "unavailable");
+        setTrack(null);
       }
     };
 
     init();
 
     return () => {
+      cancelled = true;
       if (localTrack) {
-        // Stop processor if one is attached.
         localTrack.stopProcessor().catch(() => {});
-        // Stop mediaStreamTrack
         localTrack.mediaStreamTrack?.stop();
-        // Stop LiveKit track
         localTrack.stop();
       }
     };
-  }, []);
+  }, [camEnabled, selectedCam, retryCount]);
+
+  // Auto-retry polling when camera is busy and user wants camera on
+  useEffect(() => {
+    if (!camEnabled || cameraError !== "busy" || track) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      retryCamera();
+    }, 2500);
+
+    return () => {
+      clearInterval(timer);
+    };
+  }, [camEnabled, cameraError, track, retryCamera]);
+
+  const videoElRef = useRef<HTMLVideoElement | null>(null);
 
   // Attach track to video element
   const attachToVideo = useCallback(
     (el: HTMLVideoElement | null) => {
-      if (!el || !track) return;
-      track.attach(el);
-      return () => track.detach(el);
+      if (videoElRef.current && videoElRef.current !== el) {
+        try {
+          track?.detach(videoElRef.current);
+        } catch {
+          // The previous element may already have detached the track.
+        }
+      }
+      videoElRef.current = el;
+      if (el && track) {
+        try {
+          track.attach(el);
+        } catch (e) {
+          console.warn("Could not attach track to video:", e);
+        }
+      }
     },
     [track],
   );
+
+  // Auto-attach whenever track instance becomes available
+  useEffect(() => {
+    if (videoElRef.current && track) {
+      try {
+        track.attach(videoElRef.current);
+      } catch (e) {
+        console.warn("Could not attach track in useEffect:", e);
+      }
+    }
+  }, [track]);
 
   // Change background
   const changeBackground = useCallback(
     async (bg: BackgroundType) => {
       if (!track || !isSupported) {
-        // console.log("No track or not supported:", {
-        //   track: !!track,
-        //   isSupported,
-        // });
         return;
       }
-      // console.log("Applying background:", bg);
-      // console.log("Track state:", track.mediaStreamTrack?.readyState);
 
       setBackground(bg);
       setIsLoading(true);
@@ -87,37 +167,29 @@ export function usePreJoinTrack() {
 
         // Check track is still live
         if (track.mediaStreamTrack.readyState !== "live") {
-          // console.error("Track not live:", track.mediaStreamTrack.readyState);
           return;
         }
 
-        const { BackgroundProcessor } =
-          await import("@livekit/track-processors");
-        // console.log("BackgroundProcessor imported");
-
         let processor;
         if (bg === "blur") {
-          processor = BackgroundProcessor({
+          processor = await createBackgroundProcessor({
             mode: "background-blur",
             blurRadius: 10,
           });
         } else {
           const imageUrl = BG_IMAGES[bg];
-          // console.log("Image URL:", imageUrl);
-
           if (!imageUrl) return;
-          processor = BackgroundProcessor({
+          processor = await createBackgroundProcessor({
             mode: "virtual-background",
             imagePath: imageUrl,
           });
         }
 
         // Timeout to keep the processor swap from hanging the call.
-
         await Promise.race([
           track.setProcessor(processor),
           new Promise<void>((_, reject) =>
-            setTimeout(() => reject(new Error("Processor timeout")), 8000),
+            setTimeout(() => reject(new Error("Processor timeout")), 20000),
           ),
         ]);
 
@@ -125,29 +197,61 @@ export function usePreJoinTrack() {
       } catch (err) {
         console.error("Background error:", err);
         processorRef.current = null;
-        // Reset to "none" if the processor swap failed.
         setBackground("none");
+        
+        const isFarsi = language === "fa";
+        toast.error(
+          isFarsi
+            ? "بارگذاری فیلتر دوربین با خطا مواجه شد یا زمان زیادی برد. لطفاً مجدداً تلاش کنید."
+            : "Camera filter loading failed or timed out. Please try again."
+        );
       } finally {
         setIsLoading(false);
       }
     },
-    [track, isSupported, setBackground],
+    [track, isSupported, setBackground, language],
   );
+
   // Cleanup processor on unmount
   useEffect(() => {
     return () => {
-      if (processorRef.current && track) {
-        track.stopProcessor().catch(() => {});
-        track.mediaStreamTrack?.stop();
+      const currentTrack = trackRef.current;
+      if (currentTrack) {
+        currentTrack.stopProcessor().catch(() => {});
+        currentTrack.mediaStreamTrack?.stop();
+        currentTrack.stop();
       }
     };
+  }, []);
+
+  // Explicitly release track before joining room
+  const stopTrack = useCallback(async () => {
+    if (track) {
+      try {
+        await Promise.race([
+          track.stopProcessor().catch(() => {}),
+          new Promise<void>((resolve) => setTimeout(resolve, 500)),
+        ]);
+        track.mediaStreamTrack?.stop();
+        track.stop();
+        // Wait a tick to let the OS camera hardware be released
+        await new Promise<void>((resolve) => setTimeout(resolve, 150));
+      } catch (e) {
+        console.warn("Error stopping pre-join track:", e);
+      }
+      setTrack(null);
+    }
   }, [track]);
+
   return {
     track,
     background,
     isLoading,
     isSupported,
+    cameraError,
     attachToVideo,
     changeBackground,
+    stopTrack,
+    retryCamera,
   };
 }

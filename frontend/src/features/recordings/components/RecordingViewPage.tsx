@@ -16,6 +16,14 @@ function formatTimecode(seconds: number): string {
   return `${m}:${ss}`;
 }
 
+function formatBytes(bytes: number): string {
+  if (!bytes || bytes <= 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
 /**
  * Plain watch page for a recording someone else shared with the user.
  * Owners are bounced to the editor route since that's where they spend
@@ -31,12 +39,13 @@ export default function RecordingViewPage() {
   const { token } = useParams<{ token: string }>();
   const [recording, setRecording] = useState<Recording | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [quality, setQuality] = useState<string>("Auto");
+
 
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
-    setIsLoading(true);
-    recordingsApi
+    const loadTimer = window.setTimeout(() => recordingsApi
       .detail(token)
       .then((data) => {
         if (cancelled) return;
@@ -52,9 +61,10 @@ export default function RecordingViewPage() {
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
-      });
+      }), 0);
     return () => {
       cancelled = true;
+      window.clearTimeout(loadTimer);
     };
   }, [token, navigate, t]);
 
@@ -106,14 +116,26 @@ export default function RecordingViewPage() {
           </div>
         </div>
 
-        <span className="text-[11px] font-mono text-[var(--t2)] force-ltr">
-          {formatTimecode(recording.duration_seconds)}
-        </span>
+        <div className="flex items-center gap-3">
+          <select
+            value={quality}
+            onChange={(e) => setQuality(e.target.value)}
+            className="text-xs bg-[var(--s2)] text-[var(--t2)] border border-[var(--b)] rounded px-2 py-1 outline-none cursor-pointer hover:text-[var(--t1)] hover:bg-[var(--s3)] transition-colors"
+          >
+            <option value="Auto">Auto</option>
+            <option value="1080p">1080p</option>
+            <option value="720p">720p</option>
+          </select>
+          <span className="text-[11px] font-mono text-[var(--t2)] force-ltr">
+            {formatBytes(recording.size_bytes)} · {formatTimecode(recording.duration_seconds)}
+          </span>
+        </div>
       </header>
 
       <main className="max-w-5xl mx-auto p-3 md:p-5">
         <RecordingPlayer
           token={recording.public_token}
+          quality={quality === "Auto" ? undefined : quality}
           autoPlay
           trackProgress
           startSeconds={

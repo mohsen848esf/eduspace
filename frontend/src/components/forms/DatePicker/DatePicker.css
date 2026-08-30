@@ -1,0 +1,171 @@
+@import "react-day-picker/dist/style.css";
+
+/* ──────────────────────────────────────────────────────────────────
+ * Glassmorphic custom styling for react-day-picker
+ * Integrates with EduSpace light/dark tokens and RTL formatting.
+ * ──────────────────────────────────────────────────────────────── */
+
+/* Base container */
+.rdp-container {
+  display: inline-block;
+  padding: 12px;
+  background: var(--s2);
+  border: 1px solid var(--b);
+  border-radius: 16px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25);
+  direction: ltr;
+}
+
+/* RTL layout overrides */
+.rdp-rtl .rdp-container {
+  direction: rtl;
+}
+
+.rdp-months {
+  display: flex;
+  gap: 16px;
+}
+
+.rdp-month {
+  font-family: inherit;
+}
+
+/* Nav header buttons */
+.rdp-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: absolute;
+  width: 100%;
+  left: 0;
+  right: 0;
+  padding: 0 16px;
+  pointer-events: none;
+}
+
+.rdp-nav_button {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--s3);
+  border: 1px solid var(--b);
+  color: var(--t1);
+  border-radius: 8px;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.2s ease;
+}
+
+.rdp-nav_button:hover {
+  background: var(--brand);
+  border-color: var(--brand-h);
+  color: #fff;
+}
+
+/* Caption title */
+.rdp-caption {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 32px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--t1);
+  margin-bottom: 12px;
+  position: relative;
+}
+
+/* Table grid styling */
+.rdp-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.rdp-head_cell {
+  width: 36px;
+  height: 32px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--t2);
+  text-align: center;
+}
+
+.rdp-cell {
+  padding: 2px 0;
+}
+
+/* Day item buttons */
+.rdp-day {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--t1);
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rdp-day:hover:not(.rdp-day_selected):not(.rdp-day_disabled) {
+  background: var(--s3);
+  color: var(--t1);
+}
+
+/* Selected active state */
+.rdp-day_selected {
+  background: var(--brand) !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+/* Today pointer marker */
+.rdp-day_today:not(.rdp-day_selected) {
+  border: 1px solid var(--brand);
+  color: var(--brand-text);
+  font-weight: 600;
+}
+
+/* Disabled dates layout */
+.rdp-day_disabled {
+  color: var(--t3);
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Outside month items */
+.rdp-day_outside {
+  color: var(--t3);
+  opacity: 0.5;
+}
+
+/* Date Range select styling styles */
+.rdp-day_range_start {
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+  background: var(--brand) !important;
+  color: #fff !important;
+}
+
+.rdp-day_range_end {
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
+  background: var(--brand) !important;
+  color: #fff !important;
+}
+
+.rdp-day_range_middle {
+  background: var(--brand-soft) !important;
+  color: var(--brand-text) !important;
+  border-radius: 0;
+}

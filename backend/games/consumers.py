@@ -23,17 +23,26 @@ class GameConsumer(AsyncWebsocketConsumer):
             await self.close()
             return
 
+        session = await self.get_session()
+        if not session:
+            await self.close()
+            return
+
+        # Check multi-tenant isolation
+        is_member = await self.check_org_membership(session)
+        if not is_member:
+            await self.close()
+            return
+
         await self.channel_layer.group_add(self.room_group, self.channel_name)
         await self.accept()
 
-        session = await self.get_session()
-        if session:
-            participants = await self.get_participants(session)
-            await self.send(text_data=json.dumps({
-                'type': 'connected',
-                'participants': participants,
-                'status': session.status,
-            }))
+        participants = await self.get_participants(session)
+        await self.send(text_data=json.dumps({
+            'type': 'connected',
+            'participants': participants,
+            'status': session.status,
+        }))
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.room_group, self.channel_name)
@@ -203,7 +212,7 @@ class GameConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_session(self):
         try:
-            return GameSession.objects.get(room_code=self.room_code)
+            return GameSession.objects.select_related('organization').get(room_code=self.room_code)
         except GameSession.DoesNotExist:
             return None
 
@@ -280,3 +289,10 @@ class GameConsumer(AsyncWebsocketConsumer):
         return list(session.participants.values(
             'user__username', 'user__full_name', 'score'
         ).order_by('-score'))
+
+    @database_sync_to_async
+    def check_org_membership(self, session):
+        if self.user.is_superuser:
+            return True
+        from accounts.permissions import has_org_permission
+        return has_org_permission(self.user, session.organization, 'can_view_dashboard')

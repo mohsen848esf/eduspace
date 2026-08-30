@@ -2,7 +2,30 @@ import { useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../store/authStore";
 import { useNotificationsStore } from "../store/notificationsStore";
+import { useOrgContextStore } from "../store/orgContextStore";
 import toast from "react-hot-toast";
+
+interface NotificationWirePayload extends Record<string, unknown> {
+  id?: number;
+  type?: string;
+  kind?: string;
+  created_at?: string;
+  duration_seconds?: number;
+  from?: string;
+  room_code?: string;
+  room_name?: string;
+  recording_token?: string;
+  watch_link?: string;
+  invite_link?: string;
+  assessment_title?: string;
+  score?: string | number;
+  total_points?: string | number;
+  invoice_number?: string;
+  amount?: string | number;
+  status?: string;
+  class_name?: string;
+  host_name?: string;
+}
 
 function formatNotificationDuration(seconds: number | undefined): string {
   if (!seconds || seconds < 1) return "0:00";
@@ -13,29 +36,76 @@ function formatNotificationDuration(seconds: number | undefined): string {
   return `${m}:${s}`;
 }
 
+export function getWebSocketUrl(path: string): string {
+  const envUrl = import.meta.env.VITE_WS_URL;
+  let base: string;
+  if (envUrl) {
+    base = envUrl.endsWith("/") ? envUrl.slice(0, -1) : envUrl;
+  } else {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    let host = window.location.host || "localhost:8000";
+    if (window.location.port === "5173") {
+      host = `${window.location.hostname}:8000`;
+    }
+    base = `${protocol}//${host}`;
+  }
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${cleanPath}`;
+}
+
 export function useNotifications() {
   const { t } = useTranslation(["notifications", "recordings"]);
   const { isAuthenticated } = useAuthStore();
+  const hasOrgContext = useOrgContextStore((state) => Boolean(state.orgContext?.organization));
   const addToInbox = useNotificationsStore((s) => s.add);
+  const hydrate = useNotificationsStore((s) => s.hydrate);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeout = useRef<number>(0);
+  const connectRef = useRef<(() => void) | null>(null);
   const isUnmounted = useRef(false);
 
   const handleNotification = useCallback(
-    (notification: any) => {
+    (notification: NotificationWirePayload) => {
       // Persist into the inbox first so the user can come back to it
-      // even if they miss the toast. The store de-dupes, so this is safe
-      // to call on every message including reconnect-replays.
+      // even if they miss the toast. The store de-dupes by serverId
+      // when present, otherwise by a 5-second kind+payload window, so
+      // it's safe to call on every message including reconnect-replays.
+      const kind = notification?.type ?? notification?.kind;
       if (
-        notification?.type === "ROOM_INVITE" ||
-        notification?.type === "RECORDING_PUBLISHED" ||
-        notification?.type === "RECORDING_PERMISSION_GRANTED" ||
-        notification?.type === "RECORDING_PERMISSION_REVOKED"
+        kind === "ROOM_INVITE" ||
+        kind === "RECORDING_PUBLISHED" ||
+        kind === "RECORDING_PERMISSION_GRANTED" ||
+        kind === "RECORDING_PERMISSION_REVOKED" ||
+        kind === "ASSESSMENT_GRADED" ||
+        kind === "INVOICE_CREATED" ||
+        kind === "INVOICE_UPDATED" ||
+        kind === "SESSION_STARTED"
       ) {
-        addToInbox(notification.type, notification);
+        addToInbox(kind, notification, {
+          serverId:
+            typeof notification.id === "number" ? notification.id : undefined,
+          createdAt:
+            typeof notification.created_at === "string"
+              ? notification.created_at
+              : undefined,
+        });
       }
 
-      if (notification.type === "ROOM_INVITE") {
+      // Suppress toasts for messages that are clearly stale (>30s old)
+      // — keeps the inbox correct without slamming the user with old
+      // toasts on a fresh login. We only have created_at on items
+      // that came from record_and_dispatch (i.e. all of them after
+      // this PR ships).
+      if (typeof notification.created_at === "string") {
+        const ageMs = Date.now() - Date.parse(notification.created_at);
+        if (Number.isFinite(ageMs) && ageMs > 30_000) {
+          return;
+        }
+      }
+
+      const type = kind;
+
+      if (type === "ROOM_INVITE") {
         toast(
           (toastInstance) => (
             <div className="flex flex-col gap-2">
@@ -51,7 +121,9 @@ export function useNotifications() {
                 <button
                   onClick={() => {
                     toast.dismiss(toastInstance.id);
-                    window.location.href = notification.invite_link;
+                    if (notification.invite_link) {
+                      window.location.href = notification.invite_link;
+                    }
                   }}
                   className="flex-1 bg-indigo-600 text-white text-xs font-semibold py-1.5 rounded-lg"
                 >
@@ -80,7 +152,7 @@ export function useNotifications() {
         return;
       }
 
-      if (notification.type === "RECORDING_PUBLISHED") {
+      if (type === "RECORDING_PUBLISHED") {
         const watchLink =
           notification.watch_link ||
           (notification.recording_token
@@ -135,7 +207,7 @@ export function useNotifications() {
         );
         return;
       }
-      if (notification.type === "RECORDING_PERMISSION_GRANTED") {
+      if (type === "RECORDING_PERMISSION_GRANTED") {
         toast.success(
           t("notifications:recordingPermission.grantedToast", {
             from: notification.from,
@@ -147,7 +219,7 @@ export function useNotifications() {
         return;
       }
 
-      if (notification.type === "RECORDING_PERMISSION_REVOKED") {
+      if (type === "RECORDING_PERMISSION_REVOKED") {
         toast(
           t("notifications:recordingPermission.revokedToast", {
             from: notification.from,
@@ -158,13 +230,93 @@ export function useNotifications() {
         );
         return;
       }
+
+      if (type === "ASSESSMENT_GRADED") {
+        toast.success(
+          t("notifications:assessmentGraded.subtitle", {
+            title: notification.assessment_title ?? "",
+            score: notification.score ?? "",
+            totalPoints: notification.total_points ?? ""
+          }),
+          { duration: 6000 }
+        );
+        return;
+      }
+
+      if (type === "INVOICE_CREATED") {
+        toast(
+          t("notifications:invoiceCreated.subtitle", {
+            invoiceNumber: notification.invoice_number ?? "",
+            amount: notification.amount ?? ""
+          }),
+          { duration: 6000, icon: "💳" }
+        );
+        return;
+      }
+
+      if (type === "INVOICE_UPDATED") {
+        toast(
+          t("notifications:invoiceUpdated.subtitle", {
+            invoiceNumber: notification.invoice_number ?? "",
+            status: t(`common:status.${notification.status}`, { defaultValue: notification.status })
+          }),
+          { duration: 6000, icon: "💵" }
+        );
+        return;
+      }
+
+      if (type === "SESSION_STARTED") {
+        toast(
+          (toastInstance) => (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-semibold">
+                {t("notifications:sessionStarted.title")}
+              </p>
+              <p className="text-xs opacity-70">
+                {t("notifications:sessionStarted.subtitle", {
+                  className: notification.class_name ?? "",
+                  hostName: notification.host_name ?? ""
+                })}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    toast.dismiss(toastInstance.id);
+                    window.location.href = `/room/${notification.room_code}`;
+                  }}
+                  className="flex-1 bg-indigo-600 text-white text-xs font-semibold py-1.5 rounded-lg"
+                >
+                  {t("notifications:sessionStarted.join")}
+                </button>
+                <button
+                  onClick={() => toast.dismiss(toastInstance.id)}
+                  className="px-3 text-xs opacity-60 hover:opacity-100"
+                >
+                  {t("notifications:roomInvite.dismiss")}
+                </button>
+              </div>
+            </div>
+          ),
+          {
+            duration: 15000,
+            style: {
+              background: "#1e1e2a",
+              color: "#f0f0f8",
+              border: "1px solid rgba(99,102,241,0.3)",
+              borderRadius: "12px",
+              padding: "12px",
+            },
+          },
+        );
+        return;
+      }
     },
     [t, addToInbox],
   );
 
   const connect = useCallback(() => {
     if (isUnmounted.current) return;
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !hasOrgContext) return;
 
     const token = localStorage.getItem("access_token");
     if (!token) return;
@@ -173,13 +325,17 @@ export function useNotifications() {
 
     console.log("Connecting to notification WS...");
     const ws = new WebSocket(
-      `ws://localhost:8000/ws/notifications/?token=${token}`,
+      getWebSocketUrl(`/ws/notifications/?token=${token}`),
     );
     wsRef.current = ws;
 
     ws.onopen = () => {
       console.log("Notification WS connected ✅");
       reconnectTimeout.current = 0;
+      // Pull any notifications that landed while the user was offline
+      // or between sessions. The store dedupes by serverId so this is
+      // safe to call repeatedly on every reconnect.
+      hydrate();
     };
 
     ws.onmessage = (event) => {
@@ -202,13 +358,17 @@ export function useNotifications() {
       );
       reconnectTimeout.current += 1;
       console.log(`Reconnecting in ${delay}ms...`);
-      setTimeout(connect, delay);
+      setTimeout(() => connectRef.current?.(), delay);
     };
 
     ws.onerror = () => {
       ws.close();
     };
-  }, [isAuthenticated, handleNotification]);
+  }, [isAuthenticated, hasOrgContext, handleNotification, hydrate]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   useEffect(() => {
     isUnmounted.current = false;

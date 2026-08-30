@@ -5,6 +5,7 @@ import {
   useLocalParticipant,
   VideoTrack,
   useTracks,
+  isTrackReference,
 } from "@livekit/components-react";
 import { Track, type Participant } from "livekit-client";
 import { type GameBoardState } from "../hooks/useGameBoard";
@@ -16,8 +17,33 @@ import { cn } from "../../../lib/utils";
 interface GameBoardProps {
   gameBoard: GameBoardState;
   onEnd: () => void;
+  /**
+   * Called when the local iframe emits SCORE_UPDATE for the local
+   * user. The shell wires this to `useGameBoard.relayScore` so the
+   * score also goes out over the data channel to the rest of the
+   * call. The optional second arg is the local user's score; the
+   * legacy signature `(userId, score)` is still accepted for tests
+   * that patched it before the relay existed.
+   */
   onScoreUpdate?: (userId: string, score: number) => void;
-  onGameOver?: (scores: any) => void;
+  onGameOver?: (scores: Record<string, number>) => void;
+  /**
+   * Forward a classroom-mode event from the local iframe out to every
+   * peer. Wired by the shell to `useGameBoard.broadcastClassroomEvent`.
+   */
+  onBroadcastClassroom?: (
+    type: string,
+    payload: Record<string, unknown>,
+  ) => void;
+  /**
+   * Subscribe to classroom-mode events from the data channel. The
+   * GameBoard re-emits each one into its iframe so the game's own
+   * postMessage handler receives it. Wired by the shell to
+   * `useGameBoard.subscribeClassroomEvents`.
+   */
+  subscribeClassroomEvents?: (
+    fn: (type: string, payload: unknown, fromIdentity?: string) => void,
+  ) => () => void;
 }
 
 function getInitials(name: string) {
@@ -39,74 +65,66 @@ function getGradient(identity: string) {
   return gradients[identity.charCodeAt(0) % gradients.length];
 }
 
+interface RosterEntry {
+  identity: string;
+  name: string;
+  isLocal: boolean;
+  score: number;
+}
+
 /**
- * Mini participant strip rendered to the side of the in-call game.
+ * Mini participant strip rendered to the left of the in-call game.
+ *
+ * Shows the participant's webcam (or avatar fallback), highlights the
+ * local user with a brand ring + "You" pill, and displays the user's
+ * live game score next to the name. Scores are updated by the parent
+ * component via the postMessage SCORE_UPDATE bridge.
  *
  * De-duplicates the participant list because some versions of
- * `@livekit/components-react` include the local participant in the
- * `useParticipants()` array; without the de-dupe the local user shows
- * up twice (once from `useLocalParticipant` and once from the remote
- * list). We dedupe by identity so the strip always matches the
- * participants count in the topbar.
+ * `@livekit/components-react` include the local participant in
+ * `useParticipants()`; without dedup we'd render two tiles for one
+ * user.
  */
 function ParticipantStrip({
-  acceptedParticipants,
+  roster,
+  localIdentity,
 }: {
-  acceptedParticipants: string[];
+  roster: RosterEntry[];
+  localIdentity: string;
 }) {
   const { t } = useTranslation("room");
-  const { localParticipant } = useLocalParticipant();
-  const remoteParticipants = useParticipants();
   const tracks = useTracks([
     { source: Track.Source.Camera, withPlaceholder: true },
   ]);
 
-  const allParticipants = useMemo<Participant[]>(() => {
-    const seen = new Set<string>();
-    const out: Participant[] = [];
-    const push = (p: Participant) => {
-      if (!seen.has(p.identity)) {
-        seen.add(p.identity);
-        out.push(p);
-      }
-    };
-    push(localParticipant);
-    for (const p of remoteParticipants) push(p);
-    // The accepted list is authoritative — only show people who are in
-    // the game board. When a single host launches a game and nobody
-    // else has accepted yet, this collapses to just the local user.
-    return out.filter((p) => acceptedParticipants.includes(p.identity));
-  }, [localParticipant, remoteParticipants, acceptedParticipants]);
-
   return (
-    // Wider rail than before (w-32 vs w-20) so the camera tile is
-    // actually legible. Tile aspect-square keeps the face well-framed.
+    // Wider rail than before (w-32) with aspect-square tiles so faces
+    // are legible. Score badge sits at the top-right of each tile.
     <div className="flex flex-col gap-2 w-32 bg-[var(--s1)] border-e border-[var(--b)] p-2 overflow-y-auto flex-shrink-0">
-      {allParticipants.map((participant) => {
+      {roster.map((entry) => {
         const camTrack = tracks.find(
           (tr) =>
-            tr.participant.identity === participant.identity &&
+            tr.participant.identity === entry.identity &&
             tr.source === Track.Source.Camera,
         );
         const hasVideo =
-          camTrack &&
-          "publication" in camTrack &&
-          camTrack.publication &&
-          !camTrack.publication.isMuted;
-        const isLocal = participant.identity === localParticipant.identity;
-        const name = participant.name || participant.identity;
+          camTrack && isTrackReference(camTrack) && !camTrack.publication.isMuted;
 
         return (
           <div
-            key={participant.identity}
-            className="relative aspect-square bg-[var(--s2)] rounded-lg overflow-hidden flex-shrink-0"
+            key={entry.identity}
+            className={cn(
+              "relative aspect-square bg-[var(--s2)] rounded-lg overflow-hidden flex-shrink-0",
+              entry.isLocal &&
+                "ring-2 ring-[var(--brand)] ring-offset-1 ring-offset-[var(--s1)]",
+            )}
           >
-            {hasVideo && camTrack ? (
+            {hasVideo && camTrack && isTrackReference(camTrack) ? (
               <VideoTrack
-                trackRef={camTrack as any}
+                trackRef={camTrack}
                 className={cn(
                   "w-full h-full object-cover",
-                  isLocal && "scale-x-[-1]",
+                  entry.isLocal && "scale-x-[-1]",
                 )}
               />
             ) : (
@@ -114,16 +132,36 @@ function ParticipantStrip({
                 <div
                   className={cn(
                     "w-12 h-12 rounded-full flex items-center justify-center text-base font-bold text-white bg-gradient-to-br",
-                    getGradient(participant.identity),
+                    getGradient(entry.identity),
                   )}
                 >
-                  {getInitials(name)}
+                  {getInitials(entry.name)}
                 </div>
               </div>
             )}
+
+            {/* Score pill in the top-right corner. Hidden when score
+                is 0 to keep the tile clean before any points land. */}
+            {entry.score > 0 && (
+              <div className="absolute top-1 end-1 bg-[var(--brand)] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shadow">
+                {entry.score}
+              </div>
+            )}
+
+            {entry.isLocal && (
+              <div className="absolute top-1 start-1 bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--brand)]/30 text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 rounded-md">
+                {t("tile.you").replace(/[()]/g, "")}
+              </div>
+            )}
+
             <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1.5 py-0.5">
-              <span className="text-[10px] font-medium text-white truncate block">
-                {isLocal ? t("tile.you").replace(/[()]/g, "") : name}
+              <span
+                className={cn(
+                  "text-[10px] font-medium text-white truncate block",
+                  entry.identity === localIdentity && "text-[var(--brand)] font-bold",
+                )}
+              >
+                {entry.name}
               </span>
             </div>
           </div>
@@ -138,6 +176,8 @@ export default function GameBoard({
   onEnd,
   onScoreUpdate,
   onGameOver,
+  onBroadcastClassroom,
+  subscribeClassroomEvents,
 }: GameBoardProps) {
   const { t } = useTranslation(["games", "room"]);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -147,32 +187,42 @@ export default function GameBoard({
   const remoteParticipants = useParticipants();
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Build the player list for GAME_INIT. Same dedupe logic as the
-  // strip — we don't want the local user counted twice.
-  const players = useMemo(
-    () => {
-      const seen = new Set<string>();
-      const out: Participant[] = [];
-      const push = (p: Participant) => {
-        if (!seen.has(p.identity)) {
-          seen.add(p.identity);
-          out.push(p);
-        }
-      };
-      push(localParticipant);
-      for (const p of remoteParticipants) push(p);
-      return out
-        .filter((p) => gameBoard.acceptedParticipants.includes(p.identity))
-        .map((p) => ({
-          userId: p.identity,
-          username: p.identity,
-          fullName: p.name || p.identity,
-        }));
-    },
-    [localParticipant, remoteParticipants, gameBoard.acceptedParticipants],
-  );
+  // Live scores live in `gameBoard.scores`, populated by:
+  //   1. local iframe SCORE_UPDATE (handled below + relayed via the
+  //      data channel by `relayScore` in useGameBoard);
+  //   2. remote participants' GAME_SCORE relays.
 
-  // postMessage bridge to the game iframe.
+  // Dedupe the participant list: useParticipants() can include the
+  // local user. Match by identity, then narrow to people who have
+  // accepted the game invite.
+  const roster: RosterEntry[] = useMemo(() => {
+    const seen = new Set<string>();
+    const ordered: Participant[] = [];
+    const push = (p: Participant) => {
+      if (!seen.has(p.identity)) {
+        seen.add(p.identity);
+        ordered.push(p);
+      }
+    };
+    push(localParticipant);
+    for (const p of remoteParticipants) push(p);
+    return ordered
+      .filter((p) => gameBoard.acceptedParticipants.includes(p.identity))
+      .map((p) => ({
+        identity: p.identity,
+        name: p.name || p.identity,
+        isLocal: p.identity === localParticipant.identity,
+        score: gameBoard.scores[p.identity] ?? 0,
+      }));
+  }, [
+    localParticipant,
+    remoteParticipants,
+    gameBoard.acceptedParticipants,
+    gameBoard.scores,
+  ]);
+
+  // postMessage bridge to the iframe: send GAME_INIT on GAME_READY,
+  // capture SCORE_UPDATE / GAME_OVER for the local player.
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
@@ -186,11 +236,18 @@ export default function GameBoard({
               type: "GAME_INIT",
               payload: {
                 mode: "in-call",
-                players,
+                players: roster.map((r) => ({
+                  userId: r.identity,
+                  username: r.identity,
+                  fullName: r.name,
+                  score: r.score,
+                })),
+                hostUserId: gameBoard.hostIdentity,
                 currentPlayer: {
                   userId: localParticipant.identity,
                   isHost,
                 },
+                classroomState: gameBoard.classroomState,
               },
             },
             "*",
@@ -198,36 +255,109 @@ export default function GameBoard({
           // Pull focus into the iframe so subsequent keystrokes reach
           // the game. Without this, focus stays on whatever button
           // launched the game and typing goes nowhere.
-          requestAnimationFrame(() => {
-            iframeRef.current?.focus();
-          });
+          requestAnimationFrame(() => iframeRef.current?.focus());
           break;
 
-        case "SCORE_UPDATE":
-          onScoreUpdate?.(payload.userId, payload.score);
+        case "SCORE_UPDATE": {
+          const userId = String(payload?.userId ?? "");
+          const score = Number(payload?.score ?? 0);
+          if (!userId) break;
+          // Hand off to the shell (useGameBoard.relayScore wires this
+          // through the data channel and updates the local scores
+          // map). Remote peers see it via GAME_SCORE.
+          onScoreUpdate?.(userId, score);
           break;
+        }
 
         case "GAME_OVER":
-          onGameOver?.(payload.scores);
+          onGameOver?.(payload?.scores ?? {});
+          break;
+
+        default:
+          // Forward CLASSROOM_* messages out to peers via the data
+          // channel. The shell echoes them back into the local
+          // iframe via the subscribeClassroomEvents path.
+          if (
+            typeof type === "string" &&
+            type.startsWith("CLASSROOM_") &&
+            onBroadcastClassroom
+          ) {
+            onBroadcastClassroom(type, payload || {});
+          }
           break;
       }
     };
 
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [players, localParticipant, isHost, onScoreUpdate, onGameOver]);
+  }, [
+    roster,
+    localParticipant,
+    isHost,
+    onScoreUpdate,
+    onGameOver,
+    onBroadcastClassroom,
+    gameBoard.hostIdentity,
+    gameBoard.classroomState,
+  ]);
 
-  // Also focus the iframe immediately on mount so the user doesn't
-  // have to click into it before typing — mirrors what users expect
-  // from desktop game launchers.
+  // Push CLASSROOM_* events from the data channel into the iframe.
+  useEffect(() => {
+    if (!subscribeClassroomEvents) return;
+    return subscribeClassroomEvents((type, payload) => {
+      iframeRef.current?.contentWindow?.postMessage(
+        { type, payload: payload ?? {} },
+        "*",
+      );
+    });
+  }, [subscribeClassroomEvents]);
+
+  // Re-push GAME_INIT to the iframe whenever the roster changes
+  // (someone joined / left the game). The classroom variant uses
+  // this to keep the lobby roster + scoreboard in sync without us
+  // exposing a dedicated message kind. Solo apps that don't track
+  // a roster get a harmless extra init message.
+  useEffect(() => {
+    const win = iframeRef.current?.contentWindow;
+    if (!win) return;
+    win.postMessage(
+      {
+        type: "GAME_INIT",
+        payload: {
+          mode: "in-call",
+          players: roster.map((r) => ({
+            userId: r.identity,
+            username: r.identity,
+            fullName: r.name,
+            score: r.score,
+          })),
+          hostUserId: gameBoard.hostIdentity,
+          currentPlayer: {
+            userId: localParticipant.identity,
+            isHost,
+          },
+          classroomState: gameBoard.classroomState,
+        },
+      },
+      "*",
+    );
+    // Note: this fires on the first roster snapshot too, so the
+    // classroom variant gets its onPlatformInit call even if
+    // GAME_READY arrived earlier than the React effect committed.
+  }, [roster, localParticipant.identity, isHost, gameBoard.hostIdentity, gameBoard.classroomState]);
+
+  // Auto-focus iframe on mount and on src changes so the user doesn't
+  // have to click into it before typing.
   useEffect(() => {
     const id = window.setTimeout(() => iframeRef.current?.focus(), 200);
     return () => window.clearTimeout(id);
   }, [gameBoard.gameUrl]);
 
-  // Fullscreen plumbing — wraps the container element (not the iframe
-  // itself) so the participant strip + game topbar both go fullscreen
-  // alongside the iframe. The user keeps mute/leave + end-game access.
+  // Reset scores happens upstream in useGameBoard (launchGame +
+  // GAME_END both wipe the map), so no local cleanup is needed here.
+
+  // Fullscreen plumbing wraps the whole container so the rail + topbar
+  // come along — the host can still End Game while fullscreen.
   const toggleFullscreen = useCallback(() => {
     if (!containerRef.current) return;
     if (!document.fullscreenElement) {
@@ -255,7 +385,10 @@ export default function GameBoard({
 
   return (
     <div ref={containerRef} className="flex flex-1 overflow-hidden bg-[var(--s0)]">
-      <ParticipantStrip acceptedParticipants={gameBoard.acceptedParticipants} />
+      <ParticipantStrip
+        roster={roster}
+        localIdentity={localParticipant.identity}
+      />
 
       <div className="flex-1 flex flex-col relative">
         <div className="h-10 bg-[var(--s1)] border-b border-[var(--b)] flex items-center justify-between px-3 flex-shrink-0">
@@ -316,9 +449,6 @@ export default function GameBoard({
           allow="autoplay; fullscreen"
           sandbox="allow-scripts allow-same-origin allow-forms"
           title={gameBoard.gameTitle || "Game"}
-          // tabIndex makes the iframe explicitly focusable so the
-          // requestAnimationFrame focus call above actually lands on
-          // it. Without this some browsers ignore focus on iframes.
           tabIndex={0}
         />
       </div>

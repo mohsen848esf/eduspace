@@ -111,6 +111,37 @@ const recordingsApi = {
     return res.data;
   },
 
+  startClient: async (
+    roomCode: string,
+    quality: RecordingQuality,
+  ): Promise<Recording> => {
+    const res = await client.post(`/rooms/${roomCode}/recording/start-client/`, {
+      quality,
+    });
+    return res.data;
+  },
+
+  uploadChunk: async (
+    token: string,
+    chunk: Blob,
+    index: number,
+  ): Promise<{ success: boolean; index: number }> => {
+    const formData = new FormData();
+    formData.append("chunk", chunk, `chunk_${index}.webm`);
+    formData.append("index", String(index));
+    const res = await client.post(`/recordings/${token}/upload-chunk/`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return res.data;
+  },
+
+  completeClient: async (token: string): Promise<Recording> => {
+    const res = await client.post(`/recordings/${token}/complete-client/`);
+    return res.data;
+  },
+
   roomStatus: async (roomCode: string): Promise<RoomRecordingStatus> => {
     const res = await client.get(`/rooms/${roomCode}/recording/status/`);
     return res.data;
@@ -156,6 +187,7 @@ const recordingsApi = {
     room_code?: string;
     status?: RecordingStatus;
     published?: boolean;
+    q?: string;
   }): Promise<{ count: number; results: Recording[] }> => {
     const res = await client.get("/recordings/", {
       params: {
@@ -164,6 +196,7 @@ const recordingsApi = {
         ...(params?.published !== undefined
           ? { published: params.published }
           : {}),
+        ...(params?.q ? { q: params.q } : {}),
       },
     });
     return res.data;
@@ -244,8 +277,14 @@ const recordingsApi = {
   // ── Stream URL helper ─────────────────────────────────────────────────
   // Stream needs a Bearer JWT; the browser <video src> tag won't send it.
   // We hand the URL to RecordingPlayer.tsx which wires fetch + Blob URL.
-  streamUrl: (token: string) =>
-    `${client.defaults.baseURL}/recordings/${token}/stream/`,
+  streamUrl: (token: string, quality?: string) => {
+    let url = `${client.defaults.baseURL}/recordings/${token}/stream/`;
+    if (quality) {
+      url += `?quality=${quality}`;
+    }
+    return url;
+  },
+
 
   // Public-facing watch URL we copy into the user's clipboard when the
   // owner enables link-sharing on a recording.

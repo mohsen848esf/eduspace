@@ -1,27 +1,53 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import AppShell from "../../../components/layout/AppShell";
-import Button from "../../../components/ui/Button";import { useAuthStore } from "../../auth/store/authStore";
-import { useDashboard } from "../hooks/useDashboard";
-import { useRoom } from "../../room/hooks/useRoom";
-import { useLocale } from "../../../i18n/useLocale";
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate, useLocation } from "react-router-dom";
+import AppShell from "@/components/layout/AppShell";
+import Spinner from "@/components/ui/Spinner";
+import { useAuthStore } from "@/features/auth/store/authStore";
+import { useLocale } from "@/i18n/useLocale";
+import { useOrgPermission } from "@/hooks/useOrgPermission";
+import { useSessions } from "@/features/sessions/hooks/useSessions";
+import { sessionsApi } from "@/features/sessions/api/sessions.api";
+import { crmApi } from "../api/crm.api";
+import { assessmentsApi } from "@/features/assessments/api/assessments.api";
+import recordingsApi from "@/features/recordings/api/recordings.api";
+import { queryKeys } from "@/lib/query-keys";
+import OrgDashboardView from "./shells/OrgDashboardView";
+import PersonalHomePage from "../pages/PersonalHomePage";
+import CreateOrgModal from "./modals/CreateOrgModal";
+import JoinOrgModal from "./modals/JoinOrgModal";
 
 export default function DashboardPage() {
   const { t } = useTranslation(["dashboard"]);
   const { language } = useLocale();
   const { user } = useAuthStore();
-  const { stats, sessions, isLoading } = useDashboard();
+  const { hasPermission, activeRole: rawActiveRole, activeOrg } = useOrgPermission();
   const [activeNav, setActiveNav] = useState("dashboard");
-  const { createRoom, isLoading: roomLoading } = useRoom();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const greeting = () => {
-    const h = new Date().getHours();
-    if (h < 12) return t("greeting.morning");
-    if (h < 17) return t("greeting.afternoon");
-    return t("greeting.evening");
-  };
+  // Guest flow modal state
+  const initialAction = new URLSearchParams(location.search).get("action");
+  const [showCreateModal, setShowCreateModal] = useState(initialAction === "create-org");
+  const [showJoinModal, setShowJoinModal] = useState(initialAction === "join-org");
 
-  const localeTag = language === "fa" ? "fa-IR" : "en-US";
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const action = params.get("action");
+    if (action !== "create-org" && action !== "join-org") return;
+    const actionTimer = window.setTimeout(() => {
+      if (action === "create-org") setShowCreateModal(true);
+      if (action === "join-org") setShowJoinModal(true);
+      navigate(location.pathname, { replace: true });
+    }, 0);
+    return () => window.clearTimeout(actionTimer);
+  }, [location.search, location.pathname, navigate]);
+
+  const isFarsi = language === "fa";
+  const localeTag = isFarsi ? "fa-IR" : "en-US";
+  const activeRole = (rawActiveRole || "").toLowerCase();
+
   const subtitle = new Date().toLocaleDateString(localeTag, {
     weekday: "long",
     month: "long",
@@ -29,162 +55,153 @@ export default function DashboardPage() {
     year: "numeric",
   });
 
+  const canManageCRM = hasPermission("can_manage_members") || hasPermission("can_teach_class");
+  const canViewFinancials = hasPermission("can_view_financials");
+
+  // Shared CRM Queries (Only executed when inside an organization)
+  const { data: courses = [], isLoading: loadingCourses } = useQuery({
+    queryKey: queryKeys.courses.all,
+    queryFn: crmApi.getCourses,
+    enabled: canManageCRM && !!activeOrg,
+  });
+
+  const { data: classes = [], isLoading: loadingClasses } = useQuery({
+    queryKey: queryKeys.classes.all,
+    queryFn: crmApi.getClasses,
+    enabled: canManageCRM && !!activeOrg,
+  });
+
+  const { data: enrollments = [], isLoading: loadingEnrollments } = useQuery({
+    queryKey: queryKeys.enrollments.all,
+    queryFn: crmApi.getEnrollments,
+    enabled: !!activeOrg,
+  });
+
+  const { data: summaryData, isLoading: loadingSummary } = useQuery({
+    queryKey: queryKeys.expenses.summary,
+    queryFn: crmApi.getFinanceSummary,
+    enabled: canViewFinancials && !!activeOrg,
+  });
+
+  const { data: liveSessions = [], isLoading: loadingSessions } = useSessions(
+    undefined,
+    "live",
+    { enabled: !!activeOrg }
+  );
+
+  const { data: allSessions = [], isLoading: loadingAllSessions } = useQuery({
+    queryKey: queryKeys.sessions.all,
+    queryFn: () => sessionsApi.getSessions(),
+    enabled: !!activeOrg,
+  });
+
+  const { data: allSubmissions = [], isLoading: loadingSubmissions } = useQuery({
+    queryKey: ["all-assignment-submissions"],
+    queryFn: () => assessmentsApi.getAssignmentSubmissions(),
+    enabled: (hasPermission("can_teach_class") || hasPermission("can_manage_members")) && !!activeOrg,
+  });
+
+  const { data: studentAssignments = [] } = useQuery({
+    queryKey: ["student-assignments"],
+    queryFn: () => assessmentsApi.getAssignments(),
+    enabled: hasPermission("can_attend_class") && !!activeOrg,
+  });
+
+  const { data: studentAssignmentSubmissions = [] } = useQuery({
+    queryKey: ["student-assignment-submissions"],
+    queryFn: () => assessmentsApi.getAssignmentSubmissions(),
+    enabled: hasPermission("can_attend_class") && !!activeOrg,
+  });
+
+  const { data: studentRecordingsData } = useQuery({
+    queryKey: queryKeys.recordings.all,
+    queryFn: () => recordingsApi.list({ published: true }),
+    enabled: hasPermission("can_attend_class") && !!activeOrg,
+  });
+
+  const { data: recentInvoicesData } = useQuery({
+    queryKey: queryKeys.invoices.list({ page_size: 5 }),
+    queryFn: () => crmApi.getInvoices({ page_size: 5 }),
+    enabled: canViewFinancials && !!activeOrg,
+  });
+
+  // Calculate Real Today Sessions
+  const todaySessions = allSessions.filter((s) => {
+    if (!s.scheduled_start) return false;
+    try {
+      const sDate = new Date(s.scheduled_start);
+      const today = new Date();
+      return (
+        sDate.getDate() === today.getDate() &&
+        sDate.getMonth() === today.getMonth() &&
+        sDate.getFullYear() === today.getFullYear()
+      );
+    } catch {
+      return false;
+    }
+  });
+
+  const studentRecordings = studentRecordingsData?.results || [];
+
+  const isDataLoading =
+    loadingCourses ||
+    loadingClasses ||
+    loadingEnrollments ||
+    loadingSummary ||
+    loadingSessions ||
+    loadingAllSessions ||
+    ((hasPermission("can_teach_class") || hasPermission("can_manage_members")) && loadingSubmissions);
+
+  // If not inside an organization context, render PersonalHomePage (which has its own AppShell)
+  if (!activeOrg) {
+    return <PersonalHomePage />;
+  }
+
   return (
     <AppShell
-      title={t("title")}
+      title={activeOrg.name || t("title")}
       subtitle={subtitle}
       activeNav={activeNav}
       onNavigate={setActiveNav}
     >
-      <div className="flex flex-col gap-4 md:gap-5 fade-in">
-        {/* Greeting */}
-        <div>
-          <h2 className="text-xl md:text-2xl font-bold text-[var(--t1)]">
-            {greeting()}, {user?.full_name || user?.username} 👋
-          </h2>
-          <p className="text-sm text-[var(--t2)] mt-1">
-            {t("role")}:{" "}
-            <span className="text-[var(--brand-text)] font-semibold capitalize">
-              {user?.role}
-            </span>
-          </p>
+      {isDataLoading ? (
+        <div className="p-12 flex justify-center items-center min-h-[400px]">
+          <Spinner size="lg" />
         </div>
+      ) : (
+        <OrgDashboardView
+          user={user}
+          activeOrg={activeOrg}
+          activeRole={activeRole}
+          hasPermission={hasPermission}
+          isFarsi={isFarsi}
+          localeTag={localeTag}
+          courses={courses}
+          classes={classes}
+          enrollments={enrollments}
+          summaryData={summaryData}
+          liveSessions={liveSessions}
+          allSessions={allSessions}
+          todaySessions={todaySessions}
+          allSubmissions={allSubmissions}
+          studentAssignments={studentAssignments}
+          studentSubmissions={studentAssignmentSubmissions}
+          studentRecordings={studentRecordings}
+          recentInvoicesData={recentInvoicesData}
+        />
+      )}
 
-        {/* Quick actions */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            {
-              icon: "📹",
-              labelKey: "actions.startCall",
-              nav: "calls",
-              action: () =>
-                createRoom({
-                  name: t("roomDefault", {
-                    name: user?.full_name || user?.username || "",
-                  }),
-                  max_participants: 20,
-                  is_recorded: false,
-                }),
-            },
-            { icon: "🎮", labelKey: "actions.launchGame", nav: "miniapps" },
-            { icon: "📝", labelKey: "actions.newExam", nav: "exams" },
-            { icon: "🎬", labelKey: "actions.recordings", nav: "recordings" },
-          ].map((item) => (
-            <button
-              key={item.nav}
-              onClick={item.action || (() => setActiveNav(item.nav))}
-              disabled={roomLoading}
-              className="flex flex-col items-center gap-2 p-4 md:p-5 min-h-[88px] bg-[var(--s2)] hover:bg-[var(--s3)] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.97] border-none disabled:opacity-50"
-            >
-              <span className="text-2xl md:text-3xl">{item.icon}</span>
-              <span className="text-xs md:text-sm font-medium text-[var(--t2)] text-center">
-                {t(item.labelKey)}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {[
-            {
-              labelKey: "stats.sessionsThisWeek",
-              value: isLoading ? "—" : stats.sessions,
-            },
-            {
-              labelKey: "stats.activeStudents",
-              value: isLoading ? "—" : stats.students,
-            },
-            {
-              labelKey: "stats.avgAttendance",
-              value: isLoading ? "—" : stats.attendance,
-              color: "var(--green)",
-            },
-          ].map((stat) => (
-            <div
-              key={stat.labelKey}
-              className="bg-[var(--s2)] rounded-xl p-4 md:p-5 flex md:flex-col items-baseline md:items-start justify-between md:justify-start gap-2"
-            >
-              <div
-                className="text-2xl md:text-3xl font-bold text-[var(--t1)]"
-                style={stat.color ? { color: stat.color } : {}}
-              >
-                {stat.value}
-              </div>
-              <div className="text-xs text-[var(--t3)] md:mt-1">
-                {t(stat.labelKey)}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Sessions list */}
-        <div className="bg-[var(--s2)] rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--b)]">
-            <span className="text-xs font-semibold text-[var(--t3)] uppercase tracking-wide">
-              {t("sessions.title")}
-            </span>
-            <button className="text-xs text-[var(--brand-text)] bg-transparent border-none cursor-pointer hover:underline">
-              {t("sessions.seeAll")}
-            </button>
-          </div>
-
-          {isLoading ? (
-            <div className="p-4 flex flex-col gap-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className="skeleton w-8 h-8 rounded-lg flex-shrink-0" />
-                  <div className="flex-1 flex flex-col gap-1.5">
-                    <div className="skeleton h-3 w-48 rounded" />
-                    <div className="skeleton h-2.5 w-32 rounded" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : sessions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 gap-2">
-              <span className="text-3xl">📭</span>
-              <p className="text-sm text-[var(--t3)]">{t("sessions.empty")}</p>
-              <Button size="sm" onClick={() => setActiveNav("calls")}>
-                {t("sessions.startFirst")}
-              </Button>
-            </div>
-          ) : (
-            <div>
-              {sessions.map((session) => (
-                <div
-                  key={session.id}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--s3)] transition-colors cursor-pointer border-t border-[var(--b)] first:border-t-0"
-                >
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${session.iconBg}`}
-                  >
-                    {session.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-[var(--t1)] truncate">
-                      {session.name}
-                    </div>
-                    <div className="text-xs text-[var(--t3)] mt-0.5">
-                      {session.meta}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase ${session.pillClass}`}
-                    >
-                      {session.status}
-                    </span>
-                    <span className="text-[11px] text-[var(--t3)]">
-                      {session.time}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Global Modals for Organization Onboarding */}
+      <CreateOrgModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        isFarsi={isFarsi}
+      />
+      <JoinOrgModal
+        open={showJoinModal}
+        onClose={() => setShowJoinModal(false)}
+        isFarsi={isFarsi}
+      />
     </AppShell>
   );
 }

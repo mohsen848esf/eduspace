@@ -62,9 +62,10 @@ export default function RecordingViewersPanel({
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    setIsLoading(true);
-    setError(null);
-    recordingsApi
+    const loadTimer = window.setTimeout(() => {
+      setIsLoading(true);
+      setError(null);
+      recordingsApi
       .getViews(recordingToken)
       .then((data) => {
         if (cancelled) return;
@@ -77,8 +78,10 @@ export default function RecordingViewersPanel({
       .finally(() => {
         if (!cancelled) setIsLoading(false);
       });
+    }, 0);
     return () => {
       cancelled = true;
+      window.clearTimeout(loadTimer);
     };
   }, [open, recordingToken]);
 

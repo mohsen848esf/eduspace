@@ -76,7 +76,7 @@ export default function BottomSheet({
     } catch {
       // Privacy mode / disabled storage — fall through and show the hint.
     }
-    setShowHint(true);
+    const showTimeout = window.setTimeout(() => setShowHint(true), 0);
     const timeout = window.setTimeout(() => {
       setShowHint(false);
       try {
@@ -85,16 +85,19 @@ export default function BottomSheet({
         // Ignore quota / disabled-storage errors.
       }
     }, 5000);
-    return () => window.clearTimeout(timeout);
+    return () => {
+      window.clearTimeout(showTimeout);
+      window.clearTimeout(timeout);
+    };
   }, [open]);
 
-  // Reset drag state every time the sheet reopens; no leftover offsets.
-  useEffect(() => {
-    if (!open) {
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    if (!nextOpen) {
       setDragOffset(0);
       setIsDragging(false);
     }
-  }, [open]);
+    onOpenChange(nextOpen);
+  }, [onOpenChange]);
 
   const handlePointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -154,16 +157,16 @@ export default function BottomSheet({
       }
 
       if (ratio >= DISMISS_RATIO || velocity >= DISMISS_VELOCITY) {
-        onOpenChange(false);
+        handleOpenChange(false);
       } else {
         setDragOffset(0);
       }
     },
-    [onOpenChange],
+    [handleOpenChange],
   );
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+    <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
           className={cn(

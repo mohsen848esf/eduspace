@@ -110,8 +110,6 @@ export default function MiniAppsPage() {
   // the backend catalog rarely changes during a session.
   useEffect(() => {
     let cancelled = false;
-    setGames(null);
-    setError(null);
     gamesApi
       .list()
       .then((data) => {
@@ -130,9 +128,17 @@ export default function MiniAppsPage() {
 
   // Build the full card list once games arrive; STATIC_APPS first so
   // the gallery never looks empty even if the backend is down.
+  // Filter out is_in_call_only games — they're meaningful only inside
+  // a call, where the in-call selector handles them.
   const cards: MiniAppCard[] = useMemo(() => {
     const result: MiniAppCard[] = [];
-    if (games) result.push(...games.map(gameToCard));
+    if (games) {
+      result.push(
+        ...games
+          .filter((g) => !g.is_in_call_only)
+          .map(gameToCard),
+      );
+    }
     result.push(...STATIC_APPS);
     return result;
   }, [games]);
@@ -258,7 +264,7 @@ function MiniAppTile({ card, t }: MiniAppTileProps) {
             {isReady ? t("card.ready") : t("card.soon")}
           </span>
           {card.premium && (
-            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-[var(--brand-soft)] text-[var(--brand-text)]">
+            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--brand)]/30">
               {t("card.premium")}
             </span>
           )}

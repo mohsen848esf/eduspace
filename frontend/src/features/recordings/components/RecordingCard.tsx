@@ -9,19 +9,36 @@ interface RecordingCardProps {
   recording: Recording;
   onDelete?: (recording: Recording) => void;
   onShare?: (recording: Recording) => void;
+  selected?: boolean;
+  onSelect?: (token: string, selected: boolean) => void;
+  selectionMode?: boolean;
 }
 
-function formatDuration(seconds: number, t: (k: string, v?: any) => string) {
+function formatDuration(
+  seconds: number,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
   if (seconds < 60) return t("card.durationShort", { seconds });
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return t("card.duration", { minutes: m, seconds: s });
 }
 
+function formatBytes(bytes: number): string {
+  if (!bytes || bytes <= 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
 export default function RecordingCard({
   recording,
   onDelete,
   onShare,
+  selected = false,
+  onSelect,
+  selectionMode = false,
 }: RecordingCardProps) {
   const { t } = useTranslation("recordings");
   const navigate = useNavigate();
@@ -41,8 +58,12 @@ export default function RecordingCard({
     recording.status === "completed" || recording.status === "failed";
 
   const open = () => {
-    if (isOwner) navigate(`/recordings/${recording.public_token}/edit`);
-    else navigate(`/recordings/${recording.public_token}`);
+    if (selectionMode) {
+      onSelect?.(recording.public_token, !selected);
+    } else {
+      if (isOwner) navigate(`/recordings/${recording.public_token}/edit`);
+      else navigate(`/recordings/${recording.public_token}`);
+    }
   };
 
   const handleShare = (e: React.MouseEvent) => {
@@ -61,11 +82,27 @@ export default function RecordingCard({
     <div
       onClick={open}
       className={cn(
-        "group flex flex-col bg-[var(--s2)] rounded-xl border border-[var(--b)] overflow-hidden",
-        "hover:border-[var(--bh)] cursor-pointer transition-colors",
+        "group flex flex-col bg-[var(--s2)] rounded-xl border overflow-hidden transition-all duration-200",
+        selected
+          ? "border-[var(--brand)] ring-1 ring-[var(--brand)] bg-[var(--s3)] shadow-md"
+          : "border-[var(--b)] hover:border-[var(--bh)] hover:shadow-sm",
+        "cursor-pointer"
       )}
     >
       <div className="relative">
+        {isOwner && (selectionMode || selected) && (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="absolute top-2.5 end-2.5 z-10"
+          >
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={(e) => onSelect?.(recording.public_token, e.target.checked)}
+              className="w-4 h-4 accent-[var(--brand)] rounded border-[var(--b)] cursor-pointer shadow-md"
+            />
+          </div>
+        )}
         <RecordingThumbnail
           token={recording.public_token}
           durationSeconds={recording.duration_seconds}
@@ -105,7 +142,7 @@ export default function RecordingCard({
           </span>
         </div>
         <div className="flex items-center justify-between text-[11px] text-[var(--t3)]">
-          <span>{startedAt}</span>
+          <span>{startedAt} · {formatBytes(recording.size_bytes)}</span>
           <span className="font-mono force-ltr">
             {formatDuration(recording.duration_seconds, t)}
           </span>
@@ -117,7 +154,7 @@ export default function RecordingCard({
                 e.stopPropagation();
                 navigate(`/recordings/${recording.public_token}`);
               }}
-              className="flex-1 h-7 rounded-md border-none cursor-pointer text-[11px] font-semibold bg-[var(--brand-soft)] text-[var(--brand-text)] hover:bg-[var(--brand)]/15 transition-colors"
+              className="flex-1 h-7 rounded-md border border-[var(--brand)]/30 cursor-pointer text-[11px] font-bold bg-[var(--brand-soft)] text-[var(--brand)] hover:bg-[var(--brand)]/20 transition-colors"
             >
               {t("card.watch")}
             </button>
@@ -127,7 +164,7 @@ export default function RecordingCard({
                   <Tooltip content={t("card.share")}>
                     <button
                       onClick={handleShare}
-                      className="w-7 h-7 rounded-md border-none cursor-pointer bg-[var(--s3)] text-[var(--t2)] hover:text-[var(--brand-text)] hover:bg-[var(--brand-soft)] flex items-center justify-center text-xs"
+                      className="w-7 h-7 rounded-md border-none cursor-pointer bg-[var(--s3)] text-[var(--t2)] hover:text-[var(--brand)] hover:bg-[var(--brand-soft)] flex items-center justify-center text-xs"
                     >
                       ↗
                     </button>

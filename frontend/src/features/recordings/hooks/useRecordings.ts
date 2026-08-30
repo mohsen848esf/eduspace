@@ -12,6 +12,16 @@ export function useRecordings(initialFilter: RecordingsFilter = "all") {
   const [items, setItems] = useState<Recording[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<RecordingsFilter>(initialFilter);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+
+  // Debounce search input to avoid spamming search requests
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
@@ -23,6 +33,11 @@ export function useRecordings(initialFilter: RecordingsFilter = "all") {
         params.status = "completed";
       } else if (filter === "processing") params.status = "processing";
       else if (filter === "failed") params.status = "failed";
+
+      if (debouncedSearchQuery.trim()) {
+        params.q = debouncedSearchQuery.trim();
+      }
+
       const data = await recordingsApi.list(params);
       setItems(data.results);
     } catch {
@@ -30,11 +45,12 @@ export function useRecordings(initialFilter: RecordingsFilter = "all") {
     } finally {
       setIsLoading(false);
     }
-  }, [filter]);
+  }, [filter, debouncedSearchQuery]);
 
   useEffect(() => {
-    refresh();
+    const refreshTimer = window.setTimeout(refresh, 0);
+    return () => window.clearTimeout(refreshTimer);
   }, [refresh]);
 
-  return { items, isLoading, filter, setFilter, refresh };
+  return { items, isLoading, filter, setFilter, searchQuery, setSearchQuery, refresh };
 }

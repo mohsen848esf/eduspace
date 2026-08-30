@@ -74,6 +74,40 @@ def handle_event(event: dict) -> None:
     Unknown events are ignored.
     """
     event_type = event.get('event')
+
+    # Handle participant lifecycle events
+    if event_type == 'participant_left':
+        participant_info = event.get('participant') or {}
+        room_info = event.get('room') or {}
+        room_code = room_info.get('name')
+        identity = participant_info.get('identity')
+        if room_code and identity:
+            from rooms.models import RoomParticipant
+            RoomParticipant.objects.filter(
+                room__room_code=room_code,
+                user__username=identity,
+            ).update(is_active=False, left_at=timezone.now())
+            RoomParticipant.objects.filter(
+                room__room_code=room_code,
+                guest_identity=identity,
+            ).update(is_active=False, left_at=timezone.now())
+            logger.info('participant_left webhook: room=%s identity=%s', room_code, identity)
+        return
+
+    if event_type == 'room_finished':
+        room_info = event.get('room') or {}
+        room_code = room_info.get('name')
+        if room_code:
+            from rooms.models import Room, RoomParticipant
+            Room.objects.filter(room_code=room_code).update(
+                status=Room.Status.ENDED, ended_at=timezone.now()
+            )
+            RoomParticipant.objects.filter(room__room_code=room_code).update(
+                is_active=False, left_at=timezone.now()
+            )
+            logger.info('room_finished webhook: room=%s', room_code)
+        return
+
     egress_info = event.get('egressInfo') or {}
     egress_id = egress_info.get('egressId')
     if not event_type or not egress_id:

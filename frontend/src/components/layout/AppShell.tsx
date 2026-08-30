@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import IconRail from "./IconRail";
@@ -9,6 +8,16 @@ import DrawerNavList from "./DrawerNavList";
 import { cn } from "../../lib/utils";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { useShellStore } from "../../store/shellStore";
+import { useOrgContextStore } from "../../features/auth/store/orgContextStore";
+import { useLocale } from "../../i18n/useLocale";
+import { AlertTriangle } from "lucide-react";
+import { PageHelpProvider } from "../help/PageHelpProvider";
+
+
+import SubTopbar from "./SubTopbar";
+import { useOrgPermission } from "../../hooks/useOrgPermission";
+
+import { useThemeStore } from "../../store/themeStore";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -22,26 +31,31 @@ interface AppShellProps {
 // Unmapped ids fall back to the parent's onNavigate if provided.
 const NAV_ROUTES: Record<string, string> = {
   dashboard: "/dashboard",
-  // No dedicated calls page yet — the dashboard hosts the Start Call
-  // quick action, so the calls nav entry lands there until the Calls
-  // page lands as part of the dashboard redesign.
-  calls: "/dashboard",
-  recordings: "/recordings",
+  inbox: "/inbox",
+  notifications: "/inbox",
+  courses: "/academic/courses",
+  classes: "/academic/classes",
+  sessions: "/academic/sessions",
+  attendance: "/academic/attendance",
+  homework: "/academic/homework",
+  payments: "/academic/payments",
+  reports: "/academic/reports",
+  members: "/crm/members",
+  ledger: "/finance/ledger",
+  organization: "/settings/organization",
+  billing: "/settings/billing",
+  templates: "/settings/templates",
+  profile: "/settings/profile",
+  notificationsSettings: "/settings/notifications",
+  changePassword: "/settings/security/change-password",
   miniapps: "/miniapps",
+  leaderboard: "/leaderboard",
+  sysAdmin: "/sys-admin",
 };
 
 /**
- * Authenticated app shell. Renders three different chrome variants
- * depending on viewport:
- *
- *   desktop (>= 1024px) — full Sidebar (224px) + Topbar
- *   tablet  (768–1023)  — collapsed IconRail (56px) + Topbar
- *   mobile  (< 768px)   — Topbar (with hamburger) + BottomNav + Drawer
- *
- * Pages don't need to know which variant is active; they just pass their
- * title / subtitle / activeNav as before. The layout primitives all read
- * from the same `navItems` config so a destination added there shows up
- * everywhere.
+ * Authenticated app shell. Renders chrome variants depending on viewport
+ * and organization state.
  */
 export default function AppShell({
   children,
@@ -50,16 +64,15 @@ export default function AppShell({
   activeNav,
   onNavigate,
 }: AppShellProps) {
-  const [isDark, setIsDark] = useState(true);
+  const isDark = useThemeStore((s) => s.isDark);
+  const toggleTheme = useThemeStore((s) => s.toggleTheme);
   const navigate = useNavigate();
   const location = useLocation();
   const breakpoint = useBreakpoint();
   const drawerOpen = useShellStore((s) => s.drawerOpen);
   const setDrawerOpen = useShellStore((s) => s.setDrawerOpen);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("light", !isDark);
-  }, [isDark]);
+  const { activeOrg } = useOrgPermission();
+  const hasOrg = !!activeOrg;
 
   // Fall back to route-based active id when the page didn't pin one.
   const resolvedActive =
@@ -78,59 +91,116 @@ export default function AppShell({
     onNavigate?.(id);
   };
 
-  return (
-    <div
-      className={cn(
-        "flex w-full h-full",
-        "bg-[var(--s0)] text-[var(--t1)]",
-        "transition-colors duration-300",
-      )}
-    >
-      {breakpoint === "desktop" && (
-        <Sidebar activeId={resolvedActive} onNavigate={handleNavigate} />
-      )}
-      {breakpoint === "tablet" && (
-        <IconRail activeId={resolvedActive} onNavigate={handleNavigate} />
-      )}
+  const { orgContext } = useOrgContextStore();
+  const { language } = useLocale();
+  const isFarsi = language === "fa";
+  const isSuspended = orgContext?.organization?.is_suspended;
 
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+  return (
+    <PageHelpProvider>
+      <div
+        className={cn(
+          "flex flex-col w-full h-full min-h-screen",
+          "bg-[var(--s0)] text-[var(--t1)]",
+          "transition-colors duration-300 overflow-hidden",
+        )}
+      >
+        {/* Full-Width Topbar Header spanning 100% width across top */}
         <Topbar
           title={title}
           subtitle={subtitle}
           isDark={isDark}
-          onToggleTheme={() => setIsDark(!isDark)}
-          showHamburger={breakpoint === "mobile"}
+          onToggleTheme={toggleTheme}
+          showHamburger={hasOrg && breakpoint === "mobile"}
           onHamburgerClick={() => setDrawerOpen(true)}
         />
-        <main
-          className={cn(
-            "flex-1 overflow-y-auto p-4 md:p-5",
-            // Bottom padding clears the fixed BottomNav on mobile.
-            breakpoint === "mobile" && "pb-20",
+
+        {/* Content body with Sidebar + Main View */}
+        <div className="flex flex-1 w-full min-h-0 overflow-hidden p-2.5 sm:p-3 gap-3">
+          {hasOrg && breakpoint === "desktop" && (
+            <Sidebar activeId={resolvedActive} onNavigate={handleNavigate} />
           )}
-        >
-          {children}
-        </main>
-        {breakpoint === "mobile" && (
-          <BottomNav
-            activeId={resolvedActive}
-            onMoreClick={() => setDrawerOpen(true)}
-          />
+          {hasOrg && breakpoint === "tablet" && (
+            <IconRail activeId={resolvedActive} onNavigate={handleNavigate} />
+          )}
+
+          <div className="flex flex-col flex-1 min-w-0 overflow-hidden rounded-2xl bg-[var(--s0)]">
+            {hasOrg && <SubTopbar />}
+            {isSuspended && (
+              <div 
+                style={{
+                  background: "rgba(239, 68, 68, 0.12)",
+                  borderBottom: "1px solid rgba(239, 68, 68, 0.25)",
+                  color: "var(--red)",
+                  padding: "10px 16px",
+                  fontSize: "12px",
+                  fontWeight: "500",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                  backdropFilter: "blur(4px)",
+                  flexShrink: 0,
+                }}
+                className="no-print"
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <AlertTriangle style={{ width: "16px", height: "16px", flexShrink: 0 }} />
+                  <span>
+                    {isFarsi
+                      ? "دسترسی سازمان به دلیل فاکتورهای پرداخت‌نشده معلق شده است. برای فعال‌سازی مجدد لطفاً فاکتورهای معوقه را پرداخت کنید."
+                      : "Your organization suspension is active due to overdue/unpaid invoices. Please resolve billing to restore full service."}
+                  </span>
+                </div>
+                <Link
+                  to="/settings/billing"
+                  style={{
+                    fontWeight: "bold",
+                    textDecoration: "underline",
+                    color: "var(--brand-text)",
+                    whiteSpace: "nowrap",
+                    marginLeft: isFarsi ? "0" : "auto",
+                    marginRight: isFarsi ? "auto" : "0",
+                  }}
+                >
+                  {isFarsi ? "پرداخت و مدیریت اشتراک" : "Manage Billing & Subscription"} &rarr;
+                </Link>
+              </div>
+            )}
+            <main
+              className={cn(
+                "flex-1 overflow-y-auto p-4 md:p-5",
+                // Bottom padding clears the fixed BottomNav on mobile.
+                breakpoint === "mobile" && "pb-20",
+              )}
+            >
+              {children}
+            </main>
+            {hasOrg && breakpoint === "mobile" && (
+              <BottomNav
+                activeId={resolvedActive}
+                onMoreClick={() => setDrawerOpen(true)}
+              />
+            )}
+          </div>
+        </div>
+
+        {hasOrg && (
+          <Drawer
+            open={drawerOpen}
+            onOpenChange={setDrawerOpen}
+            side="start"
+            ariaLabel="Navigation"
+          >
+            <DrawerNavList
+              activeId={resolvedActive}
+              onNavigate={handleNavigate}
+              onClose={() => setDrawerOpen(false)}
+            />
+          </Drawer>
         )}
       </div>
-
-      <Drawer
-        open={drawerOpen}
-        onOpenChange={setDrawerOpen}
-        side="start"
-        ariaLabel="Navigation"
-      >
-        <DrawerNavList
-          activeId={resolvedActive}
-          onNavigate={handleNavigate}
-          onClose={() => setDrawerOpen(false)}
-        />
-      </Drawer>
-    </div>
+    </PageHelpProvider>
   );
 }
+

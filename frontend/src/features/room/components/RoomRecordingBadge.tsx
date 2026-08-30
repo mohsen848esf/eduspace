@@ -38,7 +38,11 @@ export default function RoomRecordingBadge({ className }: RoomRecordingBadgeProp
       role="status"
       aria-label={isPaused ? t("controls.paused") : t("controls.recording")}
       className={cn(
-        "absolute top-2 end-2 z-20 flex items-center gap-1.5",
+        "absolute z-20 flex items-center gap-1.5",
+        // Default position: top-right corner. Callers can pass a
+        // className to override (e.g. inside the GameBoard where the
+        // host's End Game button lives in this corner).
+        !className && "top-2 end-2",
         "px-2 py-1 rounded-full",
         "bg-black/55 backdrop-blur-sm border border-white/10",
         "pointer-events-none select-none",

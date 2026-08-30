@@ -1,14 +1,24 @@
 import client from "../../../lib/api/client";
-import type { LoginInput, RegisterPayload } from "../schemas/auth.schema";
+import type { ChangePasswordInput, LoginInput, RegisterPayload } from "../schemas/auth.schema";
+
+export interface UserOrg {
+  id: number;
+  name: string;
+  slug: string;
+  role: string | null;
+  logo?: string | null;
+}
 
 export interface User {
   id: number;
   username: string;
   email: string;
   full_name: string;
-  role: "student" | "teacher" | "admin";
   avatar: string | null;
   is_online: boolean;
+  is_superuser?: boolean;
+  organizations?: UserOrg[];
+  phone_number?: string | null;
 }
 
 export interface AuthResponse {
@@ -16,6 +26,95 @@ export interface AuthResponse {
   access: string;
   refresh: string;
 }
+
+export type ChangePasswordPayload = ChangePasswordInput;
+
+export interface OrganizationBranding {
+  primary_color?: string;
+  secondary_color?: string;
+  default_theme?: "light" | "light-tinted" | "dark" | "dark-tinted";
+  is_tinted?: boolean;
+  slogan?: string;
+  custom_tokens?: Record<string, string>;
+}
+
+export interface OrgContext {
+  organization: {
+    id: number;
+    name: string;
+    slug: string;
+    logo?: string | null;
+    branding?: OrganizationBranding;
+    invite_code?: string;
+    is_suspended?: boolean;
+    suspension_reason?: string | null;
+  } | null;
+  role: string | null;
+  permissions: string[];
+}
+
+export interface OrganizationDetail {
+  id: number;
+  name: string;
+  slug: string;
+  type: string;
+  is_active: boolean;
+  logo: string | null;
+  branding?: OrganizationBranding;
+  created_at: string;
+  approval_required_to_join?: boolean;
+  invite_code?: string;
+}
+
+export interface Invitation {
+  id: number;
+  organization: {
+    id: number;
+    name: string;
+    slug: string;
+  };
+  role: string | null;
+  invited_by: string | null;
+  joined_at: string;
+}
+
+export interface OrgMember {
+  id: number;
+  user: number;
+  user_details: User;
+  role: number | null;
+  role_name: string | null;
+  is_active: boolean;
+  contract_type: string;
+  joined_at: string;
+  expires_at: string | null;
+}
+
+export interface Role {
+  id: number;
+  name: string;
+  description: string;
+  permissions?: string[];
+}
+
+export interface SystemPermission {
+  codename: string;
+  name: string;
+  description: string;
+}
+
+export interface UserSession {
+  id: number;
+  username: string;
+  full_name: string;
+  ip_address: string | null;
+  user_agent: string;
+  is_active: boolean;
+  is_current: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 
 export const authApi = {
   login: async (data: LoginInput): Promise<AuthResponse> => {
@@ -33,10 +132,162 @@ export const authApi = {
     return res.data;
   },
 
+  updateProfile: async (data: FormData | Partial<User>): Promise<User> => {
+    const headers = data instanceof FormData ? { "Content-Type": "multipart/form-data" } : {};
+    const res = await client.patch("/auth/me/", data, { headers });
+    return res.data;
+  },
+
+  changePassword: async (data: ChangePasswordPayload): Promise<AuthResponse> => {
+    const res = await client.post("/auth/change-password/", data);
+    return res.data;
+  },
+
   logout: async (): Promise<void> => {
     const refresh = localStorage.getItem("refresh_token");
     await client.post("/auth/logout/", { refresh });
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
   },
+
+  getOrgContext: async (): Promise<OrgContext> => {
+    const res = await client.get("/auth/org-context/");
+    return res.data;
+  },
+
+  getOrganizations: async (): Promise<OrganizationDetail[]> => {
+    const res = await client.get("/auth/organizations/");
+    return res.data;
+  },
+
+  createOrganization: async (name: string): Promise<OrganizationDetail> => {
+    const res = await client.post("/auth/organizations/", { name });
+    return res.data;
+  },
+
+  joinOrganization: async (slugOrId: string): Promise<{ message: string; auto_joined: boolean }> => {
+    const res = await client.post(`/auth/organizations/${slugOrId}/join/`);
+    return res.data;
+  },
+
+  getInvitations: async (): Promise<Invitation[]> => {
+    const res = await client.get("/auth/organizations/invitations/");
+    return res.data;
+  },
+
+  respondInvitation: async (orgIdOrSlug: string, action: "accept" | "decline"): Promise<void> => {
+    await client.post(`/auth/organizations/${orgIdOrSlug}/respond-invitation/`, { action });
+  },
+
+  updateOrganization: async (id: number, data: FormData | Partial<OrganizationDetail>): Promise<OrganizationDetail> => {
+    const headers = data instanceof FormData ? { "Content-Type": "multipart/form-data" } : {};
+    const res = await client.patch(`/auth/organizations/${id}/`, data, { headers });
+    return res.data;
+  },
+
+  getMembers: async (): Promise<OrgMember[]> => {
+    const res = await client.get("/auth/org-members/");
+    return res.data;
+  },
+
+  inviteMember: async (data: { username?: string; email?: string; password?: string; full_name?: string; role: number | null; contract_type: string; expires_at?: string | null }): Promise<OrgMember> => {
+    const res = await client.post("/auth/org-members/", data);
+    return res.data;
+  },
+
+  updateMember: async (id: number, data: Partial<OrgMember>): Promise<OrgMember> => {
+    const res = await client.patch(`/auth/org-members/${id}/`, data);
+    return res.data;
+  },
+
+  removeMember: async (id: number): Promise<void> => {
+    await client.delete(`/auth/org-members/${id}/`);
+  },
+
+  getRoles: async (): Promise<Role[]> => {
+    const res = await client.get("/auth/roles/");
+    return res.data;
+  },
+
+  createRole: async (data: { name: string; description: string; permissions: string[] }): Promise<Role> => {
+    const res = await client.post("/auth/roles/", data);
+    return res.data;
+  },
+
+  updateRole: async (id: number, data: { name?: string; description?: string; permissions?: string[] }): Promise<Role> => {
+    const res = await client.patch(`/auth/roles/${id}/`, data);
+    return res.data;
+  },
+
+  deleteRole: async (id: number): Promise<void> => {
+    await client.delete(`/auth/roles/${id}/`);
+  },
+
+  getPermissions: async (): Promise<SystemPermission[]> => {
+    const res = await client.get("/auth/roles/permissions/");
+    return res.data;
+  },
+
+  getSessions: async (): Promise<UserSession[]> => {
+    const res = await client.get("/auth/user-sessions/");
+    return res.data;
+  },
+
+  revokeSession: async (id: number): Promise<void> => {
+    await client.delete(`/auth/user-sessions/${id}/`);
+  },
+
+  globalSearch: async (q: string): Promise<GlobalSearchResult> => {
+    const res = await client.get("/auth/search/global/", { params: { q } });
+    return res.data;
+  },
+
+  getAuditLogs: async (params?: { page?: number; actor_id?: string; action?: string; entity_type?: string }): Promise<PaginatedAuditLogs> => {
+    const res = await client.get("/auth/audit-logs/", { params });
+    return res.data;
+  },
+
+  getAuditLogFilters: async (): Promise<AuditLogFiltersMeta> => {
+    const res = await client.get("/auth/audit-logs/", { params: { get_filters: "true" } });
+    return res.data;
+  },
 };
+
+export interface AuditLog {
+  id: number;
+  actor: number | null;
+  actor_name: string;
+  actor_username: string;
+  action: string;
+  entity_type: string;
+  entity_id: number;
+  before_state: Record<string, unknown> | null;
+  after_state: Record<string, unknown> | null;
+  ip_address: string | null;
+  user_agent: string;
+  created_at: string;
+}
+
+export interface PaginatedAuditLogs {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: AuditLog[];
+}
+
+export interface AuditLogFiltersMeta {
+  actions: string[];
+  entities: string[];
+  actors: Array<{ actor_id: number; actor__username: string; actor__full_name: string }>;
+}
+
+
+export interface GlobalSearchResult {
+  students: Array<{ id: number; username: string; full_name: string; role: string }>;
+  teachers: Array<{ id: number; username: string; full_name: string; role: string }>;
+  courses: Array<{ id: number; name: string; code: string }>;
+  classes: Array<{ id: number; name: string; course_name: string }>;
+  sessions: Array<{ id: number; title: string; status: string; room_code: string | null }>;
+  assessments: Array<{ id: number; title: string; is_published: boolean }>;
+  invoices: Array<{ id: number; invoice_number: string; amount: string; student_name: string; status: string }>;
+}

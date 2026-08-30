@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   useLocalParticipant,
   useParticipants,
@@ -68,16 +68,39 @@ export function useCallTiles(): UseCallTilesResult {
   // some versions of @livekit/components-react. Filter to be safe.
   const participants = useMemo<Participant[]>(() => {
     const list: Participant[] = [localParticipant];
-    for (const p of remote) {
-      if (p.identity !== localParticipant.identity) list.push(p);
-    }
+    const remoteList = remote.filter((p) => p.identity !== localParticipant.identity);
+
+    const getHandRaiseInfo = (p: Participant) => {
+      if (!p.metadata) return { raised: false, at: 0 };
+      try {
+        const meta = JSON.parse(p.metadata);
+        return {
+          raised: !!meta.handRaised,
+          at: typeof meta.handRaisedAt === "number" ? meta.handRaisedAt : 0,
+        };
+      } catch {
+        return { raised: false, at: 0 };
+      }
+    };
+
+    remoteList.sort((a, b) => {
+      const infoA = getHandRaiseInfo(a);
+      const infoB = getHandRaiseInfo(b);
+      if (infoA.raised && !infoB.raised) return -1;
+      if (!infoA.raised && infoB.raised) return 1;
+      if (infoA.raised && infoB.raised) {
+        return infoA.at - infoB.at;
+      }
+      return 0;
+    });
+
+    list.push(...remoteList);
     return list;
   }, [localParticipant, remote]);
 
   const tiles = useMemo<CallTile[]>(() => {
     const out: CallTile[] = [];
     for (const p of participants) {
-      const isLocal = p.identity === localParticipant.identity;
       const screenRef = tracks.find(
         (t) =>
           t.participant.identity === p.identity &&
@@ -88,17 +111,7 @@ export function useCallTiles(): UseCallTilesResult {
         isTrackReference(screenRef) &&
         !screenRef.publication.isMuted;
 
-      // For the local sharer we render only the screen tile (with their
-      // own camera as a corner PiP) so they don't see themselves twice.
-      // Remote sharers get split into two tiles so everyone else can
-      // place / pin them independently.
-      if (isSharing && isLocal) {
-        out.push({
-          key: `${p.identity}::screen`,
-          kind: "screen",
-          participant: p,
-        });
-      } else if (isSharing && !isLocal) {
+      if (isSharing) {
         out.push({
           key: `${p.identity}::camera`,
           kind: "camera",
@@ -118,40 +131,23 @@ export function useCallTiles(): UseCallTilesResult {
       }
     }
     return out;
-  }, [participants, tracks, localParticipant.identity]);
+  }, [participants, tracks]);
 
-  const [pinnedKey, setPinnedKey] = useState<string | null>(null);
-  const userOverrodeRef = useRef(false);
+  const screens = tiles.filter((tile) => tile.kind === "screen");
+  const screenSignature = screens.map((tile) => tile.key).join("|");
+  const [pinOverride, setPinOverride] = useState<{
+    screenSignature: string;
+    key: string | null;
+  } | null>(null);
+  const hasCurrentOverride = pinOverride?.screenSignature === screenSignature;
+  const overriddenKey =
+    pinOverride?.key && tiles.some((tile) => tile.key === pinOverride.key)
+      ? pinOverride.key
+      : null;
+  const pinnedKey = hasCurrentOverride ? overriddenKey : screens[0]?.key ?? null;
 
-  // Auto-pin the first screen tile that shows up, unless the user has
-  // explicitly unpinned. The override flag resets whenever no screen
-  // tile is present at all so future shares can re-trigger auto-pin.
-  useEffect(() => {
-    const screens = tiles.filter((t) => t.kind === "screen");
-
-    if (screens.length === 0) {
-      // No share present. Clear any stale pin and reset the override
-      // so the next share can auto-pin.
-      if (pinnedKey !== null) setPinnedKey(null);
-      userOverrodeRef.current = false;
-      return;
-    }
-
-    // If the currently pinned tile is gone (e.g. tile re-keyed because
-    // the participant rejoined), refresh to the newest screen.
-    const pinnedExists =
-      pinnedKey !== null && tiles.some((t) => t.key === pinnedKey);
-
-    if (!pinnedExists && !userOverrodeRef.current) {
-      setPinnedKey(screens[0].key);
-    }
-  }, [tiles, pinnedKey]);
-
-  // Wrap the setter so the auto-pin policy can tell user-driven changes
-  // apart from its own writes.
   const userSetPinnedKey = (key: string | null) => {
-    userOverrodeRef.current = true;
-    setPinnedKey(key);
+    setPinOverride({ screenSignature, key });
   };
 
   return {

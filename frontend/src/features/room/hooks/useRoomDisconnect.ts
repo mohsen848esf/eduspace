@@ -6,6 +6,7 @@ import { useRoomStore } from "../store/roomStore";
 import { useChatStore } from "../store/chatStore";
 import recordingsApi from "../../recordings/api/recordings.api";
 import { useActiveRecordingStore } from "../../recordings/store/activeRecordingStore";
+import { ConnectionState } from "livekit-client";
 
 interface DisconnectOptions {
   /**
@@ -36,6 +37,7 @@ export function useRoomDisconnect() {
 
   const disconnect = useCallback(
     async ({ stopRecordingFirst = false }: DisconnectOptions = {}) => {
+      useRoomStore.getState().setIsUserLeaving(true);
       const recordingStore = useActiveRecordingStore.getState();
 
       // Capture the in-flight token NOW (before we tear anything down).
@@ -64,6 +66,11 @@ export function useRoomDisconnect() {
         recordingStore.setInFlight(null);
       }
 
+      // Avoid double disconnection or running on null context/already disconnected rooms
+      if (!room || !room.localParticipant || room.state === ConnectionState.Disconnected) {
+        return;
+      }
+
       try {
         const stopPromises: Promise<void>[] = [];
 
@@ -74,6 +81,12 @@ export function useRoomDisconnect() {
                 .stopProcessor()
                 .catch(() => {})
                 .then(() => {
+                  try {
+                    // Call LiveKit's SDK level stop method which handles hardware release
+                    pub.track?.stop();
+                  } catch (e) {
+                    console.error("Failed to stop local track:", e);
+                  }
                   pub.track?.mediaStreamTrack?.stop();
                 }),
             );
@@ -82,22 +95,11 @@ export function useRoomDisconnect() {
 
         await Promise.all(stopPromises);
 
-        // Disconnect LiveKit.
         await room.disconnect(true);
 
         // Small wait so the browser refreshes the recording indicator.
         await new Promise((r) => setTimeout(r, 500));
 
-        // Release any leftover device handles.
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true,
-          });
-          stream.getTracks().forEach((t) => t.stop());
-        } catch {
-          /* swallow */
-        }
       } catch (err) {
         console.error("Disconnect error:", err);
       } finally {
@@ -117,7 +119,9 @@ export function useRoomDisconnect() {
           // the editor for the recording they just stopped.
           await leaveRoom({ redirectTo: `/recordings/${pendingEditToken}/edit` });
         } else {
-          leaveRoom();
+          // Clear room on backend and store without navigating away,
+          // allowing CallEndedScreen to render for 60 seconds with rejoin/exit options.
+          await leaveRoom({ redirectTo: null });
         }
       }
     },

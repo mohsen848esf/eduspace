@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useRoomContext,
@@ -6,6 +6,7 @@ import {
   useParticipants,
 } from "@livekit/components-react";
 import { useRoomStore } from "../store/roomStore";
+import { useActiveRecordingStore } from "../../recordings/store/activeRecordingStore";
 import toast from "react-hot-toast";
 
 export interface GameBoardState {
@@ -15,6 +16,20 @@ export interface GameBoardState {
   gameTitle: string | null;
   hostIdentity: string | null;
   acceptedParticipants: string[];
+  /**
+   * Live game scores keyed by participant identity. Populated from
+   * SCORE_UPDATE messages that the local iframe broadcasts and from
+   * GAME_SCORE data-channel messages relayed by remote participants.
+   */
+  scores: Record<string, number>;
+  classroomState?: {
+    currentQuestionIdx: number;
+    isPaused: boolean;
+    timer?: number;
+    seed?: number | null;
+    mode?: string;
+    difficulty?: string;
+  };
 }
 
 const GAME_MESSAGES = {
@@ -23,6 +38,25 @@ const GAME_MESSAGES = {
   GAME_DECLINE: "GAME_DECLINE",
   GAME_START: "GAME_START",
   GAME_END: "GAME_END",
+  GAME_SCORE: "GAME_SCORE",
+  /**
+   * Host -> everyone snapshot of the current `acceptedParticipants`
+   * list. Sent right after the host registers a new accept so a
+   * participant who accepted late learns about everyone who joined
+   * before them.
+   */
+  GAME_ROSTER: "GAME_ROSTER",
+  /**
+   * Generic envelope for classroom-mode events. The iframe broadcasts
+   * via `GameBridge.broadcast(type, payload)`; the shell wraps the
+   * envelope in this kind and pushes it over the LiveKit data
+   * channel. On receive, the shell unwraps and posts the original
+   * `{type, payload}` into every iframe's window via postMessage,
+   * which the bridge forwards to `window.onClassroomEvent`.
+   */
+  CLASSROOM_RELAY: "CLASSROOM_RELAY",
+  GAME_REQUEST_STATE: "GAME_REQUEST_STATE",
+  GAME_SYNC: "GAME_SYNC",
 } as const;
 
 export function useGameBoard() {
@@ -40,6 +74,15 @@ export function useGameBoard() {
     gameTitle: null,
     hostIdentity: null,
     acceptedParticipants: [],
+    scores: {},
+  });
+
+  const gameBoardRef = useRef(gameBoard);
+  const isHostRef = useRef(isHost);
+
+  useEffect(() => {
+    gameBoardRef.current = gameBoard;
+    isHostRef.current = isHost;
   });
 
   const [pendingInvite, setPendingInvite] = useState<{
@@ -50,7 +93,7 @@ export function useGameBoard() {
   } | null>(null);
 
   const sendMessage = useCallback(
-    async (type: string, payload: any, destinations?: string[]) => {
+    async (type: string, payload: unknown, destinations?: string[]) => {
       const encoder = new TextEncoder();
       const data = encoder.encode(JSON.stringify({ type, payload }));
       await room.localParticipant.publishData(data, {
@@ -80,9 +123,23 @@ export function useGameBoard() {
         gameTitle,
         hostIdentity: localParticipant.identity,
         acceptedParticipants: [localParticipant.identity],
+        scores: {},
       });
 
       toast.success(t("board.launched", { title: gameTitle }));
+
+      // Heads-up: the LiveKit egress recorder captures the room
+      // composite (camera + screen-share tracks). Mini apps run inside
+      // an iframe in the React shell, so they aren't part of that
+      // composite — i.e. they don't show up in the saved recording
+      // yet. Surfacing this once at launch keeps the host informed
+      // while we work on a proper recording layout.
+      if (useActiveRecordingStore.getState().inFlightToken) {
+        toast(t("board.notInRecording"), {
+          icon: "🎬",
+          duration: 6000,
+        });
+      }
     },
     [isHost, localParticipant, sendMessage, t],
   );
@@ -102,6 +159,21 @@ export function useGameBoard() {
       gameUrl: pendingInvite.gameUrl,
       gameTitle: pendingInvite.gameTitle,
       hostIdentity: pendingInvite.from,
+      // Seed with both the host and the accepting player so the
+      // participant strip and the in-game roster both render
+      // immediately. Future accepts from peers fan in via the
+      // GAME_ACCEPT data-channel handler below. The dedupe in
+      // GAME_ACCEPT keeps this idempotent if a peer's message
+      // races our own setState.
+      acceptedParticipants: Array.from(
+        new Set([
+          ...prev.acceptedParticipants,
+          // hostIdentity in `pendingInvite.from` is the host's
+          // identity (we set it on launch).
+          pendingInvite.from,
+          localParticipant.identity,
+        ]),
+      ),
     }));
 
     setPendingInvite(null);
@@ -121,15 +193,118 @@ export function useGameBoard() {
       gameTitle: null,
       hostIdentity: null,
       acceptedParticipants: [],
+      scores: {},
+      classroomState: undefined,
     });
     toast(t("board.ended"), { icon: "🎮" });
   }, [isHost, sendMessage, t]);
 
+  /**
+   * Broadcast the local player's score over the data channel so every
+   * peer's GameBoard can render the live roster. Called from
+   * GameBoard whenever the iframe emits SCORE_UPDATE for the local
+   * user.
+   */
+  const relayScore = useCallback(
+    async (score: number) => {
+      // Update local state immediately so the host's UI reacts even
+      // before the data channel round-trip completes.
+      setGameBoard((prev) => ({
+        ...prev,
+        scores: { ...prev.scores, [localParticipant.identity]: score },
+      }));
+      await sendMessage(GAME_MESSAGES.GAME_SCORE, {
+        identity: localParticipant.identity,
+        score,
+      });
+    },
+    [localParticipant.identity, sendMessage],
+  );
+
+  /**
+   * Subscribers to classroom relay events. GameBoard registers a
+   * listener that re-emits the wrapped event into its iframe via
+   * postMessage so the game's own message handler receives it.
+   */
+  const classroomListenersRef = useRef<
+    Set<(type: string, payload: unknown, fromIdentity?: string) => void>
+  >(new Set());
+
+  const subscribeClassroomEvents = useCallback(
+    (
+      fn: (type: string, payload: unknown, fromIdentity?: string) => void,
+    ) => {
+      classroomListenersRef.current.add(fn);
+      return () => {
+        classroomListenersRef.current.delete(fn);
+      };
+    },
+    [],
+  );
+
+  /**
+   * Push a CLASSROOM_* event from the local iframe out to every peer.
+   * The local iframe is also called back so the host's own iframe
+   * stays in sync without depending on echo from the wire.
+   */
+  const broadcastClassroomEvent = useCallback(
+    async (type: string, payload: Record<string, unknown> = {}) => {
+      if (!type.startsWith("CLASSROOM_")) return;
+      // Local fan-out first — instant feedback for the sender.
+      classroomListenersRef.current.forEach((fn) => {
+        try {
+          fn(type, payload, localParticipant.identity);
+        } catch (e) {
+          console.warn("classroom listener threw", e);
+        }
+      });
+
+      // Update state locally for host/sender if they are host
+      setGameBoard((prev) => {
+        if (prev.hostIdentity !== localParticipant.identity) return prev;
+
+        let nextState = prev.classroomState ? { ...prev.classroomState } : {
+          currentQuestionIdx: 0,
+          isPaused: false,
+        };
+
+        if (type === "CLASSROOM_START") {
+          nextState = {
+            currentQuestionIdx: 0,
+            isPaused: false,
+            mode: String(payload.mode || "quick"),
+            difficulty: String(payload.difficulty || "mixed"),
+            seed: typeof payload.seed === "number" ? payload.seed : null,
+          };
+        } else if (type === "CLASSROOM_NEXT") {
+          nextState.currentQuestionIdx = typeof payload.questionIdx === "number" ? payload.questionIdx : nextState.currentQuestionIdx + 1;
+        } else if (type === "CLASSROOM_PAUSE") {
+          nextState.isPaused = true;
+          if (typeof payload.timer === "number") {
+            nextState.timer = payload.timer;
+          }
+        } else if (type === "CLASSROOM_RESUME") {
+          nextState.isPaused = false;
+          if (typeof payload.timer === "number") {
+            nextState.timer = payload.timer;
+          }
+        }
+
+        return { ...prev, classroomState: nextState };
+      });
+
+      await sendMessage(GAME_MESSAGES.CLASSROOM_RELAY, { type, payload });
+    },
+    [localParticipant.identity, sendMessage],
+  );
+
   const handleDataMessage = useCallback(
-    (payload: Uint8Array, participant: any) => {
+    (payload: Uint8Array, participant: unknown) => {
       try {
         const decoder = new TextDecoder();
         const { type, payload: data } = JSON.parse(decoder.decode(payload));
+
+        const pMember = participant as { identity?: string } | undefined;
 
         switch (type) {
           case GAME_MESSAGES.GAME_INVITE:
@@ -137,18 +312,71 @@ export function useGameBoard() {
               gameId: data.gameId,
               gameTitle: data.gameTitle,
               gameUrl: data.gameUrl,
-              from: participant?.identity || data.from,
+              from: pMember?.identity || data.from,
+            });
+            // Show toast notification when a game is launched
+            toast(t("invite.launched", { from: data.from, title: data.gameTitle }), {
+              icon: "🎮",
+              duration: 5000,
             });
             break;
 
           case GAME_MESSAGES.GAME_ACCEPT:
-            setGameBoard((prev) => ({
-              ...prev,
-              acceptedParticipants: [
-                ...prev.acceptedParticipants,
-                data.identity,
-              ],
-            }));
+            setGameBoard((prev) => {
+              if (prev.acceptedParticipants.includes(data.identity)) {
+                return prev;
+              }
+              const next = {
+                ...prev,
+                acceptedParticipants: [
+                  ...prev.acceptedParticipants,
+                  data.identity,
+                ],
+              };
+              // Only the host broadcasts the snapshot. Everyone else
+              // receives it and updates locally; we want exactly one
+              // canonical source.
+              if (
+                next.hostIdentity === localParticipant.identity &&
+                Array.isArray(next.acceptedParticipants)
+              ) {
+                // Fire-and-forget — sendMessage is async but we can
+                // schedule it here without awaiting because the
+                // setState reducer must stay synchronous.
+                sendMessage(GAME_MESSAGES.GAME_ROSTER, {
+                  identities: next.acceptedParticipants,
+                  hostIdentity: next.hostIdentity,
+                }).catch(() => undefined);
+              }
+              return next;
+            });
+            break;
+
+          case GAME_MESSAGES.GAME_ROSTER:
+            // Trust the host's snapshot; only react when the sender
+            // is actually the host so a misbehaving peer can't rewrite
+            // the roster.
+            setGameBoard((prev) => {
+              const sender =
+                (pMember && pMember.identity) || data.hostIdentity;
+              if (!sender) return prev;
+              if (
+                prev.hostIdentity &&
+                sender !== prev.hostIdentity &&
+                sender !== data.hostIdentity
+              ) {
+                return prev;
+              }
+              const ids: string[] = Array.isArray(data.identities)
+                ? data.identities.map(String)
+                : [];
+              if (ids.length === 0) return prev;
+              return {
+                ...prev,
+                acceptedParticipants: Array.from(new Set(ids)),
+                hostIdentity: data.hostIdentity || prev.hostIdentity,
+              };
+            });
             break;
 
           case GAME_MESSAGES.GAME_END:
@@ -159,17 +387,147 @@ export function useGameBoard() {
               gameTitle: null,
               hostIdentity: null,
               acceptedParticipants: [],
+              scores: {},
+              classroomState: undefined,
             });
             setPendingInvite(null);
             toast(t("board.endedByHost"), { icon: "🎮" });
             break;
+
+          case GAME_MESSAGES.GAME_SCORE: {
+            // Trust the wire participant identity (LiveKit sets it
+            // server-side); fall back to the payload for clients that
+            // can't read the participant context.
+            const id =
+              (pMember && pMember.identity) || data.identity;
+            if (!id) break;
+            const score = Number(data.score ?? 0);
+            setGameBoard((prev) => ({
+              ...prev,
+              scores: { ...prev.scores, [id]: score },
+            }));
+            break;
+          }
+
+          case GAME_MESSAGES.GAME_REQUEST_STATE: {
+            const currentGB = gameBoardRef.current;
+            if (isHostRef.current && currentGB.isActive) {
+              sendMessage(
+                GAME_MESSAGES.GAME_SYNC,
+                {
+                  gameId: currentGB.gameId,
+                  gameTitle: currentGB.gameTitle,
+                  gameUrl: currentGB.gameUrl,
+                  hostIdentity: currentGB.hostIdentity,
+                  acceptedParticipants: currentGB.acceptedParticipants,
+                  scores: currentGB.scores,
+                  classroomState: currentGB.classroomState,
+                },
+                pMember?.identity ? [pMember.identity] : undefined
+              ).catch(() => undefined);
+            }
+            break;
+          }
+
+          case GAME_MESSAGES.GAME_SYNC: {
+            setGameBoard({
+              isActive: true,
+              gameId: data.gameId,
+              gameUrl: data.gameUrl,
+              gameTitle: data.gameTitle,
+              hostIdentity: data.hostIdentity,
+              acceptedParticipants: Array.isArray(data.acceptedParticipants)
+                ? data.acceptedParticipants.map(String)
+                : [],
+              scores: data.scores || {},
+              classroomState: data.classroomState,
+            });
+            break;
+          }
+
+          case GAME_MESSAGES.CLASSROOM_RELAY: {
+            // Unwrap and fan out to local listeners. We don't echo to
+            // the sender — they fan out locally before publishing.
+            if (
+              pMember &&
+              pMember.identity === localParticipant.identity
+            ) {
+              break;
+            }
+            const inner = (data && data.type) || null;
+            if (typeof inner !== "string" || !inner.startsWith("CLASSROOM_")) {
+              break;
+            }
+            const innerPayload = (data && data.payload) || {};
+
+            // Update participant's local classroomState
+            setGameBoard((prev) => {
+              let nextState = prev.classroomState ? { ...prev.classroomState } : {
+                currentQuestionIdx: 0,
+                isPaused: false,
+              };
+
+              if (inner === "CLASSROOM_START") {
+                nextState = {
+                  currentQuestionIdx: 0,
+                  isPaused: false,
+                  mode: String(innerPayload.mode || "quick"),
+                  difficulty: String(innerPayload.difficulty || "mixed"),
+                  seed: typeof innerPayload.seed === "number" ? innerPayload.seed : null,
+                };
+              } else if (inner === "CLASSROOM_NEXT") {
+                nextState.currentQuestionIdx = typeof innerPayload.questionIdx === "number" ? innerPayload.questionIdx : nextState.currentQuestionIdx + 1;
+              } else if (inner === "CLASSROOM_PAUSE") {
+                nextState.isPaused = true;
+                if (typeof innerPayload.timer === "number") {
+                  nextState.timer = innerPayload.timer;
+                }
+              } else if (inner === "CLASSROOM_RESUME") {
+                nextState.isPaused = false;
+                if (typeof innerPayload.timer === "number") {
+                  nextState.timer = innerPayload.timer;
+                }
+              }
+
+              return { ...prev, classroomState: nextState };
+            });
+
+            classroomListenersRef.current.forEach((fn) => {
+              try {
+                fn(
+                  inner,
+                  innerPayload,
+                  pMember && pMember.identity,
+                );
+              } catch (e) {
+                console.warn("classroom listener threw", e);
+              }
+            });
+            break;
+          }
         }
       } catch {
         /* swallow malformed */
       }
     },
-    [t],
+    [t, localParticipant, sendMessage],
   );
+
+  // Automatically request game state on mount/reconnect if we are not the host
+  useEffect(() => {
+    if (!room || room.state !== "connected" || isHost) return;
+
+    const requestSync = async () => {
+      // Delay slightly to ensure host's listeners are fully wired
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      try {
+        await sendMessage(GAME_MESSAGES.GAME_REQUEST_STATE, {});
+      } catch (e) {
+        console.warn("failed to send GAME_REQUEST_STATE", e);
+      }
+    };
+    requestSync();
+  }, [room, isHost, sendMessage]);
 
   return {
     gameBoard,
@@ -178,6 +536,9 @@ export function useGameBoard() {
     acceptGame,
     declineGame,
     endGame,
+    relayScore,
+    broadcastClassroomEvent,
+    subscribeClassroomEvents,
     handleDataMessage,
   };
 }

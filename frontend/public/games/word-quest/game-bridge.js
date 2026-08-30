@@ -43,6 +43,20 @@ const GameBridge = (() => {
         currentPlayer = (payload && payload.currentPlayer) || null;
         isConnected = true;
         applySettings(settings);
+        // Notify game.js so it can swap into in-call mode (auto-roster,
+        // hide solo-only UI, etc.) without polling.
+        if (typeof window.onPlatformInit === "function") {
+          try {
+            window.onPlatformInit({
+              mode: gameMode,
+              players,
+              settings,
+              currentPlayer,
+            });
+          } catch (e) {
+            console.warn("onPlatformInit handler threw", e);
+          }
+        }
         break;
       case "GAME_START":
         if (typeof startGame === "function") startGame();

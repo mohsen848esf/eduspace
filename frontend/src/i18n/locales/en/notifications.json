@@ -18,15 +18,72 @@
     "openRoom": "Open room"
   },
   "inbox": {
-    "title": "Notifications",
+    "title": "Notifications Inbox",
+    "subtitle": "Centralized inbox for invites, classes, grades, and invoices",
     "empty": "No notifications yet",
-    "emptyHint": "Invites and shared recordings will show up here.",
+    "emptyHint": "Invites, grading, and updates will show up here.",
     "unreadCount_one": "{{count}} unread",
     "unreadCount_other": "{{count}} unread",
-    "markAllRead": "Mark all read",
-    "markRead": "Mark read",
-    "remove": "Remove",
+    "markAllRead": "Mark all as read",
+    "markRead": "Mark as read",
+    "markUnread": "Mark as unread",
+    "remove": "Delete",
+    "deleteSelected": "Delete Selected",
+    "selectedCount": "{{count}} selected",
     "clearAll": "Clear all",
-    "unreadDot": "Unread"
+    "unreadDot": "Unread",
+    "searchPlaceholder": "Search notifications, classes, names, and invoices...",
+    "folders": "Folders & Categories",
+    "viewAllInbox": "View all in Inbox",
+    "categories": {
+      "all": "All Notifications",
+      "unread": "Unread",
+      "read": "Read & Archived",
+      "rooms": "Live & Rooms",
+      "academic": "Academic & Exams",
+      "recordings": "Recordings",
+      "financial": "Finance & Invoices",
+      "system": "System & Broadcasts",
+      "settings": "Notification Settings"
+    },
+    "detail": {
+      "read": "Read",
+      "unread": "Unread",
+      "sender": "Sender:",
+      "roomInfo": "Live Room Details",
+      "roomCode": "Room Code:",
+      "assessmentResult": "Assessment Result",
+      "finalScore": "Final Score: {{score}} / {{total}}",
+      "financialInvoice": "Tuition Invoice",
+      "amount": "Amount: ${{amount}}",
+      "openDestination": "Open & View Destination",
+      "markAsRead": "Mark as read",
+      "markAsUnread": "Mark as unread",
+      "systemAnnouncement": "System Announcement",
+      "justNow": "Just now",
+      "minutesAgo": "{{count}}m ago",
+      "hoursAgo": "{{count}}h ago",
+      "daysAgo": "{{count}}d ago"
+    }
+  },
+  "assessmentGraded": {
+    "title": "📝 Assessment Graded",
+    "subtitle": "You scored {{score}} / {{totalPoints}} on \"{{title}}\"",
+    "view": "View Grades"
+  },
+  "invoiceCreated": {
+    "title": "💳 New Invoice Issued",
+    "subtitle": "Invoice {{invoiceNumber}} for {{amount}} is ready",
+    "pay": "View Ledger"
+  },
+  "invoiceUpdated": {
+    "title": "💵 Invoice Updated",
+    "subtitle": "Invoice {{invoiceNumber}} status is now {{status}}",
+    "view": "View Ledger"
+  },
+  "sessionStarted": {
+    "title": "🟢 Live Class Started!",
+    "subtitle": "{{className}} by {{hostName}} is live",
+    "join": "Join Class"
   }
 }

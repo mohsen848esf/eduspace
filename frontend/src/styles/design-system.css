@@ -1,41 +1,135 @@
-:root {
-  --brand: #6366f1;
-  --brand-h: #4f46e5;
-  --brand-soft: rgba(99, 102, 241, 0.1);
-  --brand-text: #818cf8;
+:root,
+.dark,
+[data-theme="dark"],
+[data-theme="platform-dark"] {
+  /* ── 1. EduSpace Platform Neutral Dark Theme Tokens ── */
+  --brand: #38bdf8;
+  --brand-h: #0ea5e9;
+  --brand-soft: rgba(56, 189, 248, 0.14);
+  --brand-text: #04140f;
+  --brand-dark: #060a12;
 
-  --s0: #0f0f17;
-  --s1: #16161f;
-  --s2: #1e1e2a;
-  --s3: #272735;
+  --s0: #0b111e; /* App Background */
+  --s1: #0e1626; /* Sidebar / Elevated Surface */
+  --s2: #141f36; /* Main Card Surface */
+  --s3: #1a2744; /* Elevated Card Surface */
+  --s4: #223254; /* Hover / Selected Surface */
 
-  --b: rgba(255, 255, 255, 0.07);
-  --bh: rgba(99, 102, 241, 0.3);
+  --b: #1e2d4a; /* Crisp Dark Border */
+  --b-soft: #18243c; /* Subtle Secondary Border */
+  --bh: #38bdf8; /* Glowing Hover Border */
 
-  --t1: #f0f0f8;
-  --t2: #8888a8;
-  --t3: #4a4a6a;
+  --t1: #f8fafc; /* Primary Title Text */
+  --t2: #94a3b8; /* Secondary Body Text */
+  --t3: #64748b; /* Muted Hint Text */
 
-  --green: #22c55e;
+  --green: #00d084;
   --amber: #f59e0b;
-  --red: #f87171;
   --cyan: #38bdf8;
+  --red: #ff4d5d;
+  --purple: #8b7cff;
+
+  --header-bg: #08131f;
+  --header-border: #14283d;
 }
 
-.light {
-  --s0: #f0f0f7;
+.light,
+[data-theme="light"],
+[data-theme="platform-light"] {
+  /* ── 2. EduSpace Platform Neutral Light Theme Tokens ── */
+  --brand: #2563eb;
+  --brand-h: #1d4ed8;
+  --brand-soft: rgba(37, 99, 235, 0.10);
+  --brand-text: #ffffff;
+  --brand-dark: #0f172a;
+
+  --s0: #f8fafc; /* Clean SaaS App BG */
+  --s1: #ffffff; /* Sidebar / Header */
+  --s2: #ffffff; /* Standard Card Surface */
+  --s3: #f1f5f9; /* Elevated Surface */
+  --s4: #e2e8f0; /* Hover / Selected Surface */
+
+  --b: #e2e8f0; /* Crisp Light Border */
+  --b-soft: #eef2f6; /* Subtle Secondary Border */
+  --bh: #2563eb; /* Glowing Hover Border */
+
+  --t1: #0f172a; /* Dark Slate Primary Text */
+  --t2: #475569; /* Slate Body Text */
+  --t3: #64748b; /* Muted Hint Text */
+
+  --green: #16a34a;
+  --amber: #f59e0b;
+  --cyan: #0284c7;
+  --red: #dc2626;
+  --purple: #7c3aed;
+
+  --header-bg: #ffffff;
+  --header-border: #e2e8f0;
+}
+
+/* Light-Tinted (Jade / Soft Mint for Organizations) */
+.light-tinted,
+[data-theme="light-tinted"] {
+  --brand: #059669;
+  --brand-h: #047857;
+  --brand-soft: rgba(5, 150, 105, 0.1);
+  --brand-text: #ffffff;
+  --brand-dark: #064e3b;
+
+  --s0: #f0f7f4;
   --s1: #ffffff;
-  --s2: #f7f7fc;
-  --s3: #eaeaf5;
-  --b: rgba(0, 0, 0, 0.07);
-  --bh: rgba(99, 102, 241, 0.3);
-  --t1: #18181f;
-  --t2: #5a5a7a;
-  --t3: #a0a0c0;
-  --brand-soft: rgba(99, 102, 241, 0.08);
-  --brand-text: #4f46e5;
+  --s2: #e8f4ef;
+  --s3: #dcf0e7;
+  --s4: #d1fae5;
+
+  --b: rgba(5, 150, 105, 0.12);
+  --bh: rgba(5, 150, 105, 0.35);
+
+  --t1: #064e3b;
+  --t2: #047857;
+  --t3: #059669;
+
+  --green: #059669;
+  --amber: #d97706;
+  --cyan: #0891b2;
+  --red: #dc2626;
+
+  --header-bg: #ffffff;
+  --header-border: rgba(5, 150, 105, 0.15);
 }
 
+/* Dark-Tinted (Custom Org Theme) */
+.dark-tinted,
+[data-theme="dark-tinted"] {
+  --brand: #00d084;
+  --brand-h: #00e88f;
+  --brand-soft: rgba(0, 208, 132, 0.14);
+  --brand-text: #04140f;
+  --brand-dark: #04140f;
+
+  --s0: #061713;
+  --s1: #071e18;
+  --s2: #0a211a;
+  --s3: #0d2920;
+  --s4: #103127;
+
+  --b: #164638;
+  --b-soft: #12382f;
+  --bh: #00d084;
+
+  --t1: #f2f7f5;
+  --t2: #a3b7b0;
+  --t3: #718982;
+
+  --green: #00d084;
+  --amber: #ffb000;
+  --cyan: #168cff;
+  --red: #ff4d5d;
+  --purple: #8b7cff;
+
+  --header-bg: #08131f;
+  --header-border: #14283d;
+}
 
 /* ──────────────────────────────────────────────────────────────────
  * Animations
@@ -71,6 +165,17 @@
   }
 }
 
+@keyframes eduspace-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .fade-in {
   animation: eduspace-fade-in 180ms ease-out both;
 }
@@ -79,11 +184,73 @@
   animation: eduspace-tile-enter 220ms cubic-bezier(0.2, 0.7, 0.2, 1.05) both;
 }
 
+.slide-up {
+  animation: eduspace-slide-up 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* Honor reduced-motion preferences — drop the transforms but keep the
  * minimal opacity fade so the user still sees the tile arrive. */
 @media (prefers-reduced-motion: reduce) {
   .fade-in,
-  .tile-enter {
+  .tile-enter,
+  .slide-up {
     animation-duration: 1ms;
   }
 }
+
+/* ── Global Theme-Aware Scrollbar for ALL Browsers ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--b, #164638) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--b, #164638);
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--brand, #00d084);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Custom Scrollbar Helper Classes */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--b, #164638);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--brand, #00d084);
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--b, #164638) transparent;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+

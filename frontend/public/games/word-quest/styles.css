@@ -1124,3 +1124,39 @@ html.reduce-motion *::after {
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* ====== In-call additions ====== */
+
+/* Highlight the local user's row in the auto-populated roster. */
+.lb-list .is-you {
+  background: rgba(99,102,241,0.12);
+  border-radius: 8px;
+}
+.lb-list .rr-you {
+  display: inline-block;
+  margin-inline-start: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--primary, #6366f1);
+  color: #fff;
+  vertical-align: middle;
+}
+
+/* Generic confirm modal — reuses .modal / .modal-card / .modal-actions
+ * already defined for the existing modals. The defaults make a small
+ * centered card; nothing else needed beyond a max-width override so it
+ * doesn't stretch to the campaign-modal width. */
+#confirm-modal .modal-card {
+  max-width: 400px;
+}
+#confirm-modal .modal-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}

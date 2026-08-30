@@ -1,0 +1,5 @@
+# Keys and ws_url are supplied through the service environment.
+redis:
+  address: redis:6379
+local_directory: /out
+health_port: 9090

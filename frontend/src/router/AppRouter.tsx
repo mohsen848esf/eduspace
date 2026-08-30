@@ -1,12 +1,15 @@
 import { Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import { routes } from "./routes";
-import PrivateRoute from "./PrivateRoute";
-import PublicRoute from "./PublicRoute";
-import Spinner from "../components/ui/Spinner";
+import RouteGuard from "./RouteGuard";
+import ErrorBoundary from "../components/ui/ErrorBoundary";
+import { UnauthorizedScreen, NotFoundScreen } from "../components/ui/ErrorScreens";
+import ShimmerLoader from "../components/ui/ShimmerLoader";
 import { useNotifications } from "../features/auth/hooks/useNotifications";
 import { useAuthStore } from "../features/auth/store/authStore";
+import { useOrgContextStore } from "../features/auth/store/orgContextStore";
+import Spinner from "../components/ui/Spinner";
+import ThemeScopeController from "./ThemeScopeController";
 
 function NotificationProvider() {
   useNotifications();
@@ -14,36 +17,26 @@ function NotificationProvider() {
 }
 
 function PageLoader() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--s0)]">
-      <Spinner size="lg" />
-    </div>
-  );
-}
-
-function UnauthorizedScreen() {
-  const { t } = useTranslation("common");
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--s0)]">
-      <div className="text-center">
-        <p className="text-4xl mb-4">🚫</p>
-        <h1 className="text-xl font-bold text-[var(--t1)] mb-2">
-          {t("errors.accessDenied")}
-        </h1>
-        <p className="text-[var(--t2)] text-sm">{t("errors.noPermission")}</p>
-      </div>
-    </div>
-  );
+  return <ShimmerLoader variant="page" />;
 }
 
 function AppInitializer({ children }: { children: React.ReactNode }) {
-  const { fetchMe, isInitialized } = useAuthStore();
+  const { fetchMe, isInitialized, isAuthenticated, user } = useAuthStore();
+  const { fetchOrgContext, isInitialized: isOrgContextInitialized } = useOrgContextStore();
 
   useEffect(() => {
     fetchMe();
-  }, []);
+  }, [fetchMe]);
 
-  if (!isInitialized) {
+  useEffect(() => {
+    if (isAuthenticated) {
+      // The authenticated user's memberships are the source of truth for
+      // selecting a context. This also discards stale localStorage values.
+      fetchOrgContext(undefined, user?.organizations || []);
+    }
+  }, [isAuthenticated, user?.organizations, fetchOrgContext]);
+
+  if (!isInitialized || (isAuthenticated && !isOrgContextInitialized)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--s0)]">
         <Spinner size="lg" />
@@ -57,37 +50,49 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
 export default function AppRouter() {
   return (
     <BrowserRouter>
-      <AppInitializer>
-        <NotificationProvider />
+      <ErrorBoundary>
+        <ThemeScopeController />
+        <AppInitializer>
+          <NotificationProvider />
 
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-            {routes.map(({ path, component: Page, isPrivate, roles }) => (
-              <Route
-                key={path}
-                path={path}
-                element={
-                  isPrivate ? (
-                    <PrivateRoute roles={roles}>
-                      <Page />
-                    </PrivateRoute>
-                  ) : (
-                    <PublicRoute>
-                      <Page />
-                    </PublicRoute>
-                  )
-                }
-              />
-            ))}
+              {routes.map(
+                ({
+                  path,
+                  component: Page,
+                  isPrivate,
+                  guestOnly,
+                  requiredPermissions,
+                  isSuperUserOnly,
+                }) => (
+                  <Route
+                    key={path}
+                    path={path}
+                    element={
+                      <RouteGuard
+                        isPrivate={isPrivate}
+                        guestOnly={guestOnly}
+                        requiredPermissions={requiredPermissions}
+                        isSuperUserOnly={isSuperUserOnly}
+                      >
+                        <ErrorBoundary>
+                          <Page />
+                        </ErrorBoundary>
+                      </RouteGuard>
+                    }
+                  />
+                ),
+              )}
 
-            <Route path="/unauthorized" element={<UnauthorizedScreen />} />
-
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </Suspense>
-      </AppInitializer>
+              <Route path="/unauthorized" element={<UnauthorizedScreen />} />
+              <Route path="*" element={<NotFoundScreen />} />
+            </Routes>
+          </Suspense>
+        </AppInitializer>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }

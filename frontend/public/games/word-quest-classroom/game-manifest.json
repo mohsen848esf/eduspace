@@ -1,0 +1,12 @@
+{
+  "id": "word-quest",
+  "title": "Word Quest",
+  "description": "Real-time vocabulary battle — guess the word from its description",
+  "thumbnail": "/games/word-quest/thumbnail.png",
+  "modes": ["solo", "battle", "in-call"],
+  "min_players": 1,
+  "max_players": 20,
+  "host_controls": ["pause", "resume", "next", "end"],
+  "requires_backend": true,
+  "version": "1.0.0"
+}

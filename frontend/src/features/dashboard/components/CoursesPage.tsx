@@ -1,0 +1,319 @@
+import { getApiErrorData } from "@/lib/api/errors";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-hot-toast";
+import { crmApi, type Course } from "../api/crm.api";
+import { useOrgPermission } from "../../../hooks/useOrgPermission";
+import Button from "../../../components/ui/Button";
+import Input from "../../../components/ui/Input";
+import { Modal, ModalHeader, ModalTitle, ModalBody } from "../../../components/ui/Modal";
+import Spinner from "../../../components/ui/Spinner";
+import AppShell from "../../../components/layout/AppShell";
+import { useLocale } from "../../../i18n/useLocale";
+import { TableRowActions } from "../../../components/ui/TableRowActions";
+
+export default function CoursesPage() {
+  const { language } = useLocale();
+  const { hasPermission } = useOrgPermission();
+  const queryClient = useQueryClient();
+  const isFarsi = language === "fa";
+
+  const isOrisAdmin = hasPermission("can_manage_members");
+
+  const { data: courses = [], isLoading } = useQuery({
+    queryKey: ["courses"],
+    queryFn: crmApi.getCourses,
+  });
+
+  const createCourseMutation = useMutation({
+    mutationFn: crmApi.createCourse,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["courses"] });
+      toast.success(isFarsi ? "دوره با موفقیت ایجاد شد" : "Course created successfully");
+      setIsModalOpen(false);
+    },
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ایجاد دوره" : "Failed to create course"));
+    }
+  });
+
+  const updateCourseMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: FormData | Partial<Course> }) => crmApi.updateCourse(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["courses"] });
+      toast.success(isFarsi ? "دوره با موفقیت ویرایش شد" : "Course updated successfully");
+      setIsModalOpen(false);
+    },
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در ویرایش دوره" : "Failed to update course"));
+    }
+  });
+
+  const deleteCourseMutation = useMutation({
+    mutationFn: crmApi.deleteCourse,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["courses"] });
+      toast.success(isFarsi ? "دوره با موفقیت حذف شد" : "Course deleted successfully");
+    },
+    onError: (error: unknown) => {
+      toast.error(getApiErrorData(error)?.detail || (isFarsi ? "خطا در حذف دوره" : "Failed to delete course"));
+    }
+  });
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [courseForm, setCourseForm] = useState({ title: "", code: "", description: "", price: "" });
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [thumbnailCleared, setThumbnailCleared] = useState(false);
+
+  const openCreateModal = () => {
+    setEditId(null);
+    setCourseForm({ title: "", code: "", description: "", price: "" });
+    setThumbnailFile(null);
+    setThumbnailPreview(null);
+    setThumbnailCleared(false);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (item: Course) => {
+    setEditId(item.id);
+    setCourseForm({ title: item.title, code: item.code, description: item.description, price: item.price });
+    setThumbnailFile(null);
+    setThumbnailPreview(item.thumbnail || null);
+    setThumbnailCleared(false);
+    setIsModalOpen(true);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg")) {
+        toast.error(isFarsi ? "فایل‌های SVG مجاز نیستند" : "SVG files are not allowed");
+        e.target.value = "";
+        return;
+      }
+      setThumbnailFile(file);
+      setThumbnailPreview(URL.createObjectURL(file));
+      setThumbnailCleared(false);
+    }
+  };
+
+  const handleClearThumbnail = () => {
+    setThumbnailFile(null);
+    setThumbnailPreview(null);
+    setThumbnailCleared(true);
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append("title", courseForm.title);
+    formData.append("code", courseForm.code);
+    formData.append("description", courseForm.description);
+    formData.append("price", courseForm.price);
+    
+    if (thumbnailFile) {
+      formData.append("thumbnail", thumbnailFile);
+    } else if (thumbnailCleared) {
+      formData.append("thumbnail", "");
+    }
+
+    if (editId) {
+      updateCourseMutation.mutate({ id: editId, data: formData });
+    } else {
+      createCourseMutation.mutate(formData);
+    }
+  };
+
+  return (
+    <AppShell title={isFarsi ? "دوره‌های آموزشی" : "Courses"}>
+      <div className="bg-[var(--s2)] rounded-xl border border-[var(--b)] overflow-hidden">
+        <div className="flex justify-between items-center p-4 border-b border-[var(--b)]">
+          <span className="text-xs font-semibold text-[var(--t3)] uppercase tracking-wider">
+            {isFarsi ? "لیست دوره‌های آموزشی" : "Academy Courses"}
+          </span>
+          {isOrisAdmin && (
+            <Button size="sm" onClick={openCreateModal}>
+              {isFarsi ? "+ دوره جدید" : "+ New Course"}
+            </Button>
+          )}
+        </div>
+
+        {isLoading ? (
+          <div className="p-8 flex justify-center"><Spinner /></div>
+        ) : courses.length === 0 ? (
+          <div className="p-8 text-center text-[var(--t3)]">
+            {isFarsi ? "دوره‌ای وجود ندارد" : "No courses found."}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-start text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-[var(--b)] text-[var(--t3)] text-xs uppercase text-left">
+                  <th className="p-4">{isFarsi ? "دوره آموزشی" : "Course"}</th>
+                  <th className="p-4">{isFarsi ? "توضیحات" : "Description"}</th>
+                  <th className="p-4">{isFarsi ? "شهریه (دلار)" : "Price"}</th>
+                  {isOrisAdmin && <th className="p-4 text-right">{isFarsi ? "عملیات" : "Actions"}</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {courses.map((c) => (
+                  <tr key={c.id} className="border-b border-[var(--b)] hover:bg-[var(--s3)] transition-colors text-left">
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        {c.thumbnail ? (
+                          <img
+                            src={c.thumbnail}
+                            alt={c.title}
+                            className="w-10 h-10 object-cover rounded-lg border border-[var(--b)] flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-[var(--s3)] border border-[var(--b)] flex items-center justify-center text-[var(--t3)] text-xs font-bold uppercase flex-shrink-0">
+                            {c.code.slice(0, 2)}
+                          </div>
+                        )}
+                        <div>
+                          <Link
+                            to={`/academic/courses/${c.id}`}
+                            className="font-semibold text-[var(--t1)] hover:text-[var(--brand)] transition-colors no-underline"
+                          >
+                            {c.title}
+                          </Link>
+                          <div className="text-xs text-[var(--t3)] font-mono">{c.code}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4 text-[var(--t2)] max-w-xs truncate">{c.description || "—"}</td>
+                    <td className="p-4 text-[var(--t1)] font-mono">${parseFloat(c.price).toFixed(2)}</td>
+                    {isOrisAdmin && (
+                      <td className="p-4 text-right">
+                        <TableRowActions
+                          isFarsi={isFarsi}
+                          actions={[
+                            {
+                              label: isFarsi ? "ویرایش" : "Edit",
+                              onClick: () => openEditModal(c),
+                              isEdit: true,
+                            },
+                            {
+                              label: isFarsi ? "حذف" : "Delete",
+                              onClick: () => {
+                                if (confirm(isFarsi ? "آیا از حذف این دوره مطمئن هستید؟" : "Are you sure you want to delete this course?")) {
+                                  deleteCourseMutation.mutate(c.id);
+                                }
+                              },
+                              isDelete: true,
+                            },
+                          ]}
+                        />
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <Modal open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <ModalHeader>
+          <ModalTitle>
+            {editId
+              ? (isFarsi ? "ویرایش اطلاعات دوره" : "Edit Course")
+              : (isFarsi ? "ثبت دوره جدید" : "New Course")}
+          </ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+          <form onSubmit={handleFormSubmit} className="flex flex-col gap-4">
+            <Input
+              label={isFarsi ? "کد دوره" : "Course Code"}
+              value={courseForm.code}
+              onChange={(e) => setCourseForm({ ...courseForm, code: e.target.value })}
+              placeholder="e.g. PY-101"
+              required
+            />
+            <Input
+              label={isFarsi ? "عنوان دوره" : "Title"}
+              value={courseForm.title}
+              onChange={(e) => setCourseForm({ ...courseForm, title: e.target.value })}
+              placeholder="e.g. Python Programming"
+              required
+            />
+            <div className="flex flex-col gap-1.5 w-full">
+              <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                {isFarsi ? "تصویر کاور دوره (Thumbnail)" : "Course Thumbnail"}
+              </label>
+              <div className="flex items-center gap-4 bg-[var(--s3)] p-3 rounded-xl border border-[var(--b)]">
+                {thumbnailPreview ? (
+                  <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-[var(--b)] flex-shrink-0 group">
+                    <img src={thumbnailPreview} alt="Preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={handleClearThumbnail}
+                      className="absolute inset-0 bg-black/60 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity border-none cursor-pointer text-xs font-bold"
+                    >
+                      {isFarsi ? "حذف" : "Remove"}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-lg bg-[var(--s2)] border border-dashed border-[var(--b)] flex items-center justify-center text-[var(--t3)] text-xs flex-shrink-0">
+                    {isFarsi ? "بدون تصویر" : "No Image"}
+                  </div>
+                )}
+                <div className="flex flex-col gap-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    id="course-thumbnail-upload"
+                  />
+                  <label
+                    htmlFor="course-thumbnail-upload"
+                    className="px-3 py-1.5 bg-[var(--s2)] text-[var(--t1)] text-xs font-semibold rounded-lg border border-[var(--b)] hover:bg-[var(--s1)] cursor-pointer text-center transition-colors inline-block"
+                  >
+                    {isFarsi ? "انتخاب تصویر" : "Select Image"}
+                  </label>
+                  <span className="text-[10px] text-[var(--t3)]">
+                    {isFarsi ? "فرمت‌های مجاز: PNG, JPG" : "Allowed: PNG, JPG"}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5 w-full">
+              <label className="text-xs font-semibold text-[var(--t2)] uppercase tracking-wide">
+                {isFarsi ? "توضیحات" : "Description"}
+              </label>
+              <textarea
+                className="w-full bg-[var(--s2)] text-[var(--t1)] text-sm border border-[var(--b)] rounded-xl px-4 py-2.5 outline-none focus:border-[var(--brand)] transition-colors min-h-[80px]"
+                value={courseForm.description}
+                onChange={(e) => setCourseForm({ ...courseForm, description: e.target.value })}
+              />
+            </div>
+            <Input
+              label={isFarsi ? "شهریه (دلار)" : "Price ($)"}
+              type="number"
+              value={courseForm.price}
+              onChange={(e) => setCourseForm({ ...courseForm, price: e.target.value })}
+              required
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>
+                {isFarsi ? "انصراف" : "Cancel"}
+              </Button>
+              <Button
+                type="submit"
+                disabled={createCourseMutation.isPending || updateCourseMutation.isPending}
+              >
+                {isFarsi ? "ثبت اطلاعات" : "Save Changes"}
+              </Button>
+            </div>
+          </form>
+        </ModalBody>
+      </Modal>
+    </AppShell>
+  );
+}

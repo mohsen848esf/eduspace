@@ -1,9 +1,31 @@
+import os
 import secrets
+import uuid
 
-from django.conf import settings
-from django.db import models
+from django.db import models, transaction
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 
 from accounts.models import User
+from rooms.storage import PrivatePresentationStorage
+
+
+def _safe_upload_extension(filename: str) -> str:
+    extension = os.path.splitext(filename)[1].lower()
+    return extension if extension in {
+        '.pdf', '.png', '.jpg', '.jpeg', '.webp',
+        '.ppt', '.pptx', '.odp', '.doc', '.docx',
+    } else ''
+
+
+def presentation_output_upload_path(instance, filename: str) -> str:
+    extension = _safe_upload_extension(filename) or '.pdf'
+    return f'room_presentations/{instance.room.room_code}/ready/{uuid.uuid4().hex}{extension}'
+
+
+def presentation_source_upload_path(instance, filename: str) -> str:
+    extension = _safe_upload_extension(filename)
+    return f'{instance.room.room_code}/{uuid.uuid4().hex}{extension}'
 
 
 class Room(models.Model):
@@ -16,8 +38,45 @@ class Room(models.Model):
     room_code = models.CharField(max_length=10, unique=True)
     host = models.ForeignKey(User, on_delete=models.CASCADE, related_name='hosted_rooms')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.WAITING)
-    max_participants = models.PositiveIntegerField(default=20)
+    max_participants = models.PositiveIntegerField(default=25)
+    duration_limit_minutes = models.PositiveIntegerField(default=60, null=True, blank=True)
+    is_duration_limited = models.BooleanField(default=True)
+    warning_sent_at = models.DateTimeField(null=True, blank=True)
     is_recorded = models.BooleanField(default=False)
+    session = models.ForeignKey(
+        'accounts.Session',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='rooms'
+    )
+    occurrence = models.ForeignKey(
+        'accounts.ClassOccurrence',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='rooms'
+    )
+    organization = models.ForeignKey(
+        'accounts.Organization',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='rooms'
+    )
+    meeting_type = models.CharField(
+        max_length=20,
+        choices=[('class_session', 'Class Session'), ('ad_hoc', 'Ad-hoc')],
+        default='ad_hoc'
+    )
+
+    # Co-hosts explicitly delegated by host with moderator privileges (lobby, mute, locks)
+    co_hosts = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name='co_hosted_rooms',
+        help_text='Participants authorized as Co-Hosts with room moderator privileges.'
+    )
 
     # Per-room set of non-host users the host has explicitly authorized
     # to start / stop / pause / resume recording during the call. The
@@ -33,6 +92,46 @@ class Room(models.Model):
         ),
     )
 
+    # --- Lobby / Access Control ---
+    # When True, any participant joining via invite link must wait in the
+    # lobby until the host explicitly admits them. Users invited directly
+    # by the host (via InviteModal search) bypass this requirement.
+    require_approval = models.BooleanField(
+        default=False,
+        help_text='Joining via invite link requires host approval.',
+    )
+    # When True, no new participants can join the room at all.
+    is_locked = models.BooleanField(
+        default=False,
+        help_text='Completely block new participants from joining.',
+    )
+
+    # --- Media Policies & Permission Locks ---
+    mute_mic_on_join = models.BooleanField(
+        default=False,
+        help_text='Mute participant microphones by default upon entry.'
+    )
+    mute_cam_on_join = models.BooleanField(
+        default=False,
+        help_text='Turn off participant cameras by default upon entry.'
+    )
+    lock_screen_share = models.BooleanField(
+        default=False,
+        help_text='Lock screen sharing for regular participants unless permission is granted.'
+    )
+    lock_microphone = models.BooleanField(
+        default=False,
+        help_text='Lock microphones for regular participants unless permission is granted.'
+    )
+    lock_camera = models.BooleanField(
+        default=False,
+        help_text='Lock cameras for regular participants unless permission is granted.'
+    )
+    lock_document_presentation = models.BooleanField(
+        default=True,
+        help_text='Lock document upload and presentation for regular members unless host unlocks or grants individually.'
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
@@ -40,36 +139,234 @@ class Room(models.Model):
     def __str__(self):
         return f"{self.name} ({self.room_code})"
 
-    def can_control_recording(self, user) -> bool:
+    def can_manage_room(self, user) -> bool:
         """
-        True if `user` may start/stop/pause/resume recording in this
-        room. The host always passes; other users pass when they're in
-        ``recording_grants``.
+        True if user is host or one of the delegated co-hosts with moderator privileges.
         """
         if not user or not user.is_authenticated:
             return False
         if user.id == self.host_id:
             return True
+        return self.co_hosts.filter(pk=user.pk).exists()
+
+    def can_control_recording(self, user) -> bool:
+        """
+        True if `user` may start/stop/pause/resume recording in this
+        room. The host always passes; other users pass when they're in
+        ``recording_grants`` or ``co_hosts``.
+        """
+        if not user or not user.is_authenticated:
+            return False
+        if user.id == self.host_id:
+            return True
+        if self.co_hosts.filter(pk=user.pk).exists():
+            return True
         return self.recording_grants.filter(pk=user.pk).exists()
+
+
+class LobbyRequest(models.Model):
+    """
+    Represents a pending request to join a room that has `require_approval=True`.
+
+    Lifecycle:
+      PENDING  → host sees it in the lobby panel
+      ADMITTED → host clicked "Admit"; the guest can now exchange the request_id
+                 for a real LiveKit token via the join endpoint
+      DENIED   → host clicked "Deny"; guest receives a rejection message
+      EXPIRED  → the request was not acted upon within EXPIRE_MINUTES minutes
+
+    Identity fields:
+      - For authenticated users: `user` is set, `guest_*` are null.
+      - For unauthenticated guests: `user` is null, `guest_identity` and
+        `guest_name` are set.
+    """
+
+    EXPIRE_MINUTES = 5
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        ADMITTED = 'admitted', 'Admitted'
+        DENIED = 'denied', 'Denied'
+        EXPIRED = 'expired', 'Expired'
+
+    room = models.ForeignKey(
+        Room,
+        on_delete=models.CASCADE,
+        related_name='lobby_requests',
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='lobby_requests',
+    )
+    # For guest (unauthenticated) participants
+    guest_identity = models.CharField(max_length=100, null=True, blank=True)
+    guest_name = models.CharField(max_length=100, null=True, blank=True)
+
+    # Resolved display name for the host UI (full_name or guest_name)
+    display_name = models.CharField(max_length=150)
+    # Whether this is a guest (unauthenticated) request
+    is_guest = models.BooleanField(default=False)
+
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+
+    # Once admitted, this token is minted and returned to the waiting client.
+    # Stored here so the polling endpoint can return it without minting again.
+    livekit_token = models.TextField(blank=True, default='')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['room', 'status']),
+        ]
+
+    def __str__(self):
+        return f'LobbyRequest({self.display_name}) → {self.room.room_code} [{self.status}]'
+
+    @property
+    def is_expired(self) -> bool:
+        from django.utils import timezone
+        from datetime import timedelta
+        return (
+            self.status == self.Status.PENDING
+            and timezone.now() > self.created_at + timedelta(minutes=self.EXPIRE_MINUTES)
+        )
 
 
 class RoomParticipant(models.Model):
     class Role(models.TextChoices):
         HOST = 'host', 'Host'
+        CO_HOST = 'co_host', 'Co-Host'
         PARTICIPANT = 'participant', 'Participant'
+        GUEST = 'guest', 'Guest'
 
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='participants')
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    guest_name = models.CharField(max_length=100, null=True, blank=True)
+    guest_identity = models.CharField(max_length=100, null=True, blank=True)
+    is_guest = models.BooleanField(default=False)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.PARTICIPANT)
+    can_share_screen = models.BooleanField(default=True)
+    can_use_camera = models.BooleanField(default=True)
+    can_use_microphone = models.BooleanField(default=True)
+    can_upload_presentation = models.BooleanField(default=False)
     joined_at = models.DateTimeField(auto_now_add=True)
     left_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        unique_together = ('room', 'user')
+        constraints = [
+            models.UniqueConstraint(
+                fields=['room', 'user'],
+                condition=models.Q(user__isnull=False),
+                name='unique_authenticated_user_per_room'
+            )
+        ]
 
     def __str__(self):
-        return f"{self.user.username} in {self.room.room_code}"
+        if self.is_guest:
+            return f"{self.guest_name or self.guest_identity} (Guest) in {self.room.room_code}"
+        return f"{self.user.username if self.user else 'Unknown'} in {self.room.room_code}"
+
+
+class PresentationDocument(models.Model):
+    class FileType(models.TextChoices):
+        PDF = 'pdf', 'PDF Document'
+        IMAGE = 'image', 'Image'
+        SLIDE = 'slide', 'Presentation Slide'
+        OTHER = 'other', 'Other Document'
+
+    class ProcessingStatus(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        PROCESSING = 'processing', 'Processing'
+        READY = 'ready', 'Ready'
+        FAILED = 'failed', 'Failed'
+
+    class SourceType(models.TextChoices):
+        PDF = 'pdf', 'PDF'
+        PNG = 'png', 'PNG'
+        JPEG = 'jpeg', 'JPEG'
+        WEBP = 'webp', 'WebP'
+        PPT = 'ppt', 'PowerPoint'
+        PPTX = 'pptx', 'PowerPoint Open XML'
+        ODP = 'odp', 'OpenDocument Presentation'
+        DOC = 'doc', 'Word Document'
+        DOCX = 'docx', 'Word Open XML'
+
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='presentations')
+    uploader = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    guest_uploader_name = models.CharField(max_length=100, null=True, blank=True)
+    file = models.FileField(
+        upload_to=presentation_output_upload_path,
+        null=True,
+        blank=True,
+    )
+    source_file = models.FileField(
+        upload_to=presentation_source_upload_path,
+        storage=PrivatePresentationStorage(),
+        null=True,
+        blank=True,
+    )
+    source_type = models.CharField(
+        max_length=10,
+        choices=SourceType.choices,
+        blank=True,
+        default='',
+    )
+    original_filename = models.CharField(max_length=255, blank=True, default='')
+    title = models.CharField(max_length=255)
+    file_type = models.CharField(max_length=20, choices=FileType.choices, default=FileType.PDF)
+    file_size_bytes = models.PositiveIntegerField(default=0)
+    total_pages = models.PositiveIntegerField(default=1)
+    current_page = models.PositiveIntegerField(default=1)
+    is_active_on_stage = models.BooleanField(default=False)
+    processing_status = models.CharField(
+        max_length=20,
+        choices=ProcessingStatus.choices,
+        default=ProcessingStatus.READY,
+    )
+    processing_error_code = models.CharField(max_length=64, blank=True, default='')
+    processing_started_at = models.DateTimeField(null=True, blank=True)
+    processing_completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} in {self.room.room_code}"
+
+    @property
+    def uploader_name(self) -> str:
+        if self.uploader:
+            return self.uploader.full_name or self.uploader.username
+        return self.guest_uploader_name or "Guest"
+
+
+@receiver(post_delete, sender=PresentationDocument)
+def delete_presentation_files(sender, instance, **kwargs):
+    """Remove public output and private source files after database deletion."""
+    del sender, kwargs
+    files_to_delete = [
+        (field_file.storage, field_file.name)
+        for field_file in (instance.file, instance.source_file)
+        if field_file and field_file.name
+    ]
+
+    def delete_files_after_commit():
+        for storage, name in files_to_delete:
+            storage.delete(name)
+
+    transaction.on_commit(delete_files_after_commit)
 
 
 def _make_recording_token() -> str:
@@ -112,6 +409,20 @@ class Recording(models.Model):
         Room,
         on_delete=models.CASCADE,
         related_name='recordings',
+    )
+    session = models.ForeignKey(
+        'accounts.Session',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='recordings'
+    )
+    occurrence = models.ForeignKey(
+        'accounts.ClassOccurrence',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='recordings'
     )
     owner = models.ForeignKey(
         User,

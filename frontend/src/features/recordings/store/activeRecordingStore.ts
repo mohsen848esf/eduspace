@@ -1,6 +1,13 @@
 import { create } from "zustand";
+import type { RoomRecordingStatus, RoomRecordingPermission } from "../api/recordings.api";
+
+type RecordingStatusUpdate =
+  | RoomRecordingStatus
+  | ((current: RoomRecordingStatus) => RoomRecordingStatus);
 
 interface ActiveRecordingState {
+  status: RoomRecordingStatus;
+  permission: RoomRecordingPermission;
   /** Token of an in-progress recording in the current room (if any). */
   inFlightToken: string | null;
   /**
@@ -8,21 +15,34 @@ interface ActiveRecordingState {
    * on once the call ends. Cleared after navigation.
    */
   pendingEditToken: string | null;
+  setStatus: (update: RecordingStatusUpdate) => void;
+  setPermission: (permission: RoomRecordingPermission) => void;
   setInFlight: (token: string | null) => void;
   setPendingEdit: (token: string | null) => void;
   reset: () => void;
 }
 
 /**
- * Bridges the recording status (which lives inside RoomTopbar) and the
- * leave/disconnect flow (which lives in useRoomDisconnect). When the
- * host stops a recording while still in the call, we stash its token
- * here so the disconnect flow can navigate to /edit afterwards.
+ * Bridges the recording status across in-call components (RoomTopbar,
+ * RoomMobileTopbar, RoomRecordingBadge) and the leave/disconnect flow.
  */
 export const useActiveRecordingStore = create<ActiveRecordingState>((set) => ({
+  status: { status: "idle", recording: null },
+  permission: { can_control: false, is_host: false, grants: null },
   inFlightToken: null,
   pendingEditToken: null,
+  setStatus: (update) =>
+    set((state) => ({
+      status: typeof update === "function" ? update(state.status) : update,
+    })),
+  setPermission: (permission) => set({ permission }),
   setInFlight: (token) => set({ inFlightToken: token }),
   setPendingEdit: (token) => set({ pendingEditToken: token }),
-  reset: () => set({ inFlightToken: null, pendingEditToken: null }),
+  reset: () =>
+    set({
+      status: { status: "idle", recording: null },
+      permission: { can_control: false, is_host: false, grants: null },
+      inFlightToken: null,
+      pendingEditToken: null,
+    }),
 }));

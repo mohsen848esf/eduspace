@@ -19,4 +19,20 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // These modules intentionally expose compound component APIs or a lazy
+    // route registry. They are not mixed component/helper modules, so the
+    // Fast Refresh export heuristic does not model their public boundary.
+    files: [
+      'src/components/layout/Drawer.tsx',
+      'src/components/ui/DataTable.tsx',
+      'src/components/ui/DropdownMenu.tsx',
+      'src/components/ui/InspectionDrawer.tsx',
+      'src/components/ui/Modal.tsx',
+      'src/router/routes.tsx',
+    ],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])

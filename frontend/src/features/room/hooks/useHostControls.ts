@@ -5,6 +5,7 @@ import { type RemoteParticipant } from "livekit-client";
 import { useRoomStore } from "../store/roomStore";
 import client from "../../../lib/api/client";
 import toast from "react-hot-toast";
+import { grantRoomPermission, PERMISSIONS_INVALIDATED } from "../lib/roomPermissions";
 
 const CONTROL_MESSAGES = {
   MUTE_AUDIO: "MUTE_AUDIO",
@@ -16,7 +17,10 @@ export function useHostControls() {
   const room = useRoomContext();
   // localParticipant is needed for publishing data; reading from room context.
   useLocalParticipant();
-  const { isHost, roomCode } = useRoomStore();
+  const { isHost, isCoHost, coHosts, roomCode, addCoHost, removeCoHost } =
+    useRoomStore();
+
+  const canModerate = isHost || isCoHost;
 
   const sendControlMessage = useCallback(
     async (participant: RemoteParticipant, type: string) => {
@@ -32,7 +36,7 @@ export function useHostControls() {
 
   const muteParticipant = useCallback(
     async (participant: RemoteParticipant) => {
-      if (!isHost) return;
+      if (!canModerate) return;
       const isMuted = useRoomStore
         .getState()
         .mutedByHost?.has(participant.identity);
@@ -53,12 +57,12 @@ export function useHostControls() {
         toast.error(t("host.muteFailed"));
       }
     },
-    [isHost, sendControlMessage, t],
+    [canModerate, sendControlMessage, t],
   );
 
   const kickParticipant = useCallback(
     async (participant: RemoteParticipant) => {
-      if (!isHost) return;
+      if (!canModerate) return;
       try {
         await client.post(`/rooms/${roomCode}/kick/`, {
           identity: participant.identity,
@@ -69,24 +73,119 @@ export function useHostControls() {
         toast.error(t("host.removeFailed"));
       }
     },
-    [isHost, roomCode, t],
+    [canModerate, roomCode, t],
   );
 
   const grantScreenShare = useCallback(
     async (participant: RemoteParticipant) => {
-      if (!isHost) return;
+      if (!canModerate || !roomCode) return;
       try {
-        await client.post(`/rooms/${roomCode}/grant-screen-share/`, {
-          identity: participant.identity,
-        });
+        const result = await grantRoomPermission(room, roomCode, participant.identity, "screen_share", true);
         const name = participant.name || participant.identity;
         toast.success(t("host.screenShareGranted", { name }));
+        if (!result.notified) toast(t("permissions.syncDelayed"));
       } catch {
         toast.error(t("host.screenShareFailed"));
       }
     },
-    [isHost, roomCode, t],
+    [canModerate, roomCode, room, t],
   );
 
-  return { isHost, muteParticipant, kickParticipant, grantScreenShare };
+  const lowerParticipantHand = useCallback(
+    async (participant: RemoteParticipant) => {
+      if (!canModerate) return;
+      try {
+        await client.post(`/rooms/${roomCode}/raise-hand/`, {
+          identity: participant.identity,
+          raised: false,
+        });
+        const name = participant.name || participant.identity;
+        toast.success(t("host.handLowered", { name }));
+      } catch {
+        toast.error(t("host.handLowerFailed"));
+      }
+    },
+    [canModerate, roomCode, t],
+  );
+
+  const lowerAllHands = useCallback(
+    async () => {
+      if (!canModerate) return;
+      try {
+        await client.post(`/rooms/${roomCode}/lower-all-hands/`);
+        toast.success(t("host.loweredAllHands"));
+      } catch {
+        toast.error(t("host.lowerAllHandsFailed"));
+      }
+    },
+    [canModerate, roomCode, t],
+  );
+
+  const grantCoHost = useCallback(
+    async (username: string) => {
+      if (!isHost) return;
+      try {
+        await client.post(`/rooms/${roomCode}/co-hosts/grant/`, { username });
+        addCoHost(username);
+        window.dispatchEvent(new Event(PERMISSIONS_INVALIDATED));
+
+        // Broadcast real-time role change to all participants
+        const encoder = new TextEncoder();
+        const data = encoder.encode(
+          JSON.stringify({
+            type: "ROLE_CHANGED",
+            identity: username,
+            role: "co_host",
+          }),
+        );
+        await room.localParticipant.publishData(data, { reliable: true });
+
+        toast.success(`${username} به عنوان همیار میزبان انتخاب شد.`);
+      } catch {
+        toast.error("خطا در انتصاب همیار میزبان.");
+      }
+    },
+    [isHost, roomCode, addCoHost, room],
+  );
+
+  const revokeCoHost = useCallback(
+    async (username: string) => {
+      if (!isHost) return;
+      try {
+        await client.post(`/rooms/${roomCode}/co-hosts/revoke/`, { username });
+        removeCoHost(username);
+        window.dispatchEvent(new Event(PERMISSIONS_INVALIDATED));
+
+        // Broadcast real-time role change to all participants
+        const encoder = new TextEncoder();
+        const data = encoder.encode(
+          JSON.stringify({
+            type: "ROLE_CHANGED",
+            identity: username,
+            role: "participant",
+          }),
+        );
+        await room.localParticipant.publishData(data, { reliable: true });
+
+        toast.success(`دسترسی همیار میزبان از ${username} گرفته شد.`);
+      } catch {
+        toast.error("خطا در عزل همیار میزبان.");
+      }
+    },
+    [isHost, roomCode, removeCoHost, room],
+  );
+
+  return {
+    isHost,
+    isCoHost,
+    canModerate,
+    coHosts,
+    muteParticipant,
+    kickParticipant,
+    grantScreenShare,
+    lowerParticipantHand,
+    lowerAllHands,
+    grantCoHost,
+    revokeCoHost,
+  };
 }

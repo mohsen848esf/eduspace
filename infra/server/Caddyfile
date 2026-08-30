@@ -1,0 +1,5 @@
+{
+	# Shared ingress: both environments use this one listener on 80/443.
+	admin localhost:2019
+}
+import /etc/caddy/sites/*.caddy

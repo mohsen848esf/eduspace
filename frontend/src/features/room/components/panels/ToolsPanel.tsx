@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "../../../../lib/utils";
-import { useRoomGame } from "../../hooks/useRoomGameContext";
+import { useRoomGame } from "../../hooks/useRoomGame";
+import { useRoomWhiteboard } from "../../hooks/useRoomWhiteboard";
 import { useRoomStore } from "../../store/roomStore";
-import GameSelectorModal from "../GameSelectorModal";
+import MiniAppSelectorModal from "../MiniAppSelectorModal";
 
 /**
  * In-call tools panel — game launcher, whiteboard, quick exam, etc.
@@ -20,10 +21,27 @@ import GameSelectorModal from "../GameSelectorModal";
 export default function ToolsPanel() {
   const { t } = useTranslation(["room", "common", "games"]);
   const { gameBoard, launchGame, endGame } = useRoomGame();
-  const { isHost } = useRoomStore();
+  const {
+    whiteboard: whiteboardState,
+    launchWhiteboard,
+    endWhiteboard,
+    minimizeWhiteboard,
+    restoreWhiteboard,
+  } = useRoomWhiteboard();
+  const {
+    isHost,
+    isCoHost,
+    activePresentation,
+    isPresentationMinimized,
+    setIsPresentationMinimized,
+  } = useRoomStore();
   const [showSelector, setShowSelector] = useState(false);
 
   const isGameActive = gameBoard.isActive;
+  const isWhiteboardActive = whiteboardState.isActive;
+  const isWhiteboardMinimized = whiteboardState.isMinimized;
+  const isPresActive = !!activePresentation;
+  const canModerate = isHost || isCoHost;
 
   const gameTool = isGameActive
     ? {
@@ -45,26 +63,113 @@ export default function ToolsPanel() {
         disabled: !isHost,
       };
 
+  const whiteboardTools = isWhiteboardActive
+    ? [
+        isWhiteboardMinimized
+          ? {
+              icon: "✏️",
+              name: t("tools.viewWhiteboard", "مشاهده وایت‌برد فعال"),
+              desc: t("tools.viewWhiteboardDesc", "نمایش مجدد تخته روی صفحه"),
+              status: "ready" as const,
+              onClick: () => restoreWhiteboard(),
+              bg: "bg-[rgba(34,197,94,0.15)]",
+              disabled: false,
+            }
+          : {
+              icon: "🗕",
+              name: t("tools.hideWhiteboard", "بستن تخته از روی صفحه"),
+              desc: t("tools.hideWhiteboardDesc", "مخفی‌سازی محلی (برای دیگران باز می‌ماند)"),
+              status: "ready" as const,
+              onClick: () => minimizeWhiteboard(),
+              bg: "bg-[rgba(148,163,184,0.15)]",
+              disabled: false,
+            },
+        ...(isHost
+          ? [
+              {
+                icon: "🛑",
+                name: t("tools.endWhiteboardLabel", "پایان وایت‌برد برای همه"),
+                desc: t("tools.endWhiteboardDesc", "بستن کامل تخته در جلسه"),
+                status: "ready" as const,
+                onClick: () => endWhiteboard(),
+                bg: "bg-[rgba(248,113,113,0.15)]",
+                disabled: false,
+              },
+            ]
+          : []),
+      ]
+    : [
+        {
+          icon: "✏️",
+          name: t("tools.whiteboard"),
+          desc: t("tools.whiteboardDesc"),
+          status: "ready" as const,
+          onClick: () => launchWhiteboard(),
+          bg: "bg-[rgba(34,197,94,0.12)]",
+          disabled: !isHost,
+        },
+      ];
+
+  const presentationTools = isPresActive
+    ? [
+        isPresentationMinimized
+          ? {
+              icon: "📑",
+              name: t("tools.viewPresentation", "مشاهده ارائه فعال"),
+              desc: t("tools.viewPresentationDesc", "نمایش مجدد اسناد و اسلایدها روی صفحه"),
+              status: "ready" as const,
+              onClick: () => setIsPresentationMinimized(false),
+              bg: "bg-[rgba(99,102,241,0.15)]",
+              disabled: false,
+            }
+          : {
+              icon: "🗕",
+              name: t("tools.hidePresentation", "بستن ارائه از روی صفحه"),
+              desc: t("tools.hidePresentationDesc", "مخفی‌سازی محلی (ارائه برای دیگران فعال می‌ماند)"),
+              status: "ready" as const,
+              onClick: () => setIsPresentationMinimized(true),
+              bg: "bg-[rgba(148,163,184,0.15)]",
+              disabled: false,
+            },
+        {
+          icon: "📂",
+          name: t("tools.changePresentation", "انتخاب فایل جدید برای ارائه"),
+          desc: t("tools.changePresentationDesc", "بارگذاری سند جدید یا تعویض فایل جاری"),
+          status: "ready" as const,
+          onClick: () => {
+            window.dispatchEvent(new CustomEvent("eduspace:open-presentation-modal"));
+          },
+          bg: "bg-[rgba(99,102,241,0.12)]",
+          disabled: false,
+        },
+      ]
+    : [
+        {
+          icon: "📑",
+          name: t("tools.presentationShare", "اشتراک و ارائه فایل و اسلاید"),
+          desc: t("tools.presentationShareDesc", "بارگذاری و نمایش اسناد PDF، تصاویر و اسلایدها روی استیج"),
+          status: "ready" as const,
+          onClick: () => {
+            window.dispatchEvent(new CustomEvent("eduspace:open-presentation-modal"));
+          },
+          bg: "bg-[rgba(99,102,241,0.15)]",
+          disabled: false,
+        },
+      ];
+
   const tools = [
+    {
+      icon: "🎬",
+      name: t("sharedMedia.libraryTitle", "سینمای آنلاین"),
+      desc: t("sharedMedia.toolDescription", "آپلود و پخش همزمان ویدئو برای همه"),
+      status: "ready" as const,
+      onClick: () => window.dispatchEvent(new CustomEvent("eduspace:open-shared-media-library")),
+      bg: "bg-[rgba(56,189,248,0.15)]",
+      disabled: !canModerate,
+    },
     gameTool,
-    {
-      icon: "📋",
-      name: t("tools.whiteboard"),
-      desc: t("tools.whiteboardDesc"),
-      status: "ready" as const,
-      onClick: () => undefined,
-      bg: "bg-[rgba(56,189,248,0.12)]",
-      disabled: false,
-    },
-    {
-      icon: "📝",
-      name: t("tools.quickExam"),
-      desc: t("tools.quickExamDesc"),
-      status: "ready" as const,
-      onClick: () => undefined,
-      bg: "bg-[rgba(34,197,94,0.12)]",
-      disabled: false,
-    },
+    ...whiteboardTools,
+    ...presentationTools,
     {
       icon: "🤖",
       name: t("tools.aiSummary"),
@@ -72,15 +177,6 @@ export default function ToolsPanel() {
       status: "soon" as const,
       onClick: () => undefined,
       bg: "bg-[rgba(245,158,11,0.12)]",
-      disabled: true,
-    },
-    {
-      icon: "📁",
-      name: t("tools.fileShare"),
-      desc: t("tools.fileShareDesc"),
-      status: "soon" as const,
-      onClick: () => undefined,
-      bg: "bg-[rgba(248,113,113,0.12)]",
       disabled: true,
     },
   ];
@@ -124,12 +220,18 @@ export default function ToolsPanel() {
         ))}
       </div>
 
-      <GameSelectorModal
+      <MiniAppSelectorModal
         open={showSelector}
         onClose={() => setShowSelector(false)}
         onLaunch={(args) =>
           launchGame(args.gameId, args.gameTitle, args.gameUrl)
         }
+        activeGame={isGameActive ? {
+          gameId: gameBoard.gameId || "",
+          gameTitle: gameBoard.gameTitle || "",
+          gameUrl: gameBoard.gameUrl || "",
+          hostIdentity: gameBoard.hostIdentity || "",
+        } : null}
       />
     </>
   );

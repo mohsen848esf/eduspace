@@ -50,15 +50,20 @@ def _which(binary: str) -> str:
     return found
 
 
-def _run(cmd: list[str]) -> str:
+def _run(cmd: list[str], timeout: float = 300.0) -> str:
     """Run a command, capturing combined output. Raises FFmpegError on failure."""
     logger.debug('exec: %s', shlex.join(cmd))
-    proc = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise FFmpegError(f'{cmd[0]} expired after {timeout} seconds') from exc
+        
     if proc.returncode != 0:
         raise FFmpegError(
             f'{cmd[0]} exited {proc.returncode}: {proc.stderr.strip()[:500]}'
@@ -220,3 +225,99 @@ def trim_inplace(
         str(output_path),
     ]
     _run(cmd)
+
+
+def concat_webm_to_mp4(
+    webm_paths: Iterable[Path],
+    output_path: Path,
+) -> None:
+    """
+    Concatenate WebM chunks and transcode them to a web-playable H.264/AAC MP4.
+    """
+    paths = [Path(p) for p in webm_paths]
+    if not paths:
+        raise FFmpegError('concat_webm_to_mp4 needs at least one input')
+    for p in paths:
+        if not p.exists():
+            raise FFmpegError(f'chunk missing: {p}')
+
+    ffmpeg = _which('ffmpeg')
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.NamedTemporaryFile(
+        mode='w', suffix='.txt', delete=False, encoding='utf-8',
+    ) as listf:
+        for p in paths:
+            escaped = str(p.resolve()).replace("'", "'\\''")
+            listf.write(f"file '{escaped}'\n")
+        list_path = Path(listf.name)
+
+    try:
+        _run([
+            ffmpeg,
+            '-y',
+            '-hide_banner',
+            '-loglevel', 'error',
+            '-f', 'concat',
+            '-safe', '0',
+            '-i', str(list_path),
+            '-c:v', 'libx264',
+            '-preset', 'fast',
+            '-crf', '23',
+            '-c:a', 'aac',
+            '-movflags', '+faststart',
+            str(output_path),
+        ])
+    finally:
+        try:
+            list_path.unlink()
+        except OSError:
+            pass
+
+
+def transcode_and_trim(
+    source_path: Path,
+    output_path: Path,
+    height: int,
+    start_seconds: float,
+    end_seconds: Optional[float] = None,
+) -> None:
+    """
+    Trim and downscale the input video using libx264/aac and output a web-playable MP4.
+    """
+    if start_seconds < 0:
+        raise FFmpegError(f'start_seconds must be >= 0, got {start_seconds}')
+    if end_seconds is not None and end_seconds <= start_seconds:
+        raise FFmpegError(
+            f'end_seconds ({end_seconds}) must be greater than start_seconds ({start_seconds})'
+        )
+
+    ffmpeg = _which('ffmpeg')
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    cmd = [
+        ffmpeg,
+        '-y',
+        '-hide_banner',
+        '-loglevel', 'error',
+    ]
+    if start_seconds > 0:
+        cmd += ['-ss', f'{start_seconds:.3f}']
+    
+    cmd += ['-i', str(source_path)]
+    
+    if end_seconds is not None:
+        cmd += ['-t', f'{end_seconds - start_seconds:.3f}']
+
+    cmd += [
+        '-vf', f'scale=-2:{height}',
+        '-c:v', 'libx264',
+        '-preset', 'fast',
+        '-crf', '23',
+        '-c:a', 'aac',
+        '-movflags', '+faststart',
+        str(output_path),
+    ]
+    _run(cmd)
+
+

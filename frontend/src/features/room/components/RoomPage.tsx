@@ -7,7 +7,11 @@ import {
   useLocalParticipant,
   useRoomContext,
 } from "@livekit/components-react";
-import { Track } from "livekit-client";
+import {
+  VideoPresets,
+  AudioPresets,
+  type Participant,
+} from "livekit-client";
 import { useRoomStore } from "../store/roomStore";
 import { useRoom } from "../hooks/useRoom";
 import { useRoomControls } from "../hooks/useRoomControls";
@@ -18,12 +22,16 @@ import { useBackgroundStore } from "../store/backgroundStore";
 import { useBackgroundBlur } from "../hooks/useBackgroundBlur";
 import { useActiveRecordingStore } from "../../recordings/store/activeRecordingStore";
 import { useGameBoard } from "../hooks/useGameBoard";
-import { RoomGameProvider } from "../hooks/useRoomGameContext";
-import { useBreakpoint } from "../../../hooks/useBreakpoint";
-import DockedPanelShell from "./DockedPanelShell";
-import MobileSheetShell from "./MobileSheetShell";
-
-type LayoutMode = "grid" | "spotlight" | "sidebar";
+import { RoomGameProvider } from "../hooks/RoomGameProvider";
+import { useWhiteboard } from "../hooks/useWhiteboard";
+import { RoomWhiteboardProvider } from "../hooks/RoomWhiteboardProvider";
+import { useReactions } from "../hooks/useReactions";
+import UnifiedRoomShell from "./UnifiedRoomShell";
+import { useRoomLayoutStore } from "../store/roomLayoutStore";
+import { LobbyWaitingScreen } from "./LobbyWaitingScreen";
+import { useLobbyWaiting } from "../hooks/useLobbyWaiting";
+import CallEndedScreen from "./CallEndedScreen";
+import { observePublishedCameraTracks } from "../lib/backgroundProcessing";
 
 function RoomContent({
   preJoinSettings,
@@ -34,9 +42,9 @@ function RoomContent({
     preJoinSettings?.camEnabled ?? true,
     preJoinSettings?.micEnabled ?? true,
   );
-  const [layout, setLayout] = useState<LayoutMode>("grid");
+  const layout = useRoomLayoutStore((s) => s.layoutMode);
+  const setLayout = useRoomLayoutStore((s) => s.setLayoutMode);
   const { localParticipant } = useLocalParticipant();
-  const setupDone = useRef(false);
   const { disconnect } = useRoomDisconnect();
   const { roomCode } = useRoomStore();
   const { changeBackground } = useBackgroundBlur();
@@ -64,71 +72,53 @@ function RoomContent({
     }
   }, [disconnect]);
 
-  // Game state.
+  // Game, Whiteboard & Reactions state.
   const game = useGameBoard();
+  const whiteboard = useWhiteboard();
+  const reactions = useReactions();
+  const handleGameDataMessage = game.handleDataMessage;
+  const handleWhiteboardDataMessage = whiteboard.handleDataMessage;
+  const handleReactionDataMessage = reactions.handleDataMessage;
   const room = useRoomContext();
 
-  // Wire LiveKit data channel into the game hook.
+  // Wire LiveKit data channel into the game, whiteboard, and reactions hooks.
   useEffect(() => {
     if (!room) return;
-    const handler = (payload: Uint8Array, participant?: any) => {
-      game.handleDataMessage(payload, participant);
+    const handler = (payload: Uint8Array, participant?: Participant) => {
+      handleGameDataMessage(payload, participant);
+      handleWhiteboardDataMessage(payload, participant);
+      handleReactionDataMessage(payload, participant);
     };
     room.on("dataReceived", handler);
     return () => {
       room.off("dataReceived", handler);
     };
-  }, [room, game.handleDataMessage]);
+  }, [
+    room,
+    handleGameDataMessage,
+    handleWhiteboardDataMessage,
+    handleReactionDataMessage,
+  ]);
 
-  // Camera + background setup once the local participant is ready.
+  // Clean up and release media devices when the room page is unmounted (navigating away)
   useEffect(() => {
-    if (setupDone.current) return;
-    if (!localParticipant) return;
-    setupDone.current = true;
-
-    const setup = async () => {
-      try {
-        const camEnabled = preJoinSettings?.camEnabled ?? true;
-        const bg = preJoinSettings?.background || "none";
-
-        if (!camEnabled) return;
-
-        const waitForLive = async (attempts = 0): Promise<boolean> => {
-          const camPub = localParticipant.getTrackPublication(
-            Track.Source.Camera,
-          );
-          if (camPub?.track?.mediaStreamTrack?.readyState === "live")
-            return true;
-          if (attempts < 30) {
-            await new Promise((r) => setTimeout(r, 300));
-            return waitForLive(attempts + 1);
-          }
-          return false;
-        };
-
-        const ready = await waitForLive();
-        if (!ready) {
-          console.error("Track never became live");
-          return;
-        }
-
-        if (bg !== "none") {
-          await changeBackground(bg);
-        }
-
-        controls.setIsCamOn(true);
-      } catch (err) {
-        console.error("Camera setup error:", err);
-        controls.setIsCamOn(true);
-      }
+    return () => {
+      disconnect();
     };
+  }, [disconnect]);
 
-    setup();
-  }, [localParticipant]);
+  // Reapply the selected background to each camera track LiveKit publishes.
+  // The pre-join track is intentionally released before joining, so the room gets
+  // a different track. Event-driven setup avoids overlapping processor swaps.
+  useEffect(() => {
+    if (!localParticipant) return;
 
-  // Pick the right shell. The docked layout is used on tablet AND desktop;
-  // mobile uses a single shell — full-screen video plus bottom-sheet panels.
-  const breakpoint = useBreakpoint();
+    return observePublishedCameraTracks(localParticipant, (cameraTrack) => {
+      const selectedBackground = useBackgroundStore.getState().background;
+      if (selectedBackground === "none") return Promise.resolve(true);
+      return changeBackground(selectedBackground, cameraTrack);
+    });
+  }, [localParticipant, changeBackground]);
 
   const sharedShellProps = {
     controls: {
@@ -144,63 +134,204 @@ function RoomContent({
       toggleSidebar: controls.toggleSidebar,
       toggleSettings: controls.toggleSettings,
       togglePushToTalk: controls.togglePushToTalk,
+      handRaised: controls.handRaised,
+      onToggleHandRaise: controls.toggleHandRaise,
     },
     layout,
     onLayoutChange: setLayout,
     onLeaveRequest: handleLeaveRequest,
     showLeaveConfirm,
+    onOpenChange: setShowLeaveConfirm,
     onLeaveConfirmOpenChange: setShowLeaveConfirm,
     onLeaveConfirm: handleLeaveConfirm,
     isLeaving,
     game,
+    whiteboard,
+    reactions,
     roomCode: roomCode || "",
   };
 
-  const shell =
-    breakpoint === "mobile" ? (
-      <MobileSheetShell {...sharedShellProps} />
-    ) : (
-      <DockedPanelShell
-        {...sharedShellProps}
-        size={breakpoint === "tablet" ? "md" : "lg"}
-      />
-    );
+  const shell = <UnifiedRoomShell {...sharedShellProps} />;
 
-  return <RoomGameProvider value={game}>{shell}</RoomGameProvider>;
+  return (
+    <RoomGameProvider value={game}>
+      <RoomWhiteboardProvider value={whiteboard}>
+        {shell}
+      </RoomWhiteboardProvider>
+    </RoomGameProvider>
+  );
 }
 
 export default function RoomPage() {
   const { t } = useTranslation(["room", "common"]);
   const { roomCode } = useParams<{ roomCode: string }>();
-  const { token, livekitUrl, roomName } = useRoomStore();
-  const { joinRoom, leaveRoom, isLoading, error } = useRoom();
+  const {
+    token,
+    livekitUrl,
+    roomName,
+    isHost,
+    isCoHost,
+    muteMicOnJoin,
+    muteCamOnJoin,
+    lockMicrophone,
+    lockCamera,
+    canUseMicrophone,
+    canUseCamera,
+  } = useRoomStore();
+  const { joinRoom, joinRoomGuest, leaveRoom, isLoading, error, clearError } = useRoom();
   const [preJoinDone, setPreJoinDone] = useState(false);
+  const [callEnded, setCallEnded] = useState(false);
   const [preJoinSettings, setPreJoinSettings] =
     useState<PreJoinSettings | null>(null);
 
-  useEffect(() => {
-    if (!token && roomCode && preJoinDone) {
-      joinRoom(roomCode);
+  const [lobbyRequestId, setLobbyRequestId] = useState<number | null>(null);
+  const [lobbyGuestAccessToken, setLobbyGuestAccessToken] = useState<string | null>(null);
+  const [isWaitingInLobby, setIsWaitingInLobby] = useState(false);
+  const [roomAccessError, setRoomAccessError] = useState<
+    "locked" | "room_ended" | null
+  >(null);
+
+  const joinedRef = useRef(false);
+
+  const handleJoinAttempt = useCallback(async (guestNameOverride?: string) => {
+    if (!roomCode) return;
+    const guestName = guestNameOverride ?? preJoinSettings?.guestName;
+    try {
+      const res = guestName
+        ? await joinRoomGuest(roomCode, guestName)
+        : await joinRoom(roomCode);
+
+      if (res && "waiting" in res && res.waiting) {
+        setLobbyRequestId(res.request_id);
+        setLobbyGuestAccessToken(res.guest_access_token || null);
+        setIsWaitingInLobby(true);
+      }
+    } catch (err: unknown) {
+      const roomError = err as { code?: string; status?: number };
+      if (roomError.code === "ROOM_LOCKED" || roomError.status === 423) {
+        setRoomAccessError("locked");
+      } else if (roomError.status === 410) {
+        setRoomAccessError("room_ended");
+      }
     }
-  }, [roomCode, preJoinDone]);
+  }, [roomCode, preJoinSettings?.guestName, joinRoom, joinRoomGuest]);
+
+  // Polling when waiting in lobby
+  const { status: lobbyStatus, elapsedSeconds } = useLobbyWaiting({
+    roomCode: roomCode || "",
+    requestId: lobbyRequestId,
+    guestAccessToken: lobbyGuestAccessToken,
+    enabled: isWaitingInLobby,
+    onAdmitted: (admittedData) => {
+      useRoomStore.getState().setRoom({
+        token: admittedData.token,
+        livekitUrl: admittedData.livekitUrl,
+        roomCode: admittedData.roomCode,
+        roomName: admittedData.name,
+        isHost: false,
+        isCoHost: admittedData.isCoHost || false,
+        isGuest: admittedData.isGuest || false,
+        guestIdentity: admittedData.guestIdentity || null,
+        guestAccessToken: admittedData.guestAccessToken || null,
+        // Room settings
+        muteMicOnJoin: admittedData.muteMicOnJoin,
+        muteCamOnJoin: admittedData.muteCamOnJoin,
+        lockScreenShare: admittedData.lockScreenShare,
+        lockMicrophone: admittedData.lockMicrophone,
+        lockCamera: admittedData.lockCamera,
+        lockDocumentPresentation: admittedData.lockDocumentPresentation,
+        // Participant permissions
+        canUploadPresentation: admittedData.canUploadPresentation,
+        canShareScreen: admittedData.canShareScreen,
+        canUseMicrophone: admittedData.canUseMicrophone,
+        canUseCamera: admittedData.canUseCamera,
+      });
+      setLobbyGuestAccessToken(null);
+      setIsWaitingInLobby(false);
+      // Mark pre-join as done — lobby-admitted users bypass the pre-join screen
+      // and connect directly using the token provided by the host's admit action.
+      setPreJoinDone(true);
+    },
+  });
+
+  useEffect(() => {
+    return () => {
+      if (joinedRef.current) {
+        leaveRoom({ redirectTo: null });
+      }
+    };
+  }, [leaveRoom]);
+
+  // Access Error (Room Locked or Room Ended)
+  if (roomAccessError) {
+    return (
+      <LobbyWaitingScreen
+        status={roomAccessError}
+        roomCode={roomCode || ""}
+        roomName={roomName || ""}
+        onLeave={() => leaveRoom()}
+      />
+    );
+  }
+
+  // Waiting in Lobby State
+  if (isWaitingInLobby) {
+    return (
+      <LobbyWaitingScreen
+        status={lobbyStatus}
+        roomCode={roomCode || ""}
+        roomName={roomName || ""}
+        elapsedSeconds={elapsedSeconds}
+        displayName={preJoinSettings?.guestName}
+        onRetry={() => {
+          setIsWaitingInLobby(false);
+          setLobbyRequestId(null);
+          setLobbyGuestAccessToken(null);
+          handleJoinAttempt();
+        }}
+        onLeave={() => {
+          setIsWaitingInLobby(false);
+          leaveRoom();
+        }}
+      />
+    );
+  }
+
+  if (callEnded) {
+    return (
+      <CallEndedScreen
+        roomCode={roomCode || ""}
+        roomName={roomName || ""}
+        onRejoin={() => {
+          setCallEnded(false);
+          setPreJoinDone(false);
+          useRoomStore.getState().setIsUserLeaving(false);
+          clearError();
+        }}
+        onExit={() => {
+          leaveRoom();
+        }}
+      />
+    );
+  }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--s0)] gap-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--s0)] text-[var(--t1)] gap-4">
         <Spinner size="lg" />
         <p className="text-sm text-[var(--t2)]">{t("join.joining")}</p>
       </div>
     );
   }
 
-  if (error) {
+  if (error && !roomAccessError && !isWaitingInLobby) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--s0)] gap-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--s0)] text-[var(--t1)] gap-4">
         <span className="text-4xl">⚠️</span>
         <p className="text-[var(--red)] text-sm">{error}</p>
         <button
           onClick={() => leaveRoom()}
-          className="text-[var(--brand-text)] hover:underline text-sm bg-transparent border-none cursor-pointer"
+          className="text-[var(--brand)] font-semibold hover:underline text-sm bg-transparent border-none cursor-pointer"
         >
           ← {t("common:actions.back")}
         </button>
@@ -216,31 +347,73 @@ export default function RoomPage() {
         onJoin={(settings) => {
           setPreJoinSettings(settings);
           setPreJoinDone(true);
+          joinedRef.current = true;
+          void handleJoinAttempt(settings.guestName);
         }}
-        onCancel={leaveRoom}
+        onCancel={() => {
+          leaveRoom();
+        }}
       />
     );
   }
 
   if (!token || !livekitUrl) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--s0)]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--s0)] text-[var(--t1)]">
         <Spinner size="lg" />
       </div>
     );
   }
 
+  const isModerator = isHost || isCoHost;
+  const initialCamOn = isModerator
+    ? (preJoinSettings?.camEnabled ?? true)
+    : (muteCamOnJoin || lockCamera || !canUseCamera)
+      ? false
+      : (preJoinSettings?.camEnabled ?? true);
+
+  const initialMicOn = isModerator
+    ? (preJoinSettings?.micEnabled ?? true)
+    : (muteMicOnJoin || lockMicrophone || !canUseMicrophone)
+      ? false
+      : (preJoinSettings?.micEnabled ?? true);
+
   return (
-    <div className="w-screen h-screen bg-[var(--s0)] overflow-hidden">
+    <div className="w-screen h-screen bg-[var(--s0)] text-[var(--t1)] overflow-hidden">
       <LiveKitRoom
         token={token}
         serverUrl={livekitUrl}
         connect={true}
-        video={preJoinSettings?.camEnabled ?? true}
-        audio={preJoinSettings?.micEnabled ?? true}
+        video={initialCamOn}
+        audio={initialMicOn}
+        options={{
+          adaptiveStream: true,
+          dynacast: true,
+          // Persist the device selections made in PreJoinScreen
+          audioCaptureDefaults: preJoinSettings?.selectedMic
+            ? { deviceId: preJoinSettings.selectedMic }
+            : undefined,
+          videoCaptureDefaults: preJoinSettings?.selectedCam
+            ? { deviceId: preJoinSettings.selectedCam }
+            : undefined,
+          audioOutput: preJoinSettings?.selectedSpeaker
+            ? { deviceId: preJoinSettings.selectedSpeaker }
+            : undefined,
+          publishDefaults: {
+            simulcast: true,
+            videoSimulcastLayers: [
+              VideoPresets.h720,
+              VideoPresets.h360,
+              VideoPresets.h180,
+            ],
+            audioPreset: AudioPresets.speech,
+            red: true,
+            dtx: true,
+          },
+        }}
         onDisconnected={() => {
           useBackgroundStore.getState().setBackground("none");
-          leaveRoom();
+          setCallEnded(true);
         }}
         style={{ height: "100vh", display: "flex", flexDirection: "column" }}
       >
@@ -249,4 +422,5 @@ export default function RoomPage() {
       </LiveKitRoom>
     </div>
   );
+
 }

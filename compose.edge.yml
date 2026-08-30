@@ -1,0 +1,23 @@
+services:
+  edge:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./infra/server/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./.deploy/edge:/etc/caddy/sites:ro
+      - certificates:/data
+      - config:/config
+    networks: [edge]
+    logging:
+      driver: json-file
+      options: {max-size: '10m', max-file: '3'}
+volumes:
+  certificates:
+  config:
+networks:
+  edge:
+    external: true
+    name: eduspace-edge

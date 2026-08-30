@@ -1,5 +1,9 @@
 # EduSpace 🎓
 
+## استقرار روی سرور لینوکس، بدون CI/CD
+
+برای استقرار production با imageهای GHCR و یک دستور Docker Compose، [راهنمای فارسی سرور](docs/DEPLOY.fa.md) را بخوانید. [راهنمای انگلیسی](docs/DEPLOY-PRODUCTION.en.md) نیز در دسترس است. تنظیمات سرور مستقل از توسعهٔ لوکال است؛ برای سرور از Compose محلی زیر استفاده نکنید.
+
 **An open-source, self-hosted educational platform** — built for communities where access to international services like Google Meet, Zoom, or Microsoft Teams is restricted or unavailable.
 
 > **Built to run entirely on local/private infrastructure.** No external dependencies. No cloud lock-in. Your data stays with you.
@@ -77,9 +81,11 @@ git clone https://github.com/YOUR_USERNAME/eduspace.git
 cd eduspace
 ```
 
-### 2. Start infrastructure
+### 2. Configure and start infrastructure
 ```bash
-docker compose up -d
+cp backend/.env.example backend/.env
+# Set unique secrets in backend/.env before any non-local deployment.
+docker compose --env-file backend/.env up -d
 ```
 
 ### 3. Backend setup
@@ -99,6 +105,11 @@ uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --reload
 
 # Or standard Django (HTTP only)
 python manage.py runserver
+
+# In a separate terminal, run async workers (required for Office-to-PDF conversion)
+celery -A config worker --loglevel=info --queues=default,documents,notifications,recordings,compliance,finance
+
+# On Windows, add: --pool=solo
 ```
 
 ### 5. Frontend setup
@@ -122,6 +133,7 @@ npm run dev
 | PostgreSQL | 5432 | Primary database |
 | Redis | 6379 | Cache & pub/sub |
 | LiveKit | 7880-7882 | Video server |
+| Gotenberg | 127.0.0.1:3000 | Static Office-to-PDF conversion (loopback only) |
 
 ---
 
@@ -171,11 +183,11 @@ window.parent.postMessage({ type: 'SCORE_UPDATE', payload: { score: 100 } }, '*'
 ## 🔧 Configuration
 
 ### LiveKit Keys (production)
-```yaml
-# docker-compose.yml
-livekit:
-  command: ["--keys", "your-api-key: your-secret-key"]
-```
+
+Set `LIVEKIT_API_KEY` and a random `LIVEKIT_API_SECRET` of at least 32 bytes in
+the deployment environment. Compose injects the same values into LiveKit and
+Egress; Django rejects short secrets and rejects the local placeholder when
+`DEBUG=False`.
 
 ### Environment Variables
 ```env
@@ -185,7 +197,8 @@ DB_NAME=eduspace
 DB_USER=edu
 DB_PASSWORD=your-password
 LIVEKIT_API_KEY=your-key
-LIVEKIT_API_SECRET=your-secret
+LIVEKIT_API_SECRET=replace-with-a-random-secret-at-least-32-bytes
+GOTENBERG_URL=http://localhost:3000
 ```
 
 ---

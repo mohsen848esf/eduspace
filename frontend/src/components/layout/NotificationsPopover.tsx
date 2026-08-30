@@ -111,6 +111,13 @@ export default function NotificationsPopover({
         ? `/room/${item.data.room_code}`
         : "/dashboard";
       navigate(link);
+    } else if (item.kind === "ASSESSMENT_GRADED") {
+      navigate("/academic/assessments");
+    } else if (item.kind === "INVOICE_CREATED" || item.kind === "INVOICE_UPDATED") {
+      navigate("/finance/ledger");
+    } else if (item.kind === "SESSION_STARTED") {
+      const code = item.data.room_code as string;
+      navigate(code ? `/room/${code}` : "/academic/sessions");
     }
     onClose();
   };
@@ -188,6 +195,21 @@ export default function NotificationsPopover({
           </ul>
         )}
       </div>
+
+      {/* Footer to Full Inbox Page */}
+      <div className="p-2 border-t border-[var(--b)] bg-[var(--s1)] flex items-center justify-center">
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            navigate("/inbox");
+          }}
+          className="w-full text-center text-xs font-bold text-[var(--brand-text)] hover:underline flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg hover:bg-[var(--s2)] transition-colors cursor-pointer"
+        >
+          <span>{t("notifications:inbox.viewAllInbox", { defaultValue: "مشاهده همه در صندوق پیام‌ها" })}</span>
+          <span>→</span>
+        </button>
+      </div>
     </div>
   );
 }
@@ -210,10 +232,10 @@ function NotificationRow({
   const isUnread = item.readAt === null;
   const data = item.data;
 
-  let title = "";
-  let subtitle = "";
-  let actionLabel = "";
-  let icon: React.ReactNode = null;
+  let title: string;
+  let subtitle: string;
+  let actionLabel: string;
+  let icon: React.ReactNode;
 
   if (item.kind === "ROOM_INVITE") {
     icon = Icons.camera;
@@ -246,6 +268,44 @@ function NotificationRow({
     subtitle =
       (data.room_name as string) || (data.room_code as string) || "";
     actionLabel = t("notifications:recordingPermission.openRoom");
+  } else if (item.kind === "ASSESSMENT_GRADED") {
+    icon = Icons.exam;
+    title = t("notifications:assessmentGraded.title");
+    subtitle = t("notifications:assessmentGraded.subtitle", {
+      title: data.assessment_title ?? "",
+      score: data.score ?? "",
+      totalPoints: data.total_points ?? ""
+    });
+    actionLabel = t("notifications:assessmentGraded.view");
+  } else if (item.kind === "INVOICE_CREATED") {
+    icon = Icons.barChart;
+    title = t("notifications:invoiceCreated.title");
+    subtitle = t("notifications:invoiceCreated.subtitle", {
+      invoiceNumber: data.invoice_number ?? "",
+      amount: data.amount ?? ""
+    });
+    actionLabel = t("notifications:invoiceCreated.pay");
+  } else if (item.kind === "INVOICE_UPDATED") {
+    icon = Icons.barChart;
+    title = t("notifications:invoiceUpdated.title");
+    subtitle = t("notifications:invoiceUpdated.subtitle", {
+      invoiceNumber: data.invoice_number ?? "",
+      status: t(`common:status.${data.status}`, { defaultValue: data.status })
+    });
+    actionLabel = t("notifications:invoiceUpdated.view");
+  } else if (item.kind === "SESSION_STARTED") {
+    icon = Icons.camera;
+    title = t("notifications:sessionStarted.title");
+    subtitle = t("notifications:sessionStarted.subtitle", {
+      className: data.class_name ?? "",
+      hostName: data.host_name ?? ""
+    });
+    actionLabel = t("notifications:sessionStarted.join");
+  } else {
+    icon = Icons.bell;
+    title = (data.title as string) || "Notification";
+    subtitle = (data.message as string) || "";
+    actionLabel = "View";
   }
 
   return (

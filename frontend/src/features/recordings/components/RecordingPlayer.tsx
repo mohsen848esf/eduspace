@@ -5,6 +5,7 @@ import recordingsApi from "../api/recordings.api";
 
 interface RecordingPlayerProps {
   token: string;
+  quality?: string;
   // Hint to seek the player to this time on the next load (used by trim preview).
   startSeconds?: number;
   className?: string;
@@ -18,6 +19,7 @@ interface RecordingPlayerProps {
    */
   trackProgress?: boolean;
 }
+
 
 const HEARTBEAT_INTERVAL_MS = 5_000;
 
@@ -38,6 +40,7 @@ const HEARTBEAT_INTERVAL_MS = 5_000;
  */
 export default function RecordingPlayer({
   token,
+  quality,
   startSeconds,
   className,
   controls = true,
@@ -49,18 +52,24 @@ export default function RecordingPlayer({
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const seekTimeRef = useRef<number | null>(null);
+
+  // Capture current play position when quality changes to resume seamlessly
+  useEffect(() => {
+    if (videoRef.current && Number.isFinite(videoRef.current.currentTime) && videoRef.current.currentTime > 0) {
+      seekTimeRef.current = videoRef.current.currentTime;
+    }
+  }, [quality]);
+
 
   useEffect(() => {
     let cancelled = false;
-    setIsLoading(true);
-    setError(null);
-    setBlobUrl(null);
 
     const fetchVideo = async () => {
       try {
         const accessToken = localStorage.getItem("access_token");
         if (!accessToken) throw new Error("not authenticated");
-        const res = await fetch(recordingsApi.streamUrl(token), {
+        const res = await fetch(recordingsApi.streamUrl(token, quality), {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (!res.ok) throw new Error(`stream ${res.status}`);
@@ -76,12 +85,19 @@ export default function RecordingPlayer({
       }
     };
 
-    fetchVideo();
+    const loadTimer = window.setTimeout(() => {
+      setIsLoading(true);
+      setError(null);
+      setBlobUrl(null);
+      void fetchVideo();
+    }, 0);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(loadTimer);
     };
-  }, [token]);
+  }, [token, quality]);
+
 
   // Revoke previous blob URL when it changes / component unmounts.
   useEffect(() => {
@@ -92,11 +108,15 @@ export default function RecordingPlayer({
 
   // Apply requested seek when the video has buffered enough data.
   useEffect(() => {
-    if (!videoRef.current || !blobUrl || startSeconds == null) return;
+    if (!videoRef.current || !blobUrl) return;
     const v = videoRef.current;
+    const targetSeconds = seekTimeRef.current ?? startSeconds;
+    if (targetSeconds == null) return;
+
     const apply = () => {
       try {
-        v.currentTime = startSeconds;
+        v.currentTime = targetSeconds;
+        seekTimeRef.current = null;
       } catch {
         // Some browsers throw if the duration isn't known yet; the
         // 'loadedmetadata' listener below covers that case.
@@ -105,6 +125,82 @@ export default function RecordingPlayer({
     if (v.readyState >= 1) apply();
     else v.addEventListener("loadedmetadata", apply, { once: true });
   }, [blobUrl, startSeconds]);
+
+
+  // Keydown event listener for video player hotkeys (Space for play/pause, Arrows for seek/volume, M for mute)
+  useEffect(() => {
+    if (!blobUrl || !videoRef.current) return;
+    const v = videoRef.current;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore shortcut keypresses if the focus is on a text field or interactive form element
+      const active = document.activeElement;
+      if (active) {
+        const tagName = active.tagName.toLowerCase();
+        const contentEditable = active.getAttribute("contenteditable");
+        if (
+          tagName === "input" ||
+          tagName === "textarea" ||
+          tagName === "select" ||
+          contentEditable === "true" ||
+          contentEditable === ""
+        ) {
+          return;
+        }
+      }
+
+      switch (e.code) {
+        case "Space":
+          e.preventDefault();
+          if (v.paused) {
+            v.play().catch(() => {});
+          } else {
+            v.pause();
+          }
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          if (e.shiftKey) {
+            // Frame scrub: 0.1s back
+            v.currentTime = Math.max(0, v.currentTime - 0.1);
+          } else {
+            // Seek 5s back
+            v.currentTime = Math.max(0, v.currentTime - 5);
+          }
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          if (e.shiftKey) {
+            // Frame scrub: 0.1s forward
+            v.currentTime = Math.min(v.duration || Infinity, v.currentTime + 0.1);
+          } else {
+            // Seek 5s forward
+            v.currentTime = Math.min(v.duration || Infinity, v.currentTime + 5);
+          }
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          v.volume = Math.min(1, v.volume + 0.05);
+          v.muted = false;
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          v.volume = Math.max(0, v.volume - 0.05);
+          break;
+        case "KeyM":
+          e.preventDefault();
+          v.muted = !v.muted;
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [blobUrl]);
 
   // Heartbeat reporter for watch tracking (non-owner only). We send a
   // ping every HEARTBEAT_INTERVAL_MS while playing, and on pause/seeked

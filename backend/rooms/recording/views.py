@@ -51,7 +51,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status as http
 from rest_framework.decorators import (
-    api_view, authentication_classes, permission_classes,
+    api_view, authentication_classes, permission_classes, throttle_classes,
 )
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -138,6 +138,8 @@ def _serialize(recording: Recording, *, detail: bool = False, viewer=None) -> di
         ),
         'is_published': recording.is_published,
         'is_link_shared': recording.is_link_shared,
+        'session': recording.session_id,
+        'occurrence': recording.occurrence_id,
         'segment_count': recording.segments.count(),
     }
     if detail:
@@ -385,18 +387,195 @@ def resume_recording(request, room_code: str):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@throttle_classes([])
 def recording_status(request, room_code: str):
     room = _get_room_or_404(room_code)
     if not room:
         return Response({'error': 'Room not found'}, status=http.HTTP_404_NOT_FOUND)
-    forbidden = _require_participant(request, room)
-    if forbidden:
-        return forbidden
 
     recording = _active_recording(room)
     if recording is None:
         return Response({'status': 'idle', 'recording': None})
     return Response({'status': recording.status, 'recording': _serialize(recording)})
+
+
+def _finalize_client_recording_bg(recording_pk: int):
+    from django.db import connection
+    connection.close()
+
+    try:
+        recording = Recording.objects.get(pk=recording_pk)
+        chunks_dir = Path(settings.RECORDING_OUTPUT_DIR) / recording.public_token / 'chunks'
+        if not chunks_dir.exists():
+            logger.error("Chunks directory %s does not exist", chunks_dir)
+            recording.status = Recording.Status.FAILED
+            recording.save(update_fields=['status'])
+            return
+
+        # Find and sort chunks by index
+        chunk_files = sorted(chunks_dir.glob('chunk_*.webm'), key=lambda p: int(p.name.split('_')[1].split('.')[0]))
+        if not chunk_files:
+            logger.error("No chunks found in %s", chunks_dir)
+            recording.status = Recording.Status.FAILED
+            recording.save(update_fields=['status'])
+            return
+
+        final_path = Path(settings.RECORDING_OUTPUT_DIR) / recording.public_token / 'final.mp4'
+        final_path.parent.mkdir(parents=True, exist_ok=True)
+
+        ffmpeg_ops.concat_webm_to_mp4(chunk_files, final_path)
+
+        probe_result = ffmpeg_ops.probe(final_path)
+
+        recording.file_path = f'{recording.public_token}/final.mp4'
+        recording.duration_seconds = int(round(probe_result.duration_seconds))
+        recording.size_bytes = probe_result.size_bytes
+        recording.status = Recording.Status.COMPLETED
+        recording.completed_at = timezone.now()
+        recording.save(update_fields=['file_path', 'duration_seconds', 'size_bytes', 'status', 'completed_at'])
+
+        # Clean up chunks
+        try:
+            shutil.rmtree(chunks_dir)
+        except OSError:
+            logger.exception('failed to remove chunks dir %s', chunks_dir)
+
+        logger.info("Successfully finalized client-side recording %s", recording.public_token)
+    except Exception:
+        logger.exception("Failed to finalize client-side recording in background")
+        try:
+            recording = Recording.objects.get(pk=recording_pk)
+            recording.status = Recording.Status.FAILED
+            recording.save(update_fields=['status'])
+        except Exception:
+            pass
+    finally:
+        from django.db import connection
+        connection.close()
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def start_client_recording(request, room_code: str):
+    """
+    Initialize a client-side recording session.
+    """
+    room = _get_room_or_404(room_code)
+    if not room:
+        return Response({'error': 'Room not found'}, status=http.HTTP_404_NOT_FOUND)
+    forbidden = _require_recording_controller(request, room)
+    if forbidden:
+        return forbidden
+
+    if room.status == Room.Status.ENDED:
+        return Response(
+            {'error': 'Cannot record an ended room'},
+            status=http.HTTP_400_BAD_REQUEST,
+        )
+
+    if _active_recording(room):
+        return Response(
+            {'error': 'A recording is already in progress for this room'},
+            status=http.HTTP_409_CONFLICT,
+        )
+
+    quality = (request.data.get('quality') or '').strip().lower()
+    if quality not in {'720p', '1080p'}:
+        from django.conf import settings as dj_settings
+        quality = dj_settings.RECORDING_DEFAULT_QUALITY
+
+    with transaction.atomic():
+        recording = Recording.objects.create(
+            room=room,
+            owner=request.user,
+            quality=quality,
+            status=Recording.Status.RECORDING,
+        )
+
+    logger.info('client_recording.start room=%s token=%s', room.room_code, recording.public_token)
+    return Response(_serialize(recording), status=http.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_recording_chunk(request, token: str):
+    """
+    Upload a single 10-second WebM recording chunk.
+    """
+    recording = _get_recording_or_404(token)
+    if recording is None:
+        return Response({'error': 'Recording not found'}, status=http.HTTP_404_NOT_FOUND)
+
+    if recording.owner_id != request.user.id and not request.user.is_superuser:
+        return Response(
+            {'error': 'Only the owner can upload chunks to this recording'},
+            status=http.HTTP_403_FORBIDDEN,
+        )
+
+    chunk_file = request.FILES.get('chunk')
+    if not chunk_file:
+        return Response({'error': 'No chunk file provided'}, status=http.HTTP_400_BAD_REQUEST)
+
+    try:
+        index = int(request.data.get('index'))
+    except (TypeError, ValueError):
+        return Response({'error': 'Invalid chunk index'}, status=http.HTTP_400_BAD_REQUEST)
+
+    chunks_dir = Path(settings.RECORDING_OUTPUT_DIR) / recording.public_token / 'chunks'
+    chunks_dir.mkdir(parents=True, exist_ok=True)
+    chunk_path = chunks_dir / f'chunk_{index}.webm'
+
+    try:
+        with open(chunk_path, 'wb+') as destination:
+            for block in chunk_file.chunks():
+                destination.write(block)
+    except Exception as exc:
+        logger.exception("Failed to write chunk %d for recording %s", index, token)
+        return Response({'error': f'Failed to write chunk: {exc}'}, status=http.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    return Response({'success': True, 'index': index})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def complete_client_recording(request, token: str):
+    """
+    Mark a client-side recording session as complete and trigger background concatenation.
+    """
+    recording = _get_recording_or_404(token)
+    if recording is None:
+        return Response({'error': 'Recording not found'}, status=http.HTTP_404_NOT_FOUND)
+
+    if recording.owner_id != request.user.id and not request.user.is_superuser:
+        return Response(
+            {'error': 'Only the owner can finalize this recording'},
+            status=http.HTTP_403_FORBIDDEN,
+        )
+
+    if recording.status != Recording.Status.RECORDING:
+        return Response(
+            {'error': 'Recording is not in recording state'},
+            status=http.HTTP_409_CONFLICT,
+        )
+
+    recording.status = Recording.Status.PROCESSING
+    recording.save(update_fields=['status'])
+
+    from rooms.tasks import finalize_client_recording_task
+    from django.db import transaction
+    if settings.DEBUG:
+        import threading
+        transaction.on_commit(lambda: threading.Thread(
+            target=finalize_client_recording_task,
+            args=(recording.pk,)
+        ).start())
+    else:
+        transaction.on_commit(lambda: finalize_client_recording_task.delay(recording.pk))
+
+    logger.info('client_recording.complete token=%s triggered Celery background task', token)
+    return Response(_serialize(recording))
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -405,29 +584,11 @@ def recording_status(request, room_code: str):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@throttle_classes([])
 def recording_permission(request, room_code: str):
-    """
-    Returns whether the requesting user is allowed to control recording
-    in this room, plus (host-only) the list of currently authorized
-    non-host participants. Endpoint is participant-readable so each
-    user's own UI can decide whether to surface the record buttons.
-
-    Response shape:
-        {
-            "can_control": <bool>,
-            "is_host":     <bool>,
-            "grants":      [{user_id, username, full_name}, ...] | null
-        }
-    `grants` is null for non-hosts (they don't need to know who else
-    is allowed; their own permission is in `can_control`).
-    """
     room = _get_room_or_404(room_code)
     if not room:
         return Response({'error': 'Room not found'}, status=http.HTTP_404_NOT_FOUND)
-
-    forbidden = _require_participant(request, room)
-    if forbidden:
-        return forbidden
 
     is_host = room.host_id == request.user.id
     can_control = room.can_control_recording(request.user)
@@ -522,33 +683,36 @@ def set_recording_permission(request, room_code: str):
     else:
         room.recording_grants.remove(target)
 
-    # Real-time notification so the grantee's UI flips immediately.
-    layer = get_channel_layer()
-    if layer:
-        try:
-            async_to_sync(layer.group_send)(
-                f'notifications_{target.id}',
-                {
-                    'type': 'send_notification',
-                    'data': {
-                        'type': (
-                            'RECORDING_PERMISSION_GRANTED'
-                            if granted
-                            else 'RECORDING_PERMISSION_REVOKED'
-                        ),
-                        'room_code': room.room_code,
-                        'room_name': room.name or room.room_code,
-                        'from': (
-                            request.user.full_name or request.user.username
-                        ),
-                    },
-                },
-            )
-        except Exception:
-            logger.exception(
-                'failed to notify recording-permission change to user=%s',
-                target.id,
-            )
+    # Persist + push the notification so the grantee's UI flips
+    # immediately AND they have a record of the grant/revoke even if
+    # they were offline.
+    from accounts.notifications import record_and_dispatch
+    try:
+        record_and_dispatch(
+            target.id,
+            (
+                'RECORDING_PERMISSION_GRANTED'
+                if granted
+                else 'RECORDING_PERMISSION_REVOKED'
+            ),
+            {
+                'type': (
+                    'RECORDING_PERMISSION_GRANTED'
+                    if granted
+                    else 'RECORDING_PERMISSION_REVOKED'
+                ),
+                'room_code': room.room_code,
+                'room_name': room.name or room.room_code,
+                'from': (
+                    request.user.full_name or request.user.username
+                ),
+            },
+        )
+    except Exception:
+        logger.exception(
+            'failed to notify recording-permission change to user=%s',
+            target.id,
+        )
 
     logger.info(
         'recording permission %s for user=%s room=%s',
@@ -666,6 +830,15 @@ def list_recordings(request):
     if published is not None:
         qs = qs.filter(is_published=str(published).lower() == 'true')
 
+    q = request.query_params.get('q')
+    if q:
+        qs = qs.filter(
+            Q(room__room_code__icontains=q) |
+            Q(room__name__icontains=q) |
+            Q(owner__username__icontains=q) |
+            Q(owner__full_name__icontains=q)
+        )
+
     items = []
     for rec in qs[:200]:  # cap to avoid runaway responses
         payload = _serialize(rec, detail=True, viewer=request.user)
@@ -709,10 +882,13 @@ def recording_detail_or_delete(request, token: str):
             status=http.HTTP_403_FORBIDDEN,
         )
     if rec.is_active:
-        return Response(
-            {'error': 'Cannot delete a recording that is still in progress'},
-            status=http.HTTP_409_CONFLICT,
-        )
+        # Stop any active egress segment
+        last_segment = rec.segments.order_by('-index').first()
+        if last_segment and last_segment.egress_id and rec.status != Recording.Status.PAUSED:
+            try:
+                service.stop_egress(last_segment.egress_id)
+            except Exception:
+                logger.warning('Failed to stop egress %s during delete', last_segment.egress_id)
 
     rec_dir: Path = settings.RECORDING_OUTPUT_DIR / rec.public_token
     if rec_dir.exists():
@@ -760,7 +936,27 @@ def stream_recording(request, token: str):
             status=http.HTTP_409_CONFLICT,
         )
 
-    abs_path: Path = settings.RECORDING_OUTPUT_DIR / rec.file_path
+    # Check for requested quality (e.g. ?quality=720p or ?quality=1080p)
+    quality = request.GET.get('quality')
+    file_path = rec.file_path
+    if quality in ('720p', '1080p'):
+        p = Path(file_path)
+        quality_file_path = f"{p.parent}/{p.stem}_{quality}{p.suffix}"
+        
+        if getattr(settings, 'S3_ENABLED', False):
+            file_path = quality_file_path
+        else:
+            abs_quality_path = settings.RECORDING_OUTPUT_DIR / quality_file_path
+            if abs_quality_path.exists():
+                file_path = quality_file_path
+
+    # Redirect to CDN if S3 and CDN are enabled
+    if getattr(settings, 'S3_ENABLED', False) and getattr(settings, 'CDN_URL', ''):
+        cdn_url = f"{settings.CDN_URL.rstrip('/')}/{file_path}"
+        from django.http import HttpResponseRedirect
+        return HttpResponseRedirect(cdn_url)
+
+    abs_path: Path = settings.RECORDING_OUTPUT_DIR / file_path
     if not abs_path.exists():
         logger.error(
             'recording %s missing on disk: expected %s',
@@ -771,8 +967,6 @@ def stream_recording(request, token: str):
             status=http.HTTP_410_GONE,
         )
 
-    # File name surfaced to the browser. Title-cased on the server side
-    # so the user sees something sensible if they save the file.
     filename = f'eduspace-{rec.room.room_code}-{rec.public_token}.mp4'
     return serve_video_with_range(
         abs_path,
@@ -793,34 +987,33 @@ def _finalize_path(recording: Recording) -> Path:
 
 def _send_publish_notifications(recording: Recording, target_user_ids: list[int]) -> None:
     """
-    Notify each target user via the existing NotificationConsumer group.
-    Best-effort: failures are logged but don't fail the publish.
+    Notify each target user via the existing NotificationConsumer group
+    AND persist a Notification row so a recipient who was offline still
+    sees the share when they next log in. Best-effort: failures are
+    logged but don't fail the publish.
     """
     if not target_user_ids:
         return
-    layer = get_channel_layer()
-    if not layer:
-        logger.warning('channel layer unavailable; skipping publish notifications')
-        return
+
+    from accounts.notifications import record_and_dispatch_many
 
     sender = recording.owner
-    payload = {
-        'type': 'send_notification',
-        'data': {
-            'type': 'RECORDING_PUBLISHED',
-            'recording_token': recording.public_token,
-            'room_code': recording.room.room_code,
-            'room_name': recording.room.name or recording.room.room_code,
-            'from': sender.full_name or sender.username,
-            'duration_seconds': recording.duration_seconds,
-            'watch_link': f'/recordings/{recording.public_token}',
-        },
+    data = {
+        'type': 'RECORDING_PUBLISHED',
+        'recording_token': recording.public_token,
+        'room_code': recording.room.room_code,
+        'room_name': recording.room.name or recording.room.room_code,
+        'from': sender.full_name or sender.username,
+        'duration_seconds': recording.duration_seconds,
+        'watch_link': f'/recordings/{recording.public_token}',
     }
-    for user_id in target_user_ids:
-        try:
-            async_to_sync(layer.group_send)(f'notifications_{user_id}', payload)
-        except Exception:
-            logger.exception('failed to deliver RECORDING_PUBLISHED to user=%s', user_id)
+    try:
+        record_and_dispatch_many(target_user_ids, 'RECORDING_PUBLISHED', data)
+    except Exception:
+        logger.exception(
+            'failed to deliver RECORDING_PUBLISHED batch to %d users',
+            len(target_user_ids),
+        )
 
 
 @api_view(['POST'])
@@ -886,67 +1079,16 @@ def finalize_recording(request, token: str):
             status=http.HTTP_410_GONE,
         )
 
-    final_path = _finalize_path(rec)
-    final_path.parent.mkdir(parents=True, exist_ok=True)
-    intermediate_path = final_path.with_suffix('.concat.mp4')
+    # Put the recording into PROCESSING state
+    rec.status = Recording.Status.PROCESSING
+    rec.save(update_fields=['status'])
 
-    try:
-        # 1. Concatenate (or copy if a single segment).
-        ffmpeg_ops.concat_segments(seg_paths, intermediate_path)
+    # Delegate transcoding, scaling, S3 uploads and trim to Celery
+    from rooms.tasks import finalize_recording_task
+    from django.db import transaction
+    transaction.on_commit(lambda: finalize_recording_task.delay(rec.pk, trim_start, trim_end))
 
-        # 2. Sanity-check trim bounds against the actual concat duration.
-        probe = ffmpeg_ops.probe(intermediate_path)
-        if trim_end is not None and trim_end > probe.duration_seconds:
-            trim_end = probe.duration_seconds
-        if trim_start >= probe.duration_seconds:
-            return Response(
-                {'error': f'trim_start_seconds ({trim_start}) is past the recording end '
-                          f'({probe.duration_seconds:.2f}s)'},
-                status=http.HTTP_400_BAD_REQUEST,
-            )
-
-        # 3. Apply trim (or copy if no trim requested).
-        ffmpeg_ops.trim_inplace(
-            intermediate_path,
-            final_path,
-            start_seconds=trim_start,
-            end_seconds=trim_end,
-        )
-    except ffmpeg_ops.FFmpegError as exc:
-        logger.exception('finalize failed for token=%s', rec.public_token)
-        return Response(
-            {'error': f'Finalize failed: {exc}'},
-            status=http.HTTP_502_BAD_GATEWAY,
-        )
-    finally:
-        # Drop the intermediate concat file unless it's the final destination
-        # (single-segment edge case where trim was a no-op and concat == final).
-        if intermediate_path.exists() and intermediate_path != final_path:
-            try:
-                intermediate_path.unlink()
-            except OSError:
-                logger.exception('failed to remove intermediate %s', intermediate_path)
-
-    # Re-probe the final file so duration/size reflect the trimmed result.
-    final_probe = ffmpeg_ops.probe(final_path)
-
-    rec.file_path = f'{rec.public_token}/final.mp4'
-    rec.duration_seconds = int(round(final_probe.duration_seconds))
-    rec.size_bytes = final_probe.size_bytes
-    rec.trim_start_seconds = trim_start
-    rec.trim_end_seconds = trim_end
-    rec.save(update_fields=[
-        'file_path', 'duration_seconds', 'size_bytes',
-        'trim_start_seconds', 'trim_end_seconds',
-    ])
-
-    logger.info(
-        'finalized token=%s trim=[%.2f, %s] duration=%ds size=%dB',
-        rec.public_token, trim_start,
-        f'{trim_end:.2f}' if trim_end is not None else 'end',
-        rec.duration_seconds, rec.size_bytes,
-    )
-
+    logger.info('finalize: token=%s scheduled Celery background task', token)
     payload = _serialize(rec, detail=True, viewer=request.user)
     payload['is_owner'] = True
     return Response(payload)
@@ -1208,4 +1350,7 @@ __all__ = [
     'unpublish_recording',
     'recording_heartbeat',
     'recording_views',
+    'start_client_recording',
+    'upload_recording_chunk',
+    'complete_client_recording',
 ]

@@ -11,79 +11,323 @@ const RoomPage = lazy(() => import("../features/room/components/RoomPage"));
 const MiniAppsPage = lazy(
   () => import("../features/miniapps/components/MiniAppsPage"),
 );
-const MiniAppPlayerPage = lazy(
-  () => import("../features/miniapps/components/MiniAppPlayerPage"),
+// const RecordingsPage = lazy(
+//   () => import("../features/recordings/components/RecordingsPage"),
+// );
+// const RecordingEditPage = lazy(
+//   () => import("../features/recordings/components/RecordingEditPage"),
+// );
+// const RecordingViewPage = lazy(
+//   () => import("../features/recordings/components/RecordingViewPage"),
+// );
+const TakeAssessmentPage = lazy(
+  () => import("../features/assessments/pages/TakeAssessmentPage"),
 );
-const RecordingsPage = lazy(
-  () => import("../features/recordings/components/RecordingsPage"),
+const AssessmentResultsPage = lazy(
+  () => import("../features/assessments/pages/AssessmentResultsPage"),
 );
-const RecordingEditPage = lazy(
-  () => import("../features/recordings/components/RecordingEditPage"),
-);
-const RecordingViewPage = lazy(
-  () => import("../features/recordings/components/RecordingViewPage"),
+const ReviewSubmissionPage = lazy(
+  () => import("../features/assessments/pages/ReviewSubmissionPage"),
 );
 
-export type UserRole = "student" | "teacher" | "admin";
+// Newly disaggregated pages
+const CoursesPage = lazy(
+  () => import("../features/dashboard/components/CoursesPage"),
+);
+const CourseDetailPage = lazy(
+  () => import("../features/dashboard/components/CourseDetailPage"),
+);
+const ClassesPage = lazy(
+  () => import("../features/dashboard/components/ClassesPage"),
+);
+const ClassDetailPage = lazy(
+  () => import("../features/dashboard/components/ClassDetailPage"),
+);
+const SessionsPage = lazy(
+  () => import("../features/dashboard/components/SessionsPage"),
+);
+const AssessmentsPage = lazy(
+  () => import("../features/dashboard/components/AssessmentsPage"),
+);
+const MembersPage = lazy(
+  () => import("../features/dashboard/components/MembersPage"),
+);
+const LedgerPage = lazy(
+  () => import("../features/dashboard/components/LedgerPage"),
+);
+const InvoiceDetailPage = lazy(
+  () => import("../features/dashboard/components/InvoiceDetailPage"),
+);
+const OrgSettingsPage = lazy(
+  () => import("../features/dashboard/components/OrgSettingsPage"),
+);
+const ProfileCompletionPage = lazy(
+  () => import("../features/dashboard/components/ProfileCompletionPage"),
+);
+const LeaderboardPage = lazy(
+  () => import("../features/dashboard/components/LeaderboardPage"),
+);
+const NotificationSettingsPage = lazy(
+  () => import("../features/auth/components/NotificationSettings"),
+);
+const ChangePasswordPage = lazy(
+  () => import("../features/auth/components/ChangePasswordPage"),
+);
+const TemplateManagerPage = lazy(
+  () => import("../features/dashboard/components/TemplateManager"),
+);
+const SysAdminPage = lazy(
+  () => import("../features/sysadmin/components/SysAdminPage"),
+);
+const SubscriptionPage = lazy(
+  () => import("../features/billing/components/SubscriptionPage"),
+);
+const AssignmentDetailPage = lazy(
+  () => import("../features/assessments/pages/AssignmentDetailPage"),
+);
+const AttendanceExplorer = lazy(
+  () => import("../features/dashboard/components/AttendanceExplorer"),
+);
+const SessionDetailPage = lazy(
+  () => import("../features/dashboard/components/SessionDetailPage"),
+);
+const ReportsPage = lazy(
+  () => import("../features/dashboard/components/ReportsPage"),
+);
+const HomeworkPage = lazy(
+  () => import("../features/dashboard/components/HomeworkPage"),
+);
+const StudentPaymentsPage = lazy(
+  () => import("../features/dashboard/components/StudentPaymentsPage"),
+);
+const InboxPage = lazy(
+  () => import("../features/notifications/pages/InboxPage"),
+);
 
 export interface RouteConfig {
   path: string;
-  component: React.LazyExoticComponent<any>;
-  isPrivate: boolean;
-  roles?: UserRole[];
+  component: React.LazyExoticComponent<React.ComponentType<unknown>>;
+  isPrivate?: boolean;
+  guestOnly?: boolean;
+  requiredPermissions?: string[];
+  isSuperUserOnly?: boolean;
 }
+
+const JoinOrgPage = lazy(
+  () => import("../features/dashboard/components/JoinOrgPage"),
+);
 
 export const routes: RouteConfig[] = [
   {
     path: "/login",
     component: LoginPage,
     isPrivate: false,
+    guestOnly: true,
+  },
+  {
+    path: "/sys-admin",
+    component: SysAdminPage,
+    isPrivate: true,
+    isSuperUserOnly: true,
   },
   {
     path: "/register",
     component: RegisterPage,
     isPrivate: false,
+    guestOnly: true,
   },
   {
     path: "/dashboard",
     component: DashboardPage,
     isPrivate: true,
-    roles: ["student", "teacher", "admin"],
+  },
+  {
+    path: "/join/:orgSlug",
+    component: JoinOrgPage,
+    isPrivate: true,
+  },
+  {
+    path: "/academic/courses",
+    component: CoursesPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/academic/courses/:courseId",
+    component: CourseDetailPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/academic/classes",
+    component: ClassesPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/academic/classes/:classId",
+    component: ClassDetailPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/academic/assignments/:assignmentId",
+    component: AssignmentDetailPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/academic/homework",
+    component: HomeworkPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/academic/payments",
+    component: StudentPaymentsPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/academic/sessions",
+    component: SessionsPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_sessions"],
+  },
+  {
+    path: "/academic/attendance",
+    component: AttendanceExplorer,
+    isPrivate: true,
+    requiredPermissions: ["can_view_attendance"],
+  },
+  {
+    path: "/academic/sessions/:sessionId",
+    component: SessionDetailPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_sessions"],
+  },
+  {
+    path: "/academic/assessments",
+    component: AssessmentsPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/academic/reports",
+    component: ReportsPage,
+    isPrivate: true,
+    requiredPermissions: ["can_manage_members"],
+  },
+  {
+    path: "/crm/members",
+    component: MembersPage,
+    isPrivate: true,
+    requiredPermissions: ["can_manage_members", "can_teach_class", "can_view_attendance"],
+  },
+  {
+    path: "/finance/ledger",
+    component: LedgerPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_financials"],
+  },
+  {
+    path: "/finance/invoices/:invoiceId",
+    component: InvoiceDetailPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
+  },
+  {
+    path: "/settings/organization",
+    component: OrgSettingsPage,
+    isPrivate: true,
+    requiredPermissions: ["can_manage_members"],
+  },
+  {
+    path: "/settings/billing",
+    component: SubscriptionPage,
+    isPrivate: true,
+    requiredPermissions: ["can_manage_members"],
+  },
+  {
+    path: "/settings/profile",
+    component: ProfileCompletionPage,
+    isPrivate: true,
+  },
+  {
+    path: "/inbox",
+    component: InboxPage,
+    isPrivate: true,
+  },
+  {
+    path: "/notifications",
+    component: InboxPage,
+    isPrivate: true,
+  },
+  {
+    path: "/settings/notifications",
+    component: NotificationSettingsPage,
+    isPrivate: true,
+  },
+  {
+    path: "/settings/security/change-password",
+    component: ChangePasswordPage,
+    isPrivate: true,
+  },
+  {
+    path: "/settings/templates",
+    component: TemplateManagerPage,
+    isPrivate: true,
+    requiredPermissions: ["can_manage_members"],
+  },
+  {
+    path: "/leaderboard",
+    component: LeaderboardPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
   },
   {
     path: "/room/:roomCode",
     component: RoomPage,
-    isPrivate: true,
-    roles: ["student", "teacher", "admin"],
+    isPrivate: false,
   },
   {
     path: "/miniapps",
     component: MiniAppsPage,
     isPrivate: true,
-    roles: ["student", "teacher", "admin"],
+  },
+  // Temporarily disabled for enterprise rollout
+  // {
+  //   path: "/recordings",
+  //   component: RecordingsPage,
+  //   isPrivate: true,
+  // },
+  // {
+  //   path: "/recordings/:token",
+  //   component: RecordingViewPage,
+  //   isPrivate: true,
+  // },
+  // {
+  //   path: "/recordings/:token/edit",
+  //   component: RecordingEditPage,
+  //   isPrivate: true,
+  // },
+  {
+    path: "/assessments/take/:submissionId",
+    component: TakeAssessmentPage,
+    isPrivate: true,
+    requiredPermissions: ["can_view_dashboard"],
   },
   {
-    path: "/miniapps/play/:slug",
-    component: MiniAppPlayerPage,
+    path: "/assessments/results/:submissionId",
+    component: AssessmentResultsPage,
     isPrivate: true,
-    roles: ["student", "teacher", "admin"],
+    requiredPermissions: ["can_view_dashboard"],
   },
   {
-    path: "/recordings",
-    component: RecordingsPage,
+    path: "/assessments/review/:submissionId",
+    component: ReviewSubmissionPage,
     isPrivate: true,
-    roles: ["student", "teacher", "admin"],
-  },
-  {
-    path: "/recordings/:token",
-    component: RecordingViewPage,
-    isPrivate: true,
-    roles: ["student", "teacher", "admin"],
-  },
-  {
-    path: "/recordings/:token/edit",
-    component: RecordingEditPage,
-    isPrivate: true,
-    roles: ["student", "teacher", "admin"],
+    requiredPermissions: ["can_teach_class", "can_manage_members"],
   },
 ];
+

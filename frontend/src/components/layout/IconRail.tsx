@@ -7,6 +7,12 @@ import {
   type NavItem,
 } from "./navItems";
 
+import { useOrgPermission } from "../../hooks/useOrgPermission";
+import { useAuthStore } from "../../features/auth/store/authStore";
+import { Icons } from "../../lib/constants/icons";
+
+import { Link } from "react-router-dom";
+
 interface IconRailProps {
   activeId: string;
   onNavigate: (id: string) => void;
@@ -21,32 +27,59 @@ interface IconRailProps {
  */
 export default function IconRail({ activeId, onNavigate }: IconRailProps) {
   const { t } = useTranslation("dashboard");
+  const { user } = useAuthStore();
+  const { hasAnyPermission, activeRole } = useOrgPermission();
 
   const renderItem = (item: NavItem) => {
     const isActive = activeId === item.id;
     const label = t(item.labelKey);
+
+    const inner = (
+      <>
+        {item.icon}
+        {Boolean(item.badge) && (
+          <span className="absolute -top-1 -end-1 bg-[var(--red)] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+            {item.badge}
+          </span>
+        )}
+      </>
+    );
+
+    const itemClasses = cn(
+      "w-10 h-10 rounded-lg no-underline",
+      "flex items-center justify-center transition-colors duration-150",
+      "relative select-none",
+      isActive
+        ? "bg-[var(--brand-soft)] text-[var(--brand-text)] font-bold shadow-sm"
+        : "bg-transparent text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]"
+    );
+
+    const el = item.to ? (
+      <Link
+        key={item.id}
+        to={item.to}
+        aria-label={label}
+        aria-current={isActive ? "page" : undefined}
+        className={itemClasses}
+      >
+        {inner}
+      </Link>
+    ) : (
+      <button
+        key={item.id}
+        type="button"
+        onClick={() => onNavigate(item.id)}
+        aria-label={label}
+        aria-current={isActive ? "page" : undefined}
+        className={cn(itemClasses, "border-none cursor-pointer")}
+      >
+        {inner}
+      </button>
+    );
+
     return (
       <Tooltip key={item.id} content={label} side="right">
-        <button
-          onClick={() => onNavigate(item.id)}
-          aria-label={label}
-          aria-current={isActive ? "page" : undefined}
-          className={cn(
-            "w-10 h-10 rounded-lg border-none cursor-pointer",
-            "flex items-center justify-center transition-colors duration-150",
-            "relative",
-            isActive
-              ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
-              : "bg-transparent text-[var(--t2)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
-          )}
-        >
-          {item.icon}
-          {item.badge && (
-            <span className="absolute -top-1 -end-1 bg-[var(--red)] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
-              {item.badge}
-            </span>
-          )}
-        </button>
+        {el}
       </Tooltip>
     );
   };
@@ -67,11 +100,34 @@ export default function IconRail({ activeId, onNavigate }: IconRailProps) {
       </div>
       <div className="h-px w-8 bg-[var(--b)] my-1" />
 
-      <nav className="flex flex-col gap-1 p-1 flex-1 overflow-y-auto">
-        {mainNavItems.map(renderItem)}
-        <div className="h-px w-8 bg-[var(--b)] my-2 self-center" />
-        {manageNavItems.map(renderItem)}
-      </nav>
+      {(() => {
+        const filterNavItem = (item: NavItem): boolean => {
+          if (item.permissions && !hasAnyPermission(item.permissions)) return false;
+          if (item.roles) {
+            const normActiveRole = (activeRole || "").toLowerCase();
+            return item.roles.some((r) => r.toLowerCase() === normActiveRole);
+          }
+          return true;
+        };
+
+        return (
+          <nav className="flex flex-col gap-1 p-1 flex-1 overflow-y-auto">
+            {mainNavItems
+              .filter(filterNavItem)
+              .map(renderItem)}
+            <div className="h-px w-8 bg-[var(--b)] my-2 self-center" />
+            {manageNavItems
+              .filter(filterNavItem)
+              .map(renderItem)}
+            {user?.is_superuser && renderItem({
+              id: "sysAdmin",
+              icon: Icons.tools,
+              labelKey: "nav.sysAdmin",
+              to: "/sys-admin"
+            })}
+          </nav>
+        );
+      })()}
     </aside>
   );
 }

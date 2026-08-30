@@ -1,8 +1,10 @@
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { Icons } from "../../lib/constants/icons";
 import { cn } from "../../lib/utils";
 import { bottomNavPrimary, type NavItem } from "./navItems";
+
+import { useOrgPermission } from "../../hooks/useOrgPermission";
 
 interface BottomNavProps {
   /** Stable id of the currently selected item, or "more" when the drawer is open. */
@@ -29,12 +31,21 @@ export default function BottomNav({
   items = bottomNavPrimary,
 }: BottomNavProps) {
   const { t } = useTranslation("dashboard");
-  const navigate = useNavigate();
+  const { hasAnyPermission, activeRole } = useOrgPermission();
   const location = useLocation();
+
+  const visibleItems = items.filter((item) => {
+    if (item.permissions && !hasAnyPermission(item.permissions)) return false;
+    if (item.roles) {
+      const normActiveRole = (activeRole || "").toLowerCase();
+      return item.roles.some((r) => r.toLowerCase() === normActiveRole);
+    }
+    return true;
+  });
 
   const resolvedActive =
     activeId ??
-    items.find((item) => item.to && location.pathname.startsWith(item.to))?.id ??
+    visibleItems.find((item) => item.to && location.pathname.startsWith(item.to))?.id ??
     "";
 
   return (
@@ -50,26 +61,46 @@ export default function BottomNav({
       role="navigation"
       aria-label={t("nav.main")}
     >
-      {items.map((item) => {
+      {visibleItems.map((item) => {
         const isActive = item.id === resolvedActive;
-        return (
-          <button
-            key={item.id}
-            onClick={() => item.to && navigate(item.to)}
-            aria-current={isActive ? "page" : undefined}
-            className={cn(
-              "flex flex-col items-center justify-center gap-0.5 min-h-11",
-              "border-none bg-transparent cursor-pointer",
-              "transition-colors duration-150",
-              isActive
-                ? "text-[var(--brand-text)]"
-                : "text-[var(--t3)] hover:text-[var(--t1)]",
-            )}
-          >
+        const inner = (
+          <>
             <span className="leading-none">{item.icon}</span>
             <span className="text-[10px] font-medium leading-none">
               {t(item.labelKey)}
             </span>
+          </>
+        );
+
+        const itemClasses = cn(
+          "flex flex-col items-center justify-center gap-0.5 min-h-11 no-underline select-none",
+          "transition-colors duration-150",
+          isActive
+            ? "text-[var(--brand-text)]"
+            : "text-[var(--t3)] hover:text-[var(--t1)]",
+        );
+
+        if (item.to) {
+          return (
+            <Link
+              key={item.id}
+              to={item.to}
+              aria-current={isActive ? "page" : undefined}
+              className={itemClasses}
+            >
+              {inner}
+            </Link>
+          );
+        }
+
+        return (
+          <button
+            key={item.id}
+            type="button"
+            aria-current={isActive ? "page" : undefined}
+            className={cn(itemClasses, "border-none bg-transparent cursor-pointer")}
+          >
+            {inner}
           </button>
         );
       })}
