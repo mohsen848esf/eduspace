@@ -55,7 +55,7 @@ def sys_admin_dashboard_metrics(request):
     recording_minutes = int(total_seconds / 60)
 
     # 6. Celery queue backlogs (Redis LLEN)
-    queues = ['default', 'notifications', 'recordings', 'compliance', 'finance']
+    queues = ['default', 'notifications', 'recordings', 'media', 'compliance', 'finance']
     backlogs = {}
     try:
         r = redis.Redis.from_url(settings.CELERY_BROKER_URL)

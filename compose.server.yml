@@ -63,7 +63,7 @@ services:
     command:
       - sh
       - -ec
-      - 'mkdir -p /app/private_media/presentation_sources; chown 10001:2000 /app/media /app/media/recordings /app/private_media /app/private_media/presentation_sources /app/staticfiles; chmod 2775 /app/media /app/staticfiles; chmod 2770 /app/media/recordings /app/private_media /app/private_media/presentation_sources'
+      - 'mkdir -p /app/private_media/presentation_sources /app/private_media/media_inspection; chown 10001:2000 /app/media /app/media/recordings /app/private_media /app/private_media/presentation_sources /app/private_media/media_inspection /app/staticfiles; chmod 2775 /app/media /app/staticfiles; chmod 2770 /app/media/recordings /app/private_media /app/private_media/presentation_sources /app/private_media/media_inspection'
   backend:
     <<: *app
     depends_on:
@@ -82,6 +82,20 @@ services:
     depends_on:
       backend: {condition: service_healthy}
       gotenberg: {condition: service_healthy}
+  media-worker:
+    <<: *app
+    command: [celery, -A, config, worker, --loglevel=info, '--queues=media', '--concurrency=1', '--hostname=media@%h']
+    depends_on:
+      backend: {condition: service_healthy}
+    mem_limit: 1g
+    cpus: 2
+  media-ingest-worker:
+    <<: *app
+    command: [celery, -A, config, worker, --loglevel=info, '--queues=media-ingest', '--concurrency=1', '--hostname=media-ingest@%h']
+    depends_on:
+      backend: {condition: service_healthy}
+    mem_limit: 1g
+    cpus: 2
   beat:
     <<: *app
     command: [celery, -A, config, beat, --loglevel=info, '--pidfile=/tmp/celerybeat.pid']

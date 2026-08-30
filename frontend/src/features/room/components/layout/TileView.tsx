@@ -124,9 +124,9 @@ export default function TileView({
       ? primaryTrackCandidate
       : null;
 
-  // Screen share uses object-contain with black bars; Camera uses object-cover with centered face
+  // Screen share preserves the full frame; camera fills the tile.
   const fitClass =
-    kind === "screen" ? "object-contain bg-black" : "object-cover";
+    kind === "screen" ? "object-contain object-center" : "object-cover object-center";
 
   return (
     <div
@@ -145,10 +145,15 @@ export default function TileView({
     >
       {/* Video stream or Avatar */}
       {primaryTrack ? (
-        <div className="absolute inset-0 w-full h-full rounded-[inherit] overflow-hidden bg-transparent [&_video]:w-full [&_video]:h-full [&_video]:rounded-[inherit] [&_video]:object-cover">
+        <div
+          className={cn(
+            "absolute inset-0 flex h-full w-full items-center justify-center rounded-[inherit] overflow-hidden",
+            kind === "screen" ? "bg-black p-1 md:p-1.5" : "bg-transparent",
+          )}
+        >
           <VideoTrack
             trackRef={primaryTrack}
-            className={cn("w-full h-full rounded-[inherit]", fitClass)}
+            className={cn("block h-full w-full max-h-full max-w-full rounded-[inherit]", fitClass)}
             style={isLocal && kind === "camera" ? { transform: "scaleX(-1)" } : undefined}
           />
         </div>
@@ -214,16 +219,17 @@ export default function TileView({
 
       {/* Hover Action Overlay */}
       {showActions && hovered && (
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center gap-2.5 fade-in z-20">
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center gap-2.5 fade-in [&_button]:pointer-events-auto">
           <Tooltip content={pinned ? t("tile.unpin") || "Unpin" : t("tile.pin") || "Pin"}>
             <button
               type="button"
+              aria-label={pinned ? t("tile.unpin") || "Unpin" : t("tile.pin") || "Pin"}
               className={cn(
-                "rounded-full border-none cursor-pointer text-white flex items-center justify-center transition-all active:scale-90 shadow-md",
+                "rounded-full border border-white/15 cursor-pointer text-white flex items-center justify-center transition-all active:scale-90 shadow-lg backdrop-blur-sm",
                 compact ? "w-8 h-8 text-xs" : "w-10 h-10 text-sm",
                 pinned
                   ? "bg-[var(--brand)] hover:brightness-110"
-                  : "bg-white/20 hover:bg-white/30"
+                  : "bg-black/65 hover:bg-black/85"
               )}
               onClick={() => onTogglePin(key)}
             >
@@ -238,6 +244,7 @@ export default function TileView({
                 <Tooltip content={t("host.lowerHand") || "Lower Hand"}>
                   <button
                     type="button"
+                    aria-label={t("host.lowerHand") || "Lower Hand"}
                     className={cn(
                       "rounded-full border-none cursor-pointer text-white flex items-center justify-center transition-all active:scale-90 bg-[var(--amber)] hover:brightness-110 shadow-md",
                       compact ? "w-8 h-8 text-xs" : "w-10 h-10 text-sm"
@@ -258,12 +265,15 @@ export default function TileView({
               >
                 <button
                   type="button"
+                  aria-label={mutedByHost?.has(participant.identity)
+                    ? t("tile.unmute") || "Unmute"
+                    : t("tile.mute") || "Mute"}
                   className={cn(
-                    "rounded-full border-none cursor-pointer text-white flex items-center justify-center transition-all active:scale-90 shadow-md",
+                    "rounded-full border border-white/15 cursor-pointer text-white flex items-center justify-center transition-all active:scale-90 shadow-lg backdrop-blur-sm",
                     compact ? "w-8 h-8 text-xs" : "w-10 h-10 text-sm",
                     mutedByHost?.has(participant.identity)
                       ? "bg-[var(--amber)] hover:brightness-110"
-                      : "bg-white/20 hover:bg-[var(--amber)]/70"
+                      : "bg-black/65 hover:bg-[var(--amber)]/80"
                   )}
                   onClick={() => onMute?.(participant as RemoteParticipant)}
                 >
@@ -274,8 +284,9 @@ export default function TileView({
               <Tooltip content={t("tile.remove") || "Remove"}>
                 <button
                   type="button"
+                  aria-label={t("tile.remove") || "Remove"}
                   className={cn(
-                    "rounded-full bg-white/20 hover:bg-[var(--red)] border-none cursor-pointer text-white flex items-center justify-center transition-all active:scale-90 shadow-md",
+                    "rounded-full bg-black/65 hover:bg-[var(--red)] border border-white/15 cursor-pointer text-white flex items-center justify-center transition-all active:scale-90 shadow-lg backdrop-blur-sm",
                     compact ? "w-8 h-8 text-xs" : "w-10 h-10 text-sm"
                   )}
                   onClick={() => onKick?.(participant as RemoteParticipant)}

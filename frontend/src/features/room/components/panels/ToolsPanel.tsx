@@ -30,6 +30,7 @@ export default function ToolsPanel() {
   } = useRoomWhiteboard();
   const {
     isHost,
+    isCoHost,
     activePresentation,
     isPresentationMinimized,
     setIsPresentationMinimized,
@@ -40,6 +41,7 @@ export default function ToolsPanel() {
   const isWhiteboardActive = whiteboardState.isActive;
   const isWhiteboardMinimized = whiteboardState.isMinimized;
   const isPresActive = !!activePresentation;
+  const canModerate = isHost || isCoHost;
 
   const gameTool = isGameActive
     ? {
@@ -156,6 +158,15 @@ export default function ToolsPanel() {
       ];
 
   const tools = [
+    {
+      icon: "🎬",
+      name: t("sharedMedia.libraryTitle", "سینمای آنلاین"),
+      desc: t("sharedMedia.toolDescription", "آپلود و پخش همزمان ویدئو برای همه"),
+      status: "ready" as const,
+      onClick: () => window.dispatchEvent(new CustomEvent("eduspace:open-shared-media-library")),
+      bg: "bg-[rgba(56,189,248,0.15)]",
+      disabled: !canModerate,
+    },
     gameTool,
     ...whiteboardTools,
     ...presentationTools,

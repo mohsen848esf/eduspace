@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'accounts',
     'games',
     'rooms',
+    'media_library',
     'assessments',
     'corsheaders',
     'notifications',
@@ -146,6 +147,10 @@ CELERY_TASK_ROUTES = {
     'rooms.tasks.finalize_client_recording_task': {'queue': 'recordings'},
     'rooms.tasks.finalize_recording_task': {'queue': 'recordings'},
     'rooms.tasks.convert_presentation_document_task': {'queue': 'documents'},
+    'media_library.tasks.inspect_media_asset_task': {'queue': 'media'},
+    'media_library.tasks.transcode_media_asset_task': {'queue': 'media'},
+    'media_library.tasks.verify_progressive_media_chunk_task': {'queue': 'media'},
+    'media_library.tasks.ingest_progressive_media_upload_task': {'queue': 'media-ingest'},
     'accounts.tasks.export_audit_logs_task': {'queue': 'compliance'},
     'accounts.tasks.monthly_generate_billing_and_usage_reports': {'queue': 'finance'},
     'accounts.tasks.weekly_recalculate_reports_and_storage': {'queue': 'finance'},
@@ -275,7 +280,54 @@ AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID', '')
 AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY', '')
 AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME', '')
 AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL', None)
+AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'us-east-1')
+AWS_S3_ADDRESSING_STYLE = os.getenv('AWS_S3_ADDRESSING_STYLE', 'auto')
 CDN_URL = os.getenv('CDN_URL', '')
+MEDIA_UPLOAD_MAX_SIZE_BYTES = int(os.getenv('MEDIA_UPLOAD_MAX_SIZE_BYTES', str(10 * 1024**3)))
+MEDIA_UPLOAD_PART_SIZE_BYTES = int(os.getenv('MEDIA_UPLOAD_PART_SIZE_BYTES', str(8 * 1024**2)))
+MEDIA_UPLOAD_URL_TTL_SECONDS = int(os.getenv('MEDIA_UPLOAD_URL_TTL_SECONDS', '900'))
+MEDIA_UPLOAD_SESSION_TTL_SECONDS = int(os.getenv('MEDIA_UPLOAD_SESSION_TTL_SECONDS', '86400'))
+MEDIA_PROGRESSIVE_UPLOAD_ENABLED = os.getenv(
+    'MEDIA_PROGRESSIVE_UPLOAD_ENABLED', 'False',
+).lower() == 'true'
+MEDIA_PROGRESSIVE_CHUNK_SIZE_BYTES = int(os.getenv(
+    'MEDIA_PROGRESSIVE_CHUNK_SIZE_BYTES', str(8 * 1024**2),
+))
+MEDIA_PROGRESSIVE_PREFIX_PROBE_BYTES = int(os.getenv(
+    'MEDIA_PROGRESSIVE_PREFIX_PROBE_BYTES', str(2 * 1024**2),
+))
+MEDIA_PROGRESSIVE_MIN_PLAYABLE_SECONDS = int(os.getenv(
+    'MEDIA_PROGRESSIVE_MIN_PLAYABLE_SECONDS', '12',
+))
+MEDIA_PROGRESSIVE_INGEST_ENABLED = os.getenv(
+    'MEDIA_PROGRESSIVE_INGEST_ENABLED', 'False',
+).lower() == 'true'
+MEDIA_PROGRESSIVE_INGEST_POLL_SECONDS = float(os.getenv(
+    'MEDIA_PROGRESSIVE_INGEST_POLL_SECONDS', '0.5',
+))
+MEDIA_PROGRESSIVE_INGEST_TIMEOUT_SECONDS = int(os.getenv(
+    'MEDIA_PROGRESSIVE_INGEST_TIMEOUT_SECONDS', '18000',
+))
+MEDIA_PROGRESSIVE_INGEST_LEASE_SECONDS = int(os.getenv(
+    'MEDIA_PROGRESSIVE_INGEST_LEASE_SECONDS', '30',
+))
+MEDIA_PROGRESSIVE_SEEK_GUARD_MS = int(os.getenv(
+    'MEDIA_PROGRESSIVE_SEEK_GUARD_MS', '8000',
+))
+MEDIA_INSPECTION_TIMEOUT_SECONDS = int(os.getenv('MEDIA_INSPECTION_TIMEOUT_SECONDS', '45'))
+MEDIA_MAX_DURATION_SECONDS = int(os.getenv('MEDIA_MAX_DURATION_SECONDS', '14400'))
+MEDIA_MAX_WIDTH = int(os.getenv('MEDIA_MAX_WIDTH', '7680'))
+MEDIA_MAX_HEIGHT = int(os.getenv('MEDIA_MAX_HEIGHT', '4320'))
+MEDIA_INSPECTION_TMP_ROOT = Path(
+    os.getenv('MEDIA_INSPECTION_TMP_ROOT', BASE_DIR / 'private_media' / 'media_inspection')
+)
+MEDIA_TRANSCODE_TIMEOUT_SECONDS = int(os.getenv('MEDIA_TRANSCODE_TIMEOUT_SECONDS', '7200'))
+MEDIA_TRANSCODE_THREADS = int(os.getenv('MEDIA_TRANSCODE_THREADS', '2'))
+MEDIA_PLAYBACK_TICKET_TTL_SECONDS = int(os.getenv('MEDIA_PLAYBACK_TICKET_TTL_SECONDS', '900'))
+MEDIA_PLAYBACK_OBJECT_URL_TTL_SECONDS = int(os.getenv('MEDIA_PLAYBACK_OBJECT_URL_TTL_SECONDS', '1200'))
+MEDIA_PLAYBACK_DIRECT_OBJECT_URLS = os.getenv(
+    'MEDIA_PLAYBACK_DIRECT_OBJECT_URLS', 'False',
+).lower() == 'true'
 
 
 # ---------------------------------------------------------------------------
