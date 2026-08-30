@@ -79,6 +79,24 @@ RELEASE_TAG=production
 
 پورت‌ها و IP فقط در همین env تعریف می‌شوند. Compose فایل داخلی LiveKit را از همین مقادیر تولید می‌کند؛ فایل `livekit.yaml` دیگری نسازید و mount نکنید. بنابراین پورت publishشده و پورتی که LiveKit advertise می‌کند همیشه یکی است.
 
+### ذخیره‌سازی سینمای آنلاین
+
+آپلود و پخش HLS سینمای آنلاین مستقیماً به یک object storage سازگار با S3 نیاز دارد و روی فایل‌سیستم کانتینر ذخیره نمی‌شود. این مقادیر را قبل از اجرای stack در `.deploy/production.env` قرار دهید:
+
+```dotenv
+S3_ENABLED=True
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_STORAGE_BUCKET_NAME=eduspace-media
+AWS_S3_ENDPOINT_URL=                 # برای AWS خالی؛ برای R2/MinIO آدرس HTTPS سرویس
+AWS_S3_REGION_NAME=us-east-1        # برای Cloudflare R2 مقدار auto
+AWS_S3_ADDRESSING_STYLE=auto
+MEDIA_PROGRESSIVE_UPLOAD_ENABLED=False
+MEDIA_PROGRESSIVE_INGEST_ENABLED=False
+```
+
+روی bucket باید CORS مبدأ برنامه اجازهٔ `PUT` امضاشده بدهد و header `ETag` را expose کند. پس از اطمینان از سلامت media-worker و اجرای FFmpeg، هر دو فلگ progressive را `True` کنید تا پخش حین آپلود فعال شود؛ در غیر این صورت مسیر آپلود resumable کامل استفاده می‌شود. نبودن این تنظیمات عمداً باعث پاسخ `503 STORAGE_NOT_CONFIGURED` در endpoint آغاز آپلود می‌شود.
+
 پورت‌های عمومی نمونه:
 
 | پورت | پروتکل | کاربرد |

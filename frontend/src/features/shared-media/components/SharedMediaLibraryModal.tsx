@@ -10,6 +10,7 @@ import {
   ModalHeader,
   ModalTitle,
 } from "@/components/ui/Modal";
+import { getApiErrorData, getApiErrorMessage } from "@/lib/api/errors";
 import { sharedMediaApi } from "../api/shared-media.api";
 import { resumeMultipartUpload } from "../lib/multipartUpload";
 import { resumeProgressiveUpload } from "../lib/progressiveUpload";
@@ -66,6 +67,9 @@ export function SharedMediaLibraryModal({ open, onOpenChange, room, roomCode }: 
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const [startingToken, setStartingToken] = useState<string | null>(null);
   const [deletingToken, setDeletingToken] = useState<string | null>(null);
+  const activePlayback = useSharedPlaybackStore((state) => (
+    state.roomCode === roomCode ? state.playback : null
+  ));
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
@@ -97,6 +101,20 @@ export function SharedMediaLibraryModal({ open, onOpenChange, room, roomCode }: 
       if (timer) clearTimeout(timer);
     };
   }, [open, refresh]);
+
+  useEffect(() => {
+    if (!open) return;
+    let disposed = false;
+    void sharedMediaApi.getSnapshot(roomCode).then((snapshot) => {
+      if (disposed) return;
+      useSharedPlaybackStore.getState().applySnapshot(roomCode, snapshot);
+    }).catch(() => {
+      // The room sync hook remains the fallback source of truth.
+    });
+    return () => {
+      disposed = true;
+    };
+  }, [open, roomCode]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -190,7 +208,7 @@ export function SharedMediaLibraryModal({ open, onOpenChange, room, roomCode }: 
       await refresh();
     } catch (error) {
       if (!(error instanceof DOMException && error.name === "AbortError")) {
-        toast.error(t("sharedMedia.uploadFailed", "آپلود ویدئو ناموفق بود."));
+        toast.error(getApiErrorMessage(error, t("sharedMedia.uploadFailed", "آپلود ویدئو ناموفق بود.")));
       }
     } finally {
       abortRef.current = null;
@@ -216,6 +234,23 @@ export function SharedMediaLibraryModal({ open, onOpenChange, room, roomCode }: 
   const startPlayback = async (asset: MediaAsset) => {
     setStartingToken(asset.public_token);
     try {
+      // Reconcile before opening so a stale modal cannot turn a reconnect
+      // into a generic 400. A room has one authoritative playback session.
+      const snapshot = await sharedMediaApi.getSnapshot(roomCode).catch(() => null);
+      const active = snapshot?.playback;
+      if (snapshot) useSharedPlaybackStore.getState().applySnapshot(roomCode, snapshot);
+      if (active) {
+        if (active.asset.public_token === asset.public_token) {
+          toast.success(t("sharedMedia.alreadyPlaying", "این ویدئو در همین جلسه در حال پخش است."));
+          onOpenChange(false);
+        } else {
+          toast.error(t("sharedMedia.activePlayback", {
+            title: active.asset.title,
+            defaultValue: "«{{title}}» در این جلسه در حال پخش است؛ ابتدا پایان پخش برای همه را بزنید.",
+          }));
+        }
+        return;
+      }
       const history = await sharedMediaApi.getHistory(asset.public_token);
       const previous = history.results.find((item) => item.ended_at !== null);
       const playback = await sharedMediaApi.openPlayback(roomCode, {
@@ -235,8 +270,15 @@ export function SharedMediaLibraryModal({ open, onOpenChange, room, roomCode }: 
         { reliable: true },
       ).catch(() => undefined);
       onOpenChange(false);
-    } catch {
-      toast.error(t("sharedMedia.startFailed", "شروع پخش مشترک ناموفق بود."));
+    } catch (error) {
+      const payload = getApiErrorData(error);
+      if (payload?.code === "ACTIVE_SHARED_PLAYBACK") {
+        const snapshot = await sharedMediaApi.getSnapshot(roomCode).catch(() => null);
+        if (snapshot) useSharedPlaybackStore.getState().applySnapshot(roomCode, snapshot);
+        toast.error(t("sharedMedia.activePlaybackGeneric", "در این جلسه یک پخش فعال وجود دارد؛ ابتدا پایان پخش برای همه را بزنید."));
+      } else {
+        toast.error(getApiErrorMessage(error, t("sharedMedia.startFailed", "شروع پخش مشترک ناموفق بود.")));
+      }
     } finally {
       setStartingToken(null);
     }
@@ -264,6 +306,15 @@ export function SharedMediaLibraryModal({ open, onOpenChange, room, roomCode }: 
           </p>
         )}
 
+        {activePlayback && (
+          <p className="rounded-lg border border-amber-300/30 bg-amber-950/30 px-3 py-2 text-xs leading-5 text-amber-100" role="status">
+            {t("sharedMedia.activePlayback", {
+              title: activePlayback.asset.title,
+              defaultValue: "«{{title}}» در این جلسه در حال پخش است؛ برای انتخاب ویدئوی دیگر ابتدا پایان پخش برای همه را بزنید.",
+            })}
+          </p>
+        )}
+
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold">{t("sharedMedia.yourLibrary", "کتابخانه شما")}</h3>
           <button type="button" onClick={() => void refresh()} disabled={loading} className="grid size-11 place-items-center rounded-lg text-[var(--t2)] hover:bg-[var(--s3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]" aria-label={t("sharedMedia.refresh", "به‌روزرسانی")}><RefreshCw size={18} className={loading ? "animate-spin" : ""} /></button>
@@ -281,7 +332,7 @@ export function SharedMediaLibraryModal({ open, onOpenChange, room, roomCode }: 
                   {asset.failure_code && <p className="mt-1 text-xs text-[var(--red)]">{asset.failure_code}</p>}
                 </div>
                 <div className="flex items-center gap-1">
-                  <button type="button" disabled={!asset.can_start_playback || startingToken !== null} onClick={() => void startPlayback(asset)} className="flex min-h-11 items-center gap-2 rounded-lg bg-[var(--brand)] px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"><Play size={16} />{t("sharedMedia.start", "شروع")}</button>
+                  <button type="button" disabled={!asset.can_start_playback || startingToken !== null || (!!activePlayback && activePlayback.asset.public_token !== asset.public_token)} onClick={() => void startPlayback(asset)} className="flex min-h-11 items-center gap-2 rounded-lg bg-[var(--brand)] px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"><Play size={16} />{t("sharedMedia.start", "شروع")}</button>
                   <button type="button" disabled={deletingToken !== null} onClick={() => void deleteAsset(asset)} className="grid size-11 place-items-center rounded-lg text-[var(--red)] hover:bg-[var(--red)]/10 disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--red)]" aria-label={t("sharedMedia.delete", "حذف ویدئو")}><Trash2 size={18} /></button>
                 </div>
               </article>

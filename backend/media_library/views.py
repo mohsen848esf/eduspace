@@ -73,8 +73,20 @@ def _handle_domain_error(exc):
         return _error(exc, 'FORBIDDEN', status.HTTP_403_FORBIDDEN)
     if isinstance(exc, ValidationError):
         messages = getattr(exc, 'messages', None) or [str(exc)]
-        code = 'STALE_PLAYBACK_VERSION' if any('stale' in message.lower() for message in messages) else 'VALIDATION_ERROR'
-        return _error(messages[0], code, status.HTTP_409_CONFLICT if code == 'STALE_PLAYBACK_VERSION' else status.HTTP_400_BAD_REQUEST, messages)
+        domain_code = getattr(exc, 'code', None)
+        if not domain_code and getattr(exc, 'error_list', None):
+            domain_code = getattr(exc.error_list[0], 'code', None)
+        code = domain_code or (
+            'STALE_PLAYBACK_VERSION'
+            if any('stale' in message.lower() for message in messages)
+            else 'VALIDATION_ERROR'
+        )
+        response_status = (
+            status.HTTP_409_CONFLICT
+            if code in {'STALE_PLAYBACK_VERSION', 'ACTIVE_SHARED_PLAYBACK'}
+            else status.HTTP_400_BAD_REQUEST
+        )
+        return _error(messages[0], code, response_status, messages)
     if isinstance(exc, ImproperlyConfigured):
         return _error(exc, 'STORAGE_NOT_CONFIGURED', status.HTTP_503_SERVICE_UNAVAILABLE)
     raise exc

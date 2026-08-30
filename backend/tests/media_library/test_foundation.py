@@ -56,6 +56,16 @@ class SharedMediaFoundationTests(TestCase):
         self.assertEqual(second.resumed_from_id, first.id)
         self.assertEqual(self.asset.playback_sessions.count(), 2)
 
+    def test_opening_the_active_asset_again_is_idempotent(self):
+        first = SharedPlaybackService.open_session(
+            room=self.room_one, asset=self.asset, actor=self.owner,
+        )
+        retry = SharedPlaybackService.open_session(
+            room=self.room_one, asset=self.asset, actor=self.owner,
+        )
+        self.assertEqual(retry.pk, first.pk)
+        self.assertEqual(self.asset.playback_sessions.count(), 1)
+
     def test_media_owned_by_unrelated_account_cannot_be_played(self):
         other_owner = User.objects.create_user(username='other-owner')
         other_asset = MediaAsset.objects.create(

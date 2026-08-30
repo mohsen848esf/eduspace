@@ -118,6 +118,29 @@ RELEASE_TAG=production
 
 `WEB_PORT` and `RTC_HTTP_PORT` bind to host loopback. The reverse proxy uses them. The media ports are public.
 
+#### Shared-media object storage
+
+The shared-media upload API writes directly to an S3-compatible object store; it does not use the
+container filesystem. Set these values in `.deploy/production.env` before starting the stack:
+
+```dotenv
+S3_ENABLED=True
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_STORAGE_BUCKET_NAME=eduspace-media
+AWS_S3_ENDPOINT_URL=                 # blank for AWS S3; HTTPS endpoint for R2/MinIO
+AWS_S3_REGION_NAME=us-east-1        # `auto` for Cloudflare R2
+AWS_S3_ADDRESSING_STYLE=auto
+MEDIA_PROGRESSIVE_UPLOAD_ENABLED=False
+MEDIA_PROGRESSIVE_INGEST_ENABLED=False
+```
+
+The bucket must allow the application origin to perform signed `PUT` requests and expose the
+`ETag` response header (CORS). Set both progressive flags to `True` only after the media workers
+and FFmpeg runtime have been verified; otherwise uploads use the resumable complete-upload path.
+If these settings are missing, `/api/media/assets/<token>/uploads/initiate/` intentionally returns
+`503 STORAGE_NOT_CONFIGURED`.
+
 The env is now the only source for LiveKit's public IP and ports. Compose generates `/etc/livekit.yaml` directly from these values. Do not create or mount another LiveKit YAML. Any valid custom port values work when the host firewall and provider firewall use the same values.
 
 These are the host/container mappings in the current `compose.server.yml`:

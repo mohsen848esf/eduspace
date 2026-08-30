@@ -122,6 +122,31 @@ class SharedMediaApiTests(TestCase):
         denied = self.open_playback(asset_public_token=self.other_asset.public_token)
         self.assertEqual(denied.status_code, 404)
 
+    def test_opening_a_different_asset_reports_an_active_playback_conflict(self):
+        self.authenticate(self.owner)
+        self.open_playback()
+        second = MediaAsset.objects.create(
+            owner=self.owner,
+            uploader=self.owner,
+            title='Another feature film',
+            status=MediaAsset.Status.READY,
+            duration_ms=3_600_000,
+        )
+        response = self.client.post(
+            reverse('shared_playback_open', kwargs={'room_code': self.room.room_code}),
+            {'asset_public_token': second.public_token},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.data['code'], 'ACTIVE_SHARED_PLAYBACK')
+
+    def test_retrying_the_active_asset_returns_the_existing_session(self):
+        self.authenticate(self.owner)
+        first = self.open_playback()
+        retry = self.open_playback()
+        self.assertEqual(retry.status_code, 201)
+        self.assertEqual(retry.data['data']['id'], first.data['data']['id'])
+
     def test_commands_use_optimistic_version_and_server_scheduled_play(self):
         self.authenticate(self.owner)
         self.open_playback()
