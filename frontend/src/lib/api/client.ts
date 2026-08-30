@@ -38,14 +38,22 @@ const client = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// Add token and organization slug to every request
+// Add the token and only a real, selected organization slug to requests.
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem("access_token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
 
-  const orgSlug = localStorage.getItem("active_org_slug") || "default-academy";
+  const hasValidatedOrg = localStorage.getItem("active_org_slug_validated") === "true";
+  const orgSlug = hasValidatedOrg ? localStorage.getItem("active_org_slug")?.trim() : undefined;
+  const invalidOrgSlug = !orgSlug || ["null", "undefined", "no organization"].includes(orgSlug.toLowerCase());
   if (orgSlug) {
-    config.headers["X-Organization-Slug"] = orgSlug;
+    if (!invalidOrgSlug) {
+      config.headers["X-Organization-Slug"] = orgSlug;
+    } else {
+      delete config.headers["X-Organization-Slug"];
+    }
+  } else {
+    delete config.headers["X-Organization-Slug"];
   }
 
   return config;

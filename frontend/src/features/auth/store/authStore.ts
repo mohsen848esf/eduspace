@@ -30,6 +30,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (data) => {
     set({ isLoading: true, error: null });
     try {
+      localStorage.removeItem("active_org_slug_validated");
       const res = await authApi.login(data);
       localStorage.setItem("access_token", res.access);
       localStorage.setItem("refresh_token", res.refresh);
@@ -46,6 +47,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   register: async (data) => {
     set({ isLoading: true, error: null });
     try {
+      localStorage.removeItem("active_org_slug_validated");
       const res = await authApi.register(data);
       localStorage.setItem("access_token", res.access);
       localStorage.setItem("refresh_token", res.refresh);

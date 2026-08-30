@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../store/authStore";
 import { useNotificationsStore } from "../store/notificationsStore";
+import { useOrgContextStore } from "../store/orgContextStore";
 import toast from "react-hot-toast";
 
 interface NotificationWirePayload extends Record<string, unknown> {
@@ -55,6 +56,7 @@ export function getWebSocketUrl(path: string): string {
 export function useNotifications() {
   const { t } = useTranslation(["notifications", "recordings"]);
   const { isAuthenticated } = useAuthStore();
+  const hasOrgContext = useOrgContextStore((state) => Boolean(state.orgContext?.organization));
   const addToInbox = useNotificationsStore((s) => s.add);
   const hydrate = useNotificationsStore((s) => s.hydrate);
   const wsRef = useRef<WebSocket | null>(null);
@@ -314,7 +316,7 @@ export function useNotifications() {
 
   const connect = useCallback(() => {
     if (isUnmounted.current) return;
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !hasOrgContext) return;
 
     const token = localStorage.getItem("access_token");
     if (!token) return;
@@ -362,7 +364,7 @@ export function useNotifications() {
     ws.onerror = () => {
       ws.close();
     };
-  }, [isAuthenticated, handleNotification, hydrate]);
+  }, [isAuthenticated, hasOrgContext, handleNotification, hydrate]);
 
   useEffect(() => {
     connectRef.current = connect;

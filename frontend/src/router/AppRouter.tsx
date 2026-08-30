@@ -21,7 +21,7 @@ function PageLoader() {
 }
 
 function AppInitializer({ children }: { children: React.ReactNode }) {
-  const { fetchMe, isInitialized, isAuthenticated } = useAuthStore();
+  const { fetchMe, isInitialized, isAuthenticated, user } = useAuthStore();
   const { fetchOrgContext, isInitialized: isOrgContextInitialized } = useOrgContextStore();
 
   useEffect(() => {
@@ -30,9 +30,11 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isAuthenticated) {
-      fetchOrgContext();
+      // The authenticated user's memberships are the source of truth for
+      // selecting a context. This also discards stale localStorage values.
+      fetchOrgContext(undefined, user?.organizations || []);
     }
-  }, [isAuthenticated, fetchOrgContext]);
+  }, [isAuthenticated, user?.organizations, fetchOrgContext]);
 
   if (!isInitialized || (isAuthenticated && !isOrgContextInitialized)) {
     return (
