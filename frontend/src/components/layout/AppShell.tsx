@@ -47,6 +47,7 @@ const NAV_ROUTES: Record<string, string> = {
   templates: "/settings/templates",
   profile: "/settings/profile",
   notificationsSettings: "/settings/notifications",
+  changePassword: "/settings/security/change-password",
   miniapps: "/miniapps",
   leaderboard: "/leaderboard",
   sysAdmin: "/sys-admin",

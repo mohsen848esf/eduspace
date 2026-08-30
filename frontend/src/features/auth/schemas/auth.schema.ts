@@ -34,6 +34,18 @@ export const buildRegisterSchema = (t: TFunction) =>
       path: ["confirmPassword"],
     });
 
+export const buildChangePasswordSchema = (t: TFunction) =>
+  z
+    .object({
+      current_password: z.string().min(1, t("validation.currentPasswordRequired")),
+      new_password: z.string().min(8, t("validation.passwordMin8")),
+      confirm_password: z.string().min(1, t("validation.confirmPasswordRequired")),
+    })
+    .refine((data) => data.new_password === data.confirm_password, {
+      message: t("validation.passwordsMismatch"),
+      path: ["confirm_password"],
+    });
+
 export const updateProfileSchema = z.object({
   full_name: z.string().min(2).optional(),
   email: z.string().email().optional(),
@@ -43,9 +55,11 @@ export const updateProfileSchema = z.object({
 // Types — derived from the schemas (use a placeholder translator to infer types)
 type LoginSchema = ReturnType<typeof buildLoginSchema>;
 type RegisterSchema = ReturnType<typeof buildRegisterSchema>;
+type ChangePasswordSchema = ReturnType<typeof buildChangePasswordSchema>;
 
 export type LoginInput = z.infer<LoginSchema>;
 export type RegisterInput = z.infer<RegisterSchema>;
+export type ChangePasswordInput = z.infer<ChangePasswordSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 
 // API payload type — without confirmPassword

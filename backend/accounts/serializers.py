@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from django.db import models, transaction
 from django.utils import timezone
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from .models import User, Course, AcademyClass, ClassOccurrence, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance, Organization, OrgMember, Role, Certificate, AuditLog, Permission, UserSession, InvoiceLineItem
 
 
@@ -22,6 +24,43 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         user = User.objects.create_user(**kwargs)
         return user
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """Validate a password change without ever exposing password data."""
+
+    current_password = serializers.CharField(write_only=True, trim_whitespace=False)
+    new_password = serializers.CharField(write_only=True, trim_whitespace=False)
+    confirm_password = serializers.CharField(write_only=True, trim_whitespace=False)
+
+    def validate(self, attrs):
+        user = self.context.get('user') or self.context['request'].user
+        current_password = attrs['current_password']
+        new_password = attrs['new_password']
+
+        if not user.check_password(current_password):
+            raise serializers.ValidationError({
+                'current_password': 'Current password is incorrect.',
+            })
+
+        if new_password != attrs['confirm_password']:
+            raise serializers.ValidationError({
+                'confirm_password': 'New passwords do not match.',
+            })
+
+        if new_password == current_password:
+            raise serializers.ValidationError({
+                'new_password': 'New password must be different from the current password.',
+            })
+
+        try:
+            validate_password(new_password, user)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({
+                'new_password': list(exc.messages),
+            })
+
+        return attrs
 
 
 class UserSerializer(serializers.ModelSerializer):

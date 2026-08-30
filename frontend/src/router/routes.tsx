@@ -70,6 +70,9 @@ const LeaderboardPage = lazy(
 const NotificationSettingsPage = lazy(
   () => import("../features/auth/components/NotificationSettings"),
 );
+const ChangePasswordPage = lazy(
+  () => import("../features/auth/components/ChangePasswordPage"),
+);
 const TemplateManagerPage = lazy(
   () => import("../features/dashboard/components/TemplateManager"),
 );
@@ -263,6 +266,11 @@ export const routes: RouteConfig[] = [
   {
     path: "/settings/notifications",
     component: NotificationSettingsPage,
+    isPrivate: true,
+  },
+  {
+    path: "/settings/security/change-password",
+    component: ChangePasswordPage,
     isPrivate: true,
   },
   {

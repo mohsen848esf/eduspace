@@ -52,6 +52,7 @@
     "templates": "Templates",
     "profile": "User Profile",
     "notifications": "Notification Settings",
+    "changePassword": "Change Password",
     "sysAdmin": "Platform Governance",
     "platformGovernance": "Platform Governance",
     "videoCalls": "Video Calls",
