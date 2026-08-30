@@ -20,19 +20,17 @@ ghcr.io/mohsen848esf/eduspace-backend
 ghcr.io/mohsen848esf/eduspace-web
 ```
 
-Each build receives an immutable `sha-<commit>` tag. A successful explicit promotion moves the `production` tag for both images. Do not use `latest`.
+Each build receives an immutable `sha-<commit>` tag. A successful promotion moves the `production` tag for both images. Do not use `latest`.
 
 ## Release responsibilities
 
 The project owner:
 
-1. Selects a tested Git ref or commit.
-2. Opens **Actions -> Publish production images -> Run workflow**.
-3. Enters the exact ref and enables **promote_production**, or publishes a GitHub Release.
-4. Waits until the quality, image publication, and promotion jobs all pass.
-5. Gives the server administrator the immutable `sha-...` tag for the release record and rollback.
+1. Merges tested changes into `main`, or selects a tested ref in **Actions -> Publish production images -> Run workflow**.
+2. Waits until the quality, image publication, and promotion jobs all pass. A push to `main` promotes the `production` tag automatically; a manual run must enable `promote_production` when production should move.
+3. Gives the server administrator the immutable `sha-...` tag for the release record and rollback.
 
-The workflow runs frontend lint/tests/build, backend checks/tests, builds both Docker images, publishes immutable images, verifies both exist, and only then moves their `production` tags. It never connects to the server.
+The workflow runs frontend lint/tests/build, backend checks/tests, builds both Docker images, publishes immutable images, verifies both exist, and then moves the `production` tags. It never connects to the server. Publishing an image is separate from deploying it: the server administrator chooses when to run Docker Compose.
 
 ## One-time server preparation
 
@@ -53,9 +51,31 @@ cd eduspace
 git checkout --detach APPROVED_COMMIT_SHA
 ```
 
-### Private GHCR packages
+### GHCR package access
 
-Public packages can be pulled without login. For private packages, create a dedicated classic GitHub token with only `read:packages`, then log in once:
+The two application images are:
+
+```text
+ghcr.io/mohsen848esf/eduspace-backend:production
+ghcr.io/mohsen848esf/eduspace-web:production
+```
+
+Package visibility is managed separately from repository visibility. The recommended setup for a server operated by another person is to make both packages **Public**:
+
+1. Open the package page for [eduspace-backend](https://github.com/users/mohsen848esf/packages/container/eduspace-backend) and [eduspace-web](https://github.com/users/mohsen848esf/packages/container/eduspace-web).
+2. Open **Package settings -> Danger Zone -> Change visibility**.
+3. Select **Public**, type the package name to confirm, and repeat for the other package.
+
+After changing visibility, verify anonymous access from the server. No `docker login` is required for public packages:
+
+```bash
+docker pull ghcr.io/mohsen848esf/eduspace-backend:production
+docker pull ghcr.io/mohsen848esf/eduspace-web:production
+```
+
+If either pull returns `denied` or `unauthorized`, the package is still private, the image name/tag is wrong, or the server cannot reach `ghcr.io`. Check package visibility and outbound HTTPS before changing Compose.
+
+If the packages must remain private, create a dedicated classic GitHub token with only `read:packages`, then log in once:
 
 ```bash
 read -rsp 'GHCR read token: ' GHCR_TOKEN
@@ -64,7 +84,7 @@ printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u GITHUB_USERNAME --password-s
 unset GHCR_TOKEN
 ```
 
-Do not put this token in the repository, production env, Compose file, or shell history. Protect the deployment account's Docker credential file.
+Do not put this token in the repository, production env, Compose file, or shell history. Protect the deployment account's Docker credential file. Repository access alone does not grant an unauthenticated server permission to pull a private package.
 
 ### Production environment
 
@@ -76,7 +96,7 @@ chmod 600 .deploy/production.env
 nano .deploy/production.env
 ```
 
-Replace all domains, public IP, and generated secret placeholders. Generate three different values with `openssl rand -hex 32` for `SECRET_KEY`, `DB_PASSWORD`, and `LIVEKIT_API_SECRET`.
+Replace all domains, public IP, and every generated placeholder. Generate three different values with `openssl rand -hex 32` for `SECRET_KEY`, `DB_PASSWORD`, and `LIVEKIT_API_SECRET`. Set `LIVEKIT_API_KEY` to a unique non-placeholder identifier (for example, `eduspace-livekit-prod-<random-hex>`); the API key and secret must match the values used by LiveKit, Egress, and Django.
 
 Core production values:
 
@@ -99,6 +119,18 @@ RELEASE_TAG=production
 `WEB_PORT` and `RTC_HTTP_PORT` bind to host loopback. The reverse proxy uses them. The media ports are public.
 
 The env is now the only source for LiveKit's public IP and ports. Compose generates `/etc/livekit.yaml` directly from these values. Do not create or mount another LiveKit YAML. Any valid custom port values work when the host firewall and provider firewall use the same values.
+
+These are the host/container mappings in the current `compose.server.yml`:
+
+| Setting | Host exposure | Container destination | Use |
+| --- | --- | --- | --- |
+| `WEB_PORT=8081` | `127.0.0.1:8081` | web `:80` | HTTP from the host reverse proxy |
+| `RTC_HTTP_PORT=7890` | `127.0.0.1:7890` | LiveKit `:7880` | HTTPS/WebSocket signaling through the RTC hostname |
+| `RTC_TCP_PORT=7881` | `:7881/tcp` | LiveKit `:7881/tcp` | ICE/TCP media fallback |
+| `RTC_UDP_PORT=7882` | `:7882/udp` | LiveKit `:7882/udp` | ICE/UDP media mux |
+| `TURN_UDP_PORT=3478` | `:3478/udp` | LiveKit `:3478/udp` | Embedded TURN/STUN |
+
+`7880` is an internal container port and must not be used as the host HTTP port. Keep the values in `.deploy/production.env`, the Linux/provider firewall, and DNS/proxy configuration consistent. The previous deployment mismatch came from confusing LiveKit's internal `7880` with the host-facing `RTC_HTTP_PORT`; the Compose file now generates the LiveKit configuration from the env values above.
 
 The conventional public LiveKit ports shown above are:
 
@@ -164,7 +196,14 @@ If the reverse proxy runs in Docker, attach it to `eduspace-edge` and use `edusp
 
 ## First deployment and routine updates
 
-The same command handles both:
+For a public GHCR setup, optionally verify the two application pulls first:
+
+```bash
+docker pull ghcr.io/mohsen848esf/eduspace-backend:production
+docker pull ghcr.io/mohsen848esf/eduspace-web:production
+```
+
+The same Compose command handles the first deployment and routine application updates:
 
 ```bash
 docker compose --env-file .deploy/production.env -p eduspace-production -f compose.server.yml up -d --pull always --wait
@@ -181,7 +220,14 @@ Compose performs this order:
 
 If migration or static collection fails, the new backend does not start. Stop and inspect logs; never delete a volume to fix a migration.
 
-For ordinary application releases, the server checkout does not need `git pull`; Compose only pulls images. When `compose.server.yml`, proxy configuration, or infrastructure files change, checkout the specifically approved infrastructure commit first, validate it, then run the same update command.
+For ordinary application releases, the server checkout does not need `git pull`; Compose only pulls the newly promoted images. When `compose.server.yml`, proxy configuration, or infrastructure files change, update the checkout to the specifically approved infrastructure commit, validate it, then run the same update command:
+
+```bash
+git fetch origin
+git checkout --detach APPROVED_INFRA_COMMIT_SHA
+docker compose --env-file .deploy/production.env -p eduspace-production -f compose.server.yml config --quiet
+docker compose --env-file .deploy/production.env -p eduspace-production -f compose.server.yml up -d --pull always --wait
+```
 
 This is not a zero-downtime migration system. Schema changes used in routine releases must be backward compatible. Breaking data migrations require a maintenance window, a verified backup, and an explicit recovery plan.
 
@@ -189,6 +235,21 @@ Create the first administrator only once:
 
 ```bash
 docker compose --env-file .deploy/production.env -p eduspace-production -f compose.server.yml exec backend python manage.py createsuperuser
+```
+
+## GHCR and startup troubleshooting
+
+| Symptom | Meaning | Action |
+| --- | --- | --- |
+| `denied` / `unauthorized` while pulling | The package is private, the server is logged in with an account that cannot read it, or the image name is incorrect. | Make both packages Public, or authenticate with a classic token containing `read:packages`; verify the exact lowercase names above. |
+| `manifest unknown` | The requested tag does not exist. | Confirm that the GitHub Actions run completed and that the `production` tag was promoted. Do not replace it with `latest`. |
+| Pull succeeds but Compose keeps old code | The server did not request a pull or the tag was overridden. | Keep `pull_policy: always`, use `--pull always`, and check that `RELEASE_TAG=production`. |
+| Web page works but calls fail | The RTC hostname, proxy, or media firewall is wrong. | Confirm `RTC_HTTP_PORT=7890` proxies to the internal LiveKit `:7880`, and open `RTC_TCP_PORT` over TCP plus `RTC_UDP_PORT` and `TURN_UDP_PORT` over UDP. |
+
+Inspect the resulting services without exposing environment values:
+
+```bash
+docker compose --env-file .deploy/production.env -p eduspace-production -f compose.server.yml logs --tail=200 backend web livekit
 ```
 
 ## Status and logs
