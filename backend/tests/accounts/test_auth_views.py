@@ -1,8 +1,9 @@
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from rest_framework import status
-from rest_framework.test import APITestCase
+from rest_framework.test import APITestCase, APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
+from accounts.models import UserSession
 
 User = get_user_model()
 
@@ -18,6 +19,8 @@ class AuthViewsTest(APITestCase):
         self.login_url = reverse('login')
         self.me_url = reverse('me')
         self.logout_url = reverse('logout')
+        self.refresh_url = reverse('token_refresh')
+        self.change_password_url = reverse('change_password')
         self.search_url = reverse('search_users')
 
     def test_register_success(self):
@@ -73,6 +76,104 @@ class AuthViewsTest(APITestCase):
     def test_me_unauthenticated(self):
         res = self.client.get(self.me_url)
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_change_password_requires_authentication(self):
+        res = self.client.post(self.change_password_url, {
+            'current_password': 'password123',
+            'new_password': 'NewSecurePassword123!',
+            'confirm_password': 'NewSecurePassword123!',
+        }, format='json')
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_change_password_rejects_wrong_current_password(self):
+        login_response = self.client.post(self.login_url, {
+            'username': 'auth_user',
+            'password': 'password123',
+        }, format='json')
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login_response.data['access']}")
+
+        res = self.client.post(self.change_password_url, {
+            'current_password': 'wrong-password',
+            'new_password': 'NewSecurePassword123!',
+            'confirm_password': 'NewSecurePassword123!',
+        }, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('current_password', res.data)
+        self.assertTrue(self.user.check_password('password123'))
+
+    def test_change_password_rejects_weak_password_and_mismatch(self):
+        login_response = self.client.post(self.login_url, {
+            'username': 'auth_user',
+            'password': 'password123',
+        }, format='json')
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login_response.data['access']}")
+
+        weak_response = self.client.post(self.change_password_url, {
+            'current_password': 'password123',
+            'new_password': '123',
+            'confirm_password': '123',
+        }, format='json')
+        self.assertEqual(weak_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('new_password', weak_response.data)
+
+        mismatch_response = self.client.post(self.change_password_url, {
+            'current_password': 'password123',
+            'new_password': 'NewSecurePassword123!',
+            'confirm_password': 'DifferentSecurePassword123!',
+        }, format='json')
+        self.assertEqual(mismatch_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('confirm_password', mismatch_response.data)
+
+    def test_change_password_rotates_current_session_and_revokes_old_tokens(self):
+        first_client = APIClient()
+        first_login = first_client.post(self.login_url, {
+            'username': 'auth_user',
+            'password': 'password123',
+        }, format='json')
+        old_access = first_login.data['access']
+        old_refresh = first_login.data['refresh']
+
+        # A second login represents another active device/session.
+        second_client = APIClient()
+        second_login = second_client.post(self.login_url, {
+            'username': 'auth_user',
+            'password': 'password123',
+        }, format='json')
+        other_access = second_login.data['access']
+
+        first_client.credentials(HTTP_AUTHORIZATION=f"Bearer {old_access}")
+        response = first_client.post(self.change_password_url, {
+            'current_password': 'password123',
+            'new_password': 'NewSecurePassword123!',
+            'confirm_password': 'NewSecurePassword123!',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('access', response.data)
+        self.assertIn('refresh', response.data)
+        self.assertNotEqual(response.data['access'], old_access)
+        self.assertEqual(UserSession.objects.filter(user=self.user, is_active=True).count(), 1)
+
+        # Both the old access token and the other device are revoked by the
+        # UserSession check in SessionJWTAuthentication.
+        old_access_response = APIClient()
+        old_access_response.credentials(HTTP_AUTHORIZATION=f"Bearer {old_access}")
+        self.assertEqual(old_access_response.get(self.me_url).status_code, status.HTTP_401_UNAUTHORIZED)
+        other_access_response = APIClient()
+        other_access_response.credentials(HTTP_AUTHORIZATION=f"Bearer {other_access}")
+        self.assertEqual(other_access_response.get(self.me_url).status_code, status.HTTP_401_UNAUTHORIZED)
+
+        old_refresh_response = APIClient().post(self.refresh_url, {'refresh': old_refresh}, format='json')
+        self.assertEqual(old_refresh_response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        new_access_response = APIClient()
+        new_access_response.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['access']}")
+        self.assertEqual(new_access_response.get(self.me_url).status_code, status.HTTP_200_OK)
+
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('NewSecurePassword123!'))
+        self.assertFalse(self.user.check_password('password123'))
 
     def test_logout_success(self):
         self.client.force_authenticate(user=self.user)

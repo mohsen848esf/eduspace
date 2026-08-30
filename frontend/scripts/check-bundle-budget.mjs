@@ -12,6 +12,7 @@ const budgetsKb = {
   initialJs: 220,
   standardAsyncJs: 130,
   optionalHeicDecoder: 360,
+  optionalHlsPlayer: 190,
   css: 35,
 };
 
@@ -42,8 +43,14 @@ const javascriptFiles = assetFiles.filter((fileName) => fileName.endsWith(".js")
 const optionalHeicFiles = javascriptFiles.filter((fileName) =>
   fileName.startsWith("heic2any-"),
 );
+const optionalHlsFiles = javascriptFiles.filter((fileName) =>
+  fileName.startsWith("hls-"),
+);
 const standardAsyncFiles = javascriptFiles.filter(
-  (fileName) => !initialJsFiles.has(fileName) && !optionalHeicFiles.includes(fileName),
+  (fileName) =>
+    !initialJsFiles.has(fileName) &&
+    !optionalHeicFiles.includes(fileName) &&
+    !optionalHlsFiles.includes(fileName),
 );
 const cssFiles = assetFiles.filter((fileName) => fileName.endsWith(".css"));
 
@@ -51,6 +58,7 @@ const measurementsKb = {
   initialJs: sumGzipKb(initialJsFiles),
   standardAsyncJs: maxGzipKb(standardAsyncFiles),
   optionalHeicDecoder: maxGzipKb(optionalHeicFiles),
+  optionalHlsPlayer: maxGzipKb(optionalHlsFiles),
   css: sumGzipKb(cssFiles),
 };
 

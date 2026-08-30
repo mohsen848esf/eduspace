@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
+import { useRoomContext } from "@livekit/components-react";
 import { useRoomStore } from "../store/roomStore";
 import { useRoomLayoutStore, type ActivePanel } from "../store/roomLayoutStore";
 import { type SidebarTab } from "../hooks/useRoomControls";
@@ -33,6 +34,12 @@ import { usePresentationSync } from "../hooks/usePresentationSync";
 import { useRoomPermissionSync } from "../hooks/useRoomPermissionSync";
 import { cn } from "../../../lib/utils";
 import { type LayoutMode } from "../store/roomLayoutStore";
+import {
+  SharedMediaPlayer,
+  SharedMediaLibraryModal,
+  useSharedPlaybackStore,
+  useSharedPlaybackSync,
+} from "../../shared-media";
 
 interface UnifiedRoomShellProps {
   controls: {
@@ -119,19 +126,30 @@ export default function UnifiedRoomShell({
       window.removeEventListener("eduspace:open-people-tab", handler);
   }, [isMobile, controls, setActivePanel]);
 
-  const { isHost, isCoHost, activePresentation, isPresentationMinimized } =
+  const { isHost, isCoHost, permissionSnapshot, activePresentation, isPresentationMinimized } =
     useRoomStore();
+  const guestAccessToken = useRoomStore((state) => state.guestAccessToken);
   const canModerate = isHost || isCoHost;
+  const room = useRoomContext();
+  const sharedPlayback = useSharedPlaybackStore((state) => state.playback);
   const inCallPermissions = useInCallPermissions();
   usePresentationSync();
   useRoomPermissionSync();
+  useSharedPlaybackSync({ room, roomCode: activeRoomCode, guestAccessToken });
   const [presentationModalOpen, setPresentationModalOpen] = useState(false);
+  const [sharedMediaLibraryOpen, setSharedMediaLibraryOpen] = useState(false);
 
   // Listen to open-presentation-modal event
   useEffect(() => {
     const handler = () => setPresentationModalOpen(true);
     window.addEventListener("eduspace:open-presentation-modal", handler);
     return () => window.removeEventListener("eduspace:open-presentation-modal", handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setSharedMediaLibraryOpen(true);
+    window.addEventListener("eduspace:open-shared-media-library", handler);
+    return () => window.removeEventListener("eduspace:open-shared-media-library", handler);
   }, []);
 
   const handleSheetOpenChange = (panel: ActivePanel) => (open: boolean) => {
@@ -168,7 +186,19 @@ export default function UnifiedRoomShell({
               />
             )}
 
-            {activePresentation && !isPresentationMinimized ? (
+            {sharedPlayback && room ? (
+              <PresentationStageLayout>
+                <SharedMediaPlayer
+                  room={room}
+                  roomCode={activeRoomCode}
+                  guestAccessToken={guestAccessToken}
+                  canModerate={canModerate}
+                  moderatorIdentities={permissionSnapshot
+                    ? [permissionSnapshot.host_identity, ...permissionSnapshot.co_hosts]
+                    : []}
+                />
+              </PresentationStageLayout>
+            ) : activePresentation && !isPresentationMinimized ? (
               <PresentationStageLayout>
                 <PresentationStage />
               </PresentationStageLayout>
@@ -192,6 +222,7 @@ export default function UnifiedRoomShell({
 
             <RoomRecordingBadge
               className={
+                sharedPlayback ||
                 (activePresentation && !isPresentationMinimized) ||
                 game.gameBoard.isActive ||
                 (whiteboard.whiteboard.isActive && !whiteboard.whiteboard.isMinimized)
@@ -294,6 +325,14 @@ export default function UnifiedRoomShell({
           onClose={() => setPresentationModalOpen(false)}
           onRequestPermission={() => inCallPermissions.requestPermission("presentation_upload")}
         />
+        {room && canModerate && (
+          <SharedMediaLibraryModal
+            open={sharedMediaLibraryOpen}
+            onOpenChange={setSharedMediaLibraryOpen}
+            room={room}
+            roomCode={activeRoomCode}
+          />
+        )}
       </div>
 
       {/* Mobile Bottom Sheets */}

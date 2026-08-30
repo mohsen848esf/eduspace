@@ -1,5 +1,5 @@
 import client from "../../../lib/api/client";
-import type { LoginInput, RegisterPayload } from "../schemas/auth.schema";
+import type { ChangePasswordInput, LoginInput, RegisterPayload } from "../schemas/auth.schema";
 
 export interface UserOrg {
   id: number;
@@ -26,6 +26,8 @@ export interface AuthResponse {
   access: string;
   refresh: string;
 }
+
+export type ChangePasswordPayload = ChangePasswordInput;
 
 export interface OrganizationBranding {
   primary_color?: string;
@@ -133,6 +135,11 @@ export const authApi = {
   updateProfile: async (data: FormData | Partial<User>): Promise<User> => {
     const headers = data instanceof FormData ? { "Content-Type": "multipart/form-data" } : {};
     const res = await client.patch("/auth/me/", data, { headers });
+    return res.data;
+  },
+
+  changePassword: async (data: ChangePasswordPayload): Promise<AuthResponse> => {
+    const res = await client.post("/auth/change-password/", data);
     return res.data;
   },
 

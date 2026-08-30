@@ -12,6 +12,7 @@ import Input from "../../../components/ui/Input";
 import Spinner from "../../../components/ui/Spinner";
 import GDPRControl from "../../auth/components/GDPRControl";
 import { ImageUpload } from "../../../components/forms/ImageUpload";
+import { useOrgContextStore } from "../../auth/store/orgContextStore";
 
 interface Certificate {
   id: number;
@@ -28,6 +29,7 @@ export default function ProfileCompletionPage() {
   const { language } = useLocale();
   const isFarsi = language === "fa";
   const { user, fetchMe } = useAuthStore();
+  const activeOrg = useOrgContextStore((state) => state.orgContext?.organization);
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -38,6 +40,7 @@ export default function ProfileCompletionPage() {
       const res = await client.get<Certificate[]>("/auth/certificates/");
       return res.data;
     },
+    enabled: Boolean(activeOrg),
   });
 
   // Sync state with user data

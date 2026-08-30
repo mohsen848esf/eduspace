@@ -11,7 +11,7 @@ export default defineConfig({
     },
   },
   build: {
-    // The optional HEIC decoder is large when minified but remains lazy-loaded.
+    // Optional HEIC and HLS decoders are large but remain lazy-loaded.
     // `scripts/check-bundle-budget.mjs` enforces tighter gzip budgets by chunk role.
     chunkSizeWarningLimit: 1400,
     rollupOptions: {

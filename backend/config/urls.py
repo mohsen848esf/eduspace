@@ -9,6 +9,8 @@ urlpatterns = [
     path('api/auth/', include('accounts.urls')),
     path('api/games/', include('games.urls')),
     path('api/rooms/', include('rooms.urls')),
+    path('api/rooms/', include('media_library.room_urls')),
+    path('api/media/', include('media_library.urls')),
     path('api/recordings/', include('rooms.recording_urls')),
     path('api/assessments/', include('assessments.urls')),
     path('api/system/', include('accounts.system_urls')),

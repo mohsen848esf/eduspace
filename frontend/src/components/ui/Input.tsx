@@ -16,6 +16,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   onRightIconClick?: () => void;
+  rightIconLabel?: string;
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
@@ -27,6 +28,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       leftIcon,
       rightIcon,
       onRightIconClick,
+      rightIconLabel,
       className,
       id,
       ...props
@@ -88,6 +90,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             <button
               type="button"
               onClick={onRightIconClick}
+              aria-label={rightIconLabel}
               className={cn(
                 "absolute end-3 text-[var(--t3)] transition-colors duration-150",
                 onRightIconClick

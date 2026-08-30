@@ -186,6 +186,12 @@ export const categoryNavItems: NavItem[] = [
         labelKey: "nav.notifications",
         to: "/settings/notifications",
       },
+      {
+        id: "changePassword",
+        icon: Icons.settings,
+        labelKey: "nav.changePassword",
+        to: "/settings/security/change-password",
+      },
     ],
   },
 ];

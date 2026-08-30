@@ -25,6 +25,7 @@ const VALID_PATHS = new Set([
   "/settings/organization",
   "/settings/billing",
   "/settings/profile",
+  "/settings/security/change-password",
   "/miniapps",
   "/sys-admin",
   "/academic/homework",
@@ -77,6 +78,8 @@ export default function SubTopbar() {
       billing: "Billing",
       templates: "Templates",
       notifications: "Notifications",
+      security: "Security",
+      "change-password": "Change password",
       inbox: "Inbox",
     };
 
@@ -103,6 +106,8 @@ export default function SubTopbar() {
       billing: "اشتراک و پرداخت",
       templates: "قالب‌ها",
       notifications: "اعلان‌ها",
+      security: "امنیت",
+      "change-password": "تغییر گذرواژه",
       inbox: "صندوق پیام‌ها",
     };
 

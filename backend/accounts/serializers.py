@@ -1,4 +1,8 @@
 from rest_framework import serializers
+from django.db import models, transaction
+from django.utils import timezone
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from .models import User, Course, AcademyClass, ClassOccurrence, Enrollment, TuitionInvoice, ExpenseItem, Session, Attendance, Organization, OrgMember, Role, Certificate, AuditLog, Permission, UserSession, InvoiceLineItem
 
 
@@ -10,16 +14,53 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ('username', 'email', 'full_name', 'password')
 
     def create(self, validated_data):
-        
+
         kwargs = {
             'username': validated_data['username'],
             'email': validated_data['email'],
             'full_name': validated_data.get('full_name', ''),
             'password': validated_data['password'],
         }
-        
+
         user = User.objects.create_user(**kwargs)
         return user
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """Validate a password change without ever exposing password data."""
+
+    current_password = serializers.CharField(write_only=True, trim_whitespace=False)
+    new_password = serializers.CharField(write_only=True, trim_whitespace=False)
+    confirm_password = serializers.CharField(write_only=True, trim_whitespace=False)
+
+    def validate(self, attrs):
+        user = self.context.get('user') or self.context['request'].user
+        current_password = attrs['current_password']
+        new_password = attrs['new_password']
+
+        if not user.check_password(current_password):
+            raise serializers.ValidationError({
+                'current_password': 'Current password is incorrect.',
+            })
+
+        if new_password != attrs['confirm_password']:
+            raise serializers.ValidationError({
+                'confirm_password': 'New passwords do not match.',
+            })
+
+        if new_password == current_password:
+            raise serializers.ValidationError({
+                'new_password': 'New password must be different from the current password.',
+            })
+
+        try:
+            validate_password(new_password, user)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({
+                'new_password': list(exc.messages),
+            })
+
+        return attrs
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -42,10 +83,14 @@ class UserSerializer(serializers.ModelSerializer):
         if hasattr(obj, '_prefetched_objects_cache') and 'org_memberships' in obj._prefetched_objects_cache:
             memberships = [
                 m for m in obj.org_memberships.all()
-                if m.is_active
+                if m.is_active and not (m.expires_at and m.expires_at < timezone.now())
             ]
         else:
-            memberships = obj.org_memberships.filter(is_active=True).select_related('organization', 'role')
+            memberships = obj.org_memberships.filter(
+                is_active=True,
+            ).filter(
+                models.Q(expires_at__isnull=True) | models.Q(expires_at__gte=timezone.now())
+            ).select_related('organization', 'role')
         return [
             {
                 'id': m.organization.id,
@@ -114,9 +159,9 @@ class AcademyClassSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user and request.user.is_authenticated:
             validated_data['created_by'] = request.user
-        
+
         instance = super().create(validated_data)
-        
+
         for student in student_ids:
             Enrollment.objects.get_or_create(
                 academy_class=instance,
@@ -128,9 +173,9 @@ class AcademyClassSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         student_ids = validated_data.pop('student_ids', None)
         request = self.context.get('request')
-        
+
         instance = super().update(instance, validated_data)
-        
+
         if student_ids is not None:
             Enrollment.objects.filter(academy_class=instance).exclude(student__in=student_ids).delete()
             for student in student_ids:
@@ -168,13 +213,13 @@ class AcademyClassSerializer(serializers.ModelSerializer):
         if capacity_mode == 'limited':
             if max_students is None or max_students <= 0:
                 raise serializers.ValidationError({"max_students": "Maximum students limit must be a positive integer when capacity is limited."})
-            
+
             if student_ids is not None:
                 if len(student_ids) > max_students:
                     raise serializers.ValidationError({"student_ids": f"Number of enrolled students ({len(student_ids)}) exceeds the maximum capacity of {max_students}."})
         else:
             attrs['max_students'] = None
-            
+
         return attrs
 
 
@@ -193,10 +238,10 @@ class EnrollmentSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user and request.user.is_authenticated:
             validated_data['enrolled_by'] = request.user
-            
+
         academy_class = validated_data.get('academy_class')
         student = validated_data.get('student')
-        
+
         # Upsert logic: if enrollment already exists, update it instead of failing
         enrollment = Enrollment.objects.filter(academy_class=academy_class, student=student).first()
         if enrollment:
@@ -204,7 +249,7 @@ class EnrollmentSerializer(serializers.ModelSerializer):
                 setattr(enrollment, attr, value)
             enrollment.save()
             return enrollment
-            
+
         return super().create(validated_data)
 
     def validate_academy_class(self, value):
@@ -285,7 +330,7 @@ class TuitionInvoiceSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         # Line items are represented under the source name 'line_items'
         line_items_data = attrs.get('line_items', None)
-        
+
         if line_items_data is not None:
             try:
                 total_amount = sum(
@@ -319,7 +364,7 @@ class TuitionInvoiceSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         from django.db import transaction
         line_items_data = validated_data.pop('line_items', [])
-        
+
         request = self.context.get('request')
         if request and hasattr(request, 'organization'):
             org = request.organization
@@ -333,27 +378,27 @@ class TuitionInvoiceSerializer(serializers.ModelSerializer):
                     validated_data['invoice_number'] = f"INV-{org.id}-{count + 1:04d}"
         if request and request.user and request.user.is_authenticated:
             validated_data['issued_by'] = request.user
-            
+
         with transaction.atomic():
             invoice = TuitionInvoice.objects.create(**validated_data)
             for item_data in line_items_data:
                 InvoiceLineItem.objects.create(invoice=invoice, **item_data)
-                
+
         return invoice
 
     def update(self, instance, validated_data):
         from django.db import transaction
         line_items_data = validated_data.pop('line_items', None)
-        
+
         with transaction.atomic():
             instance = super().update(instance, validated_data)
-            
+
             if line_items_data is not None:
                 # Normalization replacement strategy: delete old line items and insert new ones
                 instance.line_items.all().delete()
                 for item_data in line_items_data:
                     InvoiceLineItem.objects.create(invoice=instance, **item_data)
-                    
+
         return instance
 
     def validate_academy_class(self, value):
@@ -407,7 +452,7 @@ class SessionSerializer(serializers.ModelSerializer):
             if request and hasattr(request, 'organization'):
                 if value.course.organization != request.organization:
                     raise serializers.ValidationError("Class does not belong to your organization.")
-                    
+
                 # Security: check if user is allowed to manage sessions for this class
                 from accounts.permissions import has_org_permission
                 if not request.user.is_superuser and \
@@ -431,7 +476,7 @@ class SessionSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         request = self.context.get('request')
-        
+
         # Set default host if not provided
         if not validated_data.get('host'):
             academy_class = validated_data.get('academy_class')
@@ -468,7 +513,7 @@ class ClassOccurrenceSerializer(serializers.ModelSerializer):
 class AttendanceSerializer(serializers.ModelSerializer):
     student_username = serializers.CharField(source='student.username', read_only=True)
     student_full_name = serializers.CharField(source='student.full_name', read_only=True)
-    
+
     event_title = serializers.SerializerMethodField()
     academy_class_name = serializers.SerializerMethodField()
     academy_class = serializers.SerializerMethodField()
@@ -476,7 +521,7 @@ class AttendanceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Attendance
         fields = (
-            'id', 'session', 'occurrence', 'event_title', 'academy_class', 'academy_class_name', 
+            'id', 'session', 'occurrence', 'event_title', 'academy_class', 'academy_class_name',
             'student', 'student_username', 'student_full_name', 'status', 'joined_at', 'left_at', 'note'
         )
         read_only_fields = ('id', 'session', 'occurrence', 'student', 'joined_at', 'left_at')
@@ -580,44 +625,48 @@ class OrgMemberSerializer(serializers.ModelSerializer):
         if not org:
             raise serializers.ValidationError("Organization context required.")
 
-        user = validated_data.get('user', None)
-        username = validated_data.pop('username', None)
-        email = validated_data.pop('email', None)
-        password = validated_data.pop('password', None)
-        full_name = validated_data.pop('full_name', None)
-
-        if not user:
-            if username:
-                if str(username).isdigit():
-                    user = User.objects.filter(id=int(username)).first()
-                if not user:
-                    user = User.objects.filter(username=username).first()
-            elif email:
-                user = User.objects.filter(email=email).first()
+        # Creating a user and its first membership is one logical operation. In
+        # particular, a database error while inserting the membership must not
+        # leave an unscoped user behind.
+        with transaction.atomic():
+            user = validated_data.get('user', None)
+            username = validated_data.pop('username', None)
+            email = validated_data.pop('email', None)
+            password = validated_data.pop('password', None)
+            full_name = validated_data.pop('full_name', None)
 
             if not user:
-                if username and password:
-                    if User.objects.filter(username=username).exists():
-                        raise serializers.ValidationError("A user with this username already exists.")
-                    if email and User.objects.filter(email=email).exists():
-                        raise serializers.ValidationError("A user with this email already exists.")
-                    
-                    user = User.objects.create_user(
-                        username=username,
-                        email=email or "",
-                        password=password,
-                        full_name=full_name or ""
-                    )
-                else:
-                    raise serializers.ValidationError("User not found. Provide both Username and Password to register a new user.")
+                if username:
+                    if str(username).isdigit():
+                        user = User.objects.filter(id=int(username)).first()
+                    if not user:
+                        user = User.objects.filter(username=username).first()
+                elif email:
+                    user = User.objects.filter(email=email).first()
 
-        if OrgMember.objects.filter(organization=org, user=user).exists():
-            raise serializers.ValidationError("This user is already a member of this organization.")
+                if not user:
+                    if username and password:
+                        if User.objects.filter(username=username).exists():
+                            raise serializers.ValidationError("A user with this username already exists.")
+                        if email and User.objects.filter(email=email).exists():
+                            raise serializers.ValidationError("A user with this email already exists.")
 
-        validated_data['organization'] = org
-        validated_data['user'] = user
-        validated_data['invited_by'] = request.user if request and request.user.is_authenticated else None
-        return super().create(validated_data)
+                        user = User.objects.create_user(
+                            username=username,
+                            email=email or "",
+                            password=password,
+                            full_name=full_name or ""
+                        )
+                    else:
+                        raise serializers.ValidationError("User not found. Provide both Username and Password to register a new user.")
+
+            if OrgMember.objects.filter(organization=org, user=user).exists():
+                raise serializers.ValidationError("This user is already a member of this organization.")
+
+            validated_data['organization'] = org
+            validated_data['user'] = user
+            validated_data['invited_by'] = request.user if request and request.user.is_authenticated else None
+            return super().create(validated_data)
 
 
 class RoleSerializer(serializers.ModelSerializer):
@@ -694,7 +743,7 @@ class SessionTokenRefreshSerializer(TokenRefreshSerializer):
             except UserSession.DoesNotExist:
                 from rest_framework_simplejwt.exceptions import InvalidToken
                 raise InvalidToken("Session not found.")
-            
+
             # Inject session_id into new access token
             access_token = AccessToken(data['access'])
             access_token['session_id'] = session_id
@@ -719,4 +768,4 @@ class UserSessionSerializer(serializers.ModelSerializer):
         return False
 
 
-
+

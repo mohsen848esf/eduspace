@@ -63,6 +63,12 @@ export const queryKeys = {
     all: ["recordings"] as const,
     detail: (token: string) => ["recordings", token] as const,
   },
+  sharedMedia: {
+    assets: (params?: Record<string, unknown>) => ["sharedMedia", "assets", params] as const,
+    asset: (publicToken: string) => ["sharedMedia", "asset", publicToken] as const,
+    history: (publicToken: string) => ["sharedMedia", "history", publicToken] as const,
+    snapshot: (roomCode: string) => ["sharedMedia", "snapshot", roomCode] as const,
+  },
   notifications: {
     all: ["notifications"] as const,
     unread: ["notifications", "unread"] as const,

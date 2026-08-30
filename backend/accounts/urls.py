@@ -24,6 +24,7 @@ urlpatterns = [
     path('login/', views.login, name='login'),
     path('token/refresh/', views.SessionTokenRefreshView.as_view(), name='token_refresh'),
     path('me/', views.me, name='me'),
+    path('change-password/', views.change_password, name='change_password'),
     path('calendar/', views.calendar_events, name='calendar_events'),
     path('logout/', views.logout, name='logout'),
     path('search/', views.search_users, name='search_users'),

@@ -4,9 +4,9 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
-from django.db import models
+from django.db import models, transaction
 from .models import User
-from .serializers import RegisterSerializer, UserSerializer
+from .serializers import ChangePasswordSerializer, RegisterSerializer, UserSerializer
 from accounts.throttling import TenantScopedRateThrottle
 
 
@@ -92,6 +92,51 @@ def me(request):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     return Response(UserSerializer(request.user, context={'request': request}).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([TenantScopedRateThrottle])
+def change_password(request):
+    from .models import UserSession
+
+    with transaction.atomic():
+        user = User.objects.select_for_update().get(pk=request.user.pk)
+        serializer = ChangePasswordSerializer(
+            data=request.data,
+            context={'request': request, 'user': user},
+        )
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(serializer.validated_data['new_password'])
+        user.save(update_fields=['password'])
+
+        # JWTs are stateless, so every token is bound to UserSession by the
+        # custom authenticator. Revoking all old sessions makes old access and
+        # refresh tokens unusable, including tokens on other devices.
+        UserSession.objects.filter(user=user, is_active=True).update(is_active=False)
+
+        refresh = RefreshToken.for_user(user)
+        session = UserSession.objects.create(
+            user=user,
+            refresh_token_jti=refresh['jti'],
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+        )
+        refresh['session_id'] = session.id
+        access = refresh.access_token
+        access['session_id'] = session.id
+
+    return Response({
+        'user': UserSerializer(user, context={'request': request}).data,
+        'access': str(access),
+        'refresh': str(refresh),
+        'message': 'Password changed successfully. Other active sessions were signed out.',
+    })
+
+
+change_password.throttle_scope = 'authentication'
 
 
 @api_view(['POST'])
