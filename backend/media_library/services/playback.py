@@ -7,6 +7,16 @@ from django.utils import timezone
 from media_library.models import MediaAsset, SharedPlaybackSession
 
 
+class ActiveSharedPlaybackError(ValidationError):
+    """Raised when a room is already playing a different media asset."""
+
+    code = 'ACTIVE_SHARED_PLAYBACK'
+    default_message = 'This room already has an open shared playback session.'
+
+    def __init__(self):
+        super().__init__(self.default_message, code=self.code)
+
+
 class MediaAssetService:
     @staticmethod
     @transaction.atomic
@@ -52,8 +62,19 @@ class SharedPlaybackService:
             raise PermissionDenied('This media is not available to the room controller.')
         if not asset.can_start_playback:
             raise ValidationError('Media asset is not currently playable.')
-        if SharedPlaybackSession.objects.filter(room=room, ended_at__isnull=True).exists():
-            raise ValidationError('This room already has an open shared playback session.')
+        active_playback = (
+            SharedPlaybackSession.objects.select_for_update()
+            .filter(room=room, ended_at__isnull=True)
+            .first()
+        )
+        if active_playback:
+            # Opening the currently active asset is safe to retry. This is
+            # important after a reconnect or a modal that outlived the room
+            # snapshot; it must not create a second session or surface a
+            # misleading validation error.
+            if active_playback.asset_id == asset.id:
+                return active_playback
+            raise ActiveSharedPlaybackError()
         if resumed_from:
             if resumed_from.asset_id != asset.id:
                 raise ValidationError('Continuation must reference the same media asset.')

@@ -10,6 +10,7 @@ vi.mock("../../api/shared-media.api", () => ({
   sharedMediaApi: {
     listAssets: vi.fn(),
     getHistory: vi.fn(),
+    getSnapshot: vi.fn(),
     openPlayback: vi.fn(),
     deleteAsset: vi.fn(),
   },
@@ -42,6 +43,7 @@ describe("SharedMediaLibraryModal", () => {
     useSharedPlaybackStore.getState().reset();
     vi.mocked(sharedMediaApi.listAssets).mockResolvedValue({ count: 1, results: [asset] });
     vi.mocked(sharedMediaApi.getHistory).mockResolvedValue({ count: 0, results: [] });
+    vi.mocked(sharedMediaApi.getSnapshot).mockResolvedValue({ playback: null, server_now: "2026-08-29T10:00:00Z" });
     vi.mocked(sharedMediaApi.openPlayback).mockResolvedValue(playback);
     vi.mocked(sharedMediaApi.deleteAsset).mockResolvedValue(undefined);
   });
@@ -58,6 +60,19 @@ describe("SharedMediaLibraryModal", () => {
     expect(useSharedPlaybackStore.getState().playback?.id).toBe(9);
     expect(publishData).toHaveBeenCalledOnce();
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("reuses the current room playback instead of opening a duplicate session", async () => {
+    vi.mocked(sharedMediaApi.getSnapshot).mockResolvedValue({
+      playback,
+      server_now: "2026-08-29T10:00:00Z",
+    });
+    const onOpenChange = vi.fn();
+    render(<SharedMediaLibraryModal open onOpenChange={onOpenChange} room={room} roomCode="room-1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "شروع" }));
+
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(sharedMediaApi.openPlayback).not.toHaveBeenCalled();
   });
 
   it("requires confirmation before manually deleting an asset", async () => {
