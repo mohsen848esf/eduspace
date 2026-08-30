@@ -86,9 +86,25 @@ class PermissionsCacheTest(TransactionTestCase):
         new_role = Role.objects.create(name='Assistant')
         self.member.role = new_role
         self.member.save()
-        
+
         # Cache key should be invalidated/deleted
         self.assertIsNone(cache.get(cache_key))
+
+    def test_member_save_invalidates_cache_before_transaction_commit(self):
+        """A permission change must not leave stale access during a transaction."""
+        from django.db import transaction
+
+        has_org_permission(self.user, self.org, 'can_edit_stuff')
+        restricted_role = Role.objects.create(name='Restricted')
+
+        with transaction.atomic():
+            self.member.role = restricted_role
+            self.member.save()
+
+            fresh_user = User.objects.get(id=self.user.id)
+            self.assertFalse(
+                has_org_permission(fresh_user, self.org, 'can_edit_stuff')
+            )
 
     def test_signal_member_delete_invalidates_cache(self):
         # Populate cache
