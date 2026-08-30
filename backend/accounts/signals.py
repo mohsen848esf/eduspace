@@ -10,6 +10,11 @@ logger = logging.getLogger(__name__)
 
 def invalidate_user_org_perms(user_id, org_id):
     cache_key = f"user_org_perms:{user_id}:{org_id}"
+    # Invalidate before the transaction commits as well.  Permission checks
+    # can happen inside the same transaction (and test cases intentionally
+    # keep an outer transaction open), so waiting only for on_commit can
+    # expose permissions cached for an earlier membership with the same IDs.
+    cache.delete(cache_key)
     transaction.on_commit(lambda: cache.delete(cache_key))
     logger.debug(f"Scheduled invalidation for cache key on commit: {cache_key}")
 
@@ -19,6 +24,9 @@ def invalidate_members_with_role(role):
     members = list(OrgMember.objects.filter(role=role).values_list('user_id', 'organization_id'))
     keys = [f"user_org_perms:{user_id}:{org_id}" for user_id, org_id in members]
     if keys:
+        # See invalidate_user_org_perms: authorization cache entries must not
+        # remain usable until the surrounding transaction commits.
+        cache.delete_many(keys)
         transaction.on_commit(lambda: cache.delete_many(keys))
         logger.debug(f"Scheduled invalidation for keys on commit: {keys}")
 
