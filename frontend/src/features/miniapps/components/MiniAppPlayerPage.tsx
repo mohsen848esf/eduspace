@@ -37,8 +37,6 @@ export default function MiniAppPlayerPage() {
   // hits the same endpoint and the result is small + cacheable.
   useEffect(() => {
     let cancelled = false;
-    setGames(null);
-    setError(null);
     gamesApi
       .list()
       .then((data) => {
@@ -140,14 +138,4 @@ export default function MiniAppPlayerPage() {
       </div>
     </AppShell>
   );
-}
-
-// Keep a tiny exported helper so the gallery can build the player URL
-// without re-implementing the slug logic.
-export function miniAppPlayerHref(game: Pick<GameSummary, "game_type">): string | null {
-  const url = gameAssetUrl(game);
-  if (!url) return null;
-  // url looks like /games/<slug>/index.html — extract the slug.
-  const match = url.match(/^\/games\/([^/]+)\//);
-  return match ? `/miniapps/play/${match[1]}` : null;
 }

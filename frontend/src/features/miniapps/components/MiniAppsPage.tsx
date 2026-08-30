@@ -8,7 +8,7 @@ import gamesApi, {
   type GameSummary,
   gameAssetUrl,
 } from "../../games/api/games.api";
-import { miniAppPlayerHref } from "./MiniAppPlayerPage";
+import { miniAppPlayerHref } from "./miniAppPlayerHref";
 
 /**
  * Categories shown as filter chips on top of the gallery. The `id` is
