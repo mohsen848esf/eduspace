@@ -243,6 +243,47 @@ Compose performs this order:
 
 If migration or static collection fails, the new backend does not start. Stop and inspect logs; never delete a volume to fix a migration.
 
+### Existing server: roll out the shared-media upload fix
+
+Use this sequence when the application is already running but shared-media upload returns
+`503 STORAGE_NOT_CONFIGURED`.
+
+1. Wait for the **Publish production images** workflow for the approved `main` commit to finish
+   successfully. The workflow publishes immutable backend/web images and then moves both
+   `production` tags.
+2. On the server, edit the existing `.deploy/production.env`. **Do not copy the example file over
+   the existing file**, because that would replace database, LiveKit, domain, and other secrets.
+3. Add the real object-storage credentials and bucket settings described in
+   [Shared-media object storage](#shared-media-object-storage). Configure bucket CORS for the
+   public application origin and expose `ETag`.
+4. Validate that Compose can read the file without printing its resolved contents:
+
+   ```bash
+   docker compose --env-file .deploy/production.env -p eduspace-production -f compose.server.yml config --quiet
+   docker compose --env-file .deploy/production.env -p eduspace-production -f compose.server.yml run --rm --no-deps backend \
+     python manage.py shell -c "from django.conf import settings; assert settings.S3_ENABLED and settings.AWS_STORAGE_BUCKET_NAME; print('shared-media storage configured')"
+   ```
+
+5. Pull and recreate the application services so the backend and every media worker receive the
+   same environment:
+
+   ```bash
+   docker compose --env-file .deploy/production.env -p eduspace-production -f compose.server.yml up -d --pull always --force-recreate --wait \
+     backend worker media-worker media-ingest-worker beat web
+   ```
+
+6. Confirm service health and inspect only bounded logs:
+
+   ```bash
+   docker compose --env-file .deploy/production.env -p eduspace-production -f compose.server.yml ps
+   docker compose --env-file .deploy/production.env -p eduspace-production -f compose.server.yml logs --tail=100 backend media-worker media-ingest-worker
+   ```
+
+7. Upload a small MP4 first. The initiate request must return `201`, the browser's signed `PUT`
+   must return success with an exposed `ETag`, and the asset should advance from upload to
+   processing/ready. Only then test a larger progressive upload. Enable both progressive flags
+   together after this baseline succeeds.
+
 For ordinary application releases, the server checkout does not need `git pull`; Compose only pulls the newly promoted images. When `compose.server.yml`, proxy configuration, or infrastructure files change, update the checkout to the specifically approved infrastructure commit, validate it, then run the same update command:
 
 ```bash
@@ -267,6 +308,7 @@ docker compose --env-file .deploy/production.env -p eduspace-production -f compo
 | `denied` / `unauthorized` while pulling | The package is private, the server is logged in with an account that cannot read it, or the image name is incorrect. | Make both packages Public, or authenticate with a classic token containing `read:packages`; verify the exact lowercase names above. |
 | `manifest unknown` | The requested tag does not exist. | Confirm that the GitHub Actions run completed and that the `production` tag was promoted. Do not replace it with `latest`. |
 | Pull succeeds but Compose keeps old code | The server did not request a pull or the tag was overridden. | Keep `pull_policy: always`, use `--pull always`, and check that `RELEASE_TAG=production`. |
+| Shared-media upload initiate returns `503 STORAGE_NOT_CONFIGURED` | The backend container has `S3_ENABLED=False`, an empty bucket name, or did not receive the updated production env. | Configure the S3-compatible bucket in `.deploy/production.env`, then recreate backend and both media workers. Do not overwrite the existing env with the example file. |
 | Web page works but calls fail | The RTC hostname, proxy, or media firewall is wrong. | Confirm `RTC_HTTP_PORT=7890` proxies to the internal LiveKit `:7880`, and open `RTC_TCP_PORT` over TCP plus `RTC_UDP_PORT` and `TURN_UDP_PORT` over UDP. |
 
 Inspect the resulting services without exposing environment values:
