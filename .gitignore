@@ -16,6 +16,7 @@ backend/venv/
 
 # Ignore node_modules in frontend
 frontend/node_modules/
+/node_modules/
 
 # User-uploaded and generated media (recordings, avatars, etc.)
 # We keep the directory structure via .gitkeep markers but ignore the files.
