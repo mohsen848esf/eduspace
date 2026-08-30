@@ -3,11 +3,9 @@ x-logging: &logging
   driver: json-file
   options: {max-size: '10m', max-file: '3'}
 x-app: &app
-  image: eduspace-backend:${DEPLOY_ENV:?}-${RELEASE_ID:-local}
-  build:
-    context: .
-    dockerfile: backend/Dockerfile
-  env_file: ["${SERVER_ENV_FILE:?}"]
+  image: ${BACKEND_IMAGE:-ghcr.io/mohsen848esf/eduspace-backend}:${RELEASE_TAG:-production}
+  pull_policy: always
+  env_file: [./.deploy/production.env]
   environment:
     DJANGO_SETTINGS_MODULE: config.server_settings
     DEPLOY_ENV: ${DEPLOY_ENV:?}
@@ -64,12 +62,26 @@ services:
       - sh
       - -ec
       - 'mkdir -p /app/private_media/presentation_sources /app/private_media/media_inspection; chown 10001:2000 /app/media /app/media/recordings /app/private_media /app/private_media/presentation_sources /app/private_media/media_inspection /app/staticfiles; chmod 2775 /app/media /app/staticfiles; chmod 2770 /app/media/recordings /app/private_media /app/private_media/presentation_sources /app/private_media/media_inspection'
+  migrate:
+    <<: *app
+    restart: 'no'
+    command: [python, manage.py, migrate, --noinput]
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      init-storage: {condition: service_completed_successfully}
+  collectstatic:
+    <<: *app
+    restart: 'no'
+    command: [python, manage.py, collectstatic, --noinput]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
   backend:
     <<: *app
     depends_on:
       db: {condition: service_healthy}
       redis: {condition: service_healthy}
-      init-storage: {condition: service_completed_successfully}
+      collectstatic: {condition: service_completed_successfully}
     healthcheck:
       test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz/', timeout=4)"]
       interval: 10s
@@ -102,10 +114,8 @@ services:
     depends_on:
       backend: {condition: service_healthy}
   web:
-    image: eduspace-web:${DEPLOY_ENV:?}-${RELEASE_ID:-local}
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
+    image: ${WEB_IMAGE:-ghcr.io/mohsen848esf/eduspace-web}:${RELEASE_TAG:-production}
+    pull_policy: always
     ports: ['127.0.0.1:${WEB_PORT:?}:80']
     volumes:
       - media:/srv/media:ro
@@ -133,7 +143,9 @@ services:
       - '${RTC_TCP_PORT:?}:${RTC_TCP_PORT:?}/tcp'
       - '${RTC_UDP_PORT:?}:${RTC_UDP_PORT:?}/udp'
       - '${TURN_UDP_PORT:?}:${TURN_UDP_PORT:?}/udp'
-    volumes: ['${SERVER_CONFIG_DIR:?}/livekit.yaml:/etc/livekit.yaml:ro']
+    configs:
+      - source: livekit
+        target: /etc/livekit.yaml
     networks:
       default:
       edge:
@@ -191,3 +203,22 @@ networks:
   edge:
     external: true
     name: eduspace-edge
+configs:
+  livekit:
+    content: |
+      port: 7880
+      rtc:
+        tcp_port: ${RTC_TCP_PORT:?}
+        udp_port: ${RTC_UDP_PORT:?}
+        node_ip: ${PUBLIC_IP:?}
+        use_external_ip: false
+        advertise_internal_ip: true
+      redis:
+        address: redis:6379
+      turn:
+        enabled: true
+        udp_port: ${TURN_UDP_PORT:?}
+      webhook:
+        api_key: ${LIVEKIT_API_KEY:?}
+        urls:
+          - http://backend:8000/api/recordings/webhook/
