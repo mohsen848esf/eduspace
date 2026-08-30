@@ -1,4 +1,6 @@
-# Manual server deployment verification
+# Historical manual-build verification
+
+> This file records verification of the previous server-build workflow on 2026-08-29. Production now pulls application images from GHCR and uses Compose-managed migrations and LiveKit configuration. Treat the current operator runbooks and the `Publish production images` workflow as authoritative.
 
 Verified on 2026-08-29 using Linux containers under Docker Desktop, in the isolated Compose project `eduspace-deploy-verify`. No existing development database, media volume or running development service was used.
 
@@ -26,7 +28,7 @@ Verified on 2026-08-29 using Linux containers under Docker Desktop, in the isola
 
 ## Not verified here
 
-- The complete `server.sh deploy` workflow on the owner's actual Linux host with real DNS, public IPv4, firewall and ACME certificates. The Compose execution sequence and helper behavior were tested separately.
+- The current GHCR publication workflow and pull-based update on the owner's actual Linux host with real DNS, public IPv4, firewall and registry authentication.
 - Public-domain HTTPS/WSS, real two-person WebRTC, restrictive-network TURN behavior, complete browser recording/playback, or target-server capacity.
 - The full backend regression suite or full application security audit.
 - A complete production disaster-recovery drill. Database restoration and file inventory were checked; restoring a live deployment requires the operator's procedure and approval.

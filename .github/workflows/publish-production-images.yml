@@ -1,0 +1,199 @@
+name: Publish production images
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref or commit to build
+        required: true
+        default: develop
+        type: string
+      promote_production:
+        description: Move the production tag to this build
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: publish-production-${{ github.event_name == 'release' && github.event.release.tag_name || github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_REF: ${{ github.event_name == 'release' && github.event.release.tag_name || github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
+
+jobs:
+  quality:
+    name: Test source
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.revision.outputs.sha }}
+      short: ${{ steps.revision.outputs.short }}
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - name: Check out selected source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ env.SOURCE_REF }}
+
+      - name: Resolve source revision
+        id: revision
+        shell: bash
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "short=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Validate production Compose model
+        run: |
+          mkdir -p .deploy
+          cp infra/server/.env.example .deploy/production.env
+          docker compose --env-file .deploy/production.env -p eduspace-production -f compose.server.yml config --quiet
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Lint frontend
+        run: npm run lint
+        working-directory: frontend
+
+      - name: Test frontend
+        run: npm test
+        working-directory: frontend
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: python -m pip install -r requirements.txt
+        working-directory: backend
+
+      - name: Check backend
+        run: python manage.py check
+        working-directory: backend
+        env:
+          USE_SQLITE: 'True'
+          REDIS_HOST: 127.0.0.1
+
+      - name: Test backend
+        run: python manage.py test --noinput
+        working-directory: backend
+        env:
+          USE_SQLITE: 'True'
+          REDIS_HOST: 127.0.0.1
+
+  publish:
+    name: Publish ${{ matrix.name }}
+    needs: quality
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            image: ghcr.io/mohsen848esf/eduspace-backend
+            dockerfile: backend/Dockerfile
+          - name: web
+            image: ghcr.io/mohsen848esf/eduspace-web
+            dockerfile: frontend/Dockerfile
+    steps:
+      - name: Check out selected source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ env.SOURCE_REF }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        with:
+          images: ${{ matrix.image }}
+          tags: |
+            type=raw,value=sha-${{ needs.quality.outputs.short }}
+            type=raw,value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ needs.quality.outputs.sha }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+  promote:
+    name: Promote production tag
+    needs: [quality, publish]
+    if: github.event_name == 'release' || github.event_name == 'push' || inputs.promote_production == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify both immutable images
+        run: |
+          docker buildx imagetools inspect ghcr.io/mohsen848esf/eduspace-backend:sha-${{ needs.quality.outputs.short }}
+          docker buildx imagetools inspect ghcr.io/mohsen848esf/eduspace-web:sha-${{ needs.quality.outputs.short }}
+
+      - name: Move production tags
+        run: |
+          docker buildx imagetools create --tag ghcr.io/mohsen848esf/eduspace-backend:production ghcr.io/mohsen848esf/eduspace-backend:sha-${{ needs.quality.outputs.short }}
+          docker buildx imagetools create --tag ghcr.io/mohsen848esf/eduspace-web:production ghcr.io/mohsen848esf/eduspace-web:sha-${{ needs.quality.outputs.short }}
