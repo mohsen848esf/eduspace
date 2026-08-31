@@ -96,7 +96,7 @@ chmod 600 .deploy/production.env
 nano .deploy/production.env
 ```
 
-Replace all domains, public IP, and every generated placeholder. Generate three different values with `openssl rand -hex 32` for `SECRET_KEY`, `DB_PASSWORD`, and `LIVEKIT_API_SECRET`. Set `LIVEKIT_API_KEY` to a unique non-placeholder identifier (for example, `eduspace-livekit-prod-<random-hex>`); the API key and secret must match the values used by LiveKit, Egress, and Django.
+Replace all domains, public IP, and every generated placeholder. Generate values with `openssl rand -hex 32` for `SECRET_KEY`, `DB_PASSWORD`, `LIVEKIT_API_SECRET`, and — if using the bundled MinIO object store (the default; see "Shared-media object storage" below) — `MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD`. Set `LIVEKIT_API_KEY` to a unique non-placeholder identifier (for example, `eduspace-livekit-prod-<random-hex>`); the API key and secret must match the values used by LiveKit, Egress, and Django. `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` must be set to the exact same values as `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` when using the bundled MinIO — `.env` files don't support variable references, so both pairs need the literal generated value written out twice.
 
 Core production values:
 
@@ -121,25 +121,45 @@ RELEASE_TAG=production
 #### Shared-media object storage
 
 The shared-media upload API writes directly to an S3-compatible object store; it does not use the
-container filesystem. Set these values in `.deploy/production.env` before starting the stack:
+container filesystem. `compose.server.yml` bundles a self-hosted [MinIO](https://min.io/) service
+by default so this works out of the box with no external account — its data lives on the same
+server, in a Docker volume (or a bind-mounted host directory via `MINIO_DATA_PATH`, see below).
+Set these values in `.deploy/production.env` before starting the stack:
 
 ```dotenv
 S3_ENABLED=True
-AWS_ACCESS_KEY_ID=...
-AWS_SECRET_ACCESS_KEY=...
+AWS_ACCESS_KEY_ID=...                # same value as MINIO_ROOT_USER
+AWS_SECRET_ACCESS_KEY=...            # same value as MINIO_ROOT_PASSWORD
 AWS_STORAGE_BUCKET_NAME=eduspace-media
-AWS_S3_ENDPOINT_URL=                 # blank for AWS S3; HTTPS endpoint for R2/MinIO
-AWS_S3_REGION_NAME=us-east-1        # `auto` for Cloudflare R2
-AWS_S3_ADDRESSING_STYLE=auto
+AWS_S3_ENDPOINT_URL=https://meet.example.com   # bare APP_DOMAIN, no path suffix
+AWS_S3_REGION_NAME=us-east-1
+AWS_S3_ADDRESSING_STYLE=path
+MINIO_ROOT_USER=...
+MINIO_ROOT_PASSWORD=...
+MINIO_DATA_PATH=                     # host directory to bind-mount MinIO's data into; blank = Docker-managed volume
 MEDIA_PROGRESSIVE_UPLOAD_ENABLED=False
 MEDIA_PROGRESSIVE_INGEST_ENABLED=False
 ```
 
-The bucket must allow the application origin to perform signed `PUT` requests and expose the
-`ETag` response header (CORS). Set both progressive flags to `True` only after the media workers
-and FFmpeg runtime have been verified; otherwise uploads use the resumable complete-upload path.
-If these settings are missing, `/api/media/assets/<token>/uploads/initiate/` intentionally returns
-`503 STORAGE_NOT_CONFIGURED`.
+Uploads go to `https://<APP_DOMAIN>/eduspace-media/...` — `web`'s nginx (`infra/server/nginx.conf`)
+proxies that path straight through to the bundled `minio` container, byte-identical (no prefix
+stripping, no rewriting), because AWS SigV4 signs the exact request path: if nginx rewrote it, the
+signature MinIO recomputes on receipt would no longer match what boto3 signed, and every request
+would fail with `SignatureDoesNotMatch`. This also means uploads are same-origin with the
+frontend, so **no CORS configuration is needed** for the bundled MinIO path. The nginx location is
+named after the bucket (`/eduspace-media/`) — if you change `AWS_STORAGE_BUCKET_NAME`, update that
+location block to match.
+
+**Using a managed bucket instead** (AWS S3 / Cloudflare R2 / another provider) — leave
+`AWS_S3_ENDPOINT_URL` blank for AWS S3, or set it to the provider's HTTPS endpoint for R2/other
+S3-compatible services, use `AWS_S3_ADDRESSING_STYLE=auto` (`auto` for Cloudflare R2 too), and skip
+the `MINIO_*` variables and the `minio`/`minio-init` services entirely. Unlike the bundled MinIO
+path, this is genuinely cross-origin from the frontend, so **the bucket must allow the application
+origin to perform signed `PUT` requests and expose the `ETag` response header (CORS)**.
+
+Set both progressive flags to `True` only after the media workers and FFmpeg runtime have been
+verified; otherwise uploads use the resumable complete-upload path. If storage isn't configured,
+`/api/media/assets/<token>/uploads/initiate/` intentionally returns `503 STORAGE_NOT_CONFIGURED`.
 
 The env is now the only source for LiveKit's public IP and ports. Compose generates `/etc/livekit.yaml` directly from these values. Do not create or mount another LiveKit YAML. Any valid custom port values work when the host firewall and provider firewall use the same values.
 
@@ -182,6 +202,10 @@ Never paste the full output of `docker compose config`; resolved service env can
 ### Existing host Nginx
 
 Use separate HTTPS server blocks with valid certificates. Preserve existing sites.
+
+Unlike RTC, shared-media object storage needs **no third server block**. Uploads to the bundled
+MinIO are proxied inside the `meet.example.com` block below (`web` container's own nginx handles
+`/eduspace-media/` internally) — see "Shared-media object storage" above.
 
 ```nginx
 # meet.example.com HTTPS server
@@ -309,6 +333,8 @@ docker compose --env-file .deploy/production.env -p eduspace-production -f compo
 | `manifest unknown` | The requested tag does not exist. | Confirm that the GitHub Actions run completed and that the `production` tag was promoted. Do not replace it with `latest`. |
 | Pull succeeds but Compose keeps old code | The server did not request a pull or the tag was overridden. | Keep `pull_policy: always`, use `--pull always`, and check that `RELEASE_TAG=production`. |
 | Shared-media upload initiate returns `503 STORAGE_NOT_CONFIGURED` | The backend container has `S3_ENABLED=False`, an empty bucket name, or did not receive the updated production env. | Configure the S3-compatible bucket in `.deploy/production.env`, then recreate backend and both media workers. Do not overwrite the existing env with the example file. |
+| Shared-media upload fails with `SignatureDoesNotMatch` (bundled MinIO) | `AWS_S3_ENDPOINT_URL` has a path suffix, or the `/eduspace-media/` nginx location was renamed/rewritten. AWS SigV4 signs the exact request path; any prefix stripping or path mismatch between what boto3 signed and what MinIO receives breaks every request. | Set `AWS_S3_ENDPOINT_URL` to the bare `APP_DOMAIN` with no path, and confirm the nginx location name matches `AWS_STORAGE_BUCKET_NAME` exactly and does not rewrite the URI. |
+| `minio` container fails to start / write to `/data` (bind-mounted `MINIO_DATA_PATH`) | The host directory's ownership doesn't match the uid the `minio/minio` image runs as. | Check the container's startup logs for the exact permission error, then `chown`/`chmod` the host directory to match, or leave `MINIO_DATA_PATH` blank to use a Docker-managed volume instead. |
 | Web page works but calls fail | The RTC hostname, proxy, or media firewall is wrong. | Confirm `RTC_HTTP_PORT=7890` proxies to the internal LiveKit `:7880`, and open `RTC_TCP_PORT` over TCP plus `RTC_UDP_PORT` and `TURN_UDP_PORT` over UDP. |
 
 Inspect the resulting services without exposing environment values:
