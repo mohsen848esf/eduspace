@@ -11,16 +11,27 @@ class S3MultipartUploadStorage:
         if not settings.S3_ENABLED or not settings.AWS_STORAGE_BUCKET_NAME:
             raise ImproperlyConfigured('S3-compatible object storage is not configured.')
         self.bucket = settings.AWS_STORAGE_BUCKET_NAME
-        self.client = boto3.client(
-            's3',
+        credentials = dict(
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            endpoint_url=settings.AWS_S3_ENDPOINT_URL,
             region_name=settings.AWS_S3_REGION_NAME,
             config=Config(
                 signature_version='s3v4',
                 s3={'addressing_style': settings.AWS_S3_ADDRESSING_STYLE},
             ),
+        )
+        # Presigned URLs are handed to the browser, so they must be signed
+        # against the endpoint the browser can actually reach.
+        self._signing_client = boto3.client(
+            's3', endpoint_url=settings.AWS_S3_ENDPOINT_URL, **credentials,
+        )
+        # Every other call here is a direct network request made by the
+        # backend/worker itself, so it can use a closer internal endpoint
+        # (e.g. talk to MinIO directly instead of round-tripping through the
+        # public nginx path) when one is configured.
+        internal_endpoint = settings.AWS_S3_INTERNAL_ENDPOINT_URL or settings.AWS_S3_ENDPOINT_URL
+        self.client = boto3.client(
+            's3', endpoint_url=internal_endpoint, **credentials,
         )
 
     def initiate(self, *, object_key: str, content_type: str) -> str:
@@ -32,7 +43,7 @@ class S3MultipartUploadStorage:
         return response['UploadId']
 
     def sign_part(self, *, object_key: str, provider_upload_id: str, part_number: int) -> str:
-        return self.client.generate_presigned_url(
+        return self._signing_client.generate_presigned_url(
             'upload_part',
             Params={
                 'Bucket': self.bucket,
@@ -44,7 +55,7 @@ class S3MultipartUploadStorage:
         )
 
     def sign_put_object(self, *, object_key: str) -> str:
-        return self.client.generate_presigned_url(
+        return self._signing_client.generate_presigned_url(
             'put_object',
             Params={'Bucket': self.bucket, 'Key': object_key},
             ExpiresIn=settings.MEDIA_UPLOAD_URL_TTL_SECONDS,
@@ -182,7 +193,7 @@ class S3MultipartUploadStorage:
         return payload.decode('utf-8')
 
     def sign_download(self, *, object_key: str) -> str:
-        return self.client.generate_presigned_url(
+        return self._signing_client.generate_presigned_url(
             'get_object',
             Params={'Bucket': self.bucket, 'Key': object_key},
             ExpiresIn=settings.MEDIA_PLAYBACK_OBJECT_URL_TTL_SECONDS,

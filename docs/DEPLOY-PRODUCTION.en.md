@@ -132,6 +132,7 @@ AWS_ACCESS_KEY_ID=...                # same value as MINIO_ROOT_USER
 AWS_SECRET_ACCESS_KEY=...            # same value as MINIO_ROOT_PASSWORD
 AWS_STORAGE_BUCKET_NAME=eduspace-media
 AWS_S3_ENDPOINT_URL=https://meet.example.com   # bare APP_DOMAIN, no path suffix
+AWS_S3_INTERNAL_ENDPOINT_URL=http://minio:9000 # server-side calls skip the public hop; blank for real S3/R2
 AWS_S3_REGION_NAME=us-east-1
 AWS_S3_ADDRESSING_STYLE=path
 MINIO_ROOT_USER=...
@@ -149,6 +150,15 @@ would fail with `SignatureDoesNotMatch`. This also means uploads are same-origin
 frontend, so **no CORS configuration is needed** for the bundled MinIO path. The nginx location is
 named after the bucket (`/eduspace-media/`) — if you change `AWS_STORAGE_BUCKET_NAME`, update that
 location block to match.
+
+`AWS_S3_INTERNAL_ENDPOINT_URL=http://minio:9000` lets the backend and media workers reach MinIO
+directly over the internal Docker network for their own server-side calls — downloading the
+source video and uploading HLS renditions during transcoding, reading manifests/segments for
+delivery, verifying uploaded chunks — instead of also round-tripping those (often large) transfers
+through the public domain and nginx. Presigned upload URLs handed to the browser always use
+`AWS_S3_ENDPOINT_URL` regardless, since the browser can only reach the public path. Leave
+`AWS_S3_INTERNAL_ENDPOINT_URL` unset when using a real AWS S3/R2 bucket — there's no internal
+network to shortcut through, and it already falls back to `AWS_S3_ENDPOINT_URL` if left blank.
 
 **Using a managed bucket instead** (AWS S3 / Cloudflare R2 / another provider) — leave
 `AWS_S3_ENDPOINT_URL` blank for AWS S3, or set it to the provider's HTTPS endpoint for R2/other
