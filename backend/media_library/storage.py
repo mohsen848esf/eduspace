@@ -168,11 +168,23 @@ class S3MultipartUploadStorage:
         paginator = self.client.get_paginator('list_objects_v2')
         for page in paginator.paginate(Bucket=self.bucket, Prefix=f'{object_prefix.rstrip("/")}/'):
             keys = [{'Key': row['Key']} for row in page.get('Contents', [])]
-            if keys:
-                self.client.delete_objects(
-                    Bucket=self.bucket,
-                    Delete={'Objects': keys, 'Quiet': True},
+            if not keys:
+                continue
+            response = self.client.delete_objects(
+                Bucket=self.bucket,
+                Delete={'Objects': keys, 'Quiet': True},
+            )
+            # Quiet mode only suppresses per-key success entries; failures are
+            # still reported here and boto3 does NOT raise for them, so a
+            # partial batch failure would otherwise be silently swallowed and
+            # leave orphaned objects behind under this prefix.
+            errors = response.get('Errors') or []
+            if errors:
+                details = '; '.join(
+                    f"{error.get('Key')}: {error.get('Code')} {error.get('Message')}"
+                    for error in errors
                 )
+                raise RuntimeError(f'Failed to delete {len(errors)} object(s) under {object_prefix}: {details}')
 
     def read_text(self, *, object_key: str, max_bytes: int = 1_000_000) -> str:
         response = self.client.get_object(Bucket=self.bucket, Key=object_key)
