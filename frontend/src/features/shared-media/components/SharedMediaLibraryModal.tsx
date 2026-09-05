@@ -10,7 +10,7 @@ import {
   ModalHeader,
   ModalTitle,
 } from "@/components/ui/Modal";
-import { getApiErrorData, getApiErrorMessage } from "@/lib/api/errors";
+import { getApiErrorData, getApiErrorMessage, getApiErrorStatus } from "@/lib/api/errors";
 import { sharedMediaApi } from "../api/shared-media.api";
 import { resumeMultipartUpload } from "../lib/multipartUpload";
 import { resumeProgressiveUpload } from "../lib/progressiveUpload";
@@ -132,16 +132,13 @@ export function SharedMediaLibraryModal({ open, onOpenChange, room, roomCode }: 
     const controller = new AbortController();
     abortRef.current = controller;
     try {
-      const draft = readUploadDraft();
-      const canResume = draft?.fileName === file.name && draft.fileSize === file.size && draft.contentType === contentType;
-      let assetToken: string;
-      let uploadToken: string;
-      let uploadMode: "multipart" | "progressive";
-      if (canResume && draft) {
-        assetToken = draft.assetToken;
-        uploadToken = draft.uploadToken;
-        uploadMode = draft.mode || "multipart";
-      } else {
+      type UploadTarget = {
+        assetToken: string;
+        uploadToken: string;
+        uploadMode: "multipart" | "progressive";
+      };
+
+      const startFreshUpload = async (): Promise<UploadTarget> => {
         const asset = await sharedMediaApi.createAsset({
           title: file.name.replace(/\.[^/.]+$/, ""),
           original_filename: file.name,
@@ -149,7 +146,8 @@ export function SharedMediaLibraryModal({ open, onOpenChange, room, roomCode }: 
         const capability = extension === "mp4"
           ? await sharedMediaApi.getProgressiveUploadCapability().catch(() => null)
           : null;
-        uploadMode = capability?.play_while_uploading ? "progressive" : "multipart";
+        const uploadMode: "multipart" | "progressive" =
+          capability?.play_while_uploading ? "progressive" : "multipart";
         const upload = uploadMode === "progressive"
           ? await sharedMediaApi.initiateProgressiveUpload(asset.public_token, {
               size_bytes: file.size,
@@ -159,50 +157,76 @@ export function SharedMediaLibraryModal({ open, onOpenChange, room, roomCode }: 
               size_bytes: file.size,
               content_type: contentType,
             });
-        assetToken = asset.public_token;
-        uploadToken = upload.public_token;
+        const target: UploadTarget = {
+          assetToken: asset.public_token,
+          uploadToken: upload.public_token,
+          uploadMode,
+        };
         localStorage.setItem(UPLOAD_DRAFT_KEY, JSON.stringify({
-          assetToken,
-          uploadToken,
+          assetToken: target.assetToken,
+          uploadToken: target.uploadToken,
           fileName: file.name,
           fileSize: file.size,
           contentType,
-          mode: uploadMode,
+          mode: target.uploadMode,
         } satisfies UploadDraft));
+        return target;
+      };
+
+      const runUpload = (target: UploadTarget) =>
+        target.uploadMode === "progressive"
+          ? resumeProgressiveUpload({
+              assetToken: target.assetToken,
+              uploadToken: target.uploadToken,
+              file,
+              signal: controller.signal,
+              onProgress: (uploadedBytes, totalBytes) =>
+                setProgress(Math.round((uploadedBytes / totalBytes) * 100)),
+              onChunkCommitted: () => void refresh(),
+              onState: (upload) => {
+                if (upload.compatibility === "ineligible") {
+                  setUploadNotice(t(
+                    "sharedMedia.progressiveFallback",
+                    "ساختار این فایل برای پخش حین آپلود مناسب نیست؛ پس از تکمیل آپلود آماده پخش می‌شود.",
+                  ));
+                } else if (upload.status === "ingesting") {
+                  setUploadNotice(t(
+                    "sharedMedia.progressiveIngesting",
+                    "هم‌زمان با آپلود، بخش‌های قابل پخش در حال آماده‌شدن هستند.",
+                  ));
+                }
+              },
+            })
+          : resumeMultipartUpload({
+              assetToken: target.assetToken,
+              uploadToken: target.uploadToken,
+              file,
+              signal: controller.signal,
+              onProgress: ({ uploadedBytes, totalBytes }) =>
+                setProgress(Math.round((uploadedBytes / totalBytes) * 100)),
+            });
+
+      const draft = readUploadDraft();
+      const canResume = Boolean(
+        draft?.fileName === file.name && draft.fileSize === file.size && draft.contentType === contentType,
+      );
+      let target: UploadTarget = canResume && draft
+        ? { assetToken: draft.assetToken, uploadToken: draft.uploadToken, uploadMode: draft.mode || "multipart" }
+        : await startFreshUpload();
+
+      try {
+        await runUpload(target);
+      } catch (error) {
+        if (!canResume || getApiErrorStatus(error) !== 404) throw error;
+        // The resumed session no longer exists server-side (expired, deleted,
+        // or saved from a stale/different environment) — start over instead
+        // of surfacing a fatal error for something the user can't fix.
+        localStorage.removeItem(UPLOAD_DRAFT_KEY);
+        setProgress(0);
+        target = await startFreshUpload();
+        await runUpload(target);
       }
-      if (uploadMode === "progressive") {
-        await resumeProgressiveUpload({
-          assetToken,
-          uploadToken,
-          file,
-          signal: controller.signal,
-          onProgress: (uploadedBytes, totalBytes) =>
-            setProgress(Math.round((uploadedBytes / totalBytes) * 100)),
-          onChunkCommitted: () => void refresh(),
-          onState: (upload) => {
-            if (upload.compatibility === "ineligible") {
-              setUploadNotice(t(
-                "sharedMedia.progressiveFallback",
-                "ساختار این فایل برای پخش حین آپلود مناسب نیست؛ پس از تکمیل آپلود آماده پخش می‌شود.",
-              ));
-            } else if (upload.status === "ingesting") {
-              setUploadNotice(t(
-                "sharedMedia.progressiveIngesting",
-                "هم‌زمان با آپلود، بخش‌های قابل پخش در حال آماده‌شدن هستند.",
-              ));
-            }
-          },
-        });
-      } else {
-        await resumeMultipartUpload({
-          assetToken,
-          uploadToken,
-          file,
-          signal: controller.signal,
-          onProgress: ({ uploadedBytes, totalBytes }) =>
-            setProgress(Math.round((uploadedBytes / totalBytes) * 100)),
-        });
-      }
+
       localStorage.removeItem(UPLOAD_DRAFT_KEY);
       toast.success(t("sharedMedia.uploadComplete", "آپلود کامل شد؛ ویدئو در حال آماده‌سازی است."));
       await refresh();
