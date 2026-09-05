@@ -1,7 +1,6 @@
 from datetime import timedelta
 from pathlib import Path
 import tempfile
-from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.test import TestCase, override_settings
@@ -11,7 +10,12 @@ from accounts.models import User
 from media_library.models import MediaAsset, MediaRendition, MediaUploadSession
 from media_library.services.transcoding import MediaTranscodeError, MediaTranscodeService
 from media_library.tasks import transcode_media_asset_task
-from media_library.transcoding import HlsProfile, remux_hls_source, transcode_hls_renditions
+from media_library.transcoding import (
+    HlsProfile,
+    MediaTranscodeCommandError,
+    remux_hls_source,
+    transcode_hls_renditions,
+)
 
 
 SOURCE = b'private-inspected-source'
@@ -37,8 +41,8 @@ class HlsStorage:
         self.deleted.append(object_prefix)
 
 
-def successful_transcoder(*, source, output_root, profiles, has_audio):
-    del source, has_audio
+def successful_transcoder(*, source, output_root, profiles, has_audio, cancel_check=None):
+    del source, has_audio, cancel_check
     for profile in profiles:
         root = output_root / profile.label
         root.mkdir(parents=True)
@@ -50,8 +54,8 @@ def successful_transcoder(*, source, output_root, profiles, has_audio):
         (root / 'segment_000000.m4s').write_bytes(b'segment')
 
 
-def successful_remuxer(*, source, output_root, has_audio):
-    del source, has_audio
+def successful_remuxer(*, source, output_root, has_audio, cancel_check=None):
+    del source, has_audio, cancel_check
     root = output_root / 'source'
     root.mkdir(parents=True)
     (root / 'index.m3u8').write_text(
@@ -254,14 +258,67 @@ class MediaTranscodeServiceTests(TestCase):
             self.asset.renditions.get(label='720p').status, MediaRendition.Status.FAILED,
         )
 
+    def test_deleting_asset_mid_encode_cancels_without_uploading_partial_output(self):
+        # The remuxer/transcoder callables get a live cancel_check — this
+        # confirms the service wires it to real is_deleted state, and that a
+        # cancellation aborts before any storage write for that rendition.
+        storage = HlsStorage()
+
+        def deleting_remuxer(*, source, output_root, has_audio, cancel_check):
+            del source, output_root, has_audio
+            self.asset.is_deleted = True
+            self.asset.save(update_fields=['is_deleted'])
+            self.assertTrue(cancel_check())
+            raise MediaTranscodeCommandError('CANCELLED')
+
+        with self.assertRaisesMessage(MediaTranscodeError, 'CANCELLED'):
+            MediaTranscodeService.transcode(
+                asset_id=self.asset.id,
+                storage=storage,
+                transcoder=successful_transcoder,
+                remuxer=deleting_remuxer,
+            )
+        self.assertEqual(
+            self.asset.renditions.get(label='source').status,
+            MediaRendition.Status.FAILED,
+        )
+        self.assertEqual(storage.uploaded, [])
+
+
+class FakePopen:
+    """Stand-in for subprocess.Popen. wait_results is consumed one entry per
+    .wait() call: an int is a return code (process has exited), the string
+    'timeout' raises subprocess.TimeoutExpired (still running)."""
+
+    def __init__(self, wait_results):
+        import subprocess
+        self._subprocess = subprocess
+        self._wait_results = list(wait_results)
+        self.returncode = None
+        self.terminated = False
+        self.killed = False
+
+    def wait(self, timeout=None):
+        result = self._wait_results.pop(0)
+        if result == 'timeout':
+            raise self._subprocess.TimeoutExpired(cmd='ffmpeg', timeout=timeout)
+        self.returncode = result
+        return result
+
+    def terminate(self):
+        self.terminated = True
+
+    def kill(self):
+        self.killed = True
+
 
 @override_settings(MEDIA_TRANSCODE_THREADS=2, MEDIA_TRANSCODE_TIMEOUT_SECONDS=30)
 class HlsCommandTests(TestCase):
-    @patch('media_library.transcoding.subprocess.run')
+    @patch('media_library.transcoding.subprocess.Popen')
     @patch('media_library.transcoding.shutil.which', return_value='/usr/bin/ffmpeg')
-    def test_ffmpeg_uses_fixed_argument_list_and_cmaf_hls_options(self, which, run):
+    def test_ffmpeg_uses_fixed_argument_list_and_cmaf_hls_options(self, which, popen_cls):
         del which
-        run.return_value = SimpleNamespace(returncode=0, stderr=b'')
+        popen_cls.return_value = FakePopen([0])
         profile = HlsProfile('360p', 640, 360, 800_000, 96_000)
         with tempfile.TemporaryDirectory() as temp_dir:
             transcode_hls_renditions(
@@ -270,63 +327,112 @@ class HlsCommandTests(TestCase):
                 profiles=[profile],
                 has_audio=True,
             )
-        command = run.call_args.args[0]
+        command = popen_cls.call_args.args[0]
         self.assertIsInstance(command, list)
-        self.assertNotIn('shell', run.call_args.kwargs)
         self.assertIn('fmp4', command)
         self.assertIn('segment_%06d.m4s', command)
-        self.assertEqual(run.call_args.kwargs['timeout'], 30)
-        self.assertEqual(run.call_args.kwargs['cwd'].name, '360p')
+        self.assertEqual(popen_cls.call_args.kwargs['cwd'].name, '360p')
 
-    @patch('media_library.transcoding.subprocess.run')
+    @patch('media_library.transcoding.subprocess.Popen')
     @patch('media_library.transcoding.shutil.which', return_value='/usr/bin/ffmpeg')
-    def test_compatible_source_fast_path_remuxes_without_encoding(self, which, run):
+    def test_compatible_source_fast_path_remuxes_without_encoding(self, which, popen_cls):
         del which
-        run.return_value = SimpleNamespace(returncode=0, stderr=b'')
+        popen_cls.return_value = FakePopen([0])
         with tempfile.TemporaryDirectory() as temp_dir:
             remux_hls_source(
                 source=Path(temp_dir) / 'source.upload',
                 output_root=Path(temp_dir) / 'output',
                 has_audio=True,
             )
-        command = run.call_args.args[0]
+        command = popen_cls.call_args.args[0]
         self.assertIn('copy', command)
         self.assertNotIn('libx264', command)
-        self.assertEqual(run.call_args.kwargs['cwd'].name, 'source')
+        self.assertEqual(popen_cls.call_args.kwargs['cwd'].name, 'source')
 
-    @patch('media_library.transcoding.subprocess.run')
+    @patch('media_library.transcoding.subprocess.Popen')
     @patch('media_library.transcoding.shutil.which', return_value='/usr/bin/ffmpeg')
-    def test_remux_transcodes_audio_to_aac_regardless_of_source_audio_codec(self, which, run):
+    def test_remux_transcodes_audio_to_aac_regardless_of_source_audio_codec(self, which, popen_cls):
         # The video stream is always copied untouched; only audio needs to
         # become AAC, since that's what HLS delivery requires — this is what
         # lets an Opus/MP3/etc. source still get an original-quality video
         # rendition instead of falling back to a full re-encode.
         del which
-        run.return_value = SimpleNamespace(returncode=0, stderr=b'')
+        popen_cls.return_value = FakePopen([0])
         with tempfile.TemporaryDirectory() as temp_dir:
             remux_hls_source(
                 source=Path(temp_dir) / 'source.upload',
                 output_root=Path(temp_dir) / 'output',
                 has_audio=True,
             )
-        command = run.call_args.args[0]
+        command = popen_cls.call_args.args[0]
         self.assertIn('-c:v', command)
         self.assertEqual(command[command.index('-c:v') + 1], 'copy')
         self.assertIn('-c:a', command)
         self.assertEqual(command[command.index('-c:a') + 1], 'aac')
         self.assertNotIn('libx264', command)
 
-    @patch('media_library.transcoding.subprocess.run')
+    @patch('media_library.transcoding.subprocess.Popen')
     @patch('media_library.transcoding.shutil.which', return_value='/usr/bin/ffmpeg')
-    def test_remux_skips_audio_args_when_source_has_no_audio(self, which, run):
+    def test_remux_skips_audio_args_when_source_has_no_audio(self, which, popen_cls):
         del which
-        run.return_value = SimpleNamespace(returncode=0, stderr=b'')
+        popen_cls.return_value = FakePopen([0])
         with tempfile.TemporaryDirectory() as temp_dir:
             remux_hls_source(
                 source=Path(temp_dir) / 'source.upload',
                 output_root=Path(temp_dir) / 'output',
                 has_audio=False,
             )
-        command = run.call_args.args[0]
+        command = popen_cls.call_args.args[0]
         self.assertNotIn('-c:a', command)
         self.assertNotIn('0:a:0', command)
+
+    @patch('media_library.transcoding.subprocess.Popen')
+    @patch('media_library.transcoding.shutil.which', return_value='/usr/bin/ffmpeg')
+    def test_failed_ffmpeg_exit_code_raises(self, which, popen_cls):
+        del which
+        popen_cls.return_value = FakePopen([1])
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with self.assertRaisesMessage(MediaTranscodeCommandError, 'FFMPEG_REMUX_FAILED'):
+                remux_hls_source(
+                    source=Path(temp_dir) / 'source.upload',
+                    output_root=Path(temp_dir) / 'output',
+                    has_audio=True,
+                )
+
+    @patch('media_library.transcoding.subprocess.Popen')
+    @patch('media_library.transcoding.shutil.which', return_value='/usr/bin/ffmpeg')
+    def test_cancel_check_terminates_ffmpeg_mid_run(self, which, popen_cls):
+        # A deleted asset must not keep ffmpeg running to completion — the
+        # very point of this polling loop over a plain blocking subprocess
+        # call.
+        del which
+        fake = FakePopen(['timeout', 0])
+        popen_cls.return_value = fake
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with self.assertRaisesMessage(MediaTranscodeCommandError, 'CANCELLED'):
+                remux_hls_source(
+                    source=Path(temp_dir) / 'source.upload',
+                    output_root=Path(temp_dir) / 'output',
+                    has_audio=True,
+                    cancel_check=lambda: True,
+                )
+        self.assertTrue(fake.terminated)
+
+    @patch('media_library.transcoding.time.monotonic')
+    @patch('media_library.transcoding.subprocess.Popen')
+    @patch('media_library.transcoding.shutil.which', return_value='/usr/bin/ffmpeg')
+    def test_timeout_kills_ffmpeg_and_raises_when_deadline_exceeded(self, which, popen_cls, monotonic):
+        del which
+        fake = FakePopen(['timeout', 0])
+        popen_cls.return_value = fake
+        # First call establishes the deadline (0 + 30s); the poll-loop check
+        # right after is already past it.
+        monotonic.side_effect = [0, 999]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with self.assertRaisesMessage(MediaTranscodeCommandError, 'FFMPEG_TIMEOUT'):
+                remux_hls_source(
+                    source=Path(temp_dir) / 'source.upload',
+                    output_root=Path(temp_dir) / 'output',
+                    has_audio=True,
+                )
+        self.assertTrue(fake.terminated)

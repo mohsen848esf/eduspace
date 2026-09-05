@@ -1,7 +1,9 @@
 import shutil
 import subprocess
+import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable, Optional
 
 from django.conf import settings
 
@@ -19,7 +21,60 @@ class HlsProfile:
     audio_bitrate_bps: int
 
 
-def remux_hls_source(*, source: Path, output_root: Path, has_audio: bool, audio_bitrate_bps: int = 128_000) -> None:
+def _terminate(process: subprocess.Popen) -> None:
+    process.terminate()
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait()
+
+
+def _run_ffmpeg(
+    command: list[str],
+    *,
+    cwd: Path,
+    timeout: int,
+    failure_code: str,
+    cancel_check: Optional[Callable[[], bool]] = None,
+    poll_interval: float = 1.0,
+) -> None:
+    """Run an ffmpeg command, polling so it can be cancelled mid-run.
+
+    A plain blocking subprocess.run() call can't be interrupted once
+    started, so a deleted asset's encode would keep the CPU pinned until
+    ffmpeg finished on its own. Polling with a short timeout on wait() lets
+    cancel_check() (and the overall timeout) be re-checked every
+    poll_interval seconds instead.
+    """
+    try:
+        process = subprocess.Popen(command, cwd=cwd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError as exc:
+        raise MediaTranscodeCommandError('FFMPEG_NOT_AVAILABLE') from exc
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            process.wait(timeout=poll_interval)
+            break
+        except subprocess.TimeoutExpired:
+            if cancel_check is not None and cancel_check():
+                _terminate(process)
+                raise MediaTranscodeCommandError('CANCELLED')
+            if time.monotonic() >= deadline:
+                _terminate(process)
+                raise MediaTranscodeCommandError('FFMPEG_TIMEOUT')
+    if process.returncode != 0:
+        raise MediaTranscodeCommandError(failure_code)
+
+
+def remux_hls_source(
+    *,
+    source: Path,
+    output_root: Path,
+    has_audio: bool,
+    audio_bitrate_bps: int = 128_000,
+    cancel_check: Optional[Callable[[], bool]] = None,
+) -> None:
     """Package an H.264 source at its original quality without re-encoding video.
 
     The audio track is always transcoded to AAC (HLS delivery requires it),
@@ -56,18 +111,13 @@ def remux_hls_source(*, source: Path, output_root: Path, has_audio: bool, audio_
         '-hls_segment_filename', 'segment_%06d.m4s',
         'index.m3u8',
     ])
-    try:
-        process = subprocess.run(
-            command,
-            capture_output=True,
-            check=False,
-            timeout=settings.MEDIA_TRANSCODE_TIMEOUT_SECONDS,
-            cwd=rendition_root,
-        )
-    except subprocess.TimeoutExpired as exc:
-        raise MediaTranscodeCommandError('FFMPEG_TIMEOUT') from exc
-    if process.returncode != 0:
-        raise MediaTranscodeCommandError('FFMPEG_REMUX_FAILED')
+    _run_ffmpeg(
+        command,
+        cwd=rendition_root,
+        timeout=settings.MEDIA_TRANSCODE_TIMEOUT_SECONDS,
+        failure_code='FFMPEG_REMUX_FAILED',
+        cancel_check=cancel_check,
+    )
 
 
 def transcode_hls_renditions(
@@ -76,6 +126,7 @@ def transcode_hls_renditions(
     output_root: Path,
     profiles: list[HlsProfile],
     has_audio: bool,
+    cancel_check: Optional[Callable[[], bool]] = None,
 ) -> None:
     binary = shutil.which('ffmpeg')
     if not binary:
@@ -124,15 +175,10 @@ def transcode_hls_renditions(
             '-hls_segment_filename', 'segment_%06d.m4s',
             'index.m3u8',
         ])
-        try:
-            process = subprocess.run(
-                command,
-                capture_output=True,
-                check=False,
-                timeout=settings.MEDIA_TRANSCODE_TIMEOUT_SECONDS,
-                cwd=rendition_root,
-            )
-        except subprocess.TimeoutExpired as exc:
-            raise MediaTranscodeCommandError('FFMPEG_TIMEOUT') from exc
-        if process.returncode != 0:
-            raise MediaTranscodeCommandError('FFMPEG_TRANSCODE_FAILED')
+        _run_ffmpeg(
+            command,
+            cwd=rendition_root,
+            timeout=settings.MEDIA_TRANSCODE_TIMEOUT_SECONDS,
+            failure_code='FFMPEG_TRANSCODE_FAILED',
+            cancel_check=cancel_check,
+        )

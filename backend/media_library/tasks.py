@@ -64,6 +64,17 @@ def verify_progressive_media_chunk_task(self, chunk_id: int):
         raise
 
 
+def _requeue_purge_if_deleted(asset_id: int) -> None:
+    """Deletion already enqueues a purge as soon as it happens, but a task
+    that was already mid-flight can still finish uploading a rendition (or
+    get cut off) after that first purge already ran. Re-enqueueing here
+    (safe: purge is idempotent) closes that race instead of relying on
+    perfect timing.
+    """
+    if MediaAsset.objects.filter(pk=asset_id, is_deleted=True).exists():
+        purge_deleted_media_asset_task.delay(asset_id)
+
+
 def _mark_inspection_failed(asset_id: int, code: str) -> None:
     MediaAsset.objects.filter(
         pk=asset_id,
@@ -73,6 +84,7 @@ def _mark_inspection_failed(asset_id: int, code: str) -> None:
             MediaAsset.Status.PARTIALLY_PLAYABLE,
         ],
     ).update(status=MediaAsset.Status.FAILED, failure_code=code[:64])
+    _requeue_purge_if_deleted(asset_id)
 
 
 @shared_task(
@@ -94,6 +106,7 @@ def inspect_media_asset_task(self, asset_id: int):
         is_deleted=False,
     ).exists():
         return f'Media asset {asset_id} is not awaiting inspection'
+    MediaAsset.objects.filter(pk=asset_id).update(active_task_id=self.request.id or '')
     try:
         asset = MediaInspectionService.inspect(asset_id=asset_id)
         return f'Media asset {asset.pk} inspected'
@@ -109,6 +122,8 @@ def inspect_media_asset_task(self, asset_id: int):
         _mark_inspection_failed(asset_id, 'INSPECTION_FAILED')
         logger.exception('Unexpected media inspection failure for asset=%s', asset_id)
         raise
+    finally:
+        MediaAsset.objects.filter(pk=asset_id, active_task_id=self.request.id or '').update(active_task_id='')
 
 
 def _mark_transcode_failed(asset_id: int, code: str) -> None:
@@ -130,6 +145,7 @@ def _mark_transcode_failed(asset_id: int, code: str) -> None:
         pk=asset_id,
         status=MediaAsset.Status.PARTIALLY_PLAYABLE,
     ).update(failure_code=code[:64])
+    _requeue_purge_if_deleted(asset_id)
 
 
 @shared_task(
@@ -146,6 +162,7 @@ def transcode_media_asset_task(self, asset_id: int):
         is_deleted=False,
     ).exists():
         return f'Media asset {asset_id} is not awaiting transcode'
+    MediaAsset.objects.filter(pk=asset_id).update(active_task_id=self.request.id or '')
     try:
         asset = MediaTranscodeService.transcode(asset_id=asset_id)
         return f'Media asset {asset.pk} transcoded'
@@ -161,3 +178,62 @@ def transcode_media_asset_task(self, asset_id: int):
         _mark_transcode_failed(asset_id, 'TRANSCODE_FAILED')
         logger.exception('Unexpected media transcode failure for asset=%s', asset_id)
         raise
+    finally:
+        MediaAsset.objects.filter(pk=asset_id, active_task_id=self.request.id or '').update(active_task_id='')
+
+
+@shared_task(
+    bind=True,
+    name='media_library.tasks.purge_deleted_media_asset_task',
+    max_retries=3,
+    soft_time_limit=120,
+    time_limit=150,
+)
+def purge_deleted_media_asset_task(self, asset_id: int):
+    """Free the object storage a deleted asset was using.
+
+    Runs after mark_deleted (and again, harmlessly, after a still-in-flight
+    inspect/transcode task notices the deletion and unwinds) — it never
+    happened automatically before this, so deleted assets kept their source
+    file and any encoded renditions in storage forever.
+    """
+    from media_library.models import ProgressiveMediaUpload
+    from media_library.storage import S3MultipartUploadStorage
+
+    try:
+        asset = MediaAsset.objects.get(pk=asset_id)
+    except MediaAsset.DoesNotExist:
+        return f'Media asset {asset_id} no longer exists'
+    if not asset.is_deleted:
+        return f'Media asset {asset_id} is not deleted; skipping purge'
+
+    try:
+        storage = S3MultipartUploadStorage()
+    except Exception as exc:
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=exc, countdown=30 * (self.request.retries + 1))
+        logger.exception('Could not reach object storage to purge media asset=%s', asset_id)
+        return f'Media asset {asset_id} purge failed: storage unavailable'
+
+    errors = []
+    for upload in asset.upload_sessions.exclude(object_key=''):
+        try:
+            storage.delete(object_key=upload.object_key)
+        except Exception as exc:  # noqa: BLE001 - best-effort cleanup, collect and continue
+            errors.append(str(exc))
+    for progressive in ProgressiveMediaUpload.objects.filter(asset=asset).exclude(object_prefix=''):
+        try:
+            storage.delete_prefix(object_prefix=progressive.object_prefix)
+        except Exception as exc:  # noqa: BLE001
+            errors.append(str(exc))
+    try:
+        storage.delete_prefix(object_prefix=f'media-library/{asset.owner_id}/hls/{asset.public_token}')
+    except Exception as exc:  # noqa: BLE001
+        errors.append(str(exc))
+
+    if errors:
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=RuntimeError('; '.join(errors)), countdown=30 * (self.request.retries + 1))
+        logger.error('Media asset %s purge finished with errors: %s', asset_id, errors)
+        return f'Media asset {asset_id} purge finished with errors'
+    return f'Media asset {asset_id} storage purged'

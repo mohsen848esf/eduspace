@@ -56,6 +56,27 @@ interface Props {
 const formatBytes = (bytes: number) =>
   `${(bytes / 1024 ** 2).toFixed(bytes >= 1024 ** 3 ? 0 : 1)} MB`;
 
+type Translate = (key: string, fallback: string) => string;
+
+const RENDITION_READY_STATUSES = new Set(["playable", "ready"]);
+
+// "progressive" is the temporary play-while-uploading stream, an
+// implementation detail — not a quality choice worth surfacing here.
+const renditionDisplayName = (label: string, t: Translate) =>
+  label === "source" ? t("sharedMedia.qualityOriginal", "کیفیت اصلی") : label;
+
+const renditionStatusText = (status: string, t: Translate) => {
+  if (RENDITION_READY_STATUSES.has(status)) return t("sharedMedia.renditionReady", "آماده");
+  if (status === "failed") return t("sharedMedia.renditionFailed", "ناموفق");
+  return t("sharedMedia.renditionPreparing", "در حال آماده‌سازی");
+};
+
+const renditionSummary = (asset: MediaAsset, t: Translate) =>
+  (asset.renditions ?? [])
+    .filter((rendition) => rendition.label !== "progressive")
+    .map((rendition) => `${renditionDisplayName(rendition.label, t)}: ${renditionStatusText(rendition.status, t)}`)
+    .join(" · ");
+
 export function SharedMediaLibraryModal({ open, onOpenChange, room, roomCode }: Props) {
   const { t } = useTranslation("room");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -347,20 +368,24 @@ export function SharedMediaLibraryModal({ open, onOpenChange, room, roomCode }: 
           <div className="grid min-h-32 place-items-center rounded-xl border border-[var(--b)] text-center text-sm text-[var(--t3)]"><div><Film className="mx-auto mb-2" /><p>{t("sharedMedia.emptyLibrary", "هنوز ویدئویی در کتابخانه ندارید.")}</p></div></div>
         ) : (
           <div className="space-y-2">
-            {assets.map((asset) => (
-              <article key={asset.public_token} className="flex items-center gap-3 rounded-xl border border-[var(--b)] bg-[var(--s3)] p-3">
-                <div className="grid size-11 shrink-0 place-items-center rounded-lg bg-[var(--brand)]/10 text-[var(--brand)]"><Film size={20} /></div>
-                <div className="min-w-0 flex-1 text-start">
-                  <h4 className="truncate text-sm font-semibold">{asset.title}</h4>
-                  <p className="mt-1 text-xs text-[var(--t3)]"><span>{t(`sharedMedia.assetState.${asset.status}`, asset.status)}</span><span className="mx-1">·</span><span dir="ltr">{formatBytes(asset.size_bytes)}</span></p>
-                  {asset.failure_code && <p className="mt-1 text-xs text-[var(--red)]">{asset.failure_code}</p>}
-                </div>
-                <div className="flex items-center gap-1">
-                  <button type="button" disabled={!asset.can_start_playback || startingToken !== null || (!!activePlayback && activePlayback.asset.public_token !== asset.public_token)} onClick={() => void startPlayback(asset)} className="flex min-h-11 items-center gap-2 rounded-lg bg-[var(--brand)] px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"><Play size={16} />{t("sharedMedia.start", "شروع")}</button>
-                  <button type="button" disabled={deletingToken !== null} onClick={() => void deleteAsset(asset)} className="grid size-11 place-items-center rounded-lg text-[var(--red)] hover:bg-[var(--red)]/10 disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--red)]" aria-label={t("sharedMedia.delete", "حذف ویدئو")}><Trash2 size={18} /></button>
-                </div>
-              </article>
-            ))}
+            {assets.map((asset) => {
+              const summary = asset.status === "ready" ? "" : renditionSummary(asset, t);
+              return (
+                <article key={asset.public_token} className="flex items-center gap-3 rounded-xl border border-[var(--b)] bg-[var(--s3)] p-3">
+                  <div className="grid size-11 shrink-0 place-items-center rounded-lg bg-[var(--brand)]/10 text-[var(--brand)]"><Film size={20} /></div>
+                  <div className="min-w-0 flex-1 text-start">
+                    <h4 className="truncate text-sm font-semibold">{asset.title}</h4>
+                    <p className="mt-1 text-xs text-[var(--t3)]"><span>{t(`sharedMedia.assetState.${asset.status}`, asset.status)}</span><span className="mx-1">·</span><span dir="ltr">{formatBytes(asset.size_bytes)}</span></p>
+                    {summary && <p className="mt-1 text-xs text-[var(--t3)]">{summary}</p>}
+                    {asset.failure_code && <p className="mt-1 text-xs text-[var(--red)]">{asset.failure_code}</p>}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button type="button" disabled={!asset.can_start_playback || startingToken !== null || (!!activePlayback && activePlayback.asset.public_token !== asset.public_token)} onClick={() => void startPlayback(asset)} className="flex min-h-11 items-center gap-2 rounded-lg bg-[var(--brand)] px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"><Play size={16} />{t("sharedMedia.start", "شروع")}</button>
+                    <button type="button" disabled={deletingToken !== null} onClick={() => void deleteAsset(asset)} className="grid size-11 place-items-center rounded-lg text-[var(--red)] hover:bg-[var(--red)]/10 disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--red)]" aria-label={t("sharedMedia.delete", "حذف ویدئو")}><Trash2 size={18} /></button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </ModalBody>

@@ -133,6 +133,10 @@ class MediaTranscodeService:
         if upload is None:
             raise MediaTranscodeError('COMPLETED_UPLOAD_NOT_FOUND')
         profiles = cls.profiles_for(asset)
+
+        def cancel_check() -> bool:
+            return MediaAsset.objects.filter(pk=asset_id, is_deleted=True).exists()
+
         prefix = (
             f'media-library/{asset.owner_id}/hls/{asset.public_token}/'
             f'{asset.checksum_sha256[:16]}'
@@ -228,13 +232,17 @@ class MediaTranscodeService:
                 else:
                     try:
                         if is_remux_eligible:
-                            remuxer(source=source, output_root=output, has_audio=bool(asset.audio_codec))
+                            remuxer(
+                                source=source, output_root=output,
+                                has_audio=bool(asset.audio_codec), cancel_check=cancel_check,
+                            )
                         else:
                             transcoder(
                                 source=source,
                                 output_root=output,
                                 profiles=[source_profile],
                                 has_audio=bool(asset.audio_codec),
+                                cancel_check=cancel_check,
                             )
                         cls._validate_rendition_outputs(output, [source_profile])
                         storage.upload_tree(
@@ -253,18 +261,23 @@ class MediaTranscodeService:
                             label='source',
                             status=MediaRendition.Status.PROCESSING,
                         ).update(status=MediaRendition.Status.FAILED)
+                        code = str(exc) if isinstance(exc, MediaTranscodeCommandError) else 'ORIGINAL_RENDITION_FAILED'
+                        if code == 'CANCELLED':
+                            raise MediaTranscodeError(code, retryable=False) from exc
                         if not profiles_to_process:
                             # No downscaled rung either — without Original,
                             # this asset would have nothing playable at all.
-                            code = str(exc) if isinstance(exc, MediaTranscodeCommandError) else 'ORIGINAL_RENDITION_FAILED'
                             raise MediaTranscodeError(code, retryable=is_remux_eligible) from exc
             for profile in profiles_to_process:
+                if cancel_check():
+                    raise MediaTranscodeError('CANCELLED', retryable=False)
                 try:
                     transcoder(
                         source=source,
                         output_root=output,
                         profiles=[profile],
                         has_audio=bool(asset.audio_codec),
+                        cancel_check=cancel_check,
                     )
                 except MediaTranscodeCommandError as exc:
                     code = str(exc) or 'FFMPEG_TRANSCODE_FAILED'

@@ -83,6 +83,9 @@ class MediaAsset(models.Model):
     expires_at = models.DateTimeField(null=True, blank=True)
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
+    # Celery task id of the currently running inspect/transcode task, if any.
+    # Deletion looks this up to revoke a still-queued task before it starts.
+    active_task_id = models.CharField(max_length=155, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

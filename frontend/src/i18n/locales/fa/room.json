@@ -403,6 +403,10 @@
       "ready": "آماده پخش",
       "failed": "پردازش ناموفق"
     },
+    "qualityOriginal": "کیفیت اصلی",
+    "renditionReady": "آماده",
+    "renditionPreparing": "در حال آماده‌سازی",
+    "renditionFailed": "ناموفق",
     "state": {
       "idle": "آماده پخش",
       "playing": "در حال پخش همزمان",

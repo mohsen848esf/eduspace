@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -5,6 +6,8 @@ from django.db import transaction
 from django.utils import timezone
 
 from media_library.models import MediaAsset, SharedPlaybackSession
+
+logger = logging.getLogger(__name__)
 
 
 class ActiveSharedPlaybackError(ValidationError):
@@ -33,6 +36,27 @@ class MediaAssetService:
         locked.is_deleted = True
         locked.deleted_at = timezone.now()
         locked.save(update_fields=['is_deleted', 'deleted_at', 'updated_at'])
+        task_id = locked.active_task_id
+
+        def _after_commit():
+            from config.celery import app as celery_app
+            from media_library.tasks import purge_deleted_media_asset_task
+            if task_id:
+                try:
+                    # Best effort: only stops a task still queued, or a
+                    # running one between ffmpeg cancellation checkpoints —
+                    # see MediaTranscodeService.transcode()'s cancel_check.
+                    celery_app.control.revoke(task_id)
+                except Exception:
+                    logger.exception(
+                        'Failed to revoke task %s for deleted media asset %s', task_id, locked.pk,
+                    )
+            try:
+                purge_deleted_media_asset_task.delay(locked.pk)
+            except Exception:
+                logger.exception('Failed to enqueue storage purge for deleted media asset %s', locked.pk)
+
+        transaction.on_commit(_after_commit)
         return locked
 
 

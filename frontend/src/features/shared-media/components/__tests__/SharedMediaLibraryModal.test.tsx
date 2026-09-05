@@ -42,6 +42,7 @@ const asset = {
   size_bytes: 50 * 1024 ** 2,
   can_start_playback: true,
   failure_code: "",
+  renditions: [],
 } as MediaAsset;
 
 const playback = {
@@ -121,6 +122,29 @@ describe("SharedMediaLibraryModal", () => {
     await act(async () => vi.advanceTimersByTimeAsync(2_000));
     expect(screen.getByRole("button", { name: "شروع" })).toBeEnabled();
     vi.useRealTimers();
+  });
+
+  it("shows which renditions are ready while an asset is still processing", async () => {
+    const partiallyReady = {
+      ...asset,
+      status: "partially_playable",
+      renditions: [
+        { label: "source", status: "ready", width: 1920, height: 1080, bitrate_bps: 1, published_duration_ms: 1, is_default: true },
+        { label: "720p", status: "processing", width: 1280, height: 720, bitrate_bps: 1, published_duration_ms: 0, is_default: false },
+      ],
+    } as MediaAsset;
+    vi.mocked(sharedMediaApi.listAssets).mockResolvedValue({ count: 1, results: [partiallyReady] });
+
+    render(<SharedMediaLibraryModal open onOpenChange={vi.fn()} room={room} roomCode="room-1" />);
+
+    expect(await screen.findByText("کیفیت اصلی: آماده · 720p: در حال آماده‌سازی")).toBeInTheDocument();
+  });
+
+  it("hides the rendition breakdown once the asset is fully ready", async () => {
+    render(<SharedMediaLibraryModal open onOpenChange={vi.fn()} room={room} roomCode="room-1" />);
+
+    await screen.findByText("Cinema test");
+    expect(screen.queryByText(/آماده$/)).not.toBeInTheDocument();
   });
 
   it("creates a new asset and uploads when there is no saved draft", async () => {

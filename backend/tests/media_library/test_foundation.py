@@ -1,4 +1,5 @@
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.test import TestCase, override_settings
@@ -267,3 +268,24 @@ class SharedMediaFoundationTests(TestCase):
     def test_non_owner_non_uploader_cannot_delete_asset(self):
         with self.assertRaises(PermissionDenied):
             MediaAssetService.mark_deleted(asset=self.asset, actor=self.viewer)
+
+    @patch('media_library.tasks.purge_deleted_media_asset_task.delay')
+    @patch('config.celery.app.control.revoke')
+    def test_delete_revokes_active_task_and_enqueues_storage_purge(self, revoke, purge_delay):
+        self.asset.active_task_id = 'celery-task-123'
+        self.asset.save(update_fields=['active_task_id'])
+
+        with self.captureOnCommitCallbacks(execute=True):
+            MediaAssetService.mark_deleted(asset=self.asset, actor=self.owner)
+
+        revoke.assert_called_once_with('celery-task-123')
+        purge_delay.assert_called_once_with(self.asset.pk)
+
+    @patch('media_library.tasks.purge_deleted_media_asset_task.delay')
+    @patch('config.celery.app.control.revoke')
+    def test_delete_without_an_active_task_still_enqueues_purge(self, revoke, purge_delay):
+        with self.captureOnCommitCallbacks(execute=True):
+            MediaAssetService.mark_deleted(asset=self.asset, actor=self.owner)
+
+        revoke.assert_not_called()
+        purge_delay.assert_called_once_with(self.asset.pk)

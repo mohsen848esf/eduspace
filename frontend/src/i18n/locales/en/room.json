@@ -402,6 +402,10 @@
       "ready": "Ready to play",
       "failed": "Processing failed"
     },
+    "qualityOriginal": "Original quality",
+    "renditionReady": "Ready",
+    "renditionPreparing": "Preparing",
+    "renditionFailed": "Failed",
     "state": {
       "idle": "Ready",
       "playing": "Playing together",
