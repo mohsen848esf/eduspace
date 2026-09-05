@@ -23,10 +23,8 @@ class MediaTranscodeError(RuntimeError):
 
 
 class MediaTranscodeService:
-    PROFILE_BITRATES = {
-        360: (800_000, 96_000),
-        720: (2_800_000, 128_000),
-    }
+    DOWNSCALE_HEIGHT = 720
+    DOWNSCALE_BITRATES_BPS = (2_800_000, 128_000)
 
     @staticmethod
     def _even_width(source_width: int, source_height: int, target_height: int) -> int:
@@ -34,23 +32,22 @@ class MediaTranscodeService:
 
     @classmethod
     def profiles_for(cls, asset: MediaAsset) -> list[HlsProfile]:
-        target_heights = [height for height in (360, 720) if height <= asset.height]
-        if not target_heights:
-            target_heights = [asset.height]
-        profiles = []
-        for height in target_heights:
-            video_bitrate, audio_bitrate = cls.PROFILE_BITRATES.get(
-                height,
-                (max(300_000, int(800_000 * height / 360)), 64_000),
-            )
-            profiles.append(HlsProfile(
-                label=f'{height}p',
-                width=cls._even_width(asset.width, asset.height, height),
-                height=height,
-                video_bitrate_bps=video_bitrate,
-                audio_bitrate_bps=audio_bitrate,
-            ))
-        return profiles
+        """The downscaled rung for weaker connections. Original quality is
+        handled separately in transcode() — it's always attempted, regardless
+        of resolution, so it isn't part of this ladder. Skipped entirely when
+        the source is already at or below the downscale target: there is
+        nothing to downscale to.
+        """
+        if asset.height <= cls.DOWNSCALE_HEIGHT:
+            return []
+        video_bitrate, audio_bitrate = cls.DOWNSCALE_BITRATES_BPS
+        return [HlsProfile(
+            label=f'{cls.DOWNSCALE_HEIGHT}p',
+            width=cls._even_width(asset.width, asset.height, cls.DOWNSCALE_HEIGHT),
+            height=cls.DOWNSCALE_HEIGHT,
+            video_bitrate_bps=video_bitrate,
+            audio_bitrate_bps=audio_bitrate,
+        )]
 
     @staticmethod
     def _write_master_playlist(*, output_root: Path, profiles: list[HlsProfile], has_audio: bool):
@@ -136,7 +133,6 @@ class MediaTranscodeService:
         if upload is None:
             raise MediaTranscodeError('COMPLETED_UPLOAD_NOT_FOUND')
         profiles = cls.profiles_for(asset)
-        default_label = profiles[-1].label
         prefix = (
             f'media-library/{asset.owner_id}/hls/{asset.public_token}/'
             f'{asset.checksum_sha256[:16]}'
@@ -153,7 +149,7 @@ class MediaTranscodeService:
                     'bitrate_bps': profile.video_bitrate_bps + profile.audio_bitrate_bps,
                     'manifest_path': '',
                     'published_duration_ms': 0,
-                    'is_default': profile.label == default_label,
+                    'is_default': False,
                 },
             )
             if (
@@ -168,7 +164,7 @@ class MediaTranscodeService:
             rendition.bitrate_bps = profile.video_bitrate_bps + profile.audio_bitrate_bps
             rendition.manifest_path = ''
             rendition.published_duration_ms = 0
-            rendition.is_default = profile.label == default_label
+            rendition.is_default = False
             rendition.save(update_fields=[
                 'status', 'width', 'height', 'bitrate_bps', 'manifest_path',
                 'published_duration_ms', 'is_default', 'updated_at',
@@ -194,7 +190,15 @@ class MediaTranscodeService:
                 raise MediaTranscodeError('TRANSCODE_SOURCE_DOWNLOAD_FAILED', retryable=True) from exc
             if not source.is_file() or source.stat().st_size != upload.expected_size_bytes:
                 raise MediaTranscodeError('TRANSCODE_SOURCE_SIZE_MISMATCH')
-            if remuxer is not None and asset.video_codec == 'h264' and asset.audio_codec in {'', 'aac'}:
+            source_published = False
+            if remuxer is not None:
+                # Original quality is always attempted, for any source codec.
+                # H.264 sources get a fast lossless remux (video copy, audio
+                # transcoded to AAC if needed). Everything else needs a real
+                # re-encode at the source's own resolution — slower, but this
+                # is the only way to normalize an incompatible codec (HEVC,
+                # VP9, AV1, ...) to something browsers can play at all.
+                is_remux_eligible = asset.video_codec == 'h264'
                 source_profile = HlsProfile(
                     label='source',
                     width=asset.width,
@@ -203,7 +207,7 @@ class MediaTranscodeService:
                         1,
                         int(asset.size_bytes * 8 / max(1, asset.duration_ms / 1000)),
                     ),
-                    audio_bitrate_bps=0,
+                    audio_bitrate_bps=128_000 if asset.audio_codec else 0,
                 )
                 source_rendition, _ = MediaRendition.objects.get_or_create(
                     asset=asset,
@@ -213,15 +217,25 @@ class MediaTranscodeService:
                         'width': source_profile.width,
                         'height': source_profile.height,
                         'bitrate_bps': source_profile.video_bitrate_bps,
-                        'is_default': False,
+                        'is_default': True,
                     },
                 )
-                if source_rendition.status not in {
+                if source_rendition.status in {
                     MediaRendition.Status.PLAYABLE,
                     MediaRendition.Status.READY,
                 }:
+                    source_published = True
+                else:
                     try:
-                        remuxer(source=source, output_root=output, has_audio=bool(asset.audio_codec))
+                        if is_remux_eligible:
+                            remuxer(source=source, output_root=output, has_audio=bool(asset.audio_codec))
+                        else:
+                            transcoder(
+                                source=source,
+                                output_root=output,
+                                profiles=[source_profile],
+                                has_audio=bool(asset.audio_codec),
+                            )
                         cls._validate_rendition_outputs(output, [source_profile])
                         storage.upload_tree(
                             source_root=output / source_profile.label,
@@ -232,13 +246,18 @@ class MediaTranscodeService:
                             profile=source_profile,
                             prefix=prefix,
                         )
-                    except Exception:
-                        # The remux path is an optimization. Adaptive encode remains the fallback.
+                        source_published = True
+                    except Exception as exc:
                         MediaRendition.objects.filter(
                             asset_id=asset_id,
                             label='source',
                             status=MediaRendition.Status.PROCESSING,
                         ).update(status=MediaRendition.Status.FAILED)
+                        if not profiles_to_process:
+                            # No downscaled rung either — without Original,
+                            # this asset would have nothing playable at all.
+                            code = str(exc) if isinstance(exc, MediaTranscodeCommandError) else 'ORIGINAL_RENDITION_FAILED'
+                            raise MediaTranscodeError(code, retryable=is_remux_eligible) from exc
             for profile in profiles_to_process:
                 try:
                     transcoder(
@@ -268,7 +287,7 @@ class MediaTranscodeService:
                 )
             cls._write_master_playlist(
                 output_root=output,
-                profiles=profiles,
+                profiles=([source_profile] if source_published else []) + profiles,
                 has_audio=bool(asset.audio_codec),
             )
             try:

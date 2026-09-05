@@ -112,15 +112,24 @@ def inspect_media_asset_task(self, asset_id: int):
 
 
 def _mark_transcode_failed(asset_id: int, code: str) -> None:
-    MediaAsset.objects.filter(
-        pk=asset_id,
-        status=MediaAsset.Status.PROCESSING,
-    ).update(status=MediaAsset.Status.FAILED, failure_code=code[:64])
     from media_library.models import MediaRendition
     MediaRendition.objects.filter(
         asset_id=asset_id,
         status=MediaRendition.Status.PROCESSING,
     ).update(status=MediaRendition.Status.FAILED)
+    MediaAsset.objects.filter(
+        pk=asset_id,
+        status=MediaAsset.Status.PROCESSING,
+    ).update(status=MediaAsset.Status.FAILED, failure_code=code[:64])
+    # A later rendition (e.g. the 720p rung) can fail after an earlier one
+    # (e.g. Original) already published and moved the asset to
+    # PARTIALLY_PLAYABLE. Don't discard the rendition that already works by
+    # downgrading to FAILED — but do record the failure so it's visible
+    # instead of leaving the asset silently stuck here forever.
+    MediaAsset.objects.filter(
+        pk=asset_id,
+        status=MediaAsset.Status.PARTIALLY_PLAYABLE,
+    ).update(failure_code=code[:64])
 
 
 @shared_task(

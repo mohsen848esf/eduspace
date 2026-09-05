@@ -95,11 +95,11 @@ class MediaTranscodeServiceTests(TestCase):
             completed_at=timezone.now(),
         )
 
-    def test_1080p_input_produces_360p_and_720p_without_upscaling(self):
+    def test_1080p_input_produces_a_720p_downscale_rung(self):
         profiles = MediaTranscodeService.profiles_for(self.asset)
         self.assertEqual(
             [(row.label, row.width, row.height) for row in profiles],
-            [('360p', 640, 360), ('720p', 1280, 720)],
+            [('720p', 1280, 720)],
         )
 
     def test_success_publishes_immutable_hls_metadata_atomically(self):
@@ -108,22 +108,25 @@ class MediaTranscodeServiceTests(TestCase):
             asset_id=self.asset.id,
             storage=storage,
             transcoder=successful_transcoder,
-            remuxer=None,
+            remuxer=successful_remuxer,
         )
         self.assertEqual(ready.status, MediaAsset.Status.READY)
         self.assertIn('/aaaaaaaaaaaaaaaa/master.m3u8', ready.master_manifest_path)
         renditions = list(ready.renditions.order_by('height'))
-        self.assertEqual([row.label for row in renditions], ['360p', '720p'])
+        self.assertEqual([row.label for row in renditions], ['720p', 'source'])
         self.assertTrue(all(row.status == MediaRendition.Status.READY for row in renditions))
         self.assertEqual(renditions[-1].published_duration_ms, self.asset.duration_ms)
         self.assertTrue(renditions[-1].is_default)
+        self.assertFalse(renditions[0].is_default)
         self.assertIn(ready.master_manifest_path, storage.uploaded)
 
-    def test_low_resolution_input_gets_single_non_upscaled_profile(self):
+    def test_resolution_at_or_below_downscale_target_gets_no_ladder_rung(self):
+        # Original quality (handled separately in transcode()) already covers
+        # this resolution, so there's nothing left to downscale to.
         self.asset.width = 426
         self.asset.height = 240
         profiles = MediaTranscodeService.profiles_for(self.asset)
-        self.assertEqual([(row.label, row.width, row.height) for row in profiles], [('240p', 426, 240)])
+        self.assertEqual(profiles, [])
 
     def test_incomplete_hls_output_never_becomes_ready(self):
         def incomplete(**kwargs):
@@ -138,32 +141,6 @@ class MediaTranscodeServiceTests(TestCase):
             )
         self.asset.refresh_from_db()
         self.assertEqual(self.asset.status, MediaAsset.Status.PROCESSING)
-
-    def test_first_quality_is_playable_while_next_quality_is_still_processing(self):
-        storage = HlsStorage()
-        observed = []
-
-        def observing_transcoder(**kwargs):
-            successful_transcoder(**kwargs)
-            current = MediaAsset.objects.get(pk=self.asset.pk)
-            observed.append((
-                kwargs['profiles'][0].label,
-                current.status,
-                list(current.renditions.values_list('status', flat=True)),
-            ))
-
-        MediaTranscodeService.transcode(
-            asset_id=self.asset.id,
-            storage=storage,
-            transcoder=observing_transcoder,
-            remuxer=None,
-        )
-
-        self.assertEqual(observed[0][0], '360p')
-        self.assertEqual(observed[1][0], '720p')
-        # Before the second encoder starts, the first rendition has already been published.
-        self.assertEqual(observed[1][1], MediaAsset.Status.PARTIALLY_PLAYABLE)
-        self.assertIn(MediaRendition.Status.PLAYABLE, observed[1][2])
 
     def test_compatible_source_is_playable_before_adaptive_encode_starts(self):
         storage = HlsStorage()
@@ -189,11 +166,59 @@ class MediaTranscodeServiceTests(TestCase):
             MediaRendition.Status.PLAYABLE,
         ))
 
+    def test_non_h264_source_gets_original_quality_via_reencode_not_remux(self):
+        self.asset.video_codec = 'hevc'
+        self.asset.save(update_fields=['video_codec'])
+        storage = HlsStorage()
+        remuxer_calls = []
+        transcoder_labels = []
+
+        def recording_remuxer(**kwargs):
+            remuxer_calls.append(kwargs)
+
+        def recording_transcoder(**kwargs):
+            transcoder_labels.append(kwargs['profiles'][0].label)
+            successful_transcoder(**kwargs)
+
+        ready = MediaTranscodeService.transcode(
+            asset_id=self.asset.id,
+            storage=storage,
+            transcoder=recording_transcoder,
+            remuxer=recording_remuxer,
+        )
+        self.assertEqual(remuxer_calls, [])
+        self.assertIn('source', transcoder_labels)
+        source_rendition = ready.renditions.get(label='source')
+        self.assertEqual(source_rendition.status, MediaRendition.Status.READY)
+        self.assertEqual((source_rendition.width, source_rendition.height), (1920, 1080))
+
+    def test_original_failure_is_fatal_when_no_downscale_rung_exists(self):
+        self.asset.width = 640
+        self.asset.height = 360
+        self.asset.save(update_fields=['width', 'height'])
+
+        def failing_remuxer(**kwargs):
+            del kwargs
+            raise RuntimeError('boom')
+
+        with self.assertRaises(MediaTranscodeError):
+            MediaTranscodeService.transcode(
+                asset_id=self.asset.id,
+                storage=HlsStorage(),
+                transcoder=successful_transcoder,
+                remuxer=failing_remuxer,
+            )
+        self.asset.refresh_from_db()
+        self.assertEqual(
+            self.asset.renditions.get(label='source').status,
+            MediaRendition.Status.FAILED,
+        )
+
     @patch('media_library.tasks.MediaTranscodeService.transcode')
     def test_task_marks_asset_and_renditions_failed_after_permanent_error(self, transcode):
         MediaRendition.objects.create(
             asset=self.asset,
-            label='360p',
+            label='720p',
             status=MediaRendition.Status.PROCESSING,
         )
         transcode.side_effect = MediaTranscodeError('HLS_RENDITION_INCOMPLETE')
@@ -203,6 +228,31 @@ class MediaTranscodeServiceTests(TestCase):
         self.assertEqual(self.asset.status, MediaAsset.Status.FAILED)
         self.assertEqual(self.asset.failure_code, 'HLS_RENDITION_INCOMPLETE')
         self.assertEqual(self.asset.renditions.get().status, MediaRendition.Status.FAILED)
+
+    @patch('media_library.tasks.MediaTranscodeService.transcode')
+    def test_task_records_failure_without_discarding_already_published_rendition(self, transcode):
+        # A later rendition (e.g. the 720p rung) can fail after an earlier
+        # one (Original) already published. The asset must not be silently
+        # stranded, nor should the already-working rendition be discarded.
+        self.asset.status = MediaAsset.Status.PARTIALLY_PLAYABLE
+        self.asset.save(update_fields=['status'])
+        MediaRendition.objects.create(
+            asset=self.asset, label='source', status=MediaRendition.Status.READY,
+        )
+        MediaRendition.objects.create(
+            asset=self.asset, label='720p', status=MediaRendition.Status.PROCESSING,
+        )
+        transcode.side_effect = MediaTranscodeError('FFMPEG_TRANSCODE_FAILED')
+        transcode_media_asset_task(self.asset.id)
+        self.asset.refresh_from_db()
+        self.assertEqual(self.asset.status, MediaAsset.Status.PARTIALLY_PLAYABLE)
+        self.assertEqual(self.asset.failure_code, 'FFMPEG_TRANSCODE_FAILED')
+        self.assertEqual(
+            self.asset.renditions.get(label='source').status, MediaRendition.Status.READY,
+        )
+        self.assertEqual(
+            self.asset.renditions.get(label='720p').status, MediaRendition.Status.FAILED,
+        )
 
 
 @override_settings(MEDIA_TRANSCODE_THREADS=2, MEDIA_TRANSCODE_TIMEOUT_SECONDS=30)
@@ -243,3 +293,40 @@ class HlsCommandTests(TestCase):
         self.assertIn('copy', command)
         self.assertNotIn('libx264', command)
         self.assertEqual(run.call_args.kwargs['cwd'].name, 'source')
+
+    @patch('media_library.transcoding.subprocess.run')
+    @patch('media_library.transcoding.shutil.which', return_value='/usr/bin/ffmpeg')
+    def test_remux_transcodes_audio_to_aac_regardless_of_source_audio_codec(self, which, run):
+        # The video stream is always copied untouched; only audio needs to
+        # become AAC, since that's what HLS delivery requires — this is what
+        # lets an Opus/MP3/etc. source still get an original-quality video
+        # rendition instead of falling back to a full re-encode.
+        del which
+        run.return_value = SimpleNamespace(returncode=0, stderr=b'')
+        with tempfile.TemporaryDirectory() as temp_dir:
+            remux_hls_source(
+                source=Path(temp_dir) / 'source.upload',
+                output_root=Path(temp_dir) / 'output',
+                has_audio=True,
+            )
+        command = run.call_args.args[0]
+        self.assertIn('-c:v', command)
+        self.assertEqual(command[command.index('-c:v') + 1], 'copy')
+        self.assertIn('-c:a', command)
+        self.assertEqual(command[command.index('-c:a') + 1], 'aac')
+        self.assertNotIn('libx264', command)
+
+    @patch('media_library.transcoding.subprocess.run')
+    @patch('media_library.transcoding.shutil.which', return_value='/usr/bin/ffmpeg')
+    def test_remux_skips_audio_args_when_source_has_no_audio(self, which, run):
+        del which
+        run.return_value = SimpleNamespace(returncode=0, stderr=b'')
+        with tempfile.TemporaryDirectory() as temp_dir:
+            remux_hls_source(
+                source=Path(temp_dir) / 'source.upload',
+                output_root=Path(temp_dir) / 'output',
+                has_audio=False,
+            )
+        command = run.call_args.args[0]
+        self.assertNotIn('-c:a', command)
+        self.assertNotIn('0:a:0', command)

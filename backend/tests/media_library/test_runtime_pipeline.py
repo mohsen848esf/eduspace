@@ -113,9 +113,9 @@ class RealMediaPipelineRuntimeTests(TransactionTestCase):
         self.assertTrue(ready.master_manifest_path.endswith('/master.m3u8'))
         self.hls_prefix = ready.master_manifest_path.rsplit('/', 1)[0]
         master = self.storage.read_text(object_key=ready.master_manifest_path)
-        self.assertIn('360p/index.m3u8', master)
+        self.assertIn('source/index.m3u8', master)
 
-        rendition = ready.renditions.get(label='360p')
+        rendition = ready.renditions.get(label='source')
         self.assertEqual(rendition.status, MediaRendition.Status.READY)
         self.assertEqual(rendition.published_duration_ms, ready.duration_ms)
         variant = self.storage.read_text(object_key=rendition.manifest_path)

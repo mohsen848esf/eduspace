@@ -19,8 +19,14 @@ class HlsProfile:
     audio_bitrate_bps: int
 
 
-def remux_hls_source(*, source: Path, output_root: Path, has_audio: bool) -> None:
-    """Package an already browser-compatible H.264/AAC source without re-encoding."""
+def remux_hls_source(*, source: Path, output_root: Path, has_audio: bool, audio_bitrate_bps: int = 128_000) -> None:
+    """Package an H.264 source at its original quality without re-encoding video.
+
+    The audio track is always transcoded to AAC (HLS delivery requires it),
+    even when the source uses a different codec (Opus, MP3, ...) — this is
+    cheap relative to a full video re-encode, since only the audio stream is
+    touched.
+    """
     binary = shutil.which('ffmpeg')
     if not binary:
         raise MediaTranscodeCommandError('FFMPEG_NOT_AVAILABLE')
@@ -32,8 +38,15 @@ def remux_hls_source(*, source: Path, output_root: Path, has_audio: bool) -> Non
     ]
     if has_audio:
         command.extend(['-map', '0:a:0'])
+    command.extend(['-c:v', 'copy'])
+    if has_audio:
+        command.extend([
+            '-c:a', 'aac',
+            '-b:a', str(audio_bitrate_bps),
+            '-ac', '2',
+            '-ar', '48000',
+        ])
     command.extend([
-        '-c', 'copy',
         '-f', 'hls',
         '-hls_time', '2',
         '-hls_playlist_type', 'vod',
