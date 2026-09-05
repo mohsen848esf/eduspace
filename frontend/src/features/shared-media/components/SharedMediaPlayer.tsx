@@ -36,6 +36,7 @@ function formatMediaTime(milliseconds: number) {
 }
 
 const MAX_AUTOMATIC_RECOVERY_ATTEMPTS = 3;
+const POINTER_IDLE_HIDE_MS = 2_500;
 interface QualityOption {
   index: number;
   height: number;
@@ -52,6 +53,7 @@ export function SharedMediaPlayer({ room, roomCode, guestAccessToken, canModerat
   const commandPendingRef = useRef(false);
   const strictUnhealthySinceRef = useRef<number | null>(null);
   const strictHealthySinceRef = useRef<number | null>(null);
+  const pointerIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playback = useSharedPlaybackStore((state) => state.playback);
   const playbackId = playback?.id;
   const clockOffsetMs = useSharedPlaybackStore((state) => state.clockOffsetMs);
@@ -89,6 +91,26 @@ export function SharedMediaPlayer({ room, roomCode, guestAccessToken, canModerat
     document.addEventListener("fullscreenchange", syncFullscreenState);
     syncFullscreenState();
     return () => document.removeEventListener("fullscreenchange", syncFullscreenState);
+  }, []);
+
+  const registerPointerActivity = useCallback(() => {
+    setPointerInside((active) => (active ? active : true));
+    if (pointerIdleTimerRef.current) clearTimeout(pointerIdleTimerRef.current);
+    pointerIdleTimerRef.current = setTimeout(() => {
+      setPointerInside(false);
+    }, POINTER_IDLE_HIDE_MS);
+  }, []);
+
+  const clearPointerActivity = useCallback(() => {
+    if (pointerIdleTimerRef.current) {
+      clearTimeout(pointerIdleTimerRef.current);
+      pointerIdleTimerRef.current = null;
+    }
+    setPointerInside(false);
+  }, []);
+
+  useEffect(() => () => {
+    if (pointerIdleTimerRef.current) clearTimeout(pointerIdleTimerRef.current);
   }, []);
 
   const toggleFullscreen = useCallback(async () => {
@@ -536,13 +558,13 @@ export function SharedMediaPlayer({ room, roomCode, guestAccessToken, canModerat
       className="relative flex h-full w-full flex-col overflow-hidden bg-black"
       dir="ltr"
       onPointerEnter={(event) => {
-        if (event.pointerType !== "touch") setPointerInside(true);
+        if (event.pointerType !== "touch") registerPointerActivity();
       }}
       onPointerLeave={(event) => {
-        if (event.pointerType !== "touch") setPointerInside(false);
+        if (event.pointerType !== "touch") clearPointerActivity();
       }}
       onPointerMove={(event) => {
-        if (event.pointerType !== "touch") setPointerInside(true);
+        if (event.pointerType !== "touch") registerPointerActivity();
       }}
       onPointerDown={(event) => {
         if (event.pointerType !== "touch") return;
@@ -632,12 +654,15 @@ export function SharedMediaPlayer({ room, roomCode, guestAccessToken, canModerat
         data-player-controls
         data-testid="shared-media-toolbar"
         data-pinned={controlsPinned ? "true" : "false"}
-        className={`z-30 flex flex-col overflow-hidden text-white transition-[background-color,border-color,border-radius,padding,gap] motion-reduce:transition-none ${
+        data-state={expandedControlsVisible ? "visible" : "hidden"}
+        aria-hidden={!expandedControlsVisible}
+        inert={!expandedControlsVisible}
+        className={`z-30 flex flex-col overflow-hidden text-white transition-[background-color,border-color,border-radius,padding,gap,opacity,transform] motion-reduce:transform-none motion-reduce:transition-none ${
           controlsPinned
             ? "relative w-full shrink-0 gap-1.5 border-t border-white/15 bg-slate-950/95 p-2 duration-200 ease-out sm:gap-2 sm:p-3"
             : expandedControlsVisible
               ? "absolute inset-x-2 bottom-2 gap-1.5 rounded-xl border border-white/15 bg-black/80 p-2 duration-200 ease-out backdrop-blur sm:inset-x-3 sm:bottom-3 sm:gap-2 sm:p-3"
-              : "pointer-events-none absolute inset-x-2 bottom-2 gap-0 rounded-lg border border-transparent bg-black/45 px-2 py-1 duration-150 ease-in sm:inset-x-3 sm:bottom-3"
+              : "pointer-events-none absolute inset-x-2 bottom-2 translate-y-2 gap-0 rounded-lg border border-transparent bg-black/45 px-2 py-1 opacity-0 duration-150 ease-in sm:inset-x-3 sm:bottom-3"
         }`}
         dir="rtl"
       >

@@ -213,6 +213,7 @@ describe("SharedMediaPlayer", () => {
 
   it("shows a timeline and limits host seeking to the safe uploaded frontier", async () => {
     render(<SharedMediaPlayer room={room} roomCode="ROOM1" canModerate />);
+    revealControls();
 
     const timeline = screen.getByRole("slider", { name: "خط زمانی ویدئو" });
     expect(timeline).toBeEnabled();
@@ -239,26 +240,52 @@ describe("SharedMediaPlayer", () => {
     ));
   });
 
-  it("keeps only the timeline visible until the viewer interacts with the video", () => {
+  it("hides the whole control bar, including the timeline, until the viewer interacts with the video", () => {
     render(<SharedMediaPlayer room={room} roomCode="ROOM1" canModerate />);
 
     const stage = screen.getByTestId("shared-media-stage");
+    const toolbar = screen.getByTestId("shared-media-toolbar");
     const controlDetails = screen.getByTestId("shared-media-control-details");
-    expect(screen.getByRole("slider", { name: "خط زمانی ویدئو" })).toBeVisible();
+    expect(toolbar).toHaveAttribute("data-state", "hidden");
+    expect(toolbar).toHaveClass("opacity-0", "pointer-events-none");
+    expect(toolbar).toHaveAttribute("inert");
     expect(controlDetails).toHaveAttribute("data-state", "hidden");
     expect(controlDetails).toHaveClass("grid-rows-[0fr]", "translate-y-2", "opacity-0", "duration-150", "ease-in");
     expect(controlDetails).toHaveAttribute("inert");
     expect(screen.getByTestId("shared-playback-readiness-chrome")).toHaveClass("opacity-0", "pointer-events-none");
 
     fireEvent.pointerEnter(stage, { pointerType: "mouse" });
+    expect(toolbar).toHaveAttribute("data-state", "visible");
+    expect(toolbar).not.toHaveClass("opacity-0");
+    expect(toolbar).not.toHaveAttribute("inert");
+    expect(screen.getByRole("slider", { name: "خط زمانی ویدئو" })).toBeVisible();
     expect(controlDetails).toHaveAttribute("data-state", "visible");
     expect(controlDetails).toHaveClass("grid-rows-[1fr]", "translate-y-0", "opacity-100", "duration-200", "ease-out");
     expect(controlDetails).not.toHaveAttribute("inert");
     expect(screen.getByTestId("shared-playback-readiness-chrome")).toHaveClass("opacity-100");
 
     fireEvent.pointerLeave(stage, { pointerType: "mouse" });
+    expect(toolbar).toHaveAttribute("data-state", "hidden");
+    expect(toolbar).toHaveAttribute("inert");
     expect(controlDetails).toHaveAttribute("data-state", "hidden");
-    expect(screen.getByRole("slider", { name: "خط زمانی ویدئو" })).toBeVisible();
+  });
+
+  it("auto-hides the controls after the pointer stops moving, even without a pointerLeave (fullscreen)", async () => {
+    vi.useFakeTimers();
+    try {
+      render(<SharedMediaPlayer room={room} roomCode="ROOM1" canModerate />);
+      const stage = screen.getByTestId("shared-media-stage");
+      const controlDetails = screen.getByTestId("shared-media-control-details");
+
+      fireEvent.pointerEnter(stage, { pointerType: "mouse" });
+      expect(controlDetails).toHaveAttribute("data-state", "visible");
+
+      // Simulate fullscreen: the pointer never leaves the stage, but stops moving.
+      await act(async () => vi.advanceTimersByTimeAsync(2_500));
+      expect(controlDetails).toHaveAttribute("data-state", "hidden");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("pins the expanded controls below the video until the viewer unpins them", () => {
