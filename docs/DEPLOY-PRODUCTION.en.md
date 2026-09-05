@@ -26,9 +26,10 @@ Each build receives an immutable `sha-<commit>` tag. A successful promotion move
 
 The project owner:
 
-1. Merges tested changes into `main`, or selects a tested ref in **Actions -> Publish production images -> Run workflow**.
-2. Waits until the quality, image publication, and promotion jobs all pass. A push to `main` promotes the `production` tag automatically; a manual run must enable `promote_production` when production should move.
-3. Gives the server administrator the immutable `sha-...` tag for the release record and rollback.
+1. Bumps the root-level `VERSION` file (e.g. `0.1.0` -> `0.2.0`) as part of the change being released — this is the one manual step in versioning; see "Checking the deployed version" below for how it ends up on running containers.
+2. Merges tested changes into `main`, or selects a tested ref in **Actions -> Publish production images -> Run workflow**.
+3. Waits until the quality, image publication, and promotion jobs all pass. A push to `main` promotes the `production` tag automatically; a manual run must enable `promote_production` when production should move.
+4. Gives the server administrator the immutable `sha-...` tag for the release record and rollback.
 
 The workflow runs frontend lint/tests/build, backend checks/tests, builds both Docker images, publishes immutable images, verifies both exist, and then moves the `production` tags. It never connects to the server. Publishing an image is separate from deploying it: the server administrator chooses when to run Docker Compose.
 
@@ -266,6 +267,16 @@ Compose performs this order:
 6. Start web, workers, Beat, LiveKit, Egress, and Gotenberg.
 
 If migration or static collection fails, the new backend does not start. Stop and inspect logs; never delete a volume to fix a migration.
+
+### Checking the deployed version
+
+```bash
+docker compose --env-file .deploy/production.env -p eduspace-production -f compose.server.yml \
+  exec backend cat VERSION
+docker compose --env-file .deploy/production.env -p eduspace-production -f compose.server.yml \
+  exec web cat /VERSION
+```
+
 
 ### Existing server: roll out the shared-media upload fix
 

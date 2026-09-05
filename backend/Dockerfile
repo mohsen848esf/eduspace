@@ -8,6 +8,8 @@ WORKDIR /app
 COPY backend/requirements.txt /app/requirements.txt
 RUN pip install -r requirements.txt
 COPY --chown=eduspace:eduspace backend/ /app/
+ARG APP_VERSION=dev-0.0.0-local
+RUN echo "$APP_VERSION" > /app/VERSION && chown eduspace:eduspace /app/VERSION
 RUN mkdir -p /app/media/recordings /app/private_media/presentation_sources /app/staticfiles \
     && chown -R eduspace:eduspace /app/media /app/private_media /app/staticfiles
 USER eduspace

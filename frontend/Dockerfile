@@ -10,4 +10,9 @@ RUN npm run build
 FROM nginx:1.28-alpine
 COPY infra/server/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
+# Deliberately outside /usr/share/nginx/html: nginx never serves this path,
+# so the version isn't reachable from the public internet. Check it with
+# `docker exec <container> cat /VERSION`.
+ARG APP_VERSION=dev-0.0.0-local
+RUN echo "$APP_VERSION" > /VERSION
 EXPOSE 80

@@ -35,6 +35,7 @@ jobs:
     outputs:
       sha: ${{ steps.revision.outputs.sha }}
       short: ${{ steps.revision.outputs.short }}
+      app_version: ${{ steps.revision.outputs.app_version }}
     services:
       redis:
         image: redis:7-alpine
@@ -54,9 +55,25 @@ jobs:
       - name: Resolve source revision
         id: revision
         shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PROMOTE_INPUT: ${{ inputs.promote_production }}
         run: |
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "short=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
+          # Mirrors the promote job's condition below: only a run that will
+          # actually move the production tag gets the "prod-" prefix.
+          version="$(tr -d '[:space:]' < VERSION)"
+          if [ -z "$version" ]; then
+            echo "::error::VERSION file is empty or missing."
+            exit 1
+          fi
+          if [ "$EVENT_NAME" = "release" ] || [ "$EVENT_NAME" = "push" ] || [ "$PROMOTE_INPUT" = "true" ]; then
+            channel="prod"
+          else
+            channel="dev"
+          fi
+          echo "app_version=${channel}-${version}" >> "$GITHUB_OUTPUT"
 
       - name: Validate production Compose model
         run: |
@@ -166,6 +183,8 @@ jobs:
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ needs.quality.outputs.app_version }}
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
 
