@@ -1,230 +1,60 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  useParticipants,
-  useLocalParticipant,
-} from "@livekit/components-react";
+import { useLocalParticipant, useParticipants } from "@livekit/components-react";
+import { ArrowLeft, Users } from "lucide-react";
 import { useRoomStore } from "../store/roomStore";
-import { Tooltip } from "../../../components/ui/Tooltip";
-import { Icons } from "../../../lib/constants/icons";
 import { cn } from "../../../lib/utils";
-import toast from "react-hot-toast";
-import RecordControls from "../../recordings/components/room/RecordControls";
-import { useRoomRecording } from "../../recordings/hooks/useRoomRecording";
 
 function useDuration() {
   const [seconds, setSeconds] = useState(0);
   useEffect(() => {
-    const interval = setInterval(() => setSeconds((s) => s + 1), 1000);
+    const interval = setInterval(() => setSeconds((value) => value + 1), 1000);
     return () => clearInterval(interval);
   }, []);
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60)
-    .toString()
-    .padStart(2, "0");
-  const s = (seconds % 60).toString().padStart(2, "0");
-  return h > 0 ? `${h}:${m}:${s}` : `${m}:${s}`;
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60).toString().padStart(2, "0");
+  const remainingSeconds = (seconds % 60).toString().padStart(2, "0");
+  return hours > 0 ? `${hours}:${minutes}:${remainingSeconds}` : `${minutes}:${remainingSeconds}`;
 }
 
-export default function RoomTopbar() {
+export default function RoomTopbar({ onLeave }: { onLeave: () => void }) {
   const { t } = useTranslation("room");
-  const {
-    roomCode,
-    roomName,
-    isHost,
-    maxParticipants,
-    durationLimitMinutes,
-    isDurationLimited,
-  } = useRoomStore();
+  const { roomName, isHost, durationLimitMinutes, isDurationLimited } = useRoomStore();
   const remoteParticipants = useParticipants();
-
   const { localParticipant } = useLocalParticipant();
-  const totalParticipants = new Set([
+  const participantCount = new Set([
     localParticipant.identity,
-    ...remoteParticipants.map((p) => p.identity),
+    ...remoteParticipants.map((participant) => participant.identity),
   ]).size;
   const duration = useDuration();
-  const [copied, setCopied] = useState(false);
-  const [showInfo, setShowInfo] = useState(false);
-
-  const recording = useRoomRecording({ roomCode, isHost });
-
-  // Calculate elapsed and remaining minutes
-  // For free tier (>3 participants and duration limited to 60 mins)
-  const isGroupCall = totalParticipants > 3;
-  const isCapped = isDurationLimited && isGroupCall && Boolean(durationLimitMinutes);
-  
-  // Approximate seconds from duration string
-  const [mStr] = duration.includes(":") ? duration.split(":").slice(-2) : ["0"];
-  const currentTotalMinutes = parseInt(mStr || "0", 10) + (duration.split(":").length > 2 ? parseInt(duration.split(":")[0], 10) * 60 : 0);
-  const limitMins = durationLimitMinutes || 60;
-  const remainingMins = Math.max(0, limitMins - currentTotalMinutes);
-  const isWarningZone = isCapped && remainingMins <= 10;
-  const isCriticalZone = isCapped && remainingMins <= 5;
-
-  const copyRoomCode = async () => {
-    await navigator.clipboard.writeText(
-      `${window.location.origin}/room/${roomCode}`,
-    );
-    toast.success(t("topbar.copiedToast"));
-
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const participantsLabel = `${totalParticipants} / ${maxParticipants || 25} نفر`;
+  const durationParts = duration.split(":");
+  const currentMinutes = Number(durationParts.at(-2) ?? 0) +
+    (durationParts.length > 2 ? Number(durationParts[0]) * 60 : 0);
+  const remainingMinutes = Math.max(0, (durationLimitMinutes || 60) - currentMinutes);
+  const capped = isDurationLimited && participantCount > 3 && Boolean(durationLimitMinutes);
 
   return (
-    <div className="h-12 flex-shrink-0 flex items-center justify-between px-4 bg-[var(--s1)] border-b border-[var(--b)]">
-      {/* Left */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5">
-          <div className="w-2 h-2 rounded-full bg-[var(--green)] shadow-[0_0_6px_rgba(34,197,94,0.6)]" />
-          <span className="text-sm font-semibold text-[var(--t1)]">
-            {roomName || t("topbar.defaultRoomName")}
-          </span>
-          {isHost && (
-            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-[var(--brand-soft)] text-[var(--brand)] border border-[var(--brand)]/30">
-              {t("topbar.host")}
-            </span>
-          )}
+    <header dir="ltr" className="relative flex h-16 shrink-0 items-center justify-between gap-4 border-b border-[var(--b)] bg-[var(--s1)] px-4">
+      <div className="flex min-w-0 items-center gap-2">
+        <button type="button" onClick={onLeave} aria-label={t("tooltips.leave")} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--s3)] text-[var(--t1)] transition-colors hover:bg-[var(--s4)]">
+          <ArrowLeft size={21} />
+        </button>
+        <div className="flex h-10 min-w-0 max-w-72 items-center gap-2 rounded-xl bg-[var(--s3)] px-3 text-[var(--t1)]">
+          <Users size={19} className="shrink-0" />
+          <span dir="auto" className="truncate text-sm font-semibold">{roomName || t("topbar.defaultRoomName")}</span>
+          {isHost && <span className="rounded-md bg-[var(--brand-soft)] px-1.5 py-0.5 text-[9px] font-semibold text-[var(--brand)]">{t("topbar.host")}</span>}
         </div>
-
-        <Tooltip content={copied ? t("topbar.copied") : t("topbar.copy")}>
-          <button
-            onClick={copyRoomCode}
-            className={cn(
-              "flex items-center gap-1.5 px-2 py-1 rounded-lg border-none cursor-pointer transition-all text-xs font-mono force-ltr",
-              copied
-                ? "bg-[var(--green)]/15 text-[var(--green)]"
-                : "bg-[var(--s3)] text-[var(--t3)] hover:text-[var(--t1)] hover:bg-[var(--s4)]",
-            )}
-          >
-            {copied ? "✓" : Icons.copy}
-            {roomCode}
-          </button>
-        </Tooltip>
       </div>
 
-      {/* Center */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              "text-sm font-mono font-semibold force-ltr",
-              isCriticalZone
-                ? "text-red-400 animate-pulse"
-                : isWarningZone
-                  ? "text-amber-400"
-                  : "text-[var(--green)]",
-            )}
-          >
-            {duration}
-          </span>
-
-          {isWarningZone && (
-            <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
-              ⏳ {remainingMins} دقیقه تا پایان زمان رایگان
-            </span>
-          )}
-        </div>
-
-        <span className="text-xs text-[var(--t3)]">{participantsLabel}</span>
+      <div className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-xl bg-[var(--s0)]/60 px-3 py-2 shadow-sm">
+        <span className="h-2 w-2 rounded-full bg-[var(--green)] shadow-[0_0_8px_var(--green)]" />
+        <span className={cn("font-mono text-sm font-semibold", capped && remainingMinutes <= 5 ? "text-[var(--red)]" : capped && remainingMinutes <= 10 ? "text-amber-400" : "text-[var(--green)]")}>{duration}</span>
       </div>
 
-      {/* Right */}
-      <div className="flex items-center gap-2 relative">
-        <RecordControls
-          roomCode={roomCode}
-          canControl={recording.canControl}
-          status={recording.status}
-          isMutating={recording.isMutating}
-          onStart={recording.start}
-          onStop={recording.stop}
-          onPause={recording.pause}
-          onResume={recording.resume}
-        />
-
-        <Tooltip content={t("topbar.info")}>
-          <button
-            onClick={() => setShowInfo((p) => !p)}
-            className={cn(
-              "w-8 h-8 rounded-lg border-none cursor-pointer flex items-center justify-center transition-all text-sm",
-              showInfo
-                ? "bg-[var(--brand-soft)] text-[var(--brand)]"
-                : "bg-transparent text-[var(--t3)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
-            )}
-          >
-            ℹ️
-          </button>
-        </Tooltip>
-
-        {showInfo && (
-          <>
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => setShowInfo(false)}
-            />
-            <div className="absolute top-10 end-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-64 fade-in">
-              <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2">
-                {t("topbar.infoTitle")}
-              </div>
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-between">
-                  <span className="text-xs text-[var(--t3)]">
-                    {t("topbar.infoName")}
-                  </span>
-                  <span className="text-sm font-semibold text-[var(--t1)]">
-                    {roomName || roomCode || t("topbar.defaultRoomName")}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-[var(--t3)]">
-                    {t("topbar.infoCode")}
-                  </span>
-                  <span className="text-xs font-mono font-bold text-[var(--brand)] force-ltr">
-                    {roomCode}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-[var(--t3)]">
-                    {t("topbar.infoDuration")}
-                  </span>
-                  <span className="text-xs font-mono text-[var(--green)] force-ltr">
-                    {duration}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-[var(--t3)]">
-                    {t("topbar.infoParticipants")}
-                  </span>
-                  <span className="text-xs font-medium text-[var(--t1)]">
-                    {totalParticipants} از حداکثر {maxParticipants || 25} نفر
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-[var(--t3)]">
-                    محدودیت زمانی:
-                  </span>
-                  <span className="text-xs font-medium text-[var(--t1)]">
-                    {isCapped ? `${limitMins} دقیقه (گروهی)` : "نامحدود"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-[var(--t3)]">
-                    {t("topbar.infoYourRole")}
-                  </span>
-                  <span className="text-xs font-bold text-[var(--brand)]">
-                    {isHost
-                      ? t("topbar.roleHost")
-                      : t("topbar.roleParticipant")}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
+      <div className="flex h-10 shrink-0 items-center gap-2 rounded-xl bg-[var(--s3)] px-3 text-sm text-[var(--t1)]">
+        <Users size={19} />
+        <span>{participantCount}</span>
       </div>
-    </div>
+    </header>
   );
 }

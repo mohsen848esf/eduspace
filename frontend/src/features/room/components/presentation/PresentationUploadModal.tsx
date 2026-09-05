@@ -141,6 +141,7 @@ export const PresentationUploadModal: React.FC<PresentationUploadModalProps> = (
       );
       const castDoc = activeDoc as PresentationDocument;
       setActivePresentation(castDoc);
+      useRoomStore.getState().setIsPresentationMinimized(false);
 
       // Broadcast to room
       if (room?.localParticipant) {
@@ -151,7 +152,9 @@ export const PresentationUploadModal: React.FC<PresentationUploadModalProps> = (
             document: castDoc,
           }),
         );
-        await room.localParticipant.publishData(data, { reliable: true });
+        await room.localParticipant.publishData(data, { reliable: true }).catch((error: unknown) => {
+          console.warn("Presentation saved; realtime delivery will recover from server state", error);
+        });
       }
 
       toast.success(`ارائه ${doc.title} روی استیج آغاز شد.`);

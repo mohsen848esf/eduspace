@@ -2,6 +2,8 @@ import { create } from "zustand";
 
 export type ActivePanel = "video" | "people" | "chat" | "tools";
 export type LayoutMode = "auto" | "tiled" | "spotlight" | "sidebar";
+export type SelfViewMode = "floating" | "tile";
+export type PipCorner = "top-start" | "top-end" | "bottom-start" | "bottom-end";
 
 export const MAX_TILES_OPTIONS = [6, 9, 16, 30, 49] as const;
 export type MaxTilesOption = (typeof MAX_TILES_OPTIONS)[number];
@@ -10,6 +12,8 @@ interface LayoutPreferences {
   layoutMode: LayoutMode;
   maxTiles: number;
   hideNoVideo: boolean;
+  selfViewMode: SelfViewMode;
+  pipCorner: PipCorner;
 }
 
 const STORAGE_KEY = "eduspace_layout_preferences";
@@ -25,6 +29,10 @@ function loadStoredPreferences(): LayoutPreferences {
           : "auto",
         maxTiles: typeof parsed.maxTiles === "number" ? parsed.maxTiles : 6,
         hideNoVideo: Boolean(parsed.hideNoVideo),
+        selfViewMode: parsed.selfViewMode === "tile" ? "tile" : "floating",
+        pipCorner: ["top-start", "top-end", "bottom-start", "bottom-end"].includes(parsed.pipCorner)
+          ? parsed.pipCorner
+          : "bottom-end",
       };
     }
   } catch {
@@ -34,6 +42,8 @@ function loadStoredPreferences(): LayoutPreferences {
     layoutMode: "auto",
     maxTiles: 6,
     hideNoVideo: false,
+    selfViewMode: "floating",
+    pipCorner: "bottom-end",
   };
 }
 
@@ -62,6 +72,12 @@ interface RoomLayoutState {
 
   isAdjustViewOpen: boolean;
   setAdjustViewOpen: (open: boolean) => void;
+
+  selfViewMode: SelfViewMode;
+  setSelfViewMode: (mode: SelfViewMode) => void;
+
+  pipCorner: PipCorner;
+  setPipCorner: (corner: PipCorner) => void;
 }
 
 const initialPrefs = loadStoredPreferences();
@@ -90,4 +106,16 @@ export const useRoomLayoutStore = create<RoomLayoutState>()((set) => ({
 
   isAdjustViewOpen: false,
   setAdjustViewOpen: (open) => set({ isAdjustViewOpen: open }),
+
+  selfViewMode: initialPrefs.selfViewMode,
+  setSelfViewMode: (mode) => {
+    savePreferences({ selfViewMode: mode });
+    set({ selfViewMode: mode });
+  },
+
+  pipCorner: initialPrefs.pipCorner,
+  setPipCorner: (corner) => {
+    savePreferences({ pipCorner: corner });
+    set({ pipCorner: corner });
+  },
 }));

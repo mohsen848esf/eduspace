@@ -17,6 +17,8 @@ export interface TiledGridLayoutProps {
   onLowerHand?: (p: RemoteParticipant) => void;
   pinnedKey: string | null;
   onTogglePin: (key: string) => void;
+  onToggleSelfView?: () => void;
+  selfViewFloating?: boolean;
 }
 
 export default function TiledGridLayout({
@@ -30,6 +32,8 @@ export default function TiledGridLayout({
   onLowerHand,
   pinnedKey,
   onTogglePin,
+  onToggleSelfView,
+  selfViewFloating,
 }: TiledGridLayoutProps) {
   const { maxTiles, hideNoVideo } = useRoomLayoutStore();
   const orientation = useOrientation();
@@ -98,6 +102,8 @@ export default function TiledGridLayout({
               onLowerHand={onLowerHand}
               pinnedKey={pinnedKey}
               onTogglePin={onTogglePin}
+              onToggleSelfView={onToggleSelfView}
+              selfViewFloating={selfViewFloating}
               className="w-full h-full shadow-2xl"
             />
           ) : (
@@ -192,6 +198,8 @@ export default function TiledGridLayout({
                     onLowerHand={onLowerHand}
                     pinnedKey={pinnedKey}
                     onTogglePin={onTogglePin}
+                    onToggleSelfView={onToggleSelfView}
+                    selfViewFloating={selfViewFloating}
                     className="w-full h-full"
                   />
                 )}

@@ -3,11 +3,10 @@ import SidebarLayout from "./SidebarLayout";
 
 export default function AutoDynamicLayout(props: TiledGridLayoutProps) {
   const { tiles, pinnedKey } = props;
-
   // 1. If someone is sharing screen, automatically elevate to Sidebar/Stage layout
   const screenShareTile = tiles.find((t) => t.kind === "screen");
   if (screenShareTile) {
-    return <SidebarLayout {...props} pinnedKey={screenShareTile.key} />;
+    return <SidebarLayout {...props} pinnedKey={pinnedKey || screenShareTile.key} />;
   }
 
   // 2. If a specific tile is pinned by user, show SidebarLayout

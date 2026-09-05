@@ -17,6 +17,8 @@ export interface SidebarLayoutProps {
   onLowerHand?: (p: RemoteParticipant) => void;
   pinnedKey: string | null;
   onTogglePin: (key: string) => void;
+  onToggleSelfView?: () => void;
+  selfViewFloating?: boolean;
 }
 
 export default function SidebarLayout(props: SidebarLayoutProps) {
@@ -65,6 +67,8 @@ export default function SidebarLayout(props: SidebarLayoutProps) {
           onLowerHand={props.onLowerHand}
           pinnedKey={pinnedKey}
           onTogglePin={onTogglePin}
+          onToggleSelfView={props.onToggleSelfView}
+          selfViewFloating={props.selfViewFloating}
           className="w-full h-full"
         />
       </div>
@@ -96,6 +100,8 @@ export default function SidebarLayout(props: SidebarLayoutProps) {
                 onLowerHand={props.onLowerHand}
                 pinnedKey={pinnedKey}
                 onTogglePin={onTogglePin}
+                onToggleSelfView={props.onToggleSelfView}
+                selfViewFloating={props.selfViewFloating}
                 compact
               />
             </div>

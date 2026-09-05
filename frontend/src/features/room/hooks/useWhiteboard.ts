@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRoomContext, useLocalParticipant } from "@livekit/components-react";
+import { useTranslation } from "react-i18next";
 import { useRoomStore } from "../store/roomStore";
 import toast from "react-hot-toast";
-import type { Participant, RemoteParticipant } from "livekit-client";
-import type { WhiteboardEventListener } from "../types/whiteboard";
+import type { Participant } from "livekit-client";
+import type { CanvasElement, WhiteboardEventListener, WhiteboardOperation } from "../types/whiteboard";
 
 export interface WhiteboardState {
   isActive: boolean;
@@ -11,378 +12,135 @@ export interface WhiteboardState {
   hostIdentity: string | null;
   isDrawingAllowed: boolean;
 }
-
-const WHITEBOARD_MESSAGES = {
-  WHITEBOARD_LAUNCH: "WHITEBOARD_LAUNCH",
-  WHITEBOARD_END: "WHITEBOARD_END",
-  WHITEBOARD_RELAY: "WHITEBOARD_RELAY",
-  WHITEBOARD_REQUEST_STATE: "WHITEBOARD_REQUEST_STATE",
-  WHITEBOARD_SYNC: "WHITEBOARD_SYNC",
-} as const;
+const TOPIC = "eduspace.whiteboard.v2";
+const EMPTY: WhiteboardState = { isActive: false, isMinimized: false, hostIdentity: null, isDrawingAllowed: true };
 
 export function useWhiteboard() {
   const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
-  const { isHost } = useRoomStore();
-
-  const [whiteboard, setWhiteboard] = useState<WhiteboardState>({
-    isActive: false,
-    isMinimized: false,
-    hostIdentity: null,
-    isDrawingAllowed: true, // Default to true so participants can collaborate
-  });
-
-  const whiteboardRef = useRef(whiteboard);
-  const isHostRef = useRef(isHost);
-
+  const { t } = useTranslation("room");
+  const hostIdentity = useRoomStore((s) => s.permissionSnapshot?.host_identity);
+  const isHost = useRoomStore((s) => s.isHost);
+  const [whiteboard, setWhiteboard] = useState<WhiteboardState>(EMPTY);
+  const state = useRef(EMPTY);
+  const elements = useRef<Record<string, CanvasElement>>({});
+  const listeners = useRef(new Set<WhiteboardEventListener>());
+  const incoming = useRef<Promise<unknown>>(Promise.resolve());
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const update = useCallback((next: WhiteboardState) => {
+    state.current = next;
+    setWhiteboard(next);
+  }, []);
+  const send = useCallback((type: string, payload: unknown, destinations?: string[]) => {
+    const operation = queue.current.catch(() => undefined).then(async () => {
+      if (room.state !== "connected") throw new Error("Room transport unavailable");
+      await room.localParticipant.sendText(JSON.stringify({ type, payload }), { topic: TOPIC, destinationIdentities: destinations });
+    });
+    queue.current = operation;
+    return operation;
+  }, [room]);
+  const apply = useCallback((type: string, payload: unknown, identity?: string) => {
+    if (type === "WHITEBOARD_CLEAR") elements.current = {};
+    if (type === "WHITEBOARD_SYNC") elements.current = (payload as { elements?: Record<string, CanvasElement> }).elements || {};
+    if (type === "WHITEBOARD_OP") {
+      const op = payload as WhiteboardOperation;
+      const current = elements.current;
+      if (op.type === "CREATE") elements.current = { ...current, [op.element.id]: op.element };
+      if (op.type === "UPDATE" && current[op.id]) elements.current = { ...current, [op.id]: { ...current[op.id], ...op.updates } };
+      if (op.type === "DELETE") { const next = { ...current }; op.ids.forEach((id) => delete next[id]); elements.current = next; }
+      if (op.type === "SYNC_ALL") elements.current = op.elements;
+    }
+    listeners.current.forEach((fn) => fn(type, payload, identity));
+  }, []);
+  const sendState = useCallback((identity?: string) => send("WHITEBOARD_STATE", { ...state.current, elements: elements.current }, identity ? [identity] : undefined), [send]);
+  const receive = useCallback((type: string, data: Record<string, unknown>, identity: string) => {
+    const permissions = useRoomStore.getState().permissionSnapshot;
+    const senderIsHost = permissions ? permissions.host_identity === identity : state.current.hostIdentity === identity;
+    if (type === "WHITEBOARD_REQUEST_STATE") {
+      if (useRoomStore.getState().isHost) void sendState(identity).catch(() => undefined);
+      return;
+    }
+    if (type === "WHITEBOARD_STATE" || type === "WHITEBOARD_LAUNCH" || type === "WHITEBOARD_END") {
+      if (!senderIsHost) return;
+      if (type === "WHITEBOARD_END" || data.isActive === false) {
+        elements.current = {};
+        update(EMPTY);
+      } else {
+        update({ isActive: true, isMinimized: state.current.isActive ? state.current.isMinimized : false, hostIdentity: identity, isDrawingAllowed: data.isDrawingAllowed !== false });
+        if (data.elements) apply("WHITEBOARD_SYNC", data, identity);
+      }
+      return;
+    }
+    if (type === "WHITEBOARD_RELAY" && state.current.isActive) {
+      const inner = data.type as string;
+      if (inner === "WHITEBOARD_TOGGLE_DRAWING") {
+        if (senderIsHost) update({ ...state.current, isDrawingAllowed: (data.payload as { allowed: boolean }).allowed });
+        return;
+      }
+      if ((inner === "WHITEBOARD_CLEAR" || inner === "WHITEBOARD_SYNC") && !senderIsHost) return;
+      if (!state.current.isDrawingAllowed && !senderIsHost) return;
+      apply(inner, data.payload, identity);
+    }
+  }, [apply, sendState, update]);
+  const handleDataMessage = useCallback((payload: Uint8Array, participant?: Participant) => {
+    if (!participant) return;
+    try { const message = JSON.parse(new TextDecoder().decode(payload)); receive(message.type, message.payload || {}, participant.identity); } catch { /* Other room topics. */ }
+  }, [receive]);
   useEffect(() => {
-    whiteboardRef.current = whiteboard;
-    isHostRef.current = isHost;
-  });
-
-  const sendMessage = useCallback(
-    async (type: string, payload: unknown, destinations?: string[]) => {
-      if (!room || room.state !== "connected") return;
-      const encoder = new TextEncoder();
-      const data = encoder.encode(JSON.stringify({ type, payload }));
-      await room.localParticipant.publishData(data, {
-        reliable: true,
-        destinationIdentities: destinations,
+    room.registerTextStreamHandler(TOPIC, (reader, participant) => {
+      const body = reader.readAll();
+      incoming.current = incoming.current.catch(() => undefined).then(async () => {
+        try { const message = JSON.parse(await body); receive(message.type, message.payload || {}, participant.identity); }
+        catch { toast.error(t("whiteboard.syncFailed")); }
       });
-    },
-    [room],
-  );
-
-  // Send unreliable messages (like cursor updates)
-  const sendUnreliableMessage = useCallback(
-    async (type: string, payload: unknown) => {
-      if (!room || room.state !== "connected") return;
-      const encoder = new TextEncoder();
-      const data = encoder.encode(JSON.stringify({ type, payload }));
-      await room.localParticipant.publishData(data, {
-        reliable: false,
-      });
-    },
-    [room],
-  );
-
+    });
+    return () => room.unregisterTextStreamHandler(TOPIC);
+  }, [room, receive, t]);
+  const requestSyncState = useCallback(async () => {
+    if (!isHost && room.state === "connected") await send("WHITEBOARD_REQUEST_STATE", {}).catch(() => undefined);
+  }, [isHost, room, send]);
+  useEffect(() => {
+    void requestSyncState();
+    room.on("connected", requestSyncState);
+    room.on("reconnected", requestSyncState);
+    const pushState = (participant: Participant) => {
+      if (isHost) void sendState(participant.identity).catch(() => undefined);
+    };
+    room.on("participantConnected", pushState);
+    return () => { room.off("connected", requestSyncState); room.off("reconnected", requestSyncState); room.off("participantConnected", pushState); };
+    // Recover missed messages after transient loss even when no UI is mounted.
+  }, [room, isHost, requestSyncState, sendState, hostIdentity]);
+  const subscribeWhiteboardEvents = useCallback((fn: WhiteboardEventListener) => {
+    listeners.current.add(fn);
+    fn("WHITEBOARD_SYNC", { elements: elements.current }, localParticipant.identity);
+    return () => { listeners.current.delete(fn); };
+  }, [localParticipant.identity]);
+  const broadcastWhiteboardEvent = useCallback(async (type: string, payload: unknown, reliable = true) => {
+    apply(type, payload, localParticipant.identity);
+    try {
+      if (reliable) await send("WHITEBOARD_RELAY", { type, payload });
+      else if (room.state === "connected") await room.localParticipant.publishData(new TextEncoder().encode(JSON.stringify({ type: "WHITEBOARD_RELAY", payload: { type, payload } })), { reliable: false });
+    } catch { if (reliable) toast.error(t("whiteboard.syncFailed"), { id: "whiteboard-sync" }); }
+  }, [apply, localParticipant.identity, room, send, t]);
   const launchWhiteboard = useCallback(async () => {
     if (!isHost) return;
-
-    setWhiteboard({
-      isActive: true,
-      isMinimized: false,
-      hostIdentity: localParticipant.identity,
-      isDrawingAllowed: true,
-    });
-
-    await sendMessage(WHITEBOARD_MESSAGES.WHITEBOARD_LAUNCH, {
-      hostIdentity: localParticipant.identity,
-    });
-
-    toast.success("Whiteboard launched", { icon: "✏️" });
-  }, [isHost, localParticipant, sendMessage]);
-
+    try {
+      await send("WHITEBOARD_LAUNCH", { isDrawingAllowed: true });
+      elements.current = {};
+      update({ ...EMPTY, isActive: true, hostIdentity: localParticipant.identity });
+    } catch { toast.error(t("whiteboard.syncFailed")); }
+  }, [isHost, send, update, localParticipant.identity, t]);
   const endWhiteboard = useCallback(async () => {
     if (!isHost) return;
-
-    setWhiteboard({
-      isActive: false,
-      isMinimized: false,
-      hostIdentity: null,
-      isDrawingAllowed: true,
-    });
-
-    await sendMessage(WHITEBOARD_MESSAGES.WHITEBOARD_END, {});
-    toast("Whiteboard ended", { icon: "✏️" });
-  }, [isHost, sendMessage]);
-
-  const minimizeWhiteboard = useCallback(() => {
-    setWhiteboard((prev) => ({
-      ...prev,
-      isMinimized: true,
-    }));
-  }, []);
-
-  const restoreWhiteboard = useCallback(() => {
-    setWhiteboard((prev) => ({
-      ...prev,
-      isMinimized: false,
-    }));
-  }, []);
-
-  const toggleDrawingPermission = useCallback(
-    async (allowed: boolean) => {
-      if (!isHost) return;
-
-      setWhiteboard((prev) => ({
-        ...prev,
-        isDrawingAllowed: allowed,
-      }));
-
-      await sendMessage(WHITEBOARD_MESSAGES.WHITEBOARD_RELAY, {
-        type: "WHITEBOARD_TOGGLE_DRAWING",
-        payload: { allowed },
-      });
-
-      toast(allowed ? "Participants allowed to draw" : "Drawing restricted to host", {
-        icon: "✏️",
-      });
-    },
-    [isHost, sendMessage],
-  );
-
-  const listenersRef = useRef<Set<WhiteboardEventListener>>(new Set());
-
-  const subscribeWhiteboardEvents = useCallback(
-    (fn: WhiteboardEventListener) => {
-      listenersRef.current.add(fn);
-      return () => {
-        listenersRef.current.delete(fn);
-      };
-    },
-    [],
-  );
-
-  const broadcastWhiteboardEvent = useCallback(
-    async (type: string, payload: unknown, reliable = true) => {
-      // Local fan-out first
-      listenersRef.current.forEach((fn) => {
-        try {
-          fn(type, payload, localParticipant.identity);
-        } catch (e) {
-          console.warn("whiteboard listener threw", e);
-        }
-      });
-
-      // Local state updates if host clears
-      if (type === "WHITEBOARD_CLEAR") {
-        // Handled by canvas component listener
-      }
-
-      if (reliable) {
-        await sendMessage(WHITEBOARD_MESSAGES.WHITEBOARD_RELAY, { type, payload });
-      } else {
-        await sendUnreliableMessage(WHITEBOARD_MESSAGES.WHITEBOARD_RELAY, { type, payload });
-      }
-    },
-    [localParticipant.identity, sendMessage, sendUnreliableMessage],
-  );
-
-  const handleDataMessage = useCallback(
-    (payload: Uint8Array, participant?: Participant) => {
-      try {
-        const decoder = new TextDecoder();
-        const { type, payload: data } = JSON.parse(decoder.decode(payload));
-        const identity = participant?.identity || data.identity;
-
-        switch (type) {
-          case WHITEBOARD_MESSAGES.WHITEBOARD_LAUNCH:
-            setWhiteboard((prev) => {
-              if (!prev.isActive) {
-                toast("Whiteboard started by host", { id: "wb-launch-toast", icon: "✏️" });
-              }
-              return {
-                isActive: true,
-                isMinimized: false,
-                hostIdentity: data.hostIdentity,
-                isDrawingAllowed: data.isDrawingAllowed ?? true,
-              };
-            });
-            break;
-
-          case WHITEBOARD_MESSAGES.WHITEBOARD_END:
-            setWhiteboard((prev) => {
-              if (prev.isActive) {
-                toast("Whiteboard closed by host", { id: "wb-end-toast", icon: "✏️" });
-              }
-              return {
-                isActive: false,
-                isMinimized: false,
-                hostIdentity: null,
-                isDrawingAllowed: true,
-              };
-            });
-            break;
-
-          case WHITEBOARD_MESSAGES.WHITEBOARD_RELAY: {
-            const innerType = data?.type;
-            const innerPayload = data?.payload;
-
-            if (innerType === "WHITEBOARD_TOGGLE_DRAWING") {
-              setWhiteboard((prev) => ({
-                ...prev,
-                isDrawingAllowed: Boolean(innerPayload?.allowed),
-              }));
-              toast(
-                innerPayload?.allowed
-                  ? "You are allowed to draw now"
-                  : "Drawing is locked by host",
-                { id: "wb-draw-permission", icon: "✏️" }
-              );
-            }
-
-            if (innerType === "WHITEBOARD_SYNC") {
-              setWhiteboard((prev) => {
-                if (!prev.isActive) {
-                  toast("Whiteboard started by host", { id: "wb-launch-toast", icon: "✏️" });
-                }
-                return {
-                  ...prev,
-                  isActive: true,
-                  hostIdentity: innerPayload?.hostIdentity || identity,
-                  isDrawingAllowed: innerPayload?.isDrawingAllowed ?? true,
-                };
-              });
-            }
-
-            listenersRef.current.forEach((fn) => {
-              try {
-                fn(innerType, innerPayload, identity);
-              } catch (e) {
-                console.warn("whiteboard listener threw", e);
-              }
-            });
-            break;
-          }
-
-          case WHITEBOARD_MESSAGES.WHITEBOARD_REQUEST_STATE: {
-            const currentWB = whiteboardRef.current;
-            // Only the host responds to state sync request
-            if (isHostRef.current && currentWB.isActive) {
-              // Proactively send LAUNCH message to the requesting participant
-              sendMessage(
-                WHITEBOARD_MESSAGES.WHITEBOARD_LAUNCH,
-                {
-                  hostIdentity: localParticipant.identity,
-                  isDrawingAllowed: currentWB.isDrawingAllowed,
-                },
-                identity ? [identity] : undefined,
-              ).catch(() => undefined);
-
-              // The canvas component itself tracks the drawing history (paths).
-              // It will listen for request events, draw them, and trigger sync.
-              listenersRef.current.forEach((fn) => {
-                try {
-                  fn("WHITEBOARD_REQUEST_STATE", {}, identity);
-                } catch (e) {
-                  console.warn("whiteboard listener threw", e);
-                }
-              });
-            }
-            break;
-          }
-
-          case WHITEBOARD_MESSAGES.WHITEBOARD_SYNC: {
-            // Late joiners receive the sync package
-            setWhiteboard((prev) => {
-              if (!prev.isActive) {
-                toast("Whiteboard started by host", { id: "wb-launch-toast", icon: "✏️" });
-              }
-              return {
-                ...prev,
-                isActive: true,
-                hostIdentity: data?.hostIdentity || identity,
-                isDrawingAllowed: data?.isDrawingAllowed ?? true,
-              };
-            });
-
-            listenersRef.current.forEach((fn) => {
-              try {
-                fn("WHITEBOARD_SYNC", data, identity);
-              } catch (e) {
-                console.warn("whiteboard listener threw", e);
-              }
-            });
-            break;
-          }
-        }
-      } catch {
-        /* ignore parsing errors */
-      }
-    },
-    [localParticipant.identity, sendMessage],
-  );
-
-  // 1. Proactive push to new participants when host has an active whiteboard
-  useEffect(() => {
-    if (!room) return;
-
-    const onParticipantConnected = (remotePart: RemoteParticipant) => {
-      if (isHostRef.current && whiteboardRef.current.isActive) {
-        sendMessage(
-          WHITEBOARD_MESSAGES.WHITEBOARD_LAUNCH,
-          {
-            hostIdentity: localParticipant.identity,
-            isDrawingAllowed: whiteboardRef.current.isDrawingAllowed,
-          },
-          remotePart?.identity ? [remotePart.identity] : undefined,
-        ).catch(() => undefined);
-
-        listenersRef.current.forEach((fn) => {
-          try {
-            fn("WHITEBOARD_REQUEST_STATE", {}, remotePart?.identity);
-          } catch (e) {
-            console.warn("whiteboard listener threw", e);
-          }
-        });
-      }
-    };
-
-    room.on("participantConnected", onParticipantConnected);
-    return () => {
-      room.off("participantConnected", onParticipantConnected);
-    };
-  }, [room, sendMessage, localParticipant.identity]);
-
-  // 2. Late joiner automatic state request on connection
-  useEffect(() => {
-    if (!room || isHost) return;
-
-    const requestSync = async () => {
-      // Delay slightly to ensure host's listeners are fully wired
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-      try {
-        await sendMessage(WHITEBOARD_MESSAGES.WHITEBOARD_REQUEST_STATE, {});
-      } catch (e) {
-        console.warn("failed to send WHITEBOARD_REQUEST_STATE", e);
-      }
-    };
-
-    if (room.state === "connected") {
-      requestSync();
-    }
-
-    const onConnected = () => {
-      requestSync();
-    };
-
-    room.on("connected", onConnected);
-    return () => {
-      room.off("connected", onConnected);
-    };
-  }, [room, isHost, sendMessage]);
-
-  // Sync state request manually
-  const requestSyncState = useCallback(async () => {
-    if (isHost) return;
-    try {
-      await sendMessage(WHITEBOARD_MESSAGES.WHITEBOARD_REQUEST_STATE, {});
-    } catch (e) {
-      console.warn("Failed to request whiteboard state", e);
-    }
-  }, [isHost, sendMessage]);
-
-  return {
-    whiteboard,
-    launchWhiteboard,
-    endWhiteboard,
-    minimizeWhiteboard,
-    restoreWhiteboard,
-    toggleDrawingPermission,
-    broadcastWhiteboardEvent,
-    subscribeWhiteboardEvents,
-    handleDataMessage,
-    requestSyncState,
-  };
+    try { await send("WHITEBOARD_END", {}); elements.current = {}; update(EMPTY); }
+    catch { toast.error(t("whiteboard.syncFailed")); }
+  }, [isHost, send, update, t]);
+  const minimizeWhiteboard = useCallback(() => update({ ...state.current, isMinimized: true }), [update]);
+  const restoreWhiteboard = useCallback(() => update({ ...state.current, isMinimized: false }), [update]);
+  const toggleDrawingPermission = useCallback(async (allowed: boolean) => {
+    if (!isHost) return;
+    try { await send("WHITEBOARD_RELAY", { type: "WHITEBOARD_TOGGLE_DRAWING", payload: { allowed } }); update({ ...state.current, isDrawingAllowed: allowed }); }
+    catch { toast.error(t("whiteboard.syncFailed")); }
+  }, [isHost, send, update, t]);
+  return { whiteboard, launchWhiteboard, endWhiteboard, minimizeWhiteboard, restoreWhiteboard, toggleDrawingPermission, broadcastWhiteboardEvent, subscribeWhiteboardEvents, handleDataMessage, requestSyncState };
 }

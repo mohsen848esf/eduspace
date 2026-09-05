@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   type CanvasElement,
@@ -23,6 +24,8 @@ interface InfiniteCanvasProps {
   opacity: number;
   canDraw: boolean;
   snapToGrid: boolean;
+  onBegin: () => void;
+  onCommit: () => void;
   onElementsChange: (elements: Record<string, CanvasElement>) => void;
   onSelectedIdsChange: (ids: string[]) => void;
   broadcastOp: (op: WhiteboardOperation) => void;
@@ -80,11 +83,14 @@ export default function InfiniteCanvas({
   opacity,
   canDraw,
   snapToGrid,
+  onBegin,
+  onCommit,
   onElementsChange,
   onSelectedIdsChange,
   broadcastOp,
   localParticipantIdentity,
 }: InfiniteCanvasProps) {
+  const { t } = useTranslation("room");
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 1000, height: 600 });
@@ -115,6 +121,7 @@ export default function InfiniteCanvas({
   const [editingText, setEditingText] = useState("");
 
   const GRID_SIZE = 40;
+  const lastCursorAt = useRef(0);
 
   useEffect(() => {
     const svg = svgRef.current;
@@ -133,16 +140,19 @@ export default function InfiniteCanvas({
   // Key listeners for spacebar pan & deletion
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!canDraw || (e.target instanceof Element && e.target.closest("input,textarea,[contenteditable=true]"))) return;
       if (e.code === "Space" && document.activeElement === document.body) {
         setIsSpacePressed(true);
         e.preventDefault();
       }
       if ((e.key === "Delete" || e.key === "Backspace") && selectedIds.length > 0 && !editingId) {
+        onBegin();
         const nextElements = { ...elements };
         selectedIds.forEach((id) => {
           delete nextElements[id];
         });
         onElementsChange(nextElements);
+        onCommit();
         broadcastOp({ type: "DELETE", ids: selectedIds });
         onSelectedIdsChange([]);
       }
@@ -160,7 +170,7 @@ export default function InfiniteCanvas({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [selectedIds, elements, onElementsChange, onSelectedIdsChange, broadcastOp, editingId]);
+  }, [selectedIds, elements, onElementsChange, onSelectedIdsChange, broadcastOp, editingId, canDraw, onCommit, onBegin]);
 
   // Translate client coordinates (screen space) to infinite canvas space
   const screenToCanvas = useCallback(
@@ -257,6 +267,7 @@ export default function InfiniteCanvas({
     }
 
     if (!canDraw) return;
+    onBegin();
     const pos = screenToCanvas(e.clientX, e.clientY);
 
     // Clicked outside text editing closes editor
@@ -277,7 +288,7 @@ export default function InfiniteCanvas({
       }
 
       // Check if clicked element
-      const elementId = (e.target as SVGElement).getAttribute("data-element-id");
+      const elementId = (e.target as Element).closest("[data-element-id]")?.getAttribute("data-element-id");
       if (elementId) {
         e.currentTarget.setPointerCapture(e.pointerId);
         if (e.shiftKey) {
@@ -373,6 +384,7 @@ export default function InfiniteCanvas({
 
     if (!baseEl.type) return;
     onElementsChange({ ...elements, [id]: baseEl as CanvasElement });
+    broadcastOp({ type: "CREATE", element: baseEl as CanvasElement });
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
@@ -383,7 +395,10 @@ export default function InfiniteCanvas({
 
     // Sync remote pointer cursors (throttled locally by mousemove event speed)
     const rawPos = screenToCanvas(e.clientX, e.clientY);
-    broadcastOp({ type: "CURSOR", x: rawPos.x, y: rawPos.y });
+    if (Date.now() - lastCursorAt.current > 80) {
+      lastCursorAt.current = Date.now();
+      broadcastOp({ type: "CURSOR", x: rawPos.x, y: rawPos.y });
+    }
 
     if (isPanning) {
       const dx = e.clientX - panStartRef.current.x;
@@ -477,7 +492,7 @@ export default function InfiniteCanvas({
         const dx = pos.x - startPointRef.current.x;
         const dy = pos.y - startPointRef.current.y;
         pencil.points = [...pencil.points, { x: dx, y: dy }];
-      } else {
+      } else if (el.type !== "sticky" && el.type !== "text") {
         const dx = pos.x - startPointRef.current.x;
         const dy = pos.y - startPointRef.current.y;
 
@@ -496,6 +511,7 @@ export default function InfiniteCanvas({
 
   // Pointer Up events
   const handlePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (isDrawing || isDraggingElements || resizeHandle) onCommit();
     if (isPanning) {
       setIsPanning(false);
       e.currentTarget.releasePointerCapture(e.pointerId);
@@ -541,7 +557,8 @@ export default function InfiniteCanvas({
 
   // double click selects shape/sticky/text for writing
   const handleDoubleClick = (e: React.MouseEvent<SVGSVGElement>) => {
-    const id = (e.target as SVGElement).getAttribute("data-element-id");
+    if (!canDraw) return;
+    const id = (e.target as Element).closest("[data-element-id]")?.getAttribute("data-element-id");
     if (id) {
       const el = elements[id];
       if (el && (el.type === "text" || el.type === "sticky")) {
@@ -557,8 +574,9 @@ export default function InfiniteCanvas({
 
   const finishEditingText = () => {
     if (!editingId) return;
+    onBegin();
     const nextElements = { ...elements };
-    const el = nextElements[editingId];
+    const el = nextElements[editingId] ? { ...nextElements[editingId] } : null;
     if (el) {
       if (el.type === "text") {
         (el as TextElement).text = editingText;
@@ -566,7 +584,9 @@ export default function InfiniteCanvas({
         (el as StickyElement).text = editingText;
       }
       el.timestamp = Date.now();
+      nextElements[editingId] = el;
       onElementsChange(nextElements);
+      onCommit();
       broadcastOp({ type: "UPDATE", id: editingId, updates: el });
     }
     setEditingId(null);
@@ -738,7 +758,7 @@ export default function InfiniteCanvas({
                     className="w-full h-full flex items-center justify-center text-center font-sans text-xs break-words overflow-hidden"
                     style={{ color: "#1e293b", userSelect: "none" }}
                   >
-                    {sticky.text || "Double click to write..."}
+                    {sticky.text || t("whiteboard.writeHint")}
                   </div>
                 )}
               </foreignObject>
@@ -825,7 +845,7 @@ export default function InfiniteCanvas({
               >
                 <iframe
                   src={embedUrl}
-                  title="Embedded Video"
+                  title={t("whiteboard.embedVideo")}
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
@@ -965,7 +985,7 @@ export default function InfiniteCanvas({
             }))
           }
           className="w-7 h-7 bg-[#334155] hover:bg-[#475569] text-white border-none rounded-lg font-bold text-sm flex items-center justify-center cursor-pointer transition-colors"
-          title="Zoom In"
+          title={t("whiteboard.zoomIn")}
         >
           ＋
         </button>
@@ -981,7 +1001,7 @@ export default function InfiniteCanvas({
             }))
           }
           className="w-7 h-7 bg-[#334155] hover:bg-[#475569] text-white border-none rounded-lg font-bold text-sm flex items-center justify-center cursor-pointer transition-colors"
-          title="Zoom Out"
+          title={t("whiteboard.zoomOut")}
         >
           －
         </button>
@@ -993,7 +1013,7 @@ export default function InfiniteCanvas({
           title="Reset View (100%)"
         >
           <span className="text-xs">⟲</span>
-          <span className="hidden sm:inline">Reset</span>
+          <span className="hidden sm:inline">{t("whiteboard.resetView")}</span>
         </button>
       </div>
     </div>

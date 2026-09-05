@@ -5,6 +5,7 @@ import { cn } from "../../../lib/utils";
 import type { LobbyRequest } from "../api/room.api";
 
 interface LobbyPanelProps {
+  placement?: "top" | "bottom";
   isOpen: boolean;
   onClose: () => void;
   requests: LobbyRequest[];
@@ -18,6 +19,7 @@ interface LobbyPanelProps {
 }
 
 export const LobbyPanel: React.FC<LobbyPanelProps> = ({
+  placement = "top",
   isOpen,
   onClose,
   requests,
@@ -64,8 +66,8 @@ export const LobbyPanel: React.FC<LobbyPanelProps> = ({
     <div
       ref={panelRef}
       className={cn(
-        "absolute bottom-full mb-3 end-0 z-[100] w-[380px] max-w-[calc(100vw-1.5rem)]",
-        "bg-[var(--s2)]/95 backdrop-blur-2xl border border-[var(--b)] rounded-3xl shadow-2xl p-4 text-[var(--t1)] animate-in fade-in zoom-in-95 duration-150 select-none flex flex-col max-h-[480px]",
+        placement === "bottom" ? "fixed top-14 inset-x-3 z-[100] w-auto" : "absolute bottom-full mb-3 end-0 z-[100] w-[380px] max-w-[calc(100vw-1.5rem)]",
+        "bg-[var(--s2)]/95 backdrop-blur-2xl border border-[var(--b)] rounded-3xl shadow-2xl p-4 text-[var(--t1)] animate-in fade-in zoom-in-95 duration-150 select-none flex flex-col max-h-[min(480px,calc(100dvh-5rem))]",
       )}
       style={{
         boxShadow:

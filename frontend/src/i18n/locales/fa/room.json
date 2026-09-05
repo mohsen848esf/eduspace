@@ -82,7 +82,11 @@
       "camera": "دوربین",
       "microphone": "میکروفون",
       "speaker": "اسپیکر"
-    }
+    },
+    "backgroundNotSupported": "این دستگاه از افکت پس‌زمینه پشتیبانی نمی‌کند",
+    "bgBlur": "تار کردن",
+    "bgNone": "بدون افکت",
+    "devices": "دستگاه‌ها"
   },
   "controls": {
     "mic": "میکروفون",
@@ -96,7 +100,13 @@
     "layout": "چیدمان",
     "raiseHand": "بالا بردن دست",
     "lowerHand": "پایین آوردن دست",
-    "reactions": "ارسال واکنش"
+    "reactions": "ارسال واکنش",
+    "more": "گزینه‌های بیشتر",
+    "rec": "ضبط",
+    "start": "شروع ضبط",
+    "paused": "متوقف",
+    "recording": "در حال ضبط",
+    "sidebar": "نوار کناری"
   },
   "tooltips": {
     "muteOn": "بستن میکروفون · Ctrl+D",
@@ -157,7 +167,12 @@
     "infoParticipants": "شرکت‌کنندگان",
     "infoYourRole": "نقش شما",
     "roleHost": "میزبان",
-    "roleParticipant": "شرکت‌کننده"
+    "roleParticipant": "شرکت‌کننده",
+    "capacity": "{{count}} / {{max}} نفر",
+    "remaining": "{{count}} دقیقه تا پایان زمان رایگان",
+    "timeLimit": "محدودیت زمانی",
+    "groupMinutes": "{{count}} دقیقه (گروهی)",
+    "unlimited": "نامحدود"
   },
   "tile": {
     "you": "(شما)",
@@ -172,7 +187,11 @@
     "overflowMore_one": "{{count}} نفر دیگر",
     "overflowMore_other": "{{count}} نفر دیگر",
     "overflowLabel": "بیشتر",
-    "clickToViewAll": "برای مشاهده همه افراد کلیک کنید"
+    "clickToViewAll": "برای مشاهده همه افراد کلیک کنید",
+    "fullscreen": "تمام‌صفحه",
+    "showInTile": "نمایش در تایل",
+    "removeFromTile": "خارج کردن از تایل",
+    "overflowMore": "{{count}} نفر دیگر"
   },
   "audioVisualizer": {
     "muted": "میکروفون بسته است"
@@ -188,7 +207,16 @@
     "shortcutCamLabel": "تغییر وضعیت دوربین",
     "shortcutCamSub": "روشن / خاموش",
     "noiseCancellation": "حذف نویز",
-    "hdVideo": "ویدیوی HD"
+    "hdVideo": "ویدیوی HD",
+    "accessTab": "دسترسی",
+    "general": "عمومی",
+    "hdDesc": "اولویت با کیفیت بالاتر تصویر",
+    "hostOnlyNotice": "فقط مدیران جلسه می‌توانند این تنظیمات را تغییر دهند",
+    "lockRoomTitle": "قفل جلسه",
+    "lockRoomDesc": "جلوگیری از ورود افراد جدید",
+    "noiseDesc": "کاهش صدای محیط",
+    "requireApprovalTitle": "تأیید ورود",
+    "requireApprovalDesc": "ورود افراد پس از تأیید مدیر جلسه"
   },
   "sidebar": {
     "addPeople": "افزودن افراد",
@@ -197,7 +225,9 @@
     "students": "اعضا ({{count}})",
     "noMessages": "هنوز پیامی نیست",
     "messagePlaceholder": "پیام...",
-    "collapse": "بستن پنل"
+    "collapse": "بستن پنل",
+    "unread": "{{count}} پیام خوانده‌نشده",
+    "sendFailed": "پیام ارسال نشد؛ اتصال را بررسی کنید و دوباره تلاش کنید."
   },
   "invite": {
     "title": "افزودن افراد",
@@ -214,23 +244,32 @@
     "failed": "ارسال دعوت ناموفق بود"
   },
   "tools": {
-    "launchGame": "میان‌برنامه‌ها",
-    "launchGameDesc": "افزودن میان‌برنامه به جلسه",
-    "whiteboard": "وایت‌بورد",
-    "whiteboardDesc": "نقاشی مشترک",
-    "endWhiteboardLabel": "پایان وایت‌بورد برای همه",
-    "endWhiteboardDesc": "بستن کامل وایت‌بورد در جلسه",
-    "viewWhiteboard": "مشاهده وایت‌بورد فعال",
-    "viewWhiteboardDesc": "نمایش مجدد تخته روی صفحه",
-    "hideWhiteboard": "بستن تخته از روی صفحه",
-    "hideWhiteboardDesc": "مخفی‌سازی محلی (برای دیگران باز می‌ماند)",
-    "quickExam": "آزمون سریع",
-    "quickExamDesc": "شروع آزمون در جلسه",
-    "aiSummary": "خلاصه‌ی هوش مصنوعی",
-    "aiSummaryDesc": "خلاصه‌سازی خودکار جلسه",
-    "fileShare": "اشتراک فایل",
-    "fileShareDesc": "اشتراک ارائه‌ها",
-    "ready": "آماده"
+    "whiteboard": "تخته وایت‌برد هوشمند",
+    "miniApps": "مینی‌اپ‌ها و بازی‌ها",
+    "quickQuiz": "آزمون و پرسش سریع",
+    "moreToolsCount": "+۲ ابزار دیگر (مشاهده همه)",
+    "focusTimer": "تایمر و زمان‌سنج تمرکز",
+    "allTools": "تمامی ابزارها و فعالیت‌ها",
+    "stackTooltip": "ابزارها و فعالیت‌های کلاس",
+    "closeStack": "بستن منوی ابزارها",
+    "ready": "آماده",
+    "aiSummary": "خلاصه هوشمند",
+    "aiSummaryDesc": "خلاصه‌سازی نکات جلسه",
+    "whiteboardDesc": "طراحی و همکاری روی تخته مشترک",
+    "viewWhiteboard": "مشاهده وایت‌برد",
+    "viewWhiteboardDesc": "نمایش مجدد تخته مشترک",
+    "hideWhiteboard": "کوچک کردن وایت‌برد",
+    "hideWhiteboardDesc": "مخفی کردن فقط برای شما",
+    "endWhiteboardLabel": "پایان وایت‌برد برای همه",
+    "endWhiteboardDesc": "بستن تخته مشترک",
+    "viewPresentation": "مشاهده ارائه",
+    "viewPresentationDesc": "نمایش مجدد ارائه فعال",
+    "hidePresentation": "کوچک کردن ارائه",
+    "hidePresentationDesc": "مخفی کردن فقط برای شما",
+    "changePresentation": "تغییر فایل ارائه",
+    "changePresentationDesc": "بارگذاری یا انتخاب فایل",
+    "presentationShare": "ارائه فایل",
+    "presentationShareDesc": "اشتراک اسناد، تصاویر و اسلایدها"
   },
   "whiteboard": {
     "title": "وایت‌بورد",
@@ -243,7 +282,55 @@
     "endForEveryone": "پایان برای همه",
     "viewActiveBoard": "وایت‌برد فعال است (مشاهده تخته)",
     "clickToOpen": "کلیک برای باز کردن",
-    "activeBoard": "در حال اجرا"
+    "activeBoard": "در حال اجرا",
+    "syncFailed": "همگام‌سازی وایت‌برد انجام نشد. اتصال اینترنت را بررسی کنید.",
+    "imageTooLarge": "یک تصویر با حجم کمتر از ۵ مگابایت انتخاب کنید.",
+    "lockDrawing": "قفل کردن نقاشی",
+    "allowDrawing": "اجازه نقاشی",
+    "clearBoard": "پاک کردن تخته",
+    "viewOnly": "فقط مشاهده",
+    "collabOn": "همکاری فعال",
+    "hostOnly": "فقط میزبان",
+    "fullscreen": "تمام‌صفحه",
+    "exitFullscreen": "خروج از تمام‌صفحه",
+    "uploadImage": "بارگذاری تصویر",
+    "embedVideo": "افزودن ویدئوی یوتیوب یا ویمئو",
+    "videoPrompt": "نشانی ویدئوی یوتیوب یا ویمئو را وارد کنید",
+    "undo": "واگرد",
+    "redo": "بازانجام",
+    "snapOn": "فعال کردن چسبیدن به شبکه",
+    "snapOff": "غیرفعال کردن چسبیدن به شبکه",
+    "cleared": "تخته پاک شد",
+    "writeHint": "برای نوشتن دوبار کلیک کنید…",
+    "labels": {
+      "select": "انتخاب (V)",
+      "pencil": "قلم",
+      "highlighter": "ماژیک",
+      "text": "متن",
+      "sticky": "یادداشت چسبان",
+      "rectangle": "مستطیل",
+      "ellipse": "بیضی",
+      "diamond": "لوزی",
+      "line": "خط",
+      "arrow": "پیکان",
+      "Thin": "نازک",
+      "Medium": "متوسط",
+      "Thick": "ضخیم",
+      "Indigo": "نیلی",
+      "Emerald": "سبز",
+      "Amber": "کهربایی",
+      "Rose": "قرمز",
+      "White": "سفید",
+      "Dark": "تیره",
+      "None": "بدون رنگ",
+      "Indigo Light": "نیلی روشن",
+      "Emerald Light": "سبز روشن",
+      "Amber Light": "کهربایی روشن",
+      "Rose Light": "قرمز روشن"
+    },
+    "zoomIn": "بزرگ‌نمایی",
+    "zoomOut": "کوچک‌نمایی",
+    "resetView": "بازنشانی نما"
   },
   "host": {
     "muted": "{{name}} بسته شد",
@@ -316,16 +403,6 @@
     "lobbyDesc": "همه افراد جدید قبل از ورود باید توسط هاست تأیید شوند.",
     "everyoneCanJoin": "همه می‌توانند وارد شوند",
     "locked": "قفل کردن اتاق"
-  },
-  "tools": {
-    "whiteboard": "تخته وایت‌برد هوشمند",
-    "miniApps": "مینی‌اپ‌ها و بازی‌ها",
-    "quickQuiz": "آزمون و پرسش سریع",
-    "moreToolsCount": "+۲ ابزار دیگر (مشاهده همه)",
-    "focusTimer": "تایمر و زمان‌سنج تمرکز",
-    "allTools": "تمامی ابزارها و فعالیت‌ها",
-    "stackTooltip": "ابزارها و فعالیت‌های کلاس",
-    "closeStack": "بستن منوی ابزارها"
   },
   "sharedMedia": {
     "libraryTitle": "سینمای آنلاین",
@@ -414,5 +491,46 @@
       "buffering": "در حال بافر",
       "ended": "پایان‌یافته"
     }
+  },
+  "connection": {
+    "connecting": "در حال اتصال…",
+    "reconnecting": "در حال اتصال مجدد…",
+    "wait": "در حال آماده‌سازی صدا، تصویر و همگام‌سازی؛ لطفاً منتظر بمانید.",
+    "poor": "اتصال شما ضعیف است؛ ممکن است صدا یا تصویر قطع شود."
+  },
+  "layout": {
+    "adjustView": "تنظیم چیدمان",
+    "adjustViewAdvanced": "تنظیمات چیدمان",
+    "auto": "خودکار",
+    "tiled": "شبکه‌ای",
+    "sidebar": "نوار کناری",
+    "spotlight": "نمای متمرکز",
+    "returnToGrid": "برگشت به نمای شبکه‌ای"
+  },
+  "common": {
+    "retry": "تلاش دوباره"
+  },
+  "mobile": {
+    "invite": "دعوت شرکت‌کننده",
+    "close": "بستن",
+    "enableCamera": "ابتدا دوربین را روشن کنید",
+    "cameraFailed": "تعویض دوربین انجام نشد",
+    "audioFailed": "تغییر خروجی صدا انجام نشد",
+    "audioOutput": "خروجی صدا",
+    "speaker": "بلندگو",
+    "phone": "گوشی",
+    "headphones": "هدفون",
+    "turnOffSound": "قطع صدا",
+    "cancel": "انصراف",
+    "selectedOutput": "خروجی انتخاب‌شده",
+    "swapCamera": "تعویض دوربین جلو و عقب",
+    "outputDevice": "خروجی {{index}}",
+    "systemAudioRouting": "این مرورگر مسیر صدا بین بلندگو و گوشی را از طریق سیستم‌عامل مدیریت می‌کند. برای تغییر خروجی از کنترل صدای گوشی استفاده کنید."
+  },
+  "background": {
+    "office": "دفتر",
+    "nature": "طبیعت",
+    "studio": "استودیو",
+    "minimal": "ساده"
   }
 }

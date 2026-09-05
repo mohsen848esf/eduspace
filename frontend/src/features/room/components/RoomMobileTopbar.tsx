@@ -1,210 +1,107 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  useLocalParticipant,
-  useParticipants,
-} from "@livekit/components-react";
+import { useLocalParticipant, useRoomContext } from "@livekit/components-react";
+import { Track } from "livekit-client";
+import { ArrowLeft, SwitchCamera, Volume2, VolumeX, Users } from "lucide-react";
 import toast from "react-hot-toast";
 import { useRoomStore } from "../store/roomStore";
-import { Icons } from "../../../lib/constants/icons";
-import { cn } from "../../../lib/utils";
-import RecordControls from "../../recordings/components/room/RecordControls";
-import { useRoomRecording } from "../../recordings/hooks/useRoomRecording";
+import { useRoomLayoutStore } from "../store/roomLayoutStore";
 import { useLobbyHost } from "../hooks/useLobbyHost";
 import { LobbyPanel } from "./LobbyPanel";
+import MobileAudioOutputSheet from "./MobileAudioOutputSheet";
 
-function useDuration() {
-  const [seconds, setSeconds] = useState(0);
-  useEffect(() => {
-    const i = setInterval(() => setSeconds((s) => s + 1), 1000);
-    return () => clearInterval(i);
-  }, []);
-  const m = Math.floor(seconds / 60)
-    .toString()
-    .padStart(2, "0");
-  const s = (seconds % 60).toString().padStart(2, "0");
-  return `${m}:${s}`;
-}
-
-export default function RoomMobileTopbar() {
-  const { t } = useTranslation("room");
-  const { roomCode, roomName, isHost, isCoHost } = useRoomStore();
-  const remote = useParticipants();
-  const { localParticipant } = useLocalParticipant();
-  const total = new Set([
-    localParticipant.identity,
-    ...remote.map((p) => p.identity),
-  ]).size;
-  const duration = useDuration();
-  const [showMenu, setShowMenu] = useState(false);
-  const [lobbyPanelOpen, setLobbyPanelOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  const canModerate = isHost || isCoHost;
-  const lobby = useLobbyHost({
-    roomCode: roomCode || "",
-    canModerate,
-  });
-
-  const recording = useRoomRecording({ roomCode, isHost });
-
-  useEffect(() => {
-    if (!showMenu) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMenu(false);
-      }
-    };
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, [showMenu]);
-
-  const copyRoomLink = async () => {
-    await navigator.clipboard.writeText(
-      `${window.location.origin}/room/${roomCode}`,
-    );
-    toast.success(t("topbar.copiedToast"));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
-  return (
-    <div className="h-12 flex-shrink-0 flex items-center gap-2 px-3 bg-[var(--s1)] border-b border-[var(--b)]">
-      {/* Live + room name */}
-      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-        <span
-          className="w-2 h-2 rounded-full bg-[var(--green)] flex-shrink-0"
-          aria-hidden
-        />
-        <span className="text-sm font-semibold text-[var(--t1)] truncate">
-          {roomName || t("topbar.defaultRoomName")}
-        </span>
-      </div>
-
-      {/* Recording state moved to RoomRecordingBadge (overlay on the
-          call surface) — it's visible to every participant there, so
-          we don't double up by stamping a dot here too. */}
-
-      {/* Timer */}
-      <span className="text-xs font-mono text-[var(--green)] font-semibold force-ltr flex-shrink-0">
-        {duration}
-      </span>
-
-      {/* Participants pill */}
-      <span className="flex items-center gap-1 text-[11px] text-[var(--t2)] font-semibold flex-shrink-0">
-        <span aria-hidden>👥</span>
-        {total}
-      </span>
-
-      {/* Host / Co-Host Waiting Room Button */}
-      {canModerate && (
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setLobbyPanelOpen((prev) => !prev)}
-            aria-label={t("lobby.hostPanelTitle", "افراد در انتظار ورود")}
-            className={cn(
-              "relative w-7 h-7 rounded-lg flex items-center justify-center border transition-all cursor-pointer",
-              lobby.count > 0
-                ? "bg-indigo-600/20 border-indigo-500/50 text-indigo-300"
-                : "bg-transparent border-transparent text-[var(--t3)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
-            )}
-          >
-            <span className="scale-90">{Icons.shield}</span>
-            {lobby.count > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center animate-bounce shadow-md">
-                {lobby.count}
-              </span>
-            )}
-          </button>
-
-          <LobbyPanel
-            isOpen={lobbyPanelOpen}
-            onClose={() => setLobbyPanelOpen(false)}
-            requests={lobby.requests}
-            admittingId={lobby.admittingId}
-            denyingId={lobby.denyingId}
-            isBatchAction={lobby.isBatchAction}
-            onAdmit={lobby.admit}
-            onDeny={lobby.deny}
-            onAdmitAll={lobby.admitAll}
-            onDenyAll={lobby.denyAll}
-          />
-        </div>
-      )}
-
-      {/* Overflow menu */}
-      <div ref={menuRef} className="relative">
-        <button
-          onClick={() => setShowMenu((p) => !p)}
-          aria-label={t("topbar.info")}
-          className={cn(
-            "w-8 h-8 rounded-lg border-none cursor-pointer flex items-center justify-center text-base",
-            showMenu
-              ? "bg-[var(--brand-soft)] text-[var(--brand)]"
-              : "bg-transparent text-[var(--t3)] hover:bg-[var(--s3)] hover:text-[var(--t1)]",
-          )}
-        >
-          ⋯
-        </button>
-
-        {showMenu && (
-          <div className="absolute top-10 end-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-3 w-64 fade-in flex flex-col gap-3">
-            <div>
-              <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-1">
-                {t("topbar.infoTitle")}
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-[var(--t3)]">
-                  {t("topbar.infoCode")}
-                </span>
-                <button
-                  onClick={copyRoomLink}
-                  className={cn(
-                    "flex items-center gap-1.5 px-2 py-1 rounded-md border-none cursor-pointer transition-colors text-xs font-mono force-ltr",
-                    copied
-                      ? "bg-[var(--green)]/15 text-[var(--green)]"
-                      : "bg-[var(--s3)] text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s4)]",
-                  )}
-                >
-                  {copied ? "✓" : Icons.copy}
-                  {roomCode}
-                </button>
-              </div>
-              <div className="flex items-center justify-between mt-1.5 text-xs">
-                <span className="text-[var(--t3)]">
-                  {t("topbar.infoYourRole")}
-                </span>
-                <span className="text-[var(--brand)] font-bold">
-                  {isHost ? t("topbar.roleHost") : t("topbar.roleParticipant")}
-                </span>
-              </div>
-            </div>
-
-            {/* Recording block — visible to anyone the host has
-                authorized to drive recording (host implicitly, or
-                grantees via Room.recording_grants). */}
-            {recording.canControl && (
-              <div className="border-t border-[var(--b)] pt-3">
-                <div className="text-[10px] font-semibold text-[var(--t3)] uppercase tracking-wider mb-2">
-                  {t("controls.start")}
-                </div>
-                <RecordControls
-                  roomCode={roomCode}
-                  canControl={recording.canControl}
-                  status={recording.status}
-                  isMutating={recording.isMutating}
-                  onStart={recording.start}
-                  onStop={recording.stop}
-                  onPause={recording.pause}
-                  onResume={recording.resume}
-                />
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+export default function RoomMobileTopbar({ onLeave }: { onLeave: () => void }) {
+ const { t } = useTranslation("room");
+ const room = useRoomContext();
+ const { localParticipant } = useLocalParticipant();
+ const { roomCode, roomName, isHost, isCoHost } = useRoomStore();
+ const setPanel = useRoomLayoutStore((s) => s.setActivePanel);
+ const [lobbyOpen, setLobbyOpen] = useState(false);
+ const [switching, setSwitching] = useState(false);
+ const [audioOpen, setAudioOpen] = useState(false);
+ const [outputs, setOutputs] = useState<MediaDeviceInfo[]>([]);
+ const [selectedOutput, setSelectedOutput] = useState("");
+ const [soundMuted, setSoundMuted] = useState(false);
+ const lobby = useLobbyHost({ roomCode: roomCode || "", canModerate: isHost || isCoHost });
+ useEffect(() => {
+   const open = () => setLobbyOpen(true);
+   window.addEventListener("eduspace:open-lobby", open);
+   return () => window.removeEventListener("eduspace:open-lobby", open);
+ }, []);
+ useEffect(() => {
+   const root = document.querySelector<HTMLElement>("[data-room-audio-root]");
+   if (!root) return;
+   const applyMutedState = () => {
+     root.querySelectorAll("audio").forEach((audio) => { audio.muted = soundMuted; });
+   };
+   applyMutedState();
+   const observer = new MutationObserver(applyMutedState);
+   observer.observe(root, { childList: true, subtree: true });
+   return () => {
+     observer.disconnect();
+     root.querySelectorAll("audio").forEach((audio) => { audio.muted = false; });
+   };
+ }, [soundMuted]);
+ const swapCamera = async () => {
+   if (switching) return;
+   setSwitching(true);
+   try {
+     const camera = localParticipant.getTrackPublication(Track.Source.Camera)?.videoTrack;
+     if (!camera) { toast(t("mobile.enableCamera")); return; }
+     const facing = camera.mediaStreamTrack.getSettings().facingMode;
+     await camera.restartTrack({ facingMode: facing === "environment" ? "user" : "environment", deviceId: undefined });
+   } catch { toast.error(t("mobile.cameraFailed")); }
+   finally { setSwitching(false); }
+ };
+ const chooseAudio = async () => {
+   if (audioOpen) { setAudioOpen(false); return; }
+   try {
+     await room.startAudio();
+     const devices = await navigator.mediaDevices.enumerateDevices();
+     setOutputs(devices.filter((d) => d.kind === "audiooutput"));
+     setSelectedOutput(room.getActiveDevice("audiooutput") || "default");
+     setAudioOpen(true);
+   } catch { toast.error(t("mobile.audioFailed")); }
+ };
+ const selectOutput = async (deviceId: string) => {
+   try {
+     await room.startAudio();
+     if (canRoute) await room.switchActiveDevice("audiooutput", deviceId);
+     setSelectedOutput(deviceId);
+     setSoundMuted(false);
+     setAudioOpen(false);
+   } catch { toast.error(t("mobile.audioFailed")); }
+ };
+ useEffect(() => {
+   if (!audioOpen) return;
+   const refresh = async () => {
+     const devices = await navigator.mediaDevices.enumerateDevices();
+     setOutputs(devices.filter((device) => device.kind === "audiooutput"));
+   };
+   navigator.mediaDevices.addEventListener?.("devicechange", refresh);
+   return () => navigator.mediaDevices.removeEventListener?.("devicechange", refresh);
+ }, [audioOpen]);
+ const canRoute = typeof HTMLMediaElement !== "undefined" && "setSinkId" in HTMLMediaElement.prototype;
+ const button = "w-11 h-11 shrink-0 rounded-full bg-[var(--s2)] text-[var(--t1)] flex items-center justify-center";
+ return <header dir="ltr" className="relative shrink-0 flex items-center justify-between gap-2 px-3 py-3 bg-[var(--s0)]">
+   <div className="flex min-w-0 items-center gap-1.5">
+     <button className={button} onClick={onLeave} aria-label={t("tooltips.leave")}><ArrowLeft size={22}/></button>
+     <button className="relative min-w-0 max-w-[min(52vw,220px)] flex items-center gap-2 rounded-full px-3 h-11 bg-[var(--s1)] text-[var(--t1)]" onClick={() => setPanel("people")} aria-label={t("controls.people")}><Users size={21} className="shrink-0"/><span dir="auto" className="truncate text-xs font-semibold">{roomName || t("topbar.defaultRoomName")}</span>{lobby.count > 0 && <span className="absolute -top-1 end-0 rounded-full bg-[var(--red)] text-white px-1 text-[10px]">{lobby.count}</span>}</button>
+   </div>
+   <div className="flex shrink-0 items-center gap-1.5">
+     <button className={button} onClick={() => void chooseAudio()} aria-label={t("mobile.audioOutput")} aria-expanded={audioOpen}>{soundMuted ? <VolumeX size={22} className="text-[var(--red)]" /> : <Volume2 size={22}/>}</button>
+     <button className={button} onClick={() => void swapCamera()} disabled={switching} aria-label={t("mobile.swapCamera")}><SwitchCamera size={22}/></button>
+   </div>
+   <MobileAudioOutputSheet
+     open={audioOpen}
+     outputs={outputs}
+     selectedDeviceId={selectedOutput}
+     muted={soundMuted}
+     canRoute={canRoute}
+     onOpenChange={setAudioOpen}
+     onSelect={(deviceId) => void selectOutput(deviceId)}
+     onMute={() => { setSoundMuted(true); setAudioOpen(false); }}
+   />
+   <LobbyPanel placement="bottom" isOpen={lobbyOpen} onClose={() => setLobbyOpen(false)} requests={lobby.requests} admittingId={lobby.admittingId} denyingId={lobby.denyingId} isBatchAction={lobby.isBatchAction} onAdmit={lobby.admit} onDeny={lobby.deny} onAdmitAll={lobby.admitAll} onDenyAll={lobby.denyAll}/>
+ </header>;
 }

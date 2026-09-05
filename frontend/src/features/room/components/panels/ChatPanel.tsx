@@ -1,9 +1,14 @@
+import { useChatHistorySync } from "../../hooks/useChatHistorySync";
+import toast from "react-hot-toast";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useChat, useLocalParticipant } from "@livekit/components-react";
 import { Icons } from "../../../../lib/constants/icons";
 import { cn } from "../../../../lib/utils";
-import { useChatStore } from "../../store/chatStore";
+import {
+  EMPTY_CHAT_MESSAGES,
+  useChatStore,
+} from "../../store/chatStore";
 import { getNameColor } from "./avatarHelpers";
 
 /**
@@ -11,24 +16,21 @@ import { getNameColor } from "./avatarHelpers";
  * Zustand store so the chat panel can survive remounts without losing
  * history. Lives next to ChatPanel because no other surface needs it.
  */
-function ChatListener({ roomCode }: { roomCode: string }) {
+export function ChatListener({ roomCode }: { roomCode: string }) {
+  useChatHistorySync(roomCode);
   const { chatMessages } = useChat();
-  const { addMessage } = useChatStore();
-  const processedIds = useRef<Set<string>>(new Set());
+  const addMessage = useChatStore((state) => state.addMessage);
 
   useEffect(() => {
     chatMessages.forEach((msg) => {
-      const id = `${msg.from?.identity}-${msg.timestamp}`;
-      if (!processedIds.current.has(id)) {
-        processedIds.current.add(id);
-        addMessage(roomCode, {
-          id,
-          from: msg.from?.identity || "",
-          fromName: msg.from?.name || msg.from?.identity || "Unknown",
-          message: msg.message,
-          timestamp: msg.timestamp,
-        });
-      }
+      const id = msg.id || `${msg.from?.identity}-${msg.timestamp}-${msg.message}`;
+      addMessage(roomCode, {
+        id,
+        from: msg.from?.identity || "",
+        fromName: msg.from?.name || msg.from?.identity || "Unknown",
+        message: msg.message,
+        timestamp: msg.timestamp,
+      });
     });
   }, [chatMessages, roomCode, addMessage]);
 
@@ -67,16 +69,25 @@ interface ChatPanelProps {
  */
 export default function ChatPanel({
   roomCode,
-  withListener = true,
+  withListener = false,
 }: ChatPanelProps) {
-  const { t } = useTranslation("room");
+  const { t, i18n } = useTranslation("room");
   const { send } = useChat();
-  const { getMessages } = useChatStore();
   const { localParticipant } = useLocalParticipant();
-  const messages = getMessages(roomCode);
+  const messages = useChatStore(
+    (state) => state.messagesByRoom[roomCode] ?? EMPTY_CHAT_MESSAGES,
+  );
   const [message, setMessage] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  const markRead = useChatStore((s) => s.markRead);
+  useEffect(() => {
+    const remoteMessageCount = messages.filter(
+      (item) => item.from !== localParticipant.identity,
+    ).length;
+    markRead(roomCode, remoteMessageCount);
+  }, [messages, localParticipant.identity, markRead, roomCode]);
 
   // Scroll the message list to the bottom whenever new messages arrive.
   // We deliberately AVOID Element.scrollIntoView here: it walks every
@@ -93,10 +104,13 @@ export default function ChatPanel({
     el.scrollTop = el.scrollHeight;
   }, [messages]);
 
-  const handleSend = () => {
-    if (!message.trim()) return;
-    send(message);
-    setMessage("");
+  const [sending, setSending] = useState(false);
+  const handleSend = async () => {
+    if (!message.trim() || sending) return;
+    setSending(true);
+    try { await send(message); setMessage(""); }
+    catch { toast.error(t("sidebar.sendFailed")); }
+    finally { setSending(false); }
   };
 
   const myIdentity = localParticipant?.identity;
@@ -151,7 +165,7 @@ export default function ChatPanel({
                   {msg.message}
                 </div>
                 <span className="text-[9px] text-[var(--t3)] px-1 mt-0.5">
-                  {new Date(msg.timestamp).toLocaleTimeString([], {
+                  {new Date(msg.timestamp).toLocaleTimeString(i18n.language, {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
@@ -205,7 +219,7 @@ export default function ChatPanel({
         />
         <button
           onClick={handleSend}
-          disabled={!message.trim()}
+          disabled={!message.trim() || sending}
           className="w-8 h-8 bg-[var(--brand)] hover:bg-[var(--brand-h)] disabled:opacity-40 text-white rounded-lg border-none cursor-pointer flex items-center justify-center transition-all active:scale-95 flex-shrink-0"
         >
           {Icons.send}

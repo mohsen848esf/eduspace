@@ -1,240 +1,70 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Tooltip } from "../../../components/ui/Tooltip";
+import { MoreVertical, Smile, UserPlus, Info, LogOut, Circle, Shield, LayoutGrid } from "lucide-react";
 import { Icons } from "../../../lib/constants/icons";
-import { cn } from "../../../lib/utils";
-import { type LayoutMode } from "../store/roomLayoutStore";
+import { useRoomLayoutStore, type LayoutMode } from "../store/roomLayoutStore";
 import { useRoomWhiteboard } from "../hooks/useRoomWhiteboard";
-import ReactionsPopover from "./reactions/ReactionsPopover";
 import { useRoomStore } from "../store/roomStore";
-
+import ReactionsPopover from "./reactions/ReactionsPopover";
+import InviteModal from "./InviteModal";
+import RecordControls from "../../recordings/components/room/RecordControls";
+import { useRoomRecording } from "../../recordings/hooks/useRoomRecording";
+import ChatUnreadBadge from "./ChatUnreadBadge";
 type PanelId = "people" | "chat" | "tools";
-
-interface RoomMobileControlsProps {
-  isMicOn: boolean;
-  isCamOn: boolean;
-  isScreenSharing: boolean;
-  layout?: LayoutMode;
-  settingsOpen: boolean;
-  activePanel: PanelId | null;
-  onPanelClick: (panel: PanelId) => void;
-  onToggleMic: () => void;
-  onToggleCam: () => void;
-  onToggleScreenShare: () => void;
-  onLayoutChange?: (l: LayoutMode) => void;
-  onToggleSettings: () => void;
-  onLeave: () => void;
-  handRaised: boolean;
-  onToggleHandRaise?: () => void;
-  onSendReaction?: (emoji: string) => void;
+interface Props {
+ isMicOn: boolean; isCamOn: boolean; isScreenSharing: boolean; layout?: LayoutMode; settingsOpen: boolean;
+ activePanel: PanelId | null; onPanelClick: (panel: PanelId) => void; onToggleMic: () => void; onToggleCam: () => void;
+ onToggleScreenShare: () => void; onLayoutChange?: (l: LayoutMode) => void; onToggleSettings: () => void; onLeave: () => void;
+ handRaised: boolean; onToggleHandRaise?: () => void; onSendReaction?: (emoji: string) => void;
 }
-
-export default function RoomMobileControls({
-  isMicOn,
-  isCamOn,
-  isScreenSharing,
-  settingsOpen,
-  activePanel,
-  onPanelClick,
-  onToggleMic,
-  onToggleCam,
-  onToggleScreenShare,
-  onToggleSettings,
-  onLeave,
-  handRaised,
-  onToggleHandRaise,
-  onSendReaction,
-}: RoomMobileControlsProps) {
-  const { t } = useTranslation("room");
-  const [reactionsOpen, setReactionsOpen] = useState(false);
-  const isHost = useRoomStore((s) => s.isHost);
-  const isCoHost = useRoomStore((s) => s.isCoHost);
-  const canShareScreen = useRoomStore((s) => s.canShareScreen);
-  const lockScreenShare = useRoomStore((s) => s.lockScreenShare);
-  const showScreenShare = isHost || isCoHost || !lockScreenShare || canShareScreen || isScreenSharing;
-
-  const {
-    whiteboard: whiteboardState,
-    restoreWhiteboard,
-  } = useRoomWhiteboard();
-  const isWhiteboardActive = whiteboardState?.isActive;
-  const isWhiteboardMinimized = whiteboardState?.isMinimized;
-
-  return (
-    <div className="relative flex-shrink-0 flex flex-col items-center select-none z-30 pb-[max(env(safe-area-inset-bottom),0.5rem)] px-2">
-      {/* ── Active Whiteboard Floating Pill (when minimized on mobile) ── */}
-      {isWhiteboardActive && isWhiteboardMinimized && (
-        <div className="mb-2 animate-bounce-subtle">
-          <button
-            type="button"
-            onClick={restoreWhiteboard}
-            className={cn(
-              "flex items-center gap-2 px-3.5 py-1.5 rounded-full border shadow-lg cursor-pointer transition-all",
-              "bg-[#064e3b]/95 border-emerald-400/60 text-emerald-100 shadow-emerald-950/40 active:scale-95 text-xs font-semibold"
-            )}
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span>✏️ {t("whiteboard.viewActiveBoard", "وایت‌برد فعال (لمس برای باز کردن)")}</span>
-          </button>
-        </div>
-      )}
-
-      {/* ── Floating Reactions Tray for Mobile ── */}
-      <div className="relative w-full flex justify-center">
-        <ReactionsPopover
-          isOpen={reactionsOpen}
-          onClose={() => setReactionsOpen(false)}
-          onSelectEmoji={(emoji) => {
-            if (onSendReaction) onSendReaction(emoji);
-          }}
-        />
-      </div>
-
-      {/* ── Floating Glassmorphic Mobile Controls Dock ── */}
-      <div
-        className={cn(
-          "w-full max-w-[480px] flex items-center justify-between gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-2xl border shadow-2xl backdrop-blur-2xl",
-          "bg-[var(--s2)]/95 border-[var(--b)] text-[var(--t1)] shadow-2xl overflow-x-auto scrollbar-none"
-        )}
-      >
-        {/* Mic Toggle */}
-        <MobileDockBtn
-          tooltip={isMicOn ? t("tooltips.muteOn") : t("tooltips.muteOff")}
-          icon={isMicOn ? Icons.mic : Icons.micOff}
-          onClick={onToggleMic}
-          variant={isMicOn ? "emerald" : "danger"}
-          ariaLabel={t("controls.mic")}
-        />
-
-        {/* Cam Toggle */}
-        <MobileDockBtn
-          tooltip={isCamOn ? t("tooltips.cameraOn") : t("tooltips.cameraOff")}
-          icon={isCamOn ? Icons.camera : Icons.cameraOff}
-          onClick={onToggleCam}
-          variant={isCamOn ? "emerald" : "danger"}
-          ariaLabel={t("controls.camera")}
-        />
-
-        {/* Live Reactions */}
-        <MobileDockBtn
-          tooltip={t("controls.reactions", "واکنش")}
-          icon={<span className="text-base sm:text-lg leading-none">😊</span>}
-          onClick={() => setReactionsOpen((prev) => !prev)}
-          variant={reactionsOpen ? "active" : "default"}
-          ariaLabel={t("controls.reactions")}
-        />
-
-        {/* Screen Share */}
-        {showScreenShare && <MobileDockBtn
-          tooltip={t("tooltips.screenShare")}
-          icon={Icons.screenShare}
-          onClick={onToggleScreenShare}
-          variant={isScreenSharing ? "active" : "default"}
-          ariaLabel={t("controls.share")}
-        />}
-
-        {/* Raise Hand */}
-        <MobileDockBtn
-          tooltip={handRaised ? t("tooltips.lowerHand") : t("tooltips.raiseHand")}
-          icon={handRaised ? Icons.handFilled : Icons.hand}
-          onClick={onToggleHandRaise || (() => {})}
-          variant={handRaised ? "amber" : "default"}
-          ariaLabel={t("controls.raiseHand")}
-        />
-
-        {/* Tools Sheet Trigger */}
-        <MobileDockBtn
-          tooltip={t("controls.tools", "ابزارها")}
-          icon={Icons.tools}
-          onClick={() => onPanelClick("tools")}
-          variant={activePanel === "tools" ? "active" : "default"}
-          ariaLabel={t("controls.tools")}
-        />
-
-        {/* Chat Sheet Trigger */}
-        <MobileDockBtn
-          tooltip={t("controls.chat", "گفتگو")}
-          icon={Icons.chat}
-          onClick={() => onPanelClick("chat")}
-          variant={activePanel === "chat" ? "active" : "default"}
-          ariaLabel={t("controls.chat")}
-        />
-
-        {/* People Sheet Trigger */}
-        <MobileDockBtn
-          tooltip={t("controls.people", "حاضرین")}
-          icon={Icons.people}
-          onClick={() => onPanelClick("people")}
-          variant={activePanel === "people" ? "active" : "default"}
-          ariaLabel={t("controls.people")}
-        />
-
-        {/* Settings */}
-        <MobileDockBtn
-          tooltip={t("controls.settings", "تنظیمات")}
-          icon={Icons.settings}
-          onClick={onToggleSettings}
-          variant={settingsOpen ? "active" : "default"}
-          ariaLabel={t("controls.settings")}
-        />
-
-        {/* Leave Call (Red Accent) */}
-        <Tooltip content={t("tooltips.leave")}>
-          <button
-            type="button"
-            onClick={onLeave}
-            aria-label={t("tooltips.leave")}
-            className={cn(
-              "w-8.5 h-8.5 sm:w-10 sm:h-10 min-w-8.5 sm:min-w-10 rounded-xl flex items-center justify-center border-none cursor-pointer shrink-0",
-              "bg-rose-600 hover:bg-rose-700 active:scale-90 text-white shadow-md shadow-rose-600/40 transition-transform duration-150"
-            )}
-          >
-            {Icons.leave}
-          </button>
-        </Tooltip>
-      </div>
-    </div>
-  );
-}
-
-interface MobileDockBtnProps {
-  tooltip: string;
-  icon: React.ReactNode;
-  onClick: () => void;
-  variant?: "default" | "active" | "danger" | "emerald" | "amber";
-  ariaLabel?: string;
-}
-
-function MobileDockBtn({
-  tooltip,
-  icon,
-  onClick,
-  variant = "default",
-  ariaLabel,
-}: MobileDockBtnProps) {
-  return (
-    <Tooltip content={tooltip}>
-      <button
-        type="button"
-        onClick={onClick}
-        aria-label={ariaLabel || tooltip}
-        className={cn(
-          "w-8.5 h-8.5 sm:w-10 sm:h-10 min-w-8.5 sm:min-w-10 rounded-xl flex items-center justify-center border transition-all duration-150 cursor-pointer shrink-0",
-          "active:scale-90 select-none [&>svg]:w-4 [&>svg]:h-4 sm:[&>svg]:w-5 sm:[&>svg]:h-5 [&>svg]:stroke-current [&>svg]:fill-none",
-          variant === "default" &&
-            "bg-[var(--s3)] hover:bg-[var(--s4)] border-[var(--b)] text-[var(--t2)] hover:text-[var(--t1)]",
-          variant === "active" &&
-            "bg-[var(--brand-soft)] border-[var(--brand)]/60 text-[var(--brand-dark)] dark:text-white shadow-xs ring-2 ring-[var(--brand)]/40",
-          variant === "emerald" &&
-            "bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400",
-          variant === "danger" &&
-            "bg-rose-500/15 border-rose-500/40 text-rose-600 dark:text-rose-400",
-          variant === "amber" &&
-            "bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400"
-        )}
-      >
-        {icon}
-      </button>
-    </Tooltip>
-  );
+export default function RoomMobileControls(p: Props) {
+ const { t } = useTranslation("room");
+ const [invite, setInvite] = useState(false);
+ const [recordMenu, setRecordMenu] = useState(false);
+ const [info, setInfo] = useState(false);
+ const [more, setMore] = useState(false);
+ const [reactions, setReactions] = useState(false);
+ const ref = useRef<HTMLDivElement>(null);
+ const state = useRoomStore();
+ const recording = useRoomRecording({ roomCode: state.roomCode, isHost: state.isHost });
+ const board = useRoomWhiteboard();
+ const adjust = useRoomLayoutStore((s) => s.setAdjustViewOpen);
+ useEffect(() => {
+   const close = (event: PointerEvent) => { if (!ref.current?.contains(event.target as Node)) setMore(false); };
+   const key = (event: KeyboardEvent) => { if (event.key === "Escape") setMore(false); };
+   document.addEventListener("pointerdown", close); document.addEventListener("keydown", key);
+   return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", key); };
+ }, []);
+ const actions = [
+   ...(recording.canControl ? [{ label: t("controls.start"), icon: <Circle size={21} className="text-[var(--red)]"/>, run: () => setRecordMenu(true) }] : []),
+   { label: t("controls.chat"), icon: <span className="relative">{Icons.chat}<ChatUnreadBadge /></span>, run: () => p.onPanelClick("chat") },
+   { label: t("controls.people"), icon: Icons.people, run: () => p.onPanelClick("people") },
+   { label: t("controls.tools"), icon: Icons.tools, run: () => p.onPanelClick("tools") },
+   { label: t("controls.reactions"), icon: <Smile size={20}/>, run: () => setReactions((v) => !v) },
+   { label: t("mobile.invite"), icon: <UserPlus size={21}/>, run: () => setInvite(true) },
+   ...(state.isHost || state.isCoHost || !state.lockScreenShare || state.canShareScreen || p.isScreenSharing ? [{ label: t("tooltips.screenShare"), icon: Icons.screenShare, run: p.onToggleScreenShare }] : []),
+   { label: t("controls.settings"), icon: Icons.settings, run: p.onToggleSettings },
+   { label: t("layout.adjustView"), icon: <LayoutGrid size={21}/>, run: () => adjust(true) },
+   ...(state.isHost || state.isCoHost ? [{ label: t("lobby.hostPanelTitle"), icon: <Shield size={21}/>, run: () => window.dispatchEvent(new Event("eduspace:open-lobby")) }] : []),
+   { label: t("topbar.info"), icon: <Info size={21}/>, run: () => setInfo(true) },
+   { label: t("tooltips.leave"), icon: <LogOut size={21} className="text-[var(--red)]"/>, run: p.onLeave },
+ ];
+ const button = "relative w-12 h-12 shrink-0 rounded-full flex items-center justify-center border border-[var(--b)] bg-[var(--s3)] text-[var(--t1)]";
+ return <div ref={ref} className="relative z-50 shrink-0 px-3 pt-2 pb-[max(env(safe-area-inset-bottom),0.75rem)] bg-[var(--s0)]">
+   {board.whiteboard.isActive && board.whiteboard.isMinimized && <button className="mb-2 text-sm text-[var(--brand)]" onClick={board.restoreWhiteboard}>{t("whiteboard.viewActiveBoard")}</button>}
+   <ReactionsPopover isOpen={reactions} onClose={() => setReactions(false)} onSelectEmoji={(emoji) => p.onSendReaction?.(emoji)} />
+   {more && <div role="menu" className="absolute bottom-full mb-2 inset-x-3 max-h-[min(70dvh,640px)] overflow-y-auto rounded-[2rem] border border-[var(--b)] bg-[color-mix(in_srgb,var(--s2)_96%,transparent)] backdrop-blur-2xl p-4 shadow-2xl motion-safe:animate-in motion-safe:slide-in-from-bottom-2"><div className="w-12 h-1 rounded-full bg-[var(--t3)]/40 mx-auto mb-3" />{actions.map((action) => <button key={action.label} role="menuitem" className="flex items-center gap-3 w-full min-h-14 px-2 border-b border-[var(--b)] last:border-0 text-start hover:bg-[var(--s3)]" onClick={() => { setMore(false); action.run(); }}><span className="w-10 h-10 rounded-full bg-[var(--s0)]/50 flex items-center justify-center shrink-0">{action.icon}</span><span className="text-sm">{action.label}</span></button>)}</div>}
+   {invite && <InviteModal onClose={() => setInvite(false)} />}
+   {(recordMenu || info) && <><div className="fixed inset-0 z-40" onClick={() => { setRecordMenu(false); setInfo(false); }}/><div role="dialog" className="absolute bottom-full mb-3 inset-x-3 rounded-3xl border border-[var(--b)] bg-[var(--s2)] p-5 z-50">
+     <button className="absolute top-2 end-3 w-9 h-9" aria-label={t("mobile.close")} onClick={() => { setRecordMenu(false); setInfo(false); }}>×</button>
+     {recordMenu ? <RecordControls placement="top" roomCode={state.roomCode} canControl={recording.canControl} status={recording.status} isMutating={recording.isMutating} onStart={recording.start} onStop={recording.stop} onPause={recording.pause} onResume={recording.resume} /> : <div className="space-y-3"><p>{state.roomName}</p><p dir="ltr">{state.roomCode}</p><button onClick={() => void navigator.clipboard.writeText(window.location.href)}>{t("topbar.copy")}</button></div>}
+   </div></>}
+   <div dir="ltr" className="flex w-fit max-w-full items-center justify-center gap-1.5 mx-auto rounded-[2rem] border border-[var(--b)] bg-[var(--s1)]/80 p-2">
+    <button className={button} aria-label={t(p.isCamOn ? "tooltips.cameraOn" : "tooltips.cameraOff")} onClick={p.onToggleCam}>{p.isCamOn ? Icons.camera : Icons.cameraOff}</button>
+    <button className={button} aria-label={t(p.isMicOn ? "tooltips.muteOn" : "tooltips.muteOff")} onClick={p.onToggleMic}>{p.isMicOn ? Icons.mic : Icons.micOff}</button>
+    <button className={button} aria-label={t(p.handRaised ? "controls.lowerHand" : "controls.raiseHand")} aria-pressed={p.handRaised} onClick={p.onToggleHandRaise}>{p.handRaised ? Icons.handFilled : Icons.hand}</button>
+    <button className={button} aria-label={t("controls.more")} aria-expanded={more} onClick={() => setMore((v) => !v)}><MoreVertical size={22}/><ChatUnreadBadge /></button>
+    <button className={button + " !bg-[var(--red)] !text-white"} aria-label={t("tooltips.leave")} onClick={p.onLeave}>{Icons.leave}</button>
+   </div>
+ </div>;
 }

@@ -8,6 +8,7 @@ import {
 } from "../../api/recordings.api";
 
 interface RecordControlsProps {
+  placement?: "top" | "bottom";
   roomCode: string | null;
   /**
    * True when the current user is allowed to drive the recording —
@@ -95,6 +96,7 @@ function useElapsed(
 }
 
 export default function RecordControls({
+  placement = "bottom",
   roomCode,
   canControl,
   status,
@@ -105,7 +107,7 @@ export default function RecordControls({
   onResume,
 }: RecordControlsProps) {
   const { t } = useTranslation("recordings");
-  const [showQuality, setShowQuality] = useState(false);
+
   const [showModes, setShowModes] = useState(false);
   const [quality, setQuality] = useState<RecordingQuality>("720p");
 
@@ -135,109 +137,14 @@ export default function RecordControls({
 
   if (!canControl || !roomCode) return null;
 
-  if (isIdle) {
-    return (
-      <div className="relative flex items-center gap-1">
-        <div className="relative">
-          <Tooltip content={t("controls.start")}>
-            <button
-              onClick={() => setShowModes((p) => !p)}
-              disabled={isMutating}
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 h-7 rounded-lg border-none cursor-pointer transition-all",
-                "text-[11px] font-semibold uppercase tracking-wider",
-                "bg-[var(--red)]/15 hover:bg-[var(--red)]/25 text-[var(--red)]",
-                "disabled:opacity-50 disabled:cursor-not-allowed",
-              )}
-            >
-              <span className="w-2 h-2 rounded-full bg-[var(--red)]" />
-              {t("controls.rec")}
-              <span className="text-[8px] ms-1 text-[var(--red)]">▼</span>
-            </button>
-          </Tooltip>
-
-          {showModes && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setShowModes(false)}
-              />
-              <div className="absolute top-9 end-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-2 w-56 fade-in flex flex-col gap-1">
-                <button
-                  onClick={async () => {
-                    setShowModes(false);
-                    await onStart(quality, "server");
-                  }}
-                  className="w-full text-start px-2 py-1.5 rounded-md text-xs cursor-pointer border-none bg-transparent text-[var(--t2)] hover:bg-[var(--s3)]"
-                >
-                  ☁️ {t("controls.modeServer")}
-                </button>
-                <button
-                  onClick={async () => {
-                    setShowModes(false);
-                    await onStart(quality, "client-upload");
-                  }}
-                  className="w-full text-start px-2 py-1.5 rounded-md text-xs cursor-pointer border-none bg-transparent text-[var(--t2)] hover:bg-[var(--s3)]"
-                >
-                  📥 {t("controls.modeClientUpload")}
-                </button>
-                <button
-                  onClick={async () => {
-                    setShowModes(false);
-                    await onStart(quality, "client-download");
-                  }}
-                  className="w-full text-start px-2 py-1.5 rounded-md text-xs cursor-pointer border-none bg-transparent text-[var(--t2)] hover:bg-[var(--s3)]"
-                >
-                  💾 {t("controls.modeClientDownload")}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-
-        <Tooltip content={t("controls.qualityLabel")}>
-          <button
-            onClick={() => setShowQuality((p) => !p)}
-            className={cn(
-              "px-1.5 h-7 rounded-md border-none cursor-pointer text-[10px] font-semibold",
-              "bg-[var(--s3)] text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s4)]",
-            )}
-          >
-            {quality}
-          </button>
-        </Tooltip>
-
-        {showQuality && (
-          <>
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => setShowQuality(false)}
-            />
-            <div className="absolute top-9 end-0 z-50 bg-[var(--s2)] border border-[var(--b)] rounded-xl shadow-2xl p-2 w-32 fade-in">
-              {(["720p", "1080p"] as const).map((q) => (
-                <button
-                  key={q}
-                  onClick={() => {
-                    setQuality(q);
-                    setShowQuality(false);
-                  }}
-                  className={cn(
-                    "w-full text-start px-2 py-1.5 rounded-md text-xs cursor-pointer border-none transition-colors",
-                    quality === q
-                      ? "bg-[var(--brand-soft)] text-[var(--brand)] font-bold border border-[var(--brand)]/30"
-                      : "bg-transparent text-[var(--t2)] hover:bg-[var(--s3)]",
-                  )}
-                >
-                  {t(`controls.quality${q === "720p" ? "720p" : "1080p"}`)}
-                  {quality === q ? " ✓" : ""}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-    );
-  }
+  if (isIdle) return <div className="relative">
+    <button className="h-9 px-3 rounded-lg text-[var(--red)] bg-[var(--s3)]" disabled={isMutating} aria-expanded={showModes} onClick={() => setShowModes((v) => !v)}>{t("controls.rec")} · {quality}</button>
+    {showModes && <><div className="fixed inset-0 z-40" onClick={() => setShowModes(false)} /><div className={cn("absolute end-0 z-50 w-56 max-w-[calc(100vw-2rem)] rounded-xl bg-[var(--s2)] border border-[var(--b)] p-3 shadow-xl", placement === "top" ? "bottom-full mb-2" : "top-11")}>
+      <p className="text-xs mb-2">{t("controls.qualityLabel")}</p>
+      <div className="flex gap-2">{(["720p", "1080p"] as const).map((q) => <button key={q} aria-pressed={quality === q} onClick={() => setQuality(q)} className={cn("flex-1 p-2 rounded-lg", quality === q ? "bg-[var(--brand)] text-white" : "bg-[var(--s3)]")}>{q}</button>)}</div>
+      <button disabled={isMutating} className="w-full mt-3 p-2 rounded-lg bg-[var(--red)] text-white text-xs" onClick={() => { setShowModes(false); void onStart(quality, "client-download"); }}>{t("controls.modeClientDownload")}</button>
+    </div></>}
+  </div>;
 
   // Active states.
   return (

@@ -82,7 +82,11 @@
       "camera": "Camera",
       "microphone": "Microphone",
       "speaker": "Speaker"
-    }
+    },
+    "backgroundNotSupported": "Background effects are not supported on this device",
+    "bgBlur": "Blur",
+    "bgNone": "None",
+    "devices": "Devices"
   },
   "controls": {
     "mic": "Mic",
@@ -96,7 +100,13 @@
     "layout": "Layout",
     "raiseHand": "Raise Hand",
     "lowerHand": "Lower Hand",
-    "reactions": "Send Reaction"
+    "reactions": "Send Reaction",
+    "more": "More options",
+    "rec": "Record",
+    "start": "Start recording",
+    "paused": "Paused",
+    "recording": "Recording",
+    "sidebar": "Side panel"
   },
   "tooltips": {
     "muteOn": "Mute · Ctrl+D",
@@ -157,7 +167,12 @@
     "infoParticipants": "Participants",
     "infoYourRole": "Your role",
     "roleHost": "Host",
-    "roleParticipant": "Participant"
+    "roleParticipant": "Participant",
+    "capacity": "{{count}} / {{max}} participants",
+    "remaining": "{{count}} minutes remaining",
+    "timeLimit": "Time limit",
+    "groupMinutes": "{{count}} minutes (group)",
+    "unlimited": "Unlimited"
   },
   "tile": {
     "you": "(You)",
@@ -172,7 +187,11 @@
     "overflowMore_one": "{{count}} other",
     "overflowMore_other": "{{count}} others",
     "overflowLabel": "more",
-    "clickToViewAll": "Click to view all"
+    "clickToViewAll": "Click to view all",
+    "fullscreen": "Fullscreen",
+    "showInTile": "Show in a tile",
+    "removeFromTile": "Remove this tile",
+    "overflowMore": "{{count}} more"
   },
   "audioVisualizer": {
     "muted": "Microphone muted"
@@ -188,7 +207,16 @@
     "shortcutCamLabel": "Toggle Camera",
     "shortcutCamSub": "Camera on / off",
     "noiseCancellation": "Noise Cancellation",
-    "hdVideo": "HD Video"
+    "hdVideo": "HD Video",
+    "accessTab": "Access",
+    "general": "General",
+    "hdDesc": "Prefer higher video quality",
+    "hostOnlyNotice": "Only moderators can change these settings",
+    "lockRoomTitle": "Lock meeting",
+    "lockRoomDesc": "Prevent new participants from joining",
+    "noiseDesc": "Reduce background noise",
+    "requireApprovalTitle": "Require approval",
+    "requireApprovalDesc": "Approve participants before they join"
   },
   "sidebar": {
     "addPeople": "Add People",
@@ -197,7 +225,9 @@
     "students": "Members ({{count}})",
     "noMessages": "No messages yet",
     "messagePlaceholder": "Message...",
-    "collapse": "Hide panel"
+    "collapse": "Hide panel",
+    "unread": "{{count}} unread messages",
+    "sendFailed": "Message not sent. Check your connection and try again."
   },
   "invite": {
     "title": "Add People",
@@ -214,23 +244,32 @@
     "failed": "Failed to send invite"
   },
   "tools": {
-    "launchGame": "Mini Apps",
-    "launchGameDesc": "Add a mini app to the session",
-    "whiteboard": "Whiteboard",
-    "whiteboardDesc": "Collaborative drawing",
-    "endWhiteboardLabel": "End Whiteboard for All",
-    "endWhiteboardDesc": "Close the collaborative whiteboard session",
-    "viewWhiteboard": "View Active Whiteboard",
-    "viewWhiteboardDesc": "Restore board on your screen",
-    "hideWhiteboard": "Hide Whiteboard",
-    "hideWhiteboardDesc": "Hide locally (keeps active for others)",
-    "quickExam": "Quick Exam",
-    "quickExamDesc": "Start exam in session",
-    "aiSummary": "AI Summary",
-    "aiSummaryDesc": "Auto-summarize session",
-    "fileShare": "File Share",
-    "fileShareDesc": "Share presentations",
-    "ready": "Ready"
+    "whiteboard": "Interactive Whiteboard",
+    "miniApps": "Mini Apps & Games",
+    "quickQuiz": "Quick Quiz & Poll",
+    "moreToolsCount": "+2 More Tools (View All)",
+    "focusTimer": "Focus Timer & Clock",
+    "allTools": "All Tools & Activities",
+    "stackTooltip": "Class Tools & Activities",
+    "closeStack": "Close Tools Stack",
+    "ready": "Ready",
+    "aiSummary": "AI summary",
+    "aiSummaryDesc": "Summarize meeting highlights",
+    "whiteboardDesc": "Draw and collaborate together",
+    "viewWhiteboard": "View whiteboard",
+    "viewWhiteboardDesc": "Restore the shared board",
+    "hideWhiteboard": "Minimize whiteboard",
+    "hideWhiteboardDesc": "Hide it only for you",
+    "endWhiteboardLabel": "End whiteboard for everyone",
+    "endWhiteboardDesc": "Close the shared board",
+    "viewPresentation": "View presentation",
+    "viewPresentationDesc": "Restore the active presentation",
+    "hidePresentation": "Minimize presentation",
+    "hidePresentationDesc": "Hide it only for you",
+    "changePresentation": "Change presentation",
+    "changePresentationDesc": "Upload or choose a file",
+    "presentationShare": "Present a file",
+    "presentationShareDesc": "Share documents, images and slides"
   },
   "whiteboard": {
     "title": "Whiteboard",
@@ -243,7 +282,55 @@
     "endForEveryone": "End for All",
     "viewActiveBoard": "Whiteboard is active (View Board)",
     "clickToOpen": "Click to maximize",
-    "activeBoard": "Active in session"
+    "activeBoard": "Active in session",
+    "syncFailed": "Could not sync the whiteboard. Check your connection.",
+    "imageTooLarge": "Choose an image smaller than 5 MB",
+    "lockDrawing": "Lock drawing",
+    "allowDrawing": "Allow drawing",
+    "clearBoard": "Clear board",
+    "viewOnly": "View only",
+    "collabOn": "Collaboration on",
+    "hostOnly": "Host only",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "uploadImage": "Upload image",
+    "embedVideo": "Embed YouTube / Vimeo",
+    "videoPrompt": "Enter a YouTube or Vimeo URL",
+    "undo": "Undo",
+    "redo": "Redo",
+    "snapOn": "Enable snap to grid",
+    "snapOff": "Disable snap to grid",
+    "cleared": "Board cleared",
+    "writeHint": "Double click to write…",
+    "labels": {
+      "select": "Select (V)",
+      "pencil": "Brush",
+      "highlighter": "Highlighter",
+      "text": "Text",
+      "sticky": "Sticky note",
+      "rectangle": "Rectangle",
+      "ellipse": "Ellipse",
+      "diamond": "Diamond",
+      "line": "Line",
+      "arrow": "Arrow",
+      "Thin": "Thin",
+      "Medium": "Medium",
+      "Thick": "Thick",
+      "Indigo": "Indigo",
+      "Emerald": "Emerald",
+      "Amber": "Amber",
+      "Rose": "Rose",
+      "White": "White",
+      "Dark": "Dark",
+      "None": "None",
+      "Indigo Light": "Light indigo",
+      "Emerald Light": "Light emerald",
+      "Amber Light": "Light amber",
+      "Rose Light": "Light rose"
+    },
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "resetView": "Reset view"
   },
   "host": {
     "muted": "Muted {{name}}",
@@ -315,16 +402,6 @@
     "unlockRoom": "Unlock Meeting",
     "lockRoomDesc": "New participants will need approval to join",
     "unlockRoomDesc": "Participants can join freely"
-  },
-  "tools": {
-    "whiteboard": "Interactive Whiteboard",
-    "miniApps": "Mini Apps & Games",
-    "quickQuiz": "Quick Quiz & Poll",
-    "moreToolsCount": "+2 More Tools (View All)",
-    "focusTimer": "Focus Timer & Clock",
-    "allTools": "All Tools & Activities",
-    "stackTooltip": "Class Tools & Activities",
-    "closeStack": "Close Tools Stack"
   },
   "sharedMedia": {
     "libraryTitle": "Online cinema",
@@ -413,5 +490,46 @@
       "buffering": "Buffering",
       "ended": "Ended"
     }
+  },
+  "connection": {
+    "connecting": "Connecting…",
+    "reconnecting": "Reconnecting…",
+    "wait": "Preparing audio, video and collaboration. Please wait.",
+    "poor": "Your connection is weak; audio or video may be interrupted."
+  },
+  "layout": {
+    "adjustView": "Adjust view",
+    "adjustViewAdvanced": "View settings",
+    "auto": "Automatic",
+    "tiled": "Grid",
+    "sidebar": "Sidebar",
+    "spotlight": "Spotlight",
+    "returnToGrid": "Return to grid"
+  },
+  "common": {
+    "retry": "Try again"
+  },
+  "mobile": {
+    "invite": "Invite participant",
+    "close": "Close",
+    "enableCamera": "Turn on your camera first",
+    "cameraFailed": "Could not switch camera",
+    "audioFailed": "Could not change audio output",
+    "audioOutput": "Audio output",
+    "speaker": "Speaker",
+    "phone": "Phone",
+    "headphones": "Headphones",
+    "turnOffSound": "Turn off sound",
+    "cancel": "Cancel",
+    "selectedOutput": "Selected output",
+    "swapCamera": "Switch front / rear camera",
+    "outputDevice": "Output {{index}}",
+    "systemAudioRouting": "This browser manages speaker and earpiece routing through the phone. Use your device audio controls to change the output."
+  },
+  "background": {
+    "office": "Office",
+    "nature": "Nature",
+    "studio": "Studio",
+    "minimal": "Minimal"
   }
 }

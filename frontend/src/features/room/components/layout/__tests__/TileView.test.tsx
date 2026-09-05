@@ -9,11 +9,13 @@ vi.mock("@livekit/components-react", () => ({
   ),
   isTrackReference: () => true,
   useIsSpeaking: () => false,
+  useParticipantTracks: () => [],
 }));
 
 vi.mock("livekit-client", () => ({
   Track: {
     Source: {
+      Microphone: "microphone",
       Camera: "camera",
       ScreenShare: "screen_share",
     },
@@ -43,6 +45,10 @@ function renderTile(kind: "camera" | "screen") {
 }
 
 describe("TileView media presentation", () => {
+  it("shows a mute indicator on a muted participant camera", () => {
+    renderTile("camera");
+    expect(screen.getByLabelText("tile.mute")).toBeInTheDocument();
+  });
   it("contains and centers screen share inside a symmetric card inset", () => {
     renderTile("screen");
 
@@ -67,5 +73,36 @@ describe("TileView media presentation", () => {
     expect(actions).toBeInTheDocument();
     expect(actions).toHaveClass("pointer-events-none");
     expect(actions).not.toHaveClass("bg-black/40", "backdrop-blur-[2px]");
+  });
+
+  it("lets the local camera move between the grid and floating self view", () => {
+    const onToggleSelfView = vi.fn();
+    const { container, rerender } = render(
+      <TileView
+        tile={{ key: "viewer::camera", kind: "camera", participant }}
+        tracks={[]}
+        localIdentity="viewer"
+        pinnedKey={null}
+        onTogglePin={vi.fn()}
+        onToggleSelfView={onToggleSelfView}
+      />,
+    );
+
+    fireEvent.mouseEnter(container.firstElementChild as Element);
+    fireEvent.click(screen.getByRole("button", { name: "tile.removeFromTile" }));
+    expect(onToggleSelfView).toHaveBeenCalledOnce();
+
+    rerender(
+      <TileView
+        tile={{ key: "viewer::camera", kind: "camera", participant }}
+        tracks={[]}
+        localIdentity="viewer"
+        pinnedKey={null}
+        onTogglePin={vi.fn()}
+        onToggleSelfView={onToggleSelfView}
+        selfViewFloating
+      />,
+    );
+    expect(screen.getByRole("button", { name: "tile.showInTile" })).toBeInTheDocument();
   });
 });

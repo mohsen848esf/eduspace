@@ -1,3 +1,4 @@
+import ConnectionStatus from "./ConnectionStatus";
 import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { useRoomContext } from "@livekit/components-react";
@@ -20,7 +21,7 @@ import SettingsPanel from "./SettingsPanel";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
 import BottomSheet from "../../../components/layout/BottomSheet";
 import ParticipantsPanel from "./panels/ParticipantsPanel";
-import ChatPanel from "./panels/ChatPanel";
+import ChatPanel, { ChatListener } from "./panels/ChatPanel";
 import ToolsPanel from "./panels/ToolsPanel";
 import { type useGameBoard } from "../hooks/useGameBoard";
 import { type useWhiteboard } from "../hooks/useWhiteboard";
@@ -164,9 +165,11 @@ export default function UnifiedRoomShell({
 
   return (
     <>
+      <ChatListener roomCode={activeRoomCode} />
       <div className="relative flex flex-col w-full h-full text-[var(--t1)]">
+        <ConnectionStatus onLeave={onLeaveRequest} />
         {/* Topbar */}
-        {isMobile ? <RoomMobileTopbar /> : <RoomTopbar />}
+        {isMobile ? <RoomMobileTopbar onLeave={onLeaveRequest} /> : <RoomTopbar onLeave={onLeaveRequest} />}
 
         {/* Middle Area */}
         <div className="flex flex-1 overflow-hidden">
@@ -186,6 +189,9 @@ export default function UnifiedRoomShell({
               />
             )}
 
+            {whiteboard.whiteboard.isActive && (
+              <div className={cn("flex flex-1 min-w-0 min-h-0", (whiteboard.whiteboard.isMinimized || sharedPlayback || (activePresentation && !isPresentationMinimized) || game.gameBoard.isActive) && "hidden")}><WhiteboardStageLayout whiteboard={whiteboard} /></div>
+            )}
             {sharedPlayback && room ? (
               <PresentationStageLayout>
                 <SharedMediaPlayer
@@ -213,7 +219,7 @@ export default function UnifiedRoomShell({
                 subscribeClassroomEvents={game.subscribeClassroomEvents}
               />
             ) : whiteboard.whiteboard.isActive && !whiteboard.whiteboard.isMinimized ? (
-              <WhiteboardStageLayout whiteboard={whiteboard} />
+              null
             ) : (
               <VideoGrid layout={layout} onLayoutChange={onLayoutChange} />
             )}

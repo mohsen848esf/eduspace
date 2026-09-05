@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   VideoTrack,
   isTrackReference,
   useIsSpeaking,
+  useParticipantTracks,
 } from "@livekit/components-react";
 import { Track, RemoteParticipant, type Participant } from "livekit-client";
+import { Maximize, MicOff, Pin, PictureInPicture2 } from "lucide-react";
 import { Icons } from "../../../../lib/constants/icons";
 import { Tooltip } from "../../../../components/ui/Tooltip";
 import { cn } from "../../../../lib/utils";
@@ -59,6 +61,8 @@ export interface TileViewProps {
   onLowerHand?: (p: RemoteParticipant) => void;
   pinnedKey: string | null;
   onTogglePin: (key: string) => void;
+  onToggleSelfView?: () => void;
+  selfViewFloating?: boolean;
   compact?: boolean;
   showActions?: boolean;
   className?: string;
@@ -76,6 +80,8 @@ export default function TileView({
   onLowerHand,
   pinnedKey,
   onTogglePin,
+  onToggleSelfView,
+  selfViewFloating = false,
   compact = false,
   showActions = true,
   className,
@@ -84,6 +90,9 @@ export default function TileView({
   const { t } = useTranslation("room");
   const { participant, kind, key } = tile;
   const isSpeaking = useIsSpeaking(participant);
+  useParticipantTracks([Track.Source.Microphone], participant.identity);
+  const muted = !participant.isMicrophoneEnabled;
+  const tileRef = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState(false);
   const pinned = pinnedKey === key;
   const isLocal = participant.identity === localIdentity;
@@ -130,6 +139,10 @@ export default function TileView({
 
   return (
     <div
+      ref={tileRef}
+      tabIndex={0}
+      onFocus={() => setHovered(true)}
+      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setHovered(false); }}
       style={{ ...style, isolation: "isolate" }}
       className={cn(
         "relative bg-[var(--s2)] rounded-2xl md:rounded-3xl overflow-hidden transition-all duration-200 w-full h-full tile-enter shadow-lg border border-white/5 select-none",
@@ -172,13 +185,13 @@ export default function TileView({
       )}
 
       {/* Top Badges */}
-      <div className="absolute top-3 start-3 end-3 flex items-center justify-between pointer-events-none z-10">
+      <div className={cn("absolute top-3 start-3 end-3 flex items-center justify-between pointer-events-none z-10", kind === "screen" && "flex-row-reverse")}>
         {/* Left top badges */}
         <div className="flex items-center gap-1.5">
           {kind === "screen" && (
-            <div className="bg-[var(--brand)]/90 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-md">
+            <div tabIndex={0} aria-label={t("tile.sharing")} className="group pointer-events-auto bg-[var(--brand)]/90 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center shadow-md">
               {Icons.screenShare}
-              <span>{t("tile.sharing") || "Presenting"}</span>
+              <span className="max-w-0 opacity-0 overflow-hidden whitespace-nowrap transition-all duration-300 motion-reduce:transition-none group-hover:max-w-40 group-hover:opacity-100 group-hover:ms-1.5 group-focus:max-w-40 group-focus:opacity-100 group-focus:ms-1.5">{t("tile.sharing")}</span>
             </div>
           )}
 
@@ -192,7 +205,8 @@ export default function TileView({
 
         {/* Right top badges (Audio Speaking Waveform / Pin) */}
         <div className="flex items-center gap-1.5">
-          {isSpeaking && kind === "camera" && (
+          {muted && kind === "camera" && <span aria-label={t("tile.mute")} className="rounded-full bg-black/60 p-1.5 text-white"><MicOff size={16} /></span>}
+          {isSpeaking && !muted && kind === "camera" && (
             <div className="bg-black/60 backdrop-blur-md px-2 py-1 rounded-full flex items-center gap-1">
               <div className="flex gap-0.5 items-end h-3">
                 {[1, 2, 3, 2, 1].map((h, i) => (
@@ -211,7 +225,7 @@ export default function TileView({
 
           {pinned && (
             <div className="bg-black/60 backdrop-blur-md text-white text-xs px-2 py-1 rounded-full shadow">
-              📌
+              <Pin size={16} />
             </div>
           )}
         </div>
@@ -220,6 +234,21 @@ export default function TileView({
       {/* Hover Action Overlay */}
       {showActions && hovered && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center gap-2.5 fade-in [&_button]:pointer-events-auto">
+          {isLocal && kind === "camera" && onToggleSelfView && (
+            <Tooltip content={selfViewFloating ? t("tile.showInTile") : t("tile.removeFromTile")}>
+              <button
+                type="button"
+                aria-label={selfViewFloating ? t("tile.showInTile") : t("tile.removeFromTile")}
+                className={cn(
+                  "rounded-full border border-white/15 bg-black/65 text-white flex items-center justify-center transition-all hover:bg-black/85 active:scale-90 shadow-lg backdrop-blur-sm",
+                  compact ? "w-8 h-8" : "w-10 h-10",
+                )}
+                onClick={onToggleSelfView}
+              >
+                <PictureInPicture2 size={16} />
+              </button>
+            </Tooltip>
+          )}
           <Tooltip content={pinned ? t("tile.unpin") || "Unpin" : t("tile.pin") || "Pin"}>
             <button
               type="button"
@@ -233,10 +262,11 @@ export default function TileView({
               )}
               onClick={() => onTogglePin(key)}
             >
-              📌
+              <Pin size={16} />
             </button>
           </Tooltip>
 
+          {kind === "screen" && <button type="button" aria-label={t("tile.fullscreen")} className="w-11 h-11 rounded-full bg-black/65 text-white flex items-center justify-center" onClick={() => { if (document.fullscreenElement) void document.exitFullscreen(); else void tileRef.current?.requestFullscreen(); }}><Maximize size={18} /></button>}
           {/* Host moderation tools on camera tiles */}
           {isHost && kind === "camera" && !isLocal && (
             <>

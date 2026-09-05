@@ -53,7 +53,7 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
     isCameraEnabled,
     isScreenShareEnabled,
   } = useLocalParticipant();
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("participants");
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const isMicOn = isMicrophoneEnabled ?? initialMicOn;
   const isCamOn = isCameraEnabled ?? initialCamOn;

@@ -35,7 +35,7 @@ export default function ReactionsPopover({
     const handleDown = (e: MouseEvent) => {
       if (
         containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
+        !containerRef.current.contains(e.target as Node) && !(e.target as Element).closest('[data-room-popup="reactions"], button[aria-expanded]')
       ) {
         onClose();
       }
@@ -44,10 +44,10 @@ export default function ReactionsPopover({
       if (e.key === "Escape") onClose();
     };
 
-    document.addEventListener("mousedown", handleDown);
+    document.addEventListener("pointerdown", handleDown);
     document.addEventListener("keydown", handleKey);
     return () => {
-      document.removeEventListener("mousedown", handleDown);
+      document.removeEventListener("pointerdown", handleDown);
       document.removeEventListener("keydown", handleKey);
     };
   }, [isOpen, onClose]);

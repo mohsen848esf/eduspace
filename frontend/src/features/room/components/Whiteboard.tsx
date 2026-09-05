@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useEffectEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useParticipants, useLocalParticipant } from "@livekit/components-react";
 import { useRoomStore } from "../store/roomStore";
@@ -62,6 +62,13 @@ const WIDTHS = [
   { value: 10, label: "Thick" },
 ];
 
+function createWhiteboardElementIdentity() {
+  return {
+    id: `el_${crypto.randomUUID()}`,
+    timestamp: new Date().getTime(),
+  };
+}
+
 export default function Whiteboard({
   whiteboard,
   onEnd,
@@ -94,8 +101,8 @@ export default function Whiteboard({
   const elementsRef = useRef(elements);
 
   // Undo / Redo history stacks
-  const historyRef = useRef<Record<string, CanvasElement>[]>([]);
-  const historyIndexRef = useRef<number>(-1);
+  const historyRef = useRef<Record<string, CanvasElement>[]>([{}]);
+  const historyIndexRef = useRef<number>(0);
 
   // Sync elementsRef to read latest in listeners
   useEffect(() => {
@@ -120,7 +127,8 @@ export default function Whiteboard({
   const saveToHistory = useCallback((nextElements: Record<string, CanvasElement>) => {
     // Truncate future stack if we were in the middle of undoing
     const history = historyRef.current.slice(0, historyIndexRef.current + 1);
-    history.push(nextElements);
+    if (JSON.stringify(history[history.length - 1]) === JSON.stringify(nextElements)) return;
+    history.push(structuredClone(nextElements));
 
     // Limit stack size to 50
     if (history.length > 50) {
@@ -131,27 +139,47 @@ export default function Whiteboard({
     historyIndexRef.current = history.length - 1;
   }, []);
 
+  const beginAction = () => { historyRef.current[historyIndexRef.current] = structuredClone(elementsRef.current); };
+
+  const updateSelection = (updates: Partial<CanvasElement>) => {
+    if (!selectedIds.length) return;
+    beginAction();
+    const next = { ...elementsRef.current };
+    selectedIds.forEach((id) => {
+      if (!next[id]) return;
+      next[id] = { ...next[id], ...updates, timestamp: Date.now() } as CanvasElement;
+      broadcastWhiteboardEvent("WHITEBOARD_OP", { type: "UPDATE", id, updates: next[id] }, true);
+    });
+    elementsRef.current = next; setElements(next); saveToHistory(next);
+  };
+
+  const applyHistory = useCallback((from: Record<string, CanvasElement>, to: Record<string, CanvasElement>) => {
+    const next = { ...elementsRef.current };
+    for (const id of new Set([...Object.keys(from), ...Object.keys(to)])) {
+      if (JSON.stringify(from[id]) === JSON.stringify(to[id])) continue;
+      const comparable = (el?: CanvasElement) => el ? JSON.stringify({ ...el, timestamp: 0 }) : "";
+      if (comparable(next[id]) !== comparable(from[id])) continue;
+      if (to[id]) {
+        next[id] = { ...to[id], timestamp: Date.now() };
+        broadcastWhiteboardEvent("WHITEBOARD_OP", { type: "CREATE", element: next[id] }, true);
+      } else {
+        delete next[id];
+        broadcastWhiteboardEvent("WHITEBOARD_OP", { type: "DELETE", ids: [id] }, true);
+      }
+    }
+    elementsRef.current = next;
+    setElements(next);
+  }, [broadcastWhiteboardEvent]);
   const handleUndo = useCallback(() => {
-    if (historyIndexRef.current > 0) {
-      historyIndexRef.current--;
-      const prevState = historyRef.current[historyIndexRef.current] || {};
-      setElements(prevState);
-      broadcastWhiteboardEvent("WHITEBOARD_OP", { type: "SYNC_ALL", elements: prevState }, true);
-    }
-  }, [broadcastWhiteboardEvent]);
-
+    const index = historyIndexRef.current;
+    if (index > 0) { applyHistory(historyRef.current[index], historyRef.current[index - 1]); historyIndexRef.current--; }
+  }, [applyHistory]);
   const handleRedo = useCallback(() => {
-    if (historyIndexRef.current < historyRef.current.length - 1) {
-      historyIndexRef.current++;
-      const nextState = historyRef.current[historyIndexRef.current];
-      setElements(nextState);
-      broadcastWhiteboardEvent("WHITEBOARD_OP", { type: "SYNC_ALL", elements: nextState }, true);
-    }
-  }, [broadcastWhiteboardEvent]);
+    const index = historyIndexRef.current;
+    if (index < historyRef.current.length - 1) { applyHistory(historyRef.current[index], historyRef.current[index + 1]); historyIndexRef.current++; }
+  }, [applyHistory]);
 
-  // Handle incoming collaboration events
-  useEffect(() => {
-    return subscribeWhiteboardEvents((type, payload, fromIdentity) => {
+  const onWhiteboardEvent = useEffectEvent((type: string, payload: unknown, fromIdentity?: string) => {
       switch (type) {
         case "WHITEBOARD_OP": {
           const op = payload as WhiteboardOperation;
@@ -162,7 +190,7 @@ export default function Whiteboard({
               const el = op.element as CanvasElement;
               setElements((prev) => {
                 const existing = prev[el.id];
-                if (existing && existing.timestamp >= el.timestamp) return prev;
+                if (existing && existing.timestamp > el.timestamp) return prev;
                 return { ...prev, [el.id]: el };
               });
               break;
@@ -171,7 +199,7 @@ export default function Whiteboard({
               const { id, updates } = op;
               setElements((prev) => {
                 const el = prev[id];
-                if (!el || el.timestamp >= updates.timestamp) return prev;
+                if (!el || el.timestamp > updates.timestamp) return prev;
                 return { ...prev, [id]: { ...el, ...updates } };
               });
               break;
@@ -234,15 +262,8 @@ export default function Whiteboard({
           break;
         }
       }
-    });
-  }, [
-    subscribeWhiteboardEvents,
-    localParticipant.identity,
-    isHost,
-    whiteboard.isDrawingAllowed,
-    broadcastWhiteboardEvent,
-    getParticipantName,
-  ]);
+  });
+  useEffect(() => subscribeWhiteboardEvents((...args) => onWhiteboardEvent(...args)), [subscribeWhiteboardEvents]);
 
   // Clean stale cursor pointers (> 3s inactivity)
   useEffect(() => {
@@ -270,8 +291,8 @@ export default function Whiteboard({
 
   // Element changes trigger callback
   const handleElementsChange = (nextElements: Record<string, CanvasElement>) => {
+    elementsRef.current = nextElements;
     setElements(nextElements);
-    saveToHistory(nextElements);
   };
 
   // Dispatch operations to participants
@@ -282,10 +303,10 @@ export default function Whiteboard({
 
   // Embed video helper
   const handleAddVideo = () => {
-    const url = prompt("Enter YouTube or Vimeo video URL:");
+    const url = prompt(t("whiteboard.videoPrompt"));
     if (!url) return;
 
-    const id = "el_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
+    const { id, timestamp } = createWhiteboardElementIdentity();
     const newEl: MediaElement = {
       id,
       type: "video",
@@ -295,12 +316,14 @@ export default function Whiteboard({
       height: 180,
       color: "#6366f1",
       creatorId: localParticipant.identity,
-      timestamp: Date.now(),
+      timestamp,
       url: url,
     };
 
-    const nextElements = { ...elements, [id]: newEl };
+    beginAction();
+    const nextElements = { ...elementsRef.current, [id]: newEl };
     handleElementsChange(nextElements);
+    saveToHistory(nextElements);
     handleBroadcastOp({ type: "CREATE", element: newEl });
   };
 
@@ -312,10 +335,11 @@ export default function Whiteboard({
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
+      if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) { toast.error(t("whiteboard.imageTooLarge")); return; }
 
       const reader = new FileReader();
       reader.onload = () => {
-        const id = "el_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5);
+        const { id, timestamp } = createWhiteboardElementIdentity();
         const newEl: MediaElement = {
           id,
           type: "image",
@@ -325,12 +349,14 @@ export default function Whiteboard({
           height: 250,
           color: "#6366f1",
           creatorId: localParticipant.identity,
-          timestamp: Date.now(),
+          timestamp,
           url: reader.result as string,
         };
 
-        const nextElements = { ...elements, [id]: newEl };
+        beginAction();
+        const nextElements = { ...elementsRef.current, [id]: newEl };
         handleElementsChange(nextElements);
+        saveToHistory(nextElements);
         handleBroadcastOp({ type: "CREATE", element: newEl });
       };
       reader.readAsDataURL(file);
@@ -341,10 +367,13 @@ export default function Whiteboard({
   // Clear canvas board
   const handleClear = () => {
     if (!isHost) return;
+    beginAction();
+    elementsRef.current = {};
+    saveToHistory({});
     setElements({});
     setSelectedIds([]);
     broadcastWhiteboardEvent("WHITEBOARD_CLEAR", {}, true);
-    toast.success("Board cleared");
+    toast.success(t("whiteboard.cleared"));
   };
 
   // Fullscreen
@@ -380,7 +409,7 @@ export default function Whiteboard({
           </span>
           {!canDraw && (
             <span className="text-[10px] bg-red-500/20 text-red-400 font-bold px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0">
-              🔒 <span className="hidden sm:inline">View Only</span>
+              🔒 <span className="hidden sm:inline">{t("whiteboard.viewOnly")}</span>
             </span>
           )}
         </div>
@@ -407,7 +436,7 @@ export default function Whiteboard({
                 >
                   <span>{whiteboard.isDrawingAllowed ? "🔓" : "🔒"}</span>
                   <span className="hidden sm:inline">
-                    {whiteboard.isDrawingAllowed ? "Collab On" : "Host Only"}
+                    {t(whiteboard.isDrawingAllowed ? "whiteboard.collabOn" : "whiteboard.hostOnly")}
                   </span>
                 </button>
               </Tooltip>
@@ -419,13 +448,13 @@ export default function Whiteboard({
                   className="h-7 sm:h-8 px-2 sm:px-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold rounded-lg border-none cursor-pointer transition-colors flex items-center gap-1"
                 >
                   <span>🧹</span>
-                  <span className="hidden sm:inline">Clear Board</span>
+                  <span className="hidden sm:inline">{t("whiteboard.clearBoard")}</span>
                 </button>
               </Tooltip>
             </>
           )}
 
-          <Tooltip content={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}>
+          <Tooltip content={t(isFullscreen ? "whiteboard.exitFullscreen" : "whiteboard.fullscreen")}>
             <button
               type="button"
               onClick={toggleFullscreen}
@@ -474,6 +503,8 @@ export default function Whiteboard({
           opacity={opacity}
           canDraw={canDraw}
           snapToGrid={snapToGrid}
+          onBegin={beginAction}
+          onCommit={() => saveToHistory(elementsRef.current)}
           onElementsChange={handleElementsChange}
           onSelectedIdsChange={setSelectedIds}
           broadcastOp={handleBroadcastOp}
@@ -523,7 +554,7 @@ export default function Whiteboard({
               { id: "line", icon: "―", label: "Line" },
               { id: "arrow", icon: "➔", label: "Arrow Connector" },
             ].map((tool) => (
-              <Tooltip key={tool.id} content={tool.label} side="right">
+              <Tooltip key={tool.id} content={t(`whiteboard.labels.${tool.id}`)} side="right">
                 <button
                   onClick={() => {
                     setActiveTool(tool.id);
@@ -552,7 +583,7 @@ export default function Whiteboard({
                 <button
                   key={col.value}
                   type="button"
-                  onClick={() => setColor(col.value)}
+                  onClick={() => { setColor(col.value); updateSelection({ color: col.value }); }}
                   className={cn(
                     "w-6 h-6 rounded-full border cursor-pointer transition-transform shrink-0",
                     color === col.value
@@ -560,7 +591,7 @@ export default function Whiteboard({
                       : "border-transparent hover:scale-110"
                   )}
                   style={{ backgroundColor: col.value }}
-                  title={col.label}
+                  title={t(`whiteboard.labels.${col.label}`)}
                 />
               ))}
             </div>
@@ -573,7 +604,7 @@ export default function Whiteboard({
                 <button
                   key={col.value}
                   type="button"
-                  onClick={() => setFillColor(col.value)}
+                  onClick={() => { setFillColor(col.value); updateSelection({ fillColor: col.value }); }}
                   className={cn(
                     "w-6 h-6 rounded border cursor-pointer transition-transform flex items-center justify-center text-[10px] text-white shrink-0",
                     fillColor === col.value
@@ -584,7 +615,7 @@ export default function Whiteboard({
                     backgroundColor: col.value === "transparent" ? "#0f172a" : col.value,
                     border: col.value === "transparent" ? "1px dashed rgba(255,255,255,0.4)" : "none",
                   }}
-                  title={col.label}
+                  title={t(`whiteboard.labels.${col.label}`)}
                 >
                   {col.value === "transparent" && "Ø"}
                 </button>
@@ -599,7 +630,7 @@ export default function Whiteboard({
                 <button
                   key={w.value}
                   type="button"
-                  onClick={() => setLineWidth(w.value)}
+                  onClick={() => { setLineWidth(w.value); updateSelection({ strokeWidth: w.value }); }}
                   className={cn(
                     "px-2.5 h-7 rounded text-[10px] font-bold border cursor-pointer transition-colors shrink-0",
                     lineWidth === w.value
@@ -607,7 +638,7 @@ export default function Whiteboard({
                       : "bg-[#334155] border-transparent text-gray-300 hover:bg-[#475569]"
                   )}
                 >
-                  {w.label}
+                  {t(`whiteboard.labels.${w.label}`)}
                 </button>
               ))}
             </div>
@@ -615,7 +646,7 @@ export default function Whiteboard({
             <div className="w-px h-5 bg-[#334155] shrink-0" />
 
             {/* Embed Image and Video options */}
-            <Tooltip content="Upload Image">
+            <Tooltip content={t("whiteboard.uploadImage")}>
               <button
                 type="button"
                 onClick={handleAddImage}
@@ -625,7 +656,7 @@ export default function Whiteboard({
               </button>
             </Tooltip>
 
-            <Tooltip content="Embed YouTube / Vimeo">
+            <Tooltip content={t("whiteboard.embedVideo")}>
               <button
                 type="button"
                 onClick={handleAddVideo}
@@ -638,7 +669,7 @@ export default function Whiteboard({
             <div className="w-px h-5 bg-[#334155] shrink-0" />
 
             {/* Grid Snapping Toggle */}
-            <Tooltip content={snapToGrid ? "Disable Snap to Grid" : "Enable Snap to Grid"}>
+            <Tooltip content={t(snapToGrid ? "whiteboard.snapOff" : "whiteboard.snapOn")}>
               <button
                 type="button"
                 onClick={() => setSnapToGrid(!snapToGrid)}
@@ -652,7 +683,7 @@ export default function Whiteboard({
             </Tooltip>
 
             {/* Undo / Redo */}
-            <Tooltip content="Undo">
+            <Tooltip content={t("whiteboard.undo")}>
               <button
                 type="button"
                 onClick={handleUndo}
@@ -662,7 +693,7 @@ export default function Whiteboard({
               </button>
             </Tooltip>
 
-            <Tooltip content="Redo">
+            <Tooltip content={t("whiteboard.redo")}>
               <button
                 type="button"
                 onClick={handleRedo}

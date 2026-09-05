@@ -141,17 +141,21 @@ export default function SettingsPanel({
   const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
 
   useEffect(() => {
+    if (!isOpen) return;
     const handleOutsideClick = (e: MouseEvent) => {
       if (
         popoverRef.current &&
-        !popoverRef.current.contains(e.target as Node)
+        !popoverRef.current.contains(e.target as Node) && !(e.target as Element).closest('[data-room-popup="settings"]')
       ) {
         onClose();
       }
     };
-    document.addEventListener("mousedown", handleOutsideClick);
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    document.addEventListener("keydown", escape);
+    document.addEventListener("pointerdown", handleOutsideClick);
     return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("pointerdown", handleOutsideClick);
+      document.removeEventListener("keydown", escape);
     };
   }, [isOpen, onClose]);
 
@@ -210,22 +214,22 @@ export default function SettingsPanel({
       { id: "blur", label: t("preJoin.bgBlur", "مات / بلور"), preview: "" },
       {
         id: "office",
-        label: "Office",
+        label: t("background.office"),
         preview: BG_IMAGES.office || "/backgrounds/office.jpg",
       },
       {
         id: "nature",
-        label: "Nature",
+        label: t("background.nature"),
         preview: BG_IMAGES.nature || "/backgrounds/nature.jpg",
       },
       {
         id: "studio",
-        label: "Studio",
+        label: t("background.studio"),
         preview: BG_IMAGES.studio || "/backgrounds/studio.jpg",
       },
       {
         id: "minimal",
-        label: "Minimal",
+        label: t("background.minimal"),
         preview: BG_IMAGES.minimal || "/backgrounds/minimal.jpg",
       },
     ];

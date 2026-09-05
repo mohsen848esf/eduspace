@@ -379,7 +379,7 @@ export default function RoomPage() {
       : (preJoinSettings?.micEnabled ?? true);
 
   return (
-    <div className="w-screen h-screen bg-[var(--s0)] text-[var(--t1)] overflow-hidden">
+    <div className="w-screen h-dvh bg-[var(--s0)] text-[var(--t1)] overflow-hidden">
       <LiveKitRoom
         token={token}
         serverUrl={livekitUrl}
@@ -415,9 +415,11 @@ export default function RoomPage() {
           useBackgroundStore.getState().setBackground("none");
           setCallEnded(true);
         }}
-        style={{ height: "100vh", display: "flex", flexDirection: "column" }}
+        style={{ height: "100dvh", display: "flex", flexDirection: "column" }}
       >
-        <RoomAudioRenderer />
+        <div data-room-audio-root>
+          <RoomAudioRenderer />
+        </div>
         <RoomContent preJoinSettings={preJoinSettings} />
       </LiveKitRoom>
     </div>

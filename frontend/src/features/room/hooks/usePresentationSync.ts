@@ -1,7 +1,7 @@
+import { roomApi } from "../api/room.api";
 import { useEffect } from "react";
 import { useRoomContext } from "@livekit/components-react";
 import { useRoomStore } from "../store/roomStore";
-import toast from "react-hot-toast";
 
 /**
  * Persistent hook that runs at the room shell level to ensure
@@ -20,36 +20,38 @@ export function usePresentationSync() {
   useEffect(() => {
     if (!room) return;
 
+    let disposed = false;
+    let loading = false;
+    const syncFromServer = async () => {
+      const code = useRoomStore.getState().roomCode;
+      if (!code || loading) return;
+      loading = true;
+      const beforeRequest = useRoomStore.getState().activePresentation;
+      try {
+        const { presentations } = await roomApi.listPresentations(code);
+        if (disposed || useRoomStore.getState().activePresentation !== beforeRequest) return;
+        const active = presentations.find((doc) => doc.is_active_on_stage) || null;
+        const previous = useRoomStore.getState().activePresentation;
+        if (previous?.id !== active?.id) { setActivePresentation(active); setIsPresentationMinimized(false); }
+        if (active) setPresentationCurrentPage(active.current_page);
+      } catch { /* Retry on next tick or reconnect. */ }
+      finally { loading = false; }
+    };
+    void syncFromServer();
+    const interval = window.setInterval(() => void syncFromServer(), 4000);
+    room.on("reconnected", syncFromServer);
     const handleData = (payload: Uint8Array) => {
       try {
-        const decoder = new TextDecoder();
-        const data = JSON.parse(decoder.decode(payload));
-
-        if (data.type === "PRESENTATION_START") {
-          if (data.document) {
-            setActivePresentation(data.document);
-            setIsPresentationMinimized(false);
-            toast.success(
-              `ارائه «${data.document.title}» توسط ${data.document.uploader_name || "ارائه‌دهنده"} آغاز شد.`,
-              { icon: "📑", id: `presentation-${data.document.id}` }
-            );
-          }
-        } else if (data.type === "PRESENTATION_PAGE_CHANGE") {
-          if (data.currentPage) {
-            setPresentationCurrentPage(data.currentPage);
-          }
-        } else if (data.type === "PRESENTATION_STOP") {
-          setActivePresentation(null);
-          setIsPresentationMinimized(false);
-          toast("ارائه فایل به پایان رسید.", { icon: "ℹ️", id: "presentation-ended" });
-        }
-      } catch {
-        /* ignore invalid data packets */
-      }
+        const data = JSON.parse(new TextDecoder().decode(payload));
+        if (["PRESENTATION_START", "PRESENTATION_PAGE_CHANGE", "PRESENTATION_STOP"].includes(data.type)) void syncFromServer();
+      } catch { /* Other room messages. */ }
     };
 
     room.on("dataReceived", handleData);
     return () => {
+      disposed = true;
+      clearInterval(interval);
+      room.off("reconnected", syncFromServer);
       room.off("dataReceived", handleData);
     };
   }, [

@@ -15,6 +15,8 @@ export interface SpotlightLayoutProps {
   onLowerHand?: (p: RemoteParticipant) => void;
   pinnedKey: string | null;
   onTogglePin: (key: string) => void;
+  onToggleSelfView?: () => void;
+  selfViewFloating?: boolean;
 }
 
 export default function SpotlightLayout(props: SpotlightLayoutProps) {
@@ -49,6 +51,8 @@ export default function SpotlightLayout(props: SpotlightLayoutProps) {
           onLowerHand={props.onLowerHand}
           pinnedKey={pinnedKey}
           onTogglePin={onTogglePin}
+          onToggleSelfView={props.onToggleSelfView}
+          selfViewFloating={props.selfViewFloating}
           className="w-full h-full"
         />
       </div>
@@ -74,6 +78,8 @@ export default function SpotlightLayout(props: SpotlightLayoutProps) {
                 onLowerHand={props.onLowerHand}
                 pinnedKey={pinnedKey}
                 onTogglePin={onTogglePin}
+                onToggleSelfView={props.onToggleSelfView}
+                selfViewFloating={props.selfViewFloating}
                 compact
               />
             </button>

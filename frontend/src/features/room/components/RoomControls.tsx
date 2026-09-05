@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRoomContext } from "@livekit/components-react";
+import {
+  Circle,
+  Info,
+  Maximize2,
+  MoreVertical,
+  PanelRightOpen,
+  Shield,
+  UserPlus,
+} from "lucide-react";
 import { type SidebarTab } from "../hooks/useRoomControls";
 import { Tooltip } from "../../../components/ui/Tooltip";
 import ControlButton, {
@@ -13,13 +22,16 @@ import {
   type BackgroundType,
   BG_IMAGES,
 } from "../hooks/useBackgroundBlur";
+import ChatUnreadBadge from "./ChatUnreadBadge";
 import SettingsPanel from "./SettingsPanel";
 import { LobbyPanel } from "./LobbyPanel";
 import { useLobbyHost } from "../hooks/useLobbyHost";
 import { type LayoutMode } from "../store/roomLayoutStore";
 import { useRoomStore } from "../store/roomStore";
-import toast from "react-hot-toast";
 import ReactionsPopover from "./reactions/ReactionsPopover";
+import RecordControls from "../../recordings/components/room/RecordControls";
+import { useRoomRecording } from "../../recordings/hooks/useRoomRecording";
+import InviteModal from "./InviteModal";
 
 interface RoomControlsProps {
   isMicOn: boolean;
@@ -429,22 +441,22 @@ function CamSettingsPopover({ onClose }: { onClose: () => void }) {
       { id: "blur", label: "Blur", preview: "" },
       {
         id: "office",
-        label: "Office",
+        label: t("background.office"),
         preview: BG_IMAGES.office || "/backgrounds/office.jpg",
       },
       {
         id: "nature",
-        label: "Nature",
+        label: t("background.nature"),
         preview: BG_IMAGES.nature || "/backgrounds/nature.jpg",
       },
       {
         id: "studio",
-        label: "Studio",
+        label: t("background.studio"),
         preview: BG_IMAGES.studio || "/backgrounds/studio.jpg",
       },
       {
         id: "minimal",
-        label: "Minimal",
+        label: t("background.minimal"),
         preview: BG_IMAGES.minimal || "/backgrounds/minimal.jpg",
       },
     ];
@@ -524,18 +536,19 @@ function CamSettingsPopover({ onClose }: { onClose: () => void }) {
 }
 
 function useCurrentTime() {
+  const { i18n } = useTranslation();
   const [timeStr, setTimeStr] = useState("");
   useEffect(() => {
     const update = () => {
       const now = new Date();
       setTimeStr(
-        now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        now.toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })
       );
     };
     update();
     const interval = setInterval(update, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [i18n.language]);
   return timeStr;
 }
 
@@ -555,7 +568,6 @@ export default function RoomControls({
   isPushToTalk,
   onTogglePushToTalk,
   onLeave,
-  activePanelOverride,
   onPanelButtonClick,
   size = "md",
   handRaised,
@@ -566,10 +578,15 @@ export default function RoomControls({
   const [micPopoverOpen, setMicPopoverOpen] = useState(false);
   const [camPopoverOpen, setCamPopoverOpen] = useState(false);
   const [reactionsOpen, setReactionsOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [recordMenuOpen, setRecordMenuOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+
 
   const currentTime = useCurrentTime();
-  const { roomCode: storeRoomCode, isHost, isCoHost, lockScreenShare, canShareScreen } = useRoomStore();
+  const { roomCode: storeRoomCode, roomName, isHost, isCoHost, lockScreenShare, canShareScreen } = useRoomStore();
   const activeRoomCode = roomCode || storeRoomCode || "";
   const canModerate = isHost || isCoHost;
   // Non-moderators can only see screen share button if they have explicit permission
@@ -580,26 +597,28 @@ export default function RoomControls({
     roomCode: activeRoomCode,
     canModerate: isHost || isCoHost,
   });
+  const recording = useRoomRecording({ roomCode: activeRoomCode, isHost });
 
-  const copyRoomCode = async () => {
-    if (!activeRoomCode) return;
-    await navigator.clipboard.writeText(
-      `${window.location.origin}/room/${activeRoomCode}`
-    );
-    toast.success(t("topbar.copiedToast", "کد اتاق کپی شد"));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  useEffect(() => {
+    const close = (event: PointerEvent) => {
+      if (!moreRef.current?.contains(event.target as Node)) setMoreOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMoreOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, []);
+
+  const toggleFullscreen = async () => {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await document.documentElement.requestFullscreen();
   };
 
-  // When the parent provides a panel override (mobile shells), highlight
-  // based on that. Otherwise fall back to the docked-panel sidebarTab.
-  const isPanelActive = (panel: "people" | "chat" | "tools"): boolean => {
-    if (activePanelOverride !== undefined) {
-      return activePanelOverride === panel;
-    }
-    if (panel === "people") return sidebarTab === "participants";
-    return sidebarTab === panel;
-  };
 
   // Same idea for the click handler — let the parent intercept to drive
   // its own state machine; otherwise dispatch to the docked sidebar.
@@ -628,6 +647,41 @@ export default function RoomControls({
         isPushToTalk={!!isPushToTalk}
         onTogglePushToTalk={onTogglePushToTalk || (() => {})}
       />
+      {inviteOpen && <InviteModal onClose={() => setInviteOpen(false)} />}
+
+      {(recordMenuOpen || infoOpen) && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-[55] cursor-default bg-transparent"
+            aria-label={t("mobile.close")}
+            onClick={() => { setRecordMenuOpen(false); setInfoOpen(false); }}
+          />
+          <div dir="auto" role="dialog" className="absolute bottom-[calc(100%+12px)] left-1/2 z-[60] w-[min(360px,calc(100vw-24px))] -translate-x-1/2 rounded-3xl border border-[var(--b)] bg-[var(--s2)] p-5 shadow-2xl">
+            <button type="button" className="absolute end-3 top-2 h-9 w-9 text-xl text-[var(--t2)]" onClick={() => { setRecordMenuOpen(false); setInfoOpen(false); }} aria-label={t("mobile.close")}>×</button>
+            {recordMenuOpen ? (
+              <RecordControls
+                placement="top"
+                roomCode={activeRoomCode}
+                canControl={recording.canControl}
+                status={recording.status}
+                isMutating={recording.isMutating}
+                onStart={recording.start}
+                onStop={recording.stop}
+                onPause={recording.pause}
+                onResume={recording.resume}
+              />
+            ) : (
+              <div className="space-y-3 pe-8">
+                <h2 className="font-semibold text-[var(--t1)]">{t("topbar.infoTitle")}</h2>
+                <div className="flex justify-between gap-4 text-sm"><span className="text-[var(--t3)]">{t("topbar.infoName")}</span><span>{roomName || t("topbar.defaultRoomName")}</span></div>
+                <div className="flex justify-between gap-4 text-sm"><span className="text-[var(--t3)]">{t("topbar.infoCode")}</span><span dir="ltr" className="font-mono text-[var(--brand)]">{activeRoomCode}</span></div>
+                <button type="button" className="w-full rounded-xl bg-[var(--s3)] px-3 py-2 text-sm" onClick={() => void navigator.clipboard.writeText(window.location.href)}>{t("topbar.copy")}</button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* ── Section 1: Meeting Info (Time + Room Code) ── */}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0 sm:min-w-[110px] md:min-w-[180px] text-xs font-medium text-[var(--t2)] flex-shrink">
@@ -635,24 +689,6 @@ export default function RoomControls({
           <span className="font-semibold text-[var(--t1)] hidden md:inline-block force-ltr">
             {currentTime}
           </span>
-        )}
-        {currentTime && <span className="text-[var(--t3)] hidden md:inline-block">|</span>}
-        {activeRoomCode && (
-          <Tooltip content={copied ? t("topbar.copied", "کپی شد!") : t("topbar.copy", "کپی لینک اتاق")}>
-            <button
-              type="button"
-              onClick={copyRoomCode}
-              className={cn(
-                "flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg border-none cursor-pointer transition-all font-mono force-ltr text-[11px]",
-                copied
-                  ? "bg-[var(--green)]/15 text-[var(--green)] font-semibold"
-                  : "bg-[var(--s3)] text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[var(--s4)]"
-              )}
-            >
-              <span>{copied ? "✓" : "📋"}</span>
-              <span className="truncate max-w-[80px] sm:max-w-[100px] md:max-w-[130px]">{activeRoomCode}</span>
-            </button>
-          </Tooltip>
         )}
       </div>
 
@@ -716,7 +752,7 @@ export default function RoomControls({
         )}
 
         {/* Reactions Button with Floating Emojis Popover */}
-        <div className="relative">
+        <div className="relative" data-room-popup="reactions">
           <ReactionsPopover
             isOpen={reactionsOpen}
             onClose={() => setReactionsOpen(false)}
@@ -747,14 +783,48 @@ export default function RoomControls({
           size={size}
         />
 
-        <CtrlBtn
-          icon={Icons.settings}
-          label={t("controls.settings")}
-          tooltip={t("tooltips.settings")}
-          onClick={onToggleSettings}
-          isOn={settingsOpen}
-          size={size}
-        />
+        <div ref={moreRef} className="relative" data-room-popup="more">
+          <CtrlBtn
+            icon={<MoreVertical size={21} />}
+            label={t("controls.more")}
+            tooltip={t("controls.more")}
+            onClick={() => {
+              setMoreOpen((open) => !open);
+              setMicPopoverOpen(false);
+              setCamPopoverOpen(false);
+              setReactionsOpen(false);
+            }}
+            isOn={moreOpen}
+            size={size}
+          />
+          {moreOpen && (
+            <div dir="auto" role="menu" className="absolute bottom-[calc(100%+14px)] end-0 z-50 w-72 overflow-hidden rounded-3xl border border-[var(--b)] bg-[color-mix(in_srgb,var(--s2)_97%,transparent)] p-3 shadow-2xl backdrop-blur-2xl">
+              {[
+                { label: t("controls.chat"), icon: <span className="relative">{Icons.chat}<ChatUnreadBadge /></span>, run: () => handlePanelClick("chat") },
+                { label: t("controls.people"), icon: Icons.people, run: () => handlePanelClick("people") },
+                { label: t("mobile.invite"), icon: <UserPlus size={20} />, run: () => setInviteOpen(true) },
+                { label: t("controls.tools"), icon: Icons.tools, run: () => handlePanelClick("tools") },
+                { label: t("tile.fullscreen"), icon: <Maximize2 size={20} />, run: () => void toggleFullscreen() },
+                { label: t("controls.settings"), icon: Icons.settings, run: onToggleSettings },
+                ...(canModerate ? [{ label: t("lobby.hostPanelTitle"), icon: <Shield size={20} />, run: () => setLobbyPanelOpen(true), badge: lobby.count }] : []),
+                { label: t("controls.rec"), icon: <Circle size={20} className="text-[var(--red)]" />, run: () => setRecordMenuOpen(true), disabled: !recording.canControl },
+                { label: t("topbar.info"), icon: <Info size={20} />, run: () => setInfoOpen(true) },
+              ].map((action) => (
+                <button
+                  key={action.label}
+                  type="button"
+                  role="menuitem"
+                  disabled={action.disabled}
+                  className="flex min-h-12 w-full items-center gap-3 rounded-xl px-2 text-start text-sm transition-colors hover:bg-[var(--s3)] disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={() => { setMoreOpen(false); action.run(); }}
+                >
+                  <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--s3)] text-[var(--t1)]">{action.icon}{Boolean(action.badge) && <span className="absolute -end-1 -top-1 min-w-4 rounded-full bg-[var(--red)] px-1 text-[10px] text-white">{action.badge}</span>}</span>
+                  <span>{action.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Leave Session Button */}
         <Tooltip content={t("tooltips.leave")}>
@@ -772,87 +842,30 @@ export default function RoomControls({
         </Tooltip>
       </div>
 
-      {/* ── Section 3: End Utility Dock (Tools Stack Fan-Out, Chat, People, Host Lobby) ── */}
+      {/* ── Section 3: one sidebar toggle; tabs live inside the sidebar. ── */}
       <div className="flex items-center gap-2 min-w-[130px] md:min-w-[180px] justify-end">
-        {/* Host / Co-Host Lobby Button */}
-        {(isHost || isCoHost) && (
-          <div className="relative">
-            <Tooltip
-              content={
-                lobby.count > 0
-                  ? t("lobby.waitingCount", {
-                      count: lobby.count,
-                      defaultValue: `${lobby.count} نفر در انتظار ورود`,
-                    })
-                  : t("lobby.hostPanelTitle", "افراد در انتظار ورود")
-              }
-            >
-              <button
-                type="button"
-                onClick={() => setLobbyPanelOpen((prev) => !prev)}
-                className={cn(
-                  "relative flex items-center justify-center rounded-xl border transition-all cursor-pointer",
-                  size === "sm"
-                    ? "w-10 h-10"
-                    : size === "md"
-                      ? "w-11 h-11"
-                      : "w-12 h-12",
-                  lobby.count > 0
-                    ? "bg-indigo-600/20 border-indigo-500/50 text-indigo-300 hover:bg-indigo-600/30"
-                    : "bg-[var(--s3)] border-transparent text-[var(--t2)] hover:bg-[var(--s4)] hover:text-[var(--t1)]",
-                )}
-              >
-                <span className="scale-90">{Icons.shield}</span>
-                {lobby.count > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center animate-bounce shadow-md">
-                    {lobby.count}
-                  </span>
-                )}
-              </button>
-            </Tooltip>
-
-            <LobbyPanel
-              isOpen={lobbyPanelOpen}
-              onClose={() => setLobbyPanelOpen(false)}
-              requests={lobby.requests}
-              admittingId={lobby.admittingId}
-              denyingId={lobby.denyingId}
-              isBatchAction={lobby.isBatchAction}
-              onAdmit={lobby.admit}
-              onDeny={lobby.deny}
-              onAdmitAll={lobby.admitAll}
-              onDenyAll={lobby.denyAll}
-            />
-          </div>
-        )}
-
-        {/* Tools Panel Toggle */}
         <CtrlBtn
-          icon={Icons.tools}
-          label={t("controls.tools", "ابزارها")}
-          tooltip={t("tooltips.tools", "ابزارها و برنامه‌ها")}
-          onClick={() => handlePanelClick("tools")}
-          isOn={isPanelActive("tools")}
-          size={size}
-        />
-
-        <CtrlBtn
-          icon={Icons.chat}
-          label={t("controls.chat")}
-          tooltip={t("tooltips.chat")}
-          onClick={() => handlePanelClick("chat")}
-          isOn={isPanelActive("chat")}
-          size={size}
-        />
-        <CtrlBtn
-          icon={Icons.people}
-          label={t("controls.people")}
-          tooltip={t("tooltips.participants")}
-          onClick={() => handlePanelClick("people")}
-          isOn={isPanelActive("people")}
+          icon={<span className="relative"><PanelRightOpen size={21} /><ChatUnreadBadge /></span>}
+          label={t("controls.sidebar")}
+          tooltip={t("controls.sidebar")}
+          onClick={() => onToggleSidebar(sidebarTab ?? "participants")}
+          isOn={sidebarTab !== null}
           size={size}
         />
       </div>
+
+      <LobbyPanel
+        isOpen={lobbyPanelOpen}
+        onClose={() => setLobbyPanelOpen(false)}
+        requests={lobby.requests}
+        admittingId={lobby.admittingId}
+        denyingId={lobby.denyingId}
+        isBatchAction={lobby.isBatchAction}
+        onAdmit={lobby.admit}
+        onDeny={lobby.deny}
+        onAdmitAll={lobby.admitAll}
+        onDenyAll={lobby.denyAll}
+      />
     </div>
   );
 }
