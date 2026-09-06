@@ -111,6 +111,7 @@ def inspect_media_asset_task(self, asset_id: int):
         asset = MediaInspectionService.inspect(asset_id=asset_id)
         return f'Media asset {asset.pk} inspected'
     except MediaInspectionError as exc:
+        logger.exception('Media inspection failed for asset=%s: %s', asset_id, exc.code)
         if exc.retryable and self.request.retries < self.max_retries:
             raise self.retry(exc=exc, countdown=10 * (self.request.retries + 1))
         _mark_inspection_failed(asset_id, exc.code)
@@ -167,6 +168,7 @@ def transcode_media_asset_task(self, asset_id: int):
         asset = MediaTranscodeService.transcode(asset_id=asset_id)
         return f'Media asset {asset.pk} transcoded'
     except MediaTranscodeError as exc:
+        logger.exception('Media transcode failed for asset=%s: %s', asset_id, exc.code)
         if exc.retryable and self.request.retries < self.max_retries:
             raise self.retry(exc=exc, countdown=30 * (self.request.retries + 1))
         _mark_transcode_failed(asset_id, exc.code)

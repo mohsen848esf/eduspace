@@ -218,6 +218,35 @@ class MediaTranscodeServiceTests(TestCase):
             MediaRendition.Status.FAILED,
         )
 
+    def test_original_failure_falls_back_to_downscaled_rung_and_logs_the_reason(self):
+        # Source is 1920x1080, so a 720p downscale rung exists — the
+        # Original failure must not abort the whole transcode, but it also
+        # must not vanish silently: this is the one failure path that never
+        # reaches the task-level exception handler, so it has to log here.
+        def failing_remuxer(**kwargs):
+            del kwargs
+            raise RuntimeError('boom')
+
+        with self.assertLogs('media_library.services.transcoding', level='ERROR') as logs:
+            MediaTranscodeService.transcode(
+                asset_id=self.asset.id,
+                storage=HlsStorage(),
+                transcoder=successful_transcoder,
+                remuxer=failing_remuxer,
+            )
+        self.assertTrue(any('ORIGINAL_RENDITION_FAILED' in line for line in logs.output))
+
+        self.asset.refresh_from_db()
+        self.assertEqual(
+            self.asset.renditions.get(label='source').status,
+            MediaRendition.Status.FAILED,
+        )
+        self.assertEqual(
+            self.asset.renditions.get(label='720p').status,
+            MediaRendition.Status.READY,
+        )
+        self.assertEqual(self.asset.status, MediaAsset.Status.READY)
+
     @patch('media_library.tasks.MediaTranscodeService.transcode')
     def test_task_marks_asset_and_renditions_failed_after_permanent_error(self, transcode):
         MediaRendition.objects.create(

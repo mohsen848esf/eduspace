@@ -1,3 +1,4 @@
+import logging
 import tempfile
 from pathlib import Path
 
@@ -13,6 +14,8 @@ from media_library.transcoding import (
     remux_hls_source,
     transcode_hls_renditions,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class MediaTranscodeError(RuntimeError):
@@ -268,6 +271,15 @@ class MediaTranscodeService:
                             # No downscaled rung either — without Original,
                             # this asset would have nothing playable at all.
                             raise MediaTranscodeError(code, retryable=is_remux_eligible) from exc
+                        # A downscaled rung still exists, so this asset can
+                        # end up playable even without Original — but that
+                        # graceful fallback means this failure never reaches
+                        # the task-level exception handler, so it has to be
+                        # logged here or it's simply never recorded anywhere.
+                        logger.exception(
+                            'Original rendition failed for asset=%s (continuing with downscaled rungs): %s',
+                            asset_id, code,
+                        )
             for profile in profiles_to_process:
                 if cancel_check():
                     raise MediaTranscodeError('CANCELLED', retryable=False)
