@@ -358,6 +358,11 @@ LOGGING = {
         'rooms': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
         'accounts': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
         'games': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'media_library': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
     },
 }
 
