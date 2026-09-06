@@ -401,6 +401,30 @@ class HlsCommandTests(TestCase):
 
     @patch('media_library.transcoding.subprocess.Popen')
     @patch('media_library.transcoding.shutil.which', return_value='/usr/bin/ffmpeg')
+    def test_failed_ffmpeg_logs_captured_stderr_tail(self, which, popen_cls):
+        # ffmpeg's own error message is otherwise discarded entirely, so a
+        # failed transcode leaves no way to tell what actually went wrong.
+        del which
+
+        def start_process(command, *, cwd, stdout, stderr):
+            del command, cwd, stdout
+            stderr.write(b'Unknown decoder \'nope\'\n')
+            return FakePopen([1])
+
+        popen_cls.side_effect = start_process
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with self.assertLogs('media_library.transcoding', level='ERROR') as logs:
+                with self.assertRaisesMessage(MediaTranscodeCommandError, 'FFMPEG_REMUX_FAILED'):
+                    remux_hls_source(
+                        source=Path(temp_dir) / 'source.upload',
+                        output_root=Path(temp_dir) / 'output',
+                        has_audio=True,
+                    )
+        self.assertIn("Unknown decoder 'nope'", logs.output[0])
+        self.assertIn('FFMPEG_REMUX_FAILED', logs.output[0])
+
+    @patch('media_library.transcoding.subprocess.Popen')
+    @patch('media_library.transcoding.shutil.which', return_value='/usr/bin/ffmpeg')
     def test_cancel_check_terminates_ffmpeg_mid_run(self, which, popen_cls):
         # A deleted asset must not keep ffmpeg running to completion — the
         # very point of this polling loop over a plain blocking subprocess

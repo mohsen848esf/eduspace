@@ -1,11 +1,17 @@
+import logging
 import shutil
 import subprocess
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
 
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
+
+_STDERR_TAIL_BYTES = 4_000
 
 
 class MediaTranscodeCommandError(RuntimeError):
@@ -30,6 +36,19 @@ def _terminate(process: subprocess.Popen) -> None:
         process.wait()
 
 
+def _log_ffmpeg_stderr(stderr_file, command: list[str], code: str) -> None:
+    try:
+        stderr_file.seek(0)
+        raw = stderr_file.read()
+    except OSError:
+        raw = b''
+    tail = raw[-_STDERR_TAIL_BYTES:].decode('utf-8', errors='replace').strip()
+    logger.error(
+        'ffmpeg failed (%s) running: %s\n%s',
+        code, ' '.join(command), tail or '<ffmpeg produced no stderr output>',
+    )
+
+
 def _run_ffmpeg(
     command: list[str],
     *,
@@ -46,25 +65,33 @@ def _run_ffmpeg(
     ffmpeg finished on its own. Polling with a short timeout on wait() lets
     cancel_check() (and the overall timeout) be re-checked every
     poll_interval seconds instead.
+
+    stderr is captured to a temp file (not a pipe) so a chatty ffmpeg run
+    can't deadlock the poll loop by filling an unread pipe buffer, and its
+    tail is logged on failure/timeout since that's otherwise the only way
+    to see *why* a transcode failed.
     """
-    try:
-        process = subprocess.Popen(command, cwd=cwd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except OSError as exc:
-        raise MediaTranscodeCommandError('FFMPEG_NOT_AVAILABLE') from exc
-    deadline = time.monotonic() + timeout
-    while True:
+    with tempfile.TemporaryFile() as stderr_file:
         try:
-            process.wait(timeout=poll_interval)
-            break
-        except subprocess.TimeoutExpired:
-            if cancel_check is not None and cancel_check():
-                _terminate(process)
-                raise MediaTranscodeCommandError('CANCELLED')
-            if time.monotonic() >= deadline:
-                _terminate(process)
-                raise MediaTranscodeCommandError('FFMPEG_TIMEOUT')
-    if process.returncode != 0:
-        raise MediaTranscodeCommandError(failure_code)
+            process = subprocess.Popen(command, cwd=cwd, stdout=subprocess.DEVNULL, stderr=stderr_file)
+        except OSError as exc:
+            raise MediaTranscodeCommandError('FFMPEG_NOT_AVAILABLE') from exc
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                process.wait(timeout=poll_interval)
+                break
+            except subprocess.TimeoutExpired:
+                if cancel_check is not None and cancel_check():
+                    _terminate(process)
+                    raise MediaTranscodeCommandError('CANCELLED')
+                if time.monotonic() >= deadline:
+                    _log_ffmpeg_stderr(stderr_file, command, 'FFMPEG_TIMEOUT')
+                    _terminate(process)
+                    raise MediaTranscodeCommandError('FFMPEG_TIMEOUT')
+        if process.returncode != 0:
+            _log_ffmpeg_stderr(stderr_file, command, failure_code)
+            raise MediaTranscodeCommandError(failure_code)
 
 
 def remux_hls_source(

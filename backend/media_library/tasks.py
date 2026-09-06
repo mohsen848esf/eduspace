@@ -220,15 +220,18 @@ def purge_deleted_media_asset_task(self, asset_id: int):
         try:
             storage.delete(object_key=upload.object_key)
         except Exception as exc:  # noqa: BLE001 - best-effort cleanup, collect and continue
+            logger.exception('Failed to delete upload object for media asset=%s', asset_id)
             errors.append(str(exc))
     for progressive in ProgressiveMediaUpload.objects.filter(asset=asset).exclude(object_prefix=''):
         try:
             storage.delete_prefix(object_prefix=progressive.object_prefix)
         except Exception as exc:  # noqa: BLE001
+            logger.exception('Failed to delete progressive prefix for media asset=%s', asset_id)
             errors.append(str(exc))
     try:
         storage.delete_prefix(object_prefix=f'media-library/{asset.owner_id}/hls/{asset.public_token}')
     except Exception as exc:  # noqa: BLE001
+        logger.exception('Failed to delete hls prefix for media asset=%s', asset_id)
         errors.append(str(exc))
 
     if errors:
