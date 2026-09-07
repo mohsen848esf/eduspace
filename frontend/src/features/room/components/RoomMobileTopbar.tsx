@@ -2,13 +2,17 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocalParticipant, useRoomContext } from "@livekit/components-react";
 import { Track } from "livekit-client";
-import { ArrowLeft, SwitchCamera, Volume2, VolumeX, Users } from "lucide-react";
+import { ArrowLeft, Circle, SwitchCamera, Volume2, VolumeX, Users } from "lucide-react";
 import toast from "react-hot-toast";
 import { useRoomStore } from "../store/roomStore";
 import { useRoomLayoutStore } from "../store/roomLayoutStore";
 import { useLobbyHost } from "../hooks/useLobbyHost";
 import { LobbyPanel } from "./LobbyPanel";
 import MobileAudioOutputSheet from "./MobileAudioOutputSheet";
+import BottomSheet from "../../../components/layout/BottomSheet";
+import RecordControls from "../../recordings/components/room/RecordControls";
+import { useRoomRecording } from "../../recordings/hooks/useRoomRecording";
+import { formatRecordingElapsed, useRecordingElapsed } from "../../recordings/hooks/useRecordingElapsed";
 
 export default function RoomMobileTopbar({ onLeave }: { onLeave: () => void }) {
  const { t } = useTranslation("room");
@@ -22,11 +26,21 @@ export default function RoomMobileTopbar({ onLeave }: { onLeave: () => void }) {
  const [outputs, setOutputs] = useState<MediaDeviceInfo[]>([]);
  const [selectedOutput, setSelectedOutput] = useState("");
  const [soundMuted, setSoundMuted] = useState(false);
+ const [recordingOpen, setRecordingOpen] = useState(false);
+ const recording = useRoomRecording({ roomCode, isHost });
+ const recordingState = recording.status.recording;
+ const recordingLive = Boolean(recordingState && ["starting", "recording", "paused"].includes(recordingState.status));
+ const recordingElapsed = useRecordingElapsed(recordingState);
  const lobby = useLobbyHost({ roomCode: roomCode || "", canModerate: isHost || isCoHost });
  useEffect(() => {
    const open = () => setLobbyOpen(true);
    window.addEventListener("eduspace:open-lobby", open);
    return () => window.removeEventListener("eduspace:open-lobby", open);
+ }, []);
+ useEffect(() => {
+   const open = () => { setAudioOpen(false); setRecordingOpen(true); };
+   window.addEventListener("eduspace:open-recording", open);
+   return () => window.removeEventListener("eduspace:open-recording", open);
  }, []);
  useEffect(() => {
    const root = document.querySelector<HTMLElement>("[data-room-audio-root]");
@@ -55,6 +69,7 @@ export default function RoomMobileTopbar({ onLeave }: { onLeave: () => void }) {
  };
  const chooseAudio = async () => {
    if (audioOpen) { setAudioOpen(false); return; }
+   setRecordingOpen(false);
    try {
      await room.startAudio();
      const devices = await navigator.mediaDevices.enumerateDevices();
@@ -86,9 +101,10 @@ export default function RoomMobileTopbar({ onLeave }: { onLeave: () => void }) {
  return <header dir="ltr" className="relative shrink-0 flex items-center justify-between gap-2 px-3 py-3 bg-[var(--s0)]">
    <div className="flex min-w-0 items-center gap-1.5">
      <button className={button} onClick={onLeave} aria-label={t("tooltips.leave")}><ArrowLeft size={22}/></button>
-     <button className="relative min-w-0 max-w-[min(52vw,220px)] flex items-center gap-2 rounded-full px-3 h-11 bg-[var(--s1)] text-[var(--t1)]" onClick={() => setPanel("people")} aria-label={t("controls.people")}><Users size={21} className="shrink-0"/><span dir="auto" className="truncate text-xs font-semibold">{roomName || t("topbar.defaultRoomName")}</span>{lobby.count > 0 && <span className="absolute -top-1 end-0 rounded-full bg-[var(--red)] text-white px-1 text-[10px]">{lobby.count}</span>}</button>
+     <button style={{ maxWidth: recordingLive ? "30vw" : "52vw" }} className="relative flex h-11 min-w-0 items-center gap-2 rounded-full bg-[var(--s1)] px-3 text-[var(--t1)]" onClick={() => setPanel("people")} aria-label={t("controls.people")}><Users size={21} className="shrink-0"/><span dir="auto" className="truncate text-xs font-semibold">{roomName || t("topbar.defaultRoomName")}</span>{lobby.count > 0 && <span className="absolute -top-1 end-0 rounded-full bg-[var(--red)] text-white px-1 text-[10px]">{lobby.count}</span>}</button>
    </div>
    <div className="flex shrink-0 items-center gap-1.5">
+     {recordingLive && <button type="button" className="flex h-9 items-center gap-1 rounded-full bg-[var(--red)]/15 px-2 text-[var(--red)]" onClick={() => { setAudioOpen(false); setRecordingOpen(true); }} aria-label={t("controls.recording")}><Circle size={9} fill="currentColor" className={recordingState?.status === "recording" ? "animate-pulse" : ""}/><span className="force-ltr font-mono text-[11px] font-bold">{formatRecordingElapsed(recordingElapsed)}</span></button>}
      <button className={button} onClick={() => void chooseAudio()} aria-label={t("mobile.audioOutput")} aria-expanded={audioOpen}>{soundMuted ? <VolumeX size={22} className="text-[var(--red)]" /> : <Volume2 size={22}/>}</button>
      <button className={button} onClick={() => void swapCamera()} disabled={switching} aria-label={t("mobile.swapCamera")}><SwitchCamera size={22}/></button>
    </div>
@@ -102,6 +118,9 @@ export default function RoomMobileTopbar({ onLeave }: { onLeave: () => void }) {
      onSelect={(deviceId) => void selectOutput(deviceId)}
      onMute={() => { setSoundMuted(true); setAudioOpen(false); }}
    />
+   <BottomSheet open={recordingOpen} onOpenChange={setRecordingOpen} height={48} title={t("controls.recording")} ariaLabel={t("controls.recording")} panelClassName="font-[inherit] !rounded-t-[2rem]">
+     <RecordControls roomCode={roomCode} canControl={recording.canControl} status={recording.status} isMutating={recording.isMutating} onStart={recording.start} onStop={recording.stop} onPause={recording.pause} onResume={recording.resume}/>
+   </BottomSheet>
    <LobbyPanel placement="bottom" isOpen={lobbyOpen} onClose={() => setLobbyOpen(false)} requests={lobby.requests} admittingId={lobby.admittingId} denyingId={lobby.denyingId} isBatchAction={lobby.isBatchAction} onAdmit={lobby.admit} onDeny={lobby.deny} onAdmitAll={lobby.admitAll} onDenyAll={lobby.denyAll}/>
  </header>;
 }

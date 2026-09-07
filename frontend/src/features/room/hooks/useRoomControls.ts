@@ -244,6 +244,10 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
     if (!localParticipant) return;
 
     if (!isScreenSharing) {
+      if (typeof navigator.mediaDevices?.getDisplayMedia !== "function") {
+        toast.error(t("mobile.screenShareUnsupported"));
+        return;
+      }
       // KEY FIX: only check canShareScreen (not lockScreenShare)
       const isBlocked = !canModerate && !canShareScreen;
       if (isBlocked) {
@@ -271,14 +275,25 @@ export function useRoomControls(initialCamOn = true, initialMicOn = true) {
         return;
       }
 
-      await localParticipant.setScreenShareEnabled(true, {
-        audio: true,
-        selfBrowserSurface: "include",
-      });
+      try {
+        await localParticipant.setScreenShareEnabled(true, {
+          audio: true,
+          selfBrowserSurface: "include",
+        });
+      } catch (error) {
+        const name = error instanceof DOMException ? error.name : "";
+        if (name !== "NotAllowedError" && name !== "AbortError") {
+          toast.error(t("mobile.screenShareFailed"));
+        }
+      }
     } else {
-      await localParticipant.setScreenShareEnabled(false);
+      try {
+        await localParticipant.setScreenShareEnabled(false);
+      } catch {
+        toast.error(t("mobile.screenShareFailed"));
+      }
     }
-  }, [localParticipant, isScreenSharing, canModerate, canShareScreen, room]);
+  }, [localParticipant, isScreenSharing, canModerate, canShareScreen, room, t]);
 
   const toggleSidebar = useCallback((tab: SidebarTab) => {
     setSidebarTab((prev) => (prev === tab ? null : tab));

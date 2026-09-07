@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { MoreVertical, Smile, UserPlus, Info, LogOut, Circle, Shield, LayoutGrid } from "lucide-react";
+import { MoreVertical, Smile, UserPlus, Info, LogOut, Circle, Shield, LayoutGrid, Copy, Link, Hash } from "lucide-react";
+import toast from "react-hot-toast";
 import { Icons } from "../../../lib/constants/icons";
 import { useRoomLayoutStore, type LayoutMode } from "../store/roomLayoutStore";
 import { useRoomWhiteboard } from "../hooks/useRoomWhiteboard";
 import { useRoomStore } from "../store/roomStore";
 import ReactionsPopover from "./reactions/ReactionsPopover";
 import InviteModal from "./InviteModal";
-import RecordControls from "../../recordings/components/room/RecordControls";
 import { useRoomRecording } from "../../recordings/hooks/useRoomRecording";
 import ChatUnreadBadge from "./ChatUnreadBadge";
+import BottomSheet from "../../../components/layout/BottomSheet";
 type PanelId = "people" | "chat" | "tools";
 interface Props {
  isMicOn: boolean; isCamOn: boolean; isScreenSharing: boolean; layout?: LayoutMode; settingsOpen: boolean;
@@ -20,7 +21,6 @@ interface Props {
 export default function RoomMobileControls(p: Props) {
  const { t } = useTranslation("room");
  const [invite, setInvite] = useState(false);
- const [recordMenu, setRecordMenu] = useState(false);
  const [info, setInfo] = useState(false);
  const [more, setMore] = useState(false);
  const [reactions, setReactions] = useState(false);
@@ -36,11 +36,11 @@ export default function RoomMobileControls(p: Props) {
    return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", key); };
  }, []);
  const actions = [
-   ...(recording.canControl ? [{ label: t("controls.start"), icon: <Circle size={21} className="text-[var(--red)]"/>, run: () => setRecordMenu(true) }] : []),
+   ...(recording.canControl ? [{ label: t(recording.status.recording && ["starting", "recording", "paused"].includes(recording.status.recording.status) ? "controls.recording" : "controls.start"), icon: <Circle size={21} className="text-[var(--red)]"/>, run: () => window.dispatchEvent(new Event("eduspace:open-recording")) }] : []),
    { label: t("controls.chat"), icon: <span className="relative">{Icons.chat}<ChatUnreadBadge /></span>, run: () => p.onPanelClick("chat") },
    { label: t("controls.people"), icon: Icons.people, run: () => p.onPanelClick("people") },
    { label: t("controls.tools"), icon: Icons.tools, run: () => p.onPanelClick("tools") },
-   { label: t("controls.reactions"), icon: <Smile size={20}/>, run: () => setReactions((v) => !v) },
+   { label: t("controls.reactions"), icon: <Smile size={20}/>, run: () => setReactions(true) },
    { label: t("mobile.invite"), icon: <UserPlus size={21}/>, run: () => setInvite(true) },
    ...(state.isHost || state.isCoHost || !state.lockScreenShare || state.canShareScreen || p.isScreenSharing ? [{ label: t("tooltips.screenShare"), icon: Icons.screenShare, run: p.onToggleScreenShare }] : []),
    { label: t("controls.settings"), icon: Icons.settings, run: p.onToggleSettings },
@@ -55,16 +55,40 @@ export default function RoomMobileControls(p: Props) {
    <ReactionsPopover isOpen={reactions} onClose={() => setReactions(false)} onSelectEmoji={(emoji) => p.onSendReaction?.(emoji)} />
    {more && <div role="menu" className="absolute bottom-full mb-2 inset-x-3 max-h-[min(70dvh,640px)] overflow-y-auto rounded-[2rem] border border-[var(--b)] bg-[color-mix(in_srgb,var(--s2)_96%,transparent)] backdrop-blur-2xl p-4 shadow-2xl motion-safe:animate-in motion-safe:slide-in-from-bottom-2"><div className="w-12 h-1 rounded-full bg-[var(--t3)]/40 mx-auto mb-3" />{actions.map((action) => <button key={action.label} role="menuitem" className="flex items-center gap-3 w-full min-h-14 px-2 border-b border-[var(--b)] last:border-0 text-start hover:bg-[var(--s3)]" onClick={() => { setMore(false); action.run(); }}><span className="w-10 h-10 rounded-full bg-[var(--s0)]/50 flex items-center justify-center shrink-0">{action.icon}</span><span className="text-sm">{action.label}</span></button>)}</div>}
    {invite && <InviteModal onClose={() => setInvite(false)} />}
-   {(recordMenu || info) && <><div className="fixed inset-0 z-40" onClick={() => { setRecordMenu(false); setInfo(false); }}/><div role="dialog" className="absolute bottom-full mb-3 inset-x-3 rounded-3xl border border-[var(--b)] bg-[var(--s2)] p-5 z-50">
-     <button className="absolute top-2 end-3 w-9 h-9" aria-label={t("mobile.close")} onClick={() => { setRecordMenu(false); setInfo(false); }}>×</button>
-     {recordMenu ? <RecordControls placement="top" roomCode={state.roomCode} canControl={recording.canControl} status={recording.status} isMutating={recording.isMutating} onStart={recording.start} onStop={recording.stop} onPause={recording.pause} onResume={recording.resume} /> : <div className="space-y-3"><p>{state.roomName}</p><p dir="ltr">{state.roomCode}</p><button onClick={() => void navigator.clipboard.writeText(window.location.href)}>{t("topbar.copy")}</button></div>}
-   </div></>}
+   <BottomSheet open={info} onOpenChange={setInfo} height={58} title={t("topbar.infoTitle")} ariaLabel={t("topbar.infoTitle")} panelClassName="font-[inherit] !rounded-t-[2rem]">
+     <div className="space-y-4 px-1 pb-4">
+       <div className="flex items-center gap-3 rounded-2xl border border-[var(--b)] bg-[var(--s2)] p-4"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--brand)]/15 text-[var(--brand)]"><Info size={22}/></span><div className="min-w-0"><p className="truncate text-sm font-bold">{state.roomName || t("topbar.defaultRoomName")}</p><p className="mt-1 text-xs text-[var(--t3)]">{t("mobile.roomInfoHint")}</p></div></div>
+       <button type="button" className="flex min-h-16 w-full items-center gap-3 rounded-2xl border border-[var(--b)] bg-[var(--s1)] px-4 text-start" onClick={() => void copyValue(state.roomCode || "", t("mobile.codeCopied"), t("mobile.copyFailed"))}><Hash size={21} className="text-[var(--brand)]"/><span className="flex-1"><span className="block text-xs text-[var(--t3)]">{t("topbar.infoCode")}</span><span dir="ltr" className="mt-1 block font-mono text-sm font-bold">{state.roomCode}</span></span><Copy size={19}/></button>
+       <div className="grid grid-cols-2 gap-2"><button type="button" className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--s3)] px-3 text-xs font-semibold" onClick={() => void copyValue(state.roomCode || "", t("mobile.codeCopied"), t("mobile.copyFailed"))}><Copy size={18}/>{t("mobile.copyCode")}</button><button type="button" className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--brand)] px-3 text-xs font-semibold text-white" onClick={() => void copyValue(window.location.href, t("topbar.copiedToast"), t("mobile.copyFailed"))}><Link size={18}/>{t("topbar.copy")}</button></div>
+     </div>
+   </BottomSheet>
    <div dir="ltr" className="flex w-fit max-w-full items-center justify-center gap-1.5 mx-auto rounded-[2rem] border border-[var(--b)] bg-[var(--s1)]/80 p-2">
     <button className={button} aria-label={t(p.isCamOn ? "tooltips.cameraOn" : "tooltips.cameraOff")} onClick={p.onToggleCam}>{p.isCamOn ? Icons.camera : Icons.cameraOff}</button>
     <button className={button} aria-label={t(p.isMicOn ? "tooltips.muteOn" : "tooltips.muteOff")} onClick={p.onToggleMic}>{p.isMicOn ? Icons.mic : Icons.micOff}</button>
     <button className={button} aria-label={t(p.handRaised ? "controls.lowerHand" : "controls.raiseHand")} aria-pressed={p.handRaised} onClick={p.onToggleHandRaise}>{p.handRaised ? Icons.handFilled : Icons.hand}</button>
-    <button className={button} aria-label={t("controls.more")} aria-expanded={more} onClick={() => setMore((v) => !v)}><MoreVertical size={22}/><ChatUnreadBadge /></button>
+    <button className={button} aria-label={t("controls.more")} aria-expanded={more} onClick={() => { setReactions(false); setMore((v) => !v); }}><MoreVertical size={22}/><ChatUnreadBadge /></button>
     <button className={button + " !bg-[var(--red)] !text-white"} aria-label={t("tooltips.leave")} onClick={p.onLeave}>{Icons.leave}</button>
    </div>
  </div>;
+}
+
+async function copyValue(value: string, successMessage: string, failureMessage: string) {
+  try {
+    if (navigator.clipboard?.writeText && window.isSecureContext) {
+      await navigator.clipboard.writeText(value);
+    } else {
+      const input = document.createElement("textarea");
+      input.value = value;
+      input.style.position = "fixed";
+      input.style.opacity = "0";
+      document.body.appendChild(input);
+      input.select();
+      const copied = document.execCommand("copy");
+      input.remove();
+      if (!copied) throw new Error("copy failed");
+    }
+    toast.success(successMessage);
+  } catch {
+    toast.error(failureMessage);
+  }
 }

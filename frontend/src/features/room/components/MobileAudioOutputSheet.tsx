@@ -33,7 +33,9 @@ function getOutputLabel(
   index: number,
   translate: (key: string, options?: Record<string, unknown>) => string,
 ) {
-  if (device.label.trim()) return device.label;
+  const label = device.label.trim();
+  const normalized = label.toLowerCase();
+  if (label && normalized !== "default" && normalized !== "communications") return label;
   return index === 0
     ? translate("mobile.speaker")
     : translate("mobile.outputDevice", { index: index + 1 });

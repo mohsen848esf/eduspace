@@ -62,4 +62,22 @@ describe("MobileAudioOutputSheet", () => {
     expect(onMute).toHaveBeenCalledOnce();
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
+
+  it("localizes the browser default output label", () => {
+    render(
+      <MobileAudioOutputSheet
+        open
+        outputs={[output("default", "default")]}
+        selectedDeviceId="default"
+        muted={false}
+        canRoute
+        onOpenChange={vi.fn()}
+        onSelect={vi.fn()}
+        onMute={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /mobile.speaker/ })).toBeInTheDocument();
+    expect(screen.queryByText("default")).not.toBeInTheDocument();
+  });
 });

@@ -1,221 +1,64 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Tooltip } from "../../../../components/ui/Tooltip";
+import { Circle, Pause, Play, Square } from "lucide-react";
 import { cn } from "../../../../lib/utils";
-import {
-  type RecordingQuality,
-  type RoomRecordingStatus,
-} from "../../api/recordings.api";
+import type { RecordingQuality, RoomRecordingStatus } from "../../api/recordings.api";
+import { formatRecordingElapsed, useRecordingElapsed } from "../../hooks/useRecordingElapsed";
 
 interface RecordControlsProps {
   placement?: "top" | "bottom";
   roomCode: string | null;
-  /**
-   * True when the current user is allowed to drive the recording —
-   * either the host, or a participant the host has explicitly granted
-   * recording control to. Renamed from `isHost` so grantees see the
-   * same record buttons.
-   */
   canControl: boolean;
   status: RoomRecordingStatus;
   isMutating: boolean;
-  onStart: (
-    quality: RecordingQuality,
-    mode: "server" | "client-upload" | "client-download"
-  ) => Promise<unknown>;
+  onStart: (quality: RecordingQuality, mode: "server" | "client-upload" | "client-download") => Promise<unknown>;
   onStop: () => Promise<unknown>;
   onPause: () => Promise<unknown>;
   onResume: () => Promise<unknown>;
 }
 
-function formatElapsed(secondsTotal: number): string {
-  const s = Math.max(0, Math.floor(secondsTotal));
-  const m = Math.floor(s / 60);
-  const ss = (s % 60).toString().padStart(2, "0");
-  const mm = m.toString().padStart(2, "0");
-  return `${mm}:${ss}`;
-}
-
-/**
- * Pause-aware elapsed timer.
- *
- * Tracks accumulated *active* time across pause/resume cycles instead of
- * deriving from wall clock minus original start_at, which would count
- * paused intervals as elapsed.
- *
- *   activeSinceKey  identity of the current recording. When it changes
- *                   we reset accumulated state.
- *   isActiveTicking true while the egress is actually capturing frames.
- */
-function useElapsed(
-  activeSinceKey: string | null,
-  isActiveTicking: boolean,
-): number {
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const accumulatedRef = useRef(0); // total seconds of past active intervals
-  const anchorRef = useRef<number | null>(null); // ms when current run started
-  const lastKey = useRef<string | null>(null);
-
-  useEffect(() => {
-    let intervalId: number | null = null;
-    const startTimer = window.setTimeout(() => {
-      if (lastKey.current !== activeSinceKey) {
-        accumulatedRef.current = 0;
-        anchorRef.current = null;
-        lastKey.current = activeSinceKey;
-      }
-
-      const updateDisplay = () => {
-        const liveSeconds =
-          isActiveTicking && anchorRef.current !== null
-            ? (Date.now() - anchorRef.current) / 1000
-            : 0;
-        setElapsedSeconds(
-          Math.max(0, Math.floor(accumulatedRef.current + liveSeconds)),
-        );
-      };
-
-      if (isActiveTicking) {
-        anchorRef.current = Date.now();
-        intervalId = window.setInterval(updateDisplay, 1000);
-      }
-      updateDisplay();
-    }, 0);
-
-    return () => {
-      window.clearTimeout(startTimer);
-      if (intervalId !== null) window.clearInterval(intervalId);
-      if (isActiveTicking && anchorRef.current !== null) {
-        accumulatedRef.current += (Date.now() - anchorRef.current) / 1000;
-        anchorRef.current = null;
-      }
-    };
-  }, [isActiveTicking, activeSinceKey]);
-
-  return activeSinceKey ? elapsedSeconds : 0;
-}
-
-export default function RecordControls({
-  placement = "bottom",
-  roomCode,
-  canControl,
-  status,
-  isMutating,
-  onStart,
-  onStop,
-  onPause,
-  onResume,
-}: RecordControlsProps) {
+export default function RecordControls({ roomCode, canControl, status, isMutating, onStart, onStop, onPause, onResume }: RecordControlsProps) {
   const { t } = useTranslation("recordings");
-
-  const [showModes, setShowModes] = useState(false);
   const [quality, setQuality] = useState<RecordingQuality>("720p");
-
   const recording = status.recording;
-  const isIdle =
-    !recording ||
-    recording.status === "completed" ||
-    recording.status === "failed";
-  const isActive =
-    recording &&
-    (recording.status === "starting" ||
-      recording.status === "recording" ||
-      recording.status === "paused" ||
-      recording.status === "processing");
+  const isIdle = !recording || recording.status === "completed" || recording.status === "failed";
   const isPaused = recording?.status === "paused";
   const isProcessing = recording?.status === "processing";
-
-  // Tick only while genuinely capturing frames, not during starting / pause / processing.
-  const isTicking =
-    isActive &&
-    recording.status === "recording";
-
-  const elapsed = useElapsed(
-    isActive && recording ? recording.public_token : null,
-    Boolean(isTicking),
-  );
+  const elapsed = useRecordingElapsed(recording);
 
   if (!canControl || !roomCode) return null;
 
-  if (isIdle) return <div className="relative">
-    <button className="h-9 px-3 rounded-lg text-[var(--red)] bg-[var(--s3)]" disabled={isMutating} aria-expanded={showModes} onClick={() => setShowModes((v) => !v)}>{t("controls.rec")} · {quality}</button>
-    {showModes && <><div className="fixed inset-0 z-40" onClick={() => setShowModes(false)} /><div className={cn("absolute end-0 z-50 w-56 max-w-[calc(100vw-2rem)] rounded-xl bg-[var(--s2)] border border-[var(--b)] p-3 shadow-xl", placement === "top" ? "bottom-full mb-2" : "top-11")}>
-      <p className="text-xs mb-2">{t("controls.qualityLabel")}</p>
-      <div className="flex gap-2">{(["720p", "1080p"] as const).map((q) => <button key={q} aria-pressed={quality === q} onClick={() => setQuality(q)} className={cn("flex-1 p-2 rounded-lg", quality === q ? "bg-[var(--brand)] text-white" : "bg-[var(--s3)]")}>{q}</button>)}</div>
-      <button disabled={isMutating} className="w-full mt-3 p-2 rounded-lg bg-[var(--red)] text-white text-xs" onClick={() => { setShowModes(false); void onStart(quality, "client-download"); }}>{t("controls.modeClientDownload")}</button>
-    </div></>}
-  </div>;
-
-  // Active states.
-  return (
-    <div className="flex items-center gap-1.5">
-      <div
-        className={cn(
-          "flex items-center gap-1.5 px-2 h-7 rounded-lg",
-          isPaused
-            ? "bg-[var(--amber)]/15 text-[var(--amber)]"
-            : "bg-[var(--red)]/15 text-[var(--red)]",
-        )}
-      >
-        <span
-          className={cn(
-            "w-2 h-2 rounded-full",
-            isPaused
-              ? "bg-[var(--amber)]"
-              : "bg-[var(--red)] animate-pulse",
-          )}
-        />
-        <span className="text-[10px] font-semibold uppercase tracking-wider">
-          {isPaused
-            ? t("controls.paused")
-            : isProcessing
-              ? t("controls.processing")
-              : recording.status === "starting"
-                ? t("controls.starting")
-                : t("controls.recording")}
-        </span>
-        {!isProcessing && (
-          <span className="text-[10px] font-mono text-[var(--t1)] force-ltr">
-            {formatElapsed(elapsed)}
-          </span>
-        )}
+  if (isIdle) {
+    const captureSupported = typeof navigator.mediaDevices?.getDisplayMedia === "function" && typeof MediaRecorder !== "undefined";
+    return (
+      <div className="w-full space-y-4 font-[inherit]">
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--red)]/15 text-[var(--red)]"><Circle size={21} fill="currentColor" /></span>
+          <div><h3 className="text-base font-bold text-[var(--t1)]">{t("controls.start")}</h3><p className="mt-0.5 text-xs text-[var(--t3)]">{t("controls.localSaveHint")}</p></div>
+        </div>
+        <div>
+          <p className="mb-2 text-xs font-semibold text-[var(--t2)]">{t("controls.qualityLabel")}</p>
+          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[var(--s1)] p-1.5">
+            {(["720p", "1080p"] as const).map((item) => <button key={item} type="button" aria-pressed={quality === item} onClick={() => setQuality(item)} className={cn("min-h-11 rounded-xl text-sm font-semibold transition-colors", quality === item ? "bg-[var(--brand)] text-white shadow-sm" : "text-[var(--t2)] hover:bg-[var(--s3)]")}>{item}</button>)}
+          </div>
+        </div>
+        {!captureSupported && <p role="status" className="rounded-2xl bg-[var(--amber)]/10 px-3 py-2.5 text-xs leading-5 text-[var(--amber)]">{t("controls.mobileUnsupported")}</p>}
+        <button type="button" disabled={isMutating || !captureSupported} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--red)] px-4 text-sm font-bold text-white disabled:opacity-45" onClick={() => void onStart(quality, "client-download")}><Circle size={14} fill="currentColor" />{isMutating ? t("controls.starting") : t("controls.start")}</button>
       </div>
+    );
+  }
 
-      {isPaused ? (
-        <Tooltip content={t("controls.resume")}>
-          <button
-            onClick={() => onResume()}
-            disabled={isMutating}
-            className="w-7 h-7 rounded-md border-none cursor-pointer bg-[var(--s3)] text-[var(--t1)] hover:bg-[var(--s4)] flex items-center justify-center text-xs disabled:opacity-50"
-          >
-            ▶
-          </button>
-        </Tooltip>
-      ) : (
-        recording.status === "recording" && (
-          <Tooltip content={t("controls.pause")}>
-            <button
-              onClick={() => onPause()}
-              disabled={isMutating}
-              className="w-7 h-7 rounded-md border-none cursor-pointer bg-[var(--s3)] text-[var(--t1)] hover:bg-[var(--s4)] flex items-center justify-center text-xs disabled:opacity-50"
-            >
-              ❚❚
-            </button>
-          </Tooltip>
-        )
-      )}
-
-      {!isProcessing && (
-        <Tooltip content={t("controls.stop")}>
-          <button
-            onClick={() => onStop()}
-            disabled={isMutating}
-            className="w-7 h-7 rounded-md border-none cursor-pointer bg-[var(--red)]/15 text-[var(--red)] hover:bg-[var(--red)]/25 flex items-center justify-center text-xs disabled:opacity-50"
-          >
-            ■
-          </button>
-        </Tooltip>
-      )}
+  return (
+    <div className="w-full space-y-4 font-[inherit]">
+      <div className={cn("flex items-center justify-center gap-2 rounded-2xl px-3 py-4", isPaused ? "bg-[var(--amber)]/15 text-[var(--amber)]" : "bg-[var(--red)]/15 text-[var(--red)]")}>
+        <span className={cn("h-2.5 w-2.5 rounded-full", isPaused ? "bg-[var(--amber)]" : "animate-pulse bg-[var(--red)]")} />
+        <span className="text-sm font-bold">{isPaused ? t("controls.paused") : isProcessing ? t("controls.processing") : recording?.status === "starting" ? t("controls.starting") : t("controls.recording")}</span>
+        {!isProcessing && <span className="force-ltr font-mono text-sm text-[var(--t1)]">{formatRecordingElapsed(elapsed)}</span>}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {isPaused ? <button type="button" onClick={() => void onResume()} disabled={isMutating} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--s3)] text-sm font-semibold disabled:opacity-50"><Play size={18} fill="currentColor" />{t("controls.resume")}</button> : recording?.status === "recording" ? <button type="button" onClick={() => void onPause()} disabled={isMutating} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--s3)] text-sm font-semibold disabled:opacity-50"><Pause size={18} fill="currentColor" />{t("controls.pause")}</button> : <span />}
+        {!isProcessing && <button type="button" onClick={() => void onStop()} disabled={isMutating} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--red)]/15 text-sm font-semibold text-[var(--red)] disabled:opacity-50"><Square size={17} fill="currentColor" />{t("controls.stop")}</button>}
+      </div>
     </div>
   );
 }

@@ -29,7 +29,6 @@ import { useLobbyHost } from "../hooks/useLobbyHost";
 import { type LayoutMode } from "../store/roomLayoutStore";
 import { useRoomStore } from "../store/roomStore";
 import ReactionsPopover from "./reactions/ReactionsPopover";
-import RecordControls from "../../recordings/components/room/RecordControls";
 import { useRoomRecording } from "../../recordings/hooks/useRoomRecording";
 import InviteModal from "./InviteModal";
 
@@ -579,7 +578,6 @@ export default function RoomControls({
   const [camPopoverOpen, setCamPopoverOpen] = useState(false);
   const [reactionsOpen, setReactionsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [recordMenuOpen, setRecordMenuOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
@@ -649,36 +647,22 @@ export default function RoomControls({
       />
       {inviteOpen && <InviteModal onClose={() => setInviteOpen(false)} />}
 
-      {(recordMenuOpen || infoOpen) && (
+      {infoOpen && (
         <>
           <button
             type="button"
             className="fixed inset-0 z-[55] cursor-default bg-transparent"
             aria-label={t("mobile.close")}
-            onClick={() => { setRecordMenuOpen(false); setInfoOpen(false); }}
+            onClick={() => setInfoOpen(false)}
           />
           <div dir="auto" role="dialog" className="absolute bottom-[calc(100%+12px)] left-1/2 z-[60] w-[min(360px,calc(100vw-24px))] -translate-x-1/2 rounded-3xl border border-[var(--b)] bg-[var(--s2)] p-5 shadow-2xl">
-            <button type="button" className="absolute end-3 top-2 h-9 w-9 text-xl text-[var(--t2)]" onClick={() => { setRecordMenuOpen(false); setInfoOpen(false); }} aria-label={t("mobile.close")}>×</button>
-            {recordMenuOpen ? (
-              <RecordControls
-                placement="top"
-                roomCode={activeRoomCode}
-                canControl={recording.canControl}
-                status={recording.status}
-                isMutating={recording.isMutating}
-                onStart={recording.start}
-                onStop={recording.stop}
-                onPause={recording.pause}
-                onResume={recording.resume}
-              />
-            ) : (
-              <div className="space-y-3 pe-8">
-                <h2 className="font-semibold text-[var(--t1)]">{t("topbar.infoTitle")}</h2>
-                <div className="flex justify-between gap-4 text-sm"><span className="text-[var(--t3)]">{t("topbar.infoName")}</span><span>{roomName || t("topbar.defaultRoomName")}</span></div>
-                <div className="flex justify-between gap-4 text-sm"><span className="text-[var(--t3)]">{t("topbar.infoCode")}</span><span dir="ltr" className="font-mono text-[var(--brand)]">{activeRoomCode}</span></div>
-                <button type="button" className="w-full rounded-xl bg-[var(--s3)] px-3 py-2 text-sm" onClick={() => void navigator.clipboard.writeText(window.location.href)}>{t("topbar.copy")}</button>
-              </div>
-            )}
+            <button type="button" className="absolute end-3 top-2 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--s3)] text-xl text-[var(--t2)]" onClick={() => setInfoOpen(false)} aria-label={t("mobile.close")}>×</button>
+            <div className="space-y-3 pe-8">
+              <h2 className="font-semibold text-[var(--t1)]">{t("topbar.infoTitle")}</h2>
+              <div className="flex justify-between gap-4 text-sm"><span className="text-[var(--t3)]">{t("topbar.infoName")}</span><span>{roomName || t("topbar.defaultRoomName")}</span></div>
+              <div className="flex justify-between gap-4 text-sm"><span className="text-[var(--t3)]">{t("topbar.infoCode")}</span><span dir="ltr" className="font-mono text-[var(--brand)]">{activeRoomCode}</span></div>
+              <button type="button" className="w-full rounded-xl bg-[var(--s3)] px-3 py-2 text-sm" onClick={() => void navigator.clipboard.writeText(window.location.href)}>{t("topbar.copy")}</button>
+            </div>
           </div>
         </>
       )}
@@ -807,7 +791,7 @@ export default function RoomControls({
                 { label: t("tile.fullscreen"), icon: <Maximize2 size={20} />, run: () => void toggleFullscreen() },
                 { label: t("controls.settings"), icon: Icons.settings, run: onToggleSettings },
                 ...(canModerate ? [{ label: t("lobby.hostPanelTitle"), icon: <Shield size={20} />, run: () => setLobbyPanelOpen(true), badge: lobby.count }] : []),
-                { label: t("controls.rec"), icon: <Circle size={20} className="text-[var(--red)]" />, run: () => setRecordMenuOpen(true), disabled: !recording.canControl },
+                { label: t(recording.status.recording && ["starting", "recording", "paused"].includes(recording.status.recording.status) ? "controls.recording" : "controls.rec"), icon: <Circle size={20} className="text-[var(--red)]" />, run: () => window.dispatchEvent(new Event("eduspace:open-recording")), disabled: !recording.canControl },
                 { label: t("topbar.info"), icon: <Info size={20} />, run: () => setInfoOpen(true) },
               ].map((action) => (
                 <button

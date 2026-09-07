@@ -907,7 +907,7 @@ export default function InfiniteCanvas({
       ref={containerRef}
       className={cn(
         "relative w-full h-full bg-[#0f172a] select-none touch-none overflow-hidden",
-        isSpacePressed ? "cursor-grab" : isPanning ? "cursor-grabbing" : "cursor-default"
+        isPanning ? "cursor-grabbing" : isSpacePressed || activeTool === "pan" ? "cursor-grab" : "cursor-default"
       )}
     >
       <svg

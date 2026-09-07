@@ -1,12 +1,14 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   type PointerEvent as ReactPointerEvent,
+  type TouchEvent as ReactTouchEvent,
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { X } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 /**
@@ -39,6 +41,20 @@ const DISMISS_RATIO = 0.25;
 /** Pointer velocity (px/ms) above which we dismiss regardless of ratio. */
 const DISMISS_VELOCITY = 0.5;
 
+interface VisibleViewport {
+  height: number;
+  top: number;
+}
+
+function getVisibleViewport(): VisibleViewport {
+  if (typeof window === "undefined") return { height: 0, top: 0 };
+  const viewport = window.visualViewport;
+  return {
+    height: viewport?.height ?? window.innerHeight,
+    top: viewport?.offsetTop ?? 0,
+  };
+}
+
 /**
  * Mobile-first bottom sheet built on @radix-ui/react-dialog.
  *
@@ -64,7 +80,35 @@ export default function BottomSheet({
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [showHint, setShowHint] = useState(false);
+  const [visibleViewport, setVisibleViewport] = useState(getVisibleViewport);
   const { t } = useTranslation("common");
+
+  useEffect(() => {
+    if (!open) return;
+
+    const updateViewport = () => {
+      const nextViewport = getVisibleViewport();
+      setVisibleViewport((currentViewport) =>
+        currentViewport.height === nextViewport.height && currentViewport.top === nextViewport.top
+          ? currentViewport
+          : nextViewport,
+      );
+    };
+
+    updateViewport();
+    const viewport = window.visualViewport;
+    viewport?.addEventListener("resize", updateViewport);
+    viewport?.addEventListener("scroll", updateViewport);
+    window.addEventListener("resize", updateViewport);
+    window.addEventListener("orientationchange", updateViewport);
+
+    return () => {
+      viewport?.removeEventListener("resize", updateViewport);
+      viewport?.removeEventListener("scroll", updateViewport);
+      window.removeEventListener("resize", updateViewport);
+      window.removeEventListener("orientationchange", updateViewport);
+    };
+  }, [open]);
 
   // First-open tour hint — shows below the drag handle for ~5s the very
   // first time the user opens any BottomSheet on this device, then never
@@ -101,6 +145,7 @@ export default function BottomSheet({
 
   const handlePointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (e.pointerType === "touch") return;
       // First successful drag dismisses the hint and persists "seen".
       setShowHint(false);
       try {
@@ -126,6 +171,7 @@ export default function BottomSheet({
 
   const handlePointerMove = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (e.pointerType === "touch") return;
       const drag = dragRef.current;
       if (!drag.active) return;
       const deltaY = e.clientY - drag.startY;
@@ -138,6 +184,7 @@ export default function BottomSheet({
 
   const handlePointerEnd = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (e.pointerType === "touch") return;
       const drag = dragRef.current;
       if (!drag.active) return;
       const deltaY = drag.currentY - drag.startY;
@@ -165,6 +212,54 @@ export default function BottomSheet({
     [handleOpenChange],
   );
 
+  const handleTouchStart = useCallback((e: ReactTouchEvent<HTMLDivElement>) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+    setShowHint(false);
+    try {
+      localStorage.setItem(HINT_STORAGE_KEY, "1");
+    } catch {
+      // Ignore storage failures.
+    }
+    dragRef.current = {
+      active: true,
+      startY: touch.clientY,
+      currentY: touch.clientY,
+      startTime: performance.now(),
+    };
+    setIsDragging(true);
+  }, []);
+
+  const handleTouchMove = useCallback((e: ReactTouchEvent<HTMLDivElement>) => {
+    const touch = e.touches[0];
+    if (!dragRef.current.active || !touch) return;
+    e.preventDefault();
+    dragRef.current.currentY = touch.clientY;
+    setDragOffset(Math.max(0, touch.clientY - dragRef.current.startY));
+  }, []);
+
+  const handleTouchEnd = useCallback((e: ReactTouchEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag.active) return;
+    const touch = e.changedTouches[0];
+    const endY = touch?.clientY ?? drag.currentY;
+    const deltaY = endY - drag.startY;
+    const elapsed = Math.max(1, performance.now() - drag.startTime);
+    const panelHeight = e.currentTarget.parentElement?.getBoundingClientRect().height ?? 1;
+    drag.active = false;
+    setIsDragging(false);
+    if (deltaY / panelHeight >= DISMISS_RATIO || deltaY / elapsed >= DISMISS_VELOCITY) {
+      handleOpenChange(false);
+    } else {
+      setDragOffset(0);
+    }
+  }, [handleOpenChange]);
+
+  const heightRatio = Math.min(100, Math.max(1, height)) / 100;
+  const sheetHeight = visibleViewport.height * heightRatio;
+  const sheetTop = visibleViewport.top + visibleViewport.height - sheetHeight;
+  const isFullScreen = heightRatio >= 0.95;
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange}>
       <DialogPrimitive.Portal>
@@ -178,13 +273,15 @@ export default function BottomSheet({
         />
         <DialogPrimitive.Content
           aria-label={ariaLabel}
+          aria-describedby={undefined}
           style={{
-            height: `${height}vh`,
+            height: `${sheetHeight}px`,
+            top: `${sheetTop}px`,
             transform: `translateY(${dragOffset}px)`,
             transition: isDragging ? "none" : "transform 220ms ease-out",
           }}
           className={cn(
-            "fixed bottom-0 left-0 right-0 z-50 flex flex-col",
+            "fixed left-0 right-0 z-50 flex flex-col",
             "bg-[var(--s1)] text-[var(--t1)]",
             "rounded-t-2xl border-t border-[var(--b)] shadow-2xl",
             // Slide-from-bottom on open / close.
@@ -196,13 +293,32 @@ export default function BottomSheet({
         >
           {/* Drag handle strip — also acts as the title bar. */}
           <div
+            data-testid="bottom-sheet-drag-handle"
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerEnd}
             onPointerCancel={handlePointerEnd}
-            className="px-4 pt-2 pb-3 border-b border-[var(--b)] flex flex-col items-center gap-2 cursor-grab touch-none flex-shrink-0"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
+            className={cn(
+              "relative px-4 pb-3 border-b border-[var(--b)] flex flex-col items-center gap-2 cursor-grab touch-none overscroll-contain flex-shrink-0",
+              isFullScreen ? "pt-[max(0.5rem,env(safe-area-inset-top))]" : "pt-2",
+            )}
           >
             <span className="w-10 h-1.5 rounded-full bg-[var(--s4,#272735)] block" />
+            <DialogPrimitive.Close
+              aria-label={t("actions.close")}
+              className={cn(
+                "absolute end-3 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--s3)] text-[var(--t1)] transition-colors hover:bg-[var(--s4)] active:scale-95",
+                isFullScreen ? "top-[max(0.5rem,env(safe-area-inset-top))]" : "top-2",
+              )}
+              onPointerDown={(event) => event.stopPropagation()}
+              onTouchStart={(event) => event.stopPropagation()}
+            >
+              <X size={20} />
+            </DialogPrimitive.Close>
             {title && (
               <DialogPrimitive.Title className="text-sm font-semibold text-[var(--t1)] self-start">
                 {title}

@@ -18,7 +18,11 @@ import MiniAppSelectorModal from "../MiniAppSelectorModal";
  *   - MobileSwipeShell page 4
  *   - MobileSheetShell BottomSheet
  */
-export default function ToolsPanel() {
+interface ToolsPanelProps {
+  onToolLaunch?: () => void;
+}
+
+export default function ToolsPanel({ onToolLaunch }: ToolsPanelProps) {
   const { t } = useTranslation(["room", "common", "games"]);
   const { gameBoard, launchGame, endGame } = useRoomGame();
   const {
@@ -42,6 +46,10 @@ export default function ToolsPanel() {
   const isWhiteboardMinimized = whiteboardState.isMinimized;
   const isPresActive = !!activePresentation;
   const canModerate = isHost || isCoHost;
+  const runTool = (action: () => unknown | Promise<unknown>) => {
+    onToolLaunch?.();
+    window.setTimeout(() => void action(), 0);
+  };
 
   const gameTool = isGameActive
     ? {
@@ -49,7 +57,7 @@ export default function ToolsPanel() {
         name: t("games:tools.endGameLabel"),
         desc: t("games:tools.endGameDesc"),
         status: "ready" as const,
-        onClick: () => endGame(),
+        onClick: () => runTool(endGame),
         bg: "bg-[rgba(248,113,113,0.12)]",
         disabled: !isHost,
       }
@@ -58,7 +66,13 @@ export default function ToolsPanel() {
         name: t("games:tools.launchLabel"),
         desc: t("games:tools.launchDesc"),
         status: "ready" as const,
-        onClick: () => setShowSelector(true),
+        onClick: () => {
+          if (onToolLaunch) {
+            runTool(() => window.dispatchEvent(new CustomEvent("eduspace:open-miniapp-selector")));
+          } else {
+            setShowSelector(true);
+          }
+        },
         bg: "bg-[rgba(99,102,241,0.15)]",
         disabled: !isHost,
       };
@@ -71,7 +85,7 @@ export default function ToolsPanel() {
               name: t("tools.viewWhiteboard", "مشاهده وایت‌برد فعال"),
               desc: t("tools.viewWhiteboardDesc", "نمایش مجدد تخته روی صفحه"),
               status: "ready" as const,
-              onClick: () => restoreWhiteboard(),
+              onClick: () => runTool(restoreWhiteboard),
               bg: "bg-[rgba(34,197,94,0.15)]",
               disabled: false,
             }
@@ -80,7 +94,7 @@ export default function ToolsPanel() {
               name: t("tools.hideWhiteboard", "بستن تخته از روی صفحه"),
               desc: t("tools.hideWhiteboardDesc", "مخفی‌سازی محلی (برای دیگران باز می‌ماند)"),
               status: "ready" as const,
-              onClick: () => minimizeWhiteboard(),
+              onClick: () => runTool(minimizeWhiteboard),
               bg: "bg-[rgba(148,163,184,0.15)]",
               disabled: false,
             },
@@ -91,7 +105,7 @@ export default function ToolsPanel() {
                 name: t("tools.endWhiteboardLabel", "پایان وایت‌برد برای همه"),
                 desc: t("tools.endWhiteboardDesc", "بستن کامل تخته در جلسه"),
                 status: "ready" as const,
-                onClick: () => endWhiteboard(),
+                onClick: () => runTool(endWhiteboard),
                 bg: "bg-[rgba(248,113,113,0.15)]",
                 disabled: false,
               },
@@ -104,7 +118,7 @@ export default function ToolsPanel() {
           name: t("tools.whiteboard"),
           desc: t("tools.whiteboardDesc"),
           status: "ready" as const,
-          onClick: () => launchWhiteboard(),
+          onClick: () => runTool(launchWhiteboard),
           bg: "bg-[rgba(34,197,94,0.12)]",
           disabled: !isHost,
         },
@@ -118,7 +132,7 @@ export default function ToolsPanel() {
               name: t("tools.viewPresentation", "مشاهده ارائه فعال"),
               desc: t("tools.viewPresentationDesc", "نمایش مجدد اسناد و اسلایدها روی صفحه"),
               status: "ready" as const,
-              onClick: () => setIsPresentationMinimized(false),
+              onClick: () => runTool(() => setIsPresentationMinimized(false)),
               bg: "bg-[rgba(99,102,241,0.15)]",
               disabled: false,
             }
@@ -127,7 +141,7 @@ export default function ToolsPanel() {
               name: t("tools.hidePresentation", "بستن ارائه از روی صفحه"),
               desc: t("tools.hidePresentationDesc", "مخفی‌سازی محلی (ارائه برای دیگران فعال می‌ماند)"),
               status: "ready" as const,
-              onClick: () => setIsPresentationMinimized(true),
+              onClick: () => runTool(() => setIsPresentationMinimized(true)),
               bg: "bg-[rgba(148,163,184,0.15)]",
               disabled: false,
             },
@@ -136,9 +150,9 @@ export default function ToolsPanel() {
           name: t("tools.changePresentation", "انتخاب فایل جدید برای ارائه"),
           desc: t("tools.changePresentationDesc", "بارگذاری سند جدید یا تعویض فایل جاری"),
           status: "ready" as const,
-          onClick: () => {
+          onClick: () => runTool(() => {
             window.dispatchEvent(new CustomEvent("eduspace:open-presentation-modal"));
-          },
+          }),
           bg: "bg-[rgba(99,102,241,0.12)]",
           disabled: false,
         },
@@ -149,9 +163,9 @@ export default function ToolsPanel() {
           name: t("tools.presentationShare", "اشتراک و ارائه فایل و اسلاید"),
           desc: t("tools.presentationShareDesc", "بارگذاری و نمایش اسناد PDF، تصاویر و اسلایدها روی استیج"),
           status: "ready" as const,
-          onClick: () => {
+          onClick: () => runTool(() => {
             window.dispatchEvent(new CustomEvent("eduspace:open-presentation-modal"));
-          },
+          }),
           bg: "bg-[rgba(99,102,241,0.15)]",
           disabled: false,
         },
@@ -163,7 +177,7 @@ export default function ToolsPanel() {
       name: t("sharedMedia.libraryTitle", "سینمای آنلاین"),
       desc: t("sharedMedia.toolDescription", "آپلود و پخش همزمان ویدئو برای همه"),
       status: "ready" as const,
-      onClick: () => window.dispatchEvent(new CustomEvent("eduspace:open-shared-media-library")),
+      onClick: () => runTool(() => window.dispatchEvent(new CustomEvent("eduspace:open-shared-media-library"))),
       bg: "bg-[rgba(56,189,248,0.15)]",
       disabled: !canModerate,
     },
@@ -223,9 +237,10 @@ export default function ToolsPanel() {
       <MiniAppSelectorModal
         open={showSelector}
         onClose={() => setShowSelector(false)}
-        onLaunch={(args) =>
-          launchGame(args.gameId, args.gameTitle, args.gameUrl)
-        }
+        onLaunch={(args) => {
+          setShowSelector(false);
+          runTool(() => launchGame(args.gameId, args.gameTitle, args.gameUrl));
+        }}
         activeGame={isGameActive ? {
           gameId: gameBoard.gameId || "",
           gameTitle: gameBoard.gameTitle || "",

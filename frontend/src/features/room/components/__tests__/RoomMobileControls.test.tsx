@@ -5,6 +5,7 @@ vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => k
 vi.mock("../../hooks/useRoomWhiteboard", () => ({ useRoomWhiteboard: () => ({ whiteboard: { isActive: false } }) }));
 vi.mock("../ChatUnreadBadge", () => ({ default: () => null }));
 vi.mock("../InviteModal", () => ({ default: () => null }));
+vi.mock("../reactions/ReactionsPopover", () => ({ default: ({ isOpen }: { isOpen: boolean }) => isOpen ? <div data-testid="reactions-popover" /> : null }));
 vi.mock("../../../recordings/hooks/useRoomRecording", () => ({ useRoomRecording: () => ({ canControl: false }) }));
 const props = { isMicOn: true, isCamOn: true, isScreenSharing: false, settingsOpen: false, activePanel: null, handRaised: false, onToggleMic: vi.fn(), onToggleCam: vi.fn(), onToggleScreenShare: vi.fn(), onToggleSettings: vi.fn(), onLeave: vi.fn(), onPanelClick: vi.fn(), onToggleHandRaise: vi.fn() };
 describe("mobile reference controls", () => {
@@ -21,5 +22,15 @@ describe("mobile reference controls", () => {
   expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   fireEvent.click(more); fireEvent.pointerDown(document.body);
   expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+ });
+ it("closes reactions when the more menu is opened again", () => {
+  render(<RoomMobileControls {...props}/>);
+  const more = screen.getByRole("button", { name: "controls.more" });
+  fireEvent.click(more);
+  fireEvent.click(screen.getByRole("menuitem", { name: "controls.reactions" }));
+  expect(screen.getByTestId("reactions-popover")).toBeInTheDocument();
+  fireEvent.click(more);
+  expect(screen.queryByTestId("reactions-popover")).not.toBeInTheDocument();
+  expect(screen.getByRole("menu")).toBeInTheDocument();
  });
 });

@@ -15,7 +15,7 @@ import {
 } from "../types/whiteboard";
 import InfiniteCanvas from "./InfiniteCanvas";
 
-import { Minus } from "lucide-react";
+import { Hand, Minus } from "lucide-react";
 
 interface WhiteboardProps {
   whiteboard: {
@@ -540,19 +540,22 @@ export default function Whiteboard({
         ))}
 
         {/* Floating Left Toolbar (Miro-like) */}
-        {canDraw && (
+        {(
           <div className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 md:gap-2 bg-[#1e293b]/95 backdrop-blur border border-[#334155] rounded-xl p-1.5 md:p-2 shadow-2xl z-30 max-h-[85%] overflow-y-auto scrollbar-none">
             {[
-              { id: "select", icon: "↖", label: "Select (V)" },
-              { id: "pencil", icon: "✏️", label: "Brush" },
-              { id: "highlighter", icon: "🖌️", label: "Highlighter" },
-              { id: "text", icon: "🇦", label: "Text Block" },
-              { id: "sticky", icon: "🗒️", label: "Sticky Note" },
-              { id: "rectangle", icon: "▭", label: "Rectangle" },
-              { id: "ellipse", icon: "◯", label: "Ellipse" },
-              { id: "diamond", icon: "♢", label: "Diamond" },
-              { id: "line", icon: "―", label: "Line" },
-              { id: "arrow", icon: "➔", label: "Arrow Connector" },
+              { id: "pan", icon: <Hand size={17} />, label: "Pan" },
+              ...(canDraw ? [
+                { id: "select", icon: "↖", label: "Select (V)" },
+                { id: "pencil", icon: "✏️", label: "Brush" },
+                { id: "highlighter", icon: "🖌️", label: "Highlighter" },
+                { id: "text", icon: "🇦", label: "Text Block" },
+                { id: "sticky", icon: "🗒️", label: "Sticky Note" },
+                { id: "rectangle", icon: "▭", label: "Rectangle" },
+                { id: "ellipse", icon: "◯", label: "Ellipse" },
+                { id: "diamond", icon: "♢", label: "Diamond" },
+                { id: "line", icon: "―", label: "Line" },
+                { id: "arrow", icon: "➔", label: "Arrow Connector" },
+              ] : []),
             ].map((tool) => (
               <Tooltip key={tool.id} content={t(`whiteboard.labels.${tool.id}`)} side="right">
                 <button

@@ -287,6 +287,8 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
         const recorder = mediaRecorderRef.current;
         if (recorder && recorder.state !== "inactive") {
           recorder.stop();
+          setStatus({ status: "idle", recording: null });
+          setInFlight(null);
         } else {
           cleanupClientRecording();
         }
@@ -297,7 +299,7 @@ export function useRoomRecording({ roomCode, isHost }: UseRoomRecordingOptions) 
         return wrapMutation(() => recordingsApi.stop(roomCode!), "errorStop");
       }
     },
-    [roomCode, isClientRecording, wrapMutation, t, cleanupClientRecording],
+    [roomCode, isClientRecording, wrapMutation, t, cleanupClientRecording, setStatus, setInFlight],
   );
 
   const start = useCallback(

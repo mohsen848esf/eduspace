@@ -15,7 +15,6 @@ import RoomTopbar from "./RoomTopbar";
 import RoomMobileTopbar from "./RoomMobileTopbar";
 import RoomControls from "./RoomControls";
 import RoomMobileControls from "./RoomMobileControls";
-import RoomRecordingBadge from "./RoomRecordingBadge";
 import RoomSidebar from "./RoomSidebar";
 import SettingsPanel from "./SettingsPanel";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
@@ -23,6 +22,7 @@ import BottomSheet from "../../../components/layout/BottomSheet";
 import ParticipantsPanel from "./panels/ParticipantsPanel";
 import ChatPanel, { ChatListener } from "./panels/ChatPanel";
 import ToolsPanel from "./panels/ToolsPanel";
+import MiniAppSelectorModal from "./MiniAppSelectorModal";
 import { type useGameBoard } from "../hooks/useGameBoard";
 import { type useWhiteboard } from "../hooks/useWhiteboard";
 import { type useReactions } from "../hooks/useReactions";
@@ -139,6 +139,7 @@ export default function UnifiedRoomShell({
   useSharedPlaybackSync({ room, roomCode: activeRoomCode, guestAccessToken });
   const [presentationModalOpen, setPresentationModalOpen] = useState(false);
   const [sharedMediaLibraryOpen, setSharedMediaLibraryOpen] = useState(false);
+  const [miniAppSelectorOpen, setMiniAppSelectorOpen] = useState(false);
 
   // Listen to open-presentation-modal event
   useEffect(() => {
@@ -151,6 +152,12 @@ export default function UnifiedRoomShell({
     const handler = () => setSharedMediaLibraryOpen(true);
     window.addEventListener("eduspace:open-shared-media-library", handler);
     return () => window.removeEventListener("eduspace:open-shared-media-library", handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setMiniAppSelectorOpen(true);
+    window.addEventListener("eduspace:open-miniapp-selector", handler);
+    return () => window.removeEventListener("eduspace:open-miniapp-selector", handler);
   }, []);
 
   const handleSheetOpenChange = (panel: ActivePanel) => (open: boolean) => {
@@ -226,16 +233,6 @@ export default function UnifiedRoomShell({
             {/* Floating Live Reactions Overlay */}
             {reactions && <ReactionOverlay particles={reactions.particles} />}
 
-            <RoomRecordingBadge
-              className={
-                sharedPlayback ||
-                (activePresentation && !isPresentationMinimized) ||
-                game.gameBoard.isActive ||
-                (whiteboard.whiteboard.isActive && !whiteboard.whiteboard.isMinimized)
-                  ? "top-14 end-3"
-                  : undefined
-              }
-            />
           </div>
 
           {/* Desktop/Tablet Sidebar */}
@@ -339,6 +336,20 @@ export default function UnifiedRoomShell({
             roomCode={activeRoomCode}
           />
         )}
+        <MiniAppSelectorModal
+          open={miniAppSelectorOpen}
+          onClose={() => setMiniAppSelectorOpen(false)}
+          onLaunch={(args) => {
+            setMiniAppSelectorOpen(false);
+            void game.launchGame(args.gameId, args.gameTitle, args.gameUrl);
+          }}
+          activeGame={game.gameBoard.isActive ? {
+            gameId: game.gameBoard.gameId || "",
+            gameTitle: game.gameBoard.gameTitle || "",
+            gameUrl: game.gameBoard.gameUrl || "",
+            hostIdentity: game.gameBoard.hostIdentity || "",
+          } : null}
+        />
       </div>
 
       {/* Mobile Bottom Sheets */}
@@ -365,7 +376,7 @@ export default function UnifiedRoomShell({
             onOpenChange={handleSheetOpenChange("tools")}
             title={t_room("tooltips.tools")}
           >
-            <ToolsPanel />
+            <ToolsPanel onToolLaunch={() => setActivePanel("video")} />
           </BottomSheet>
         </>
       )}
