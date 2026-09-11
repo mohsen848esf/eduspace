@@ -32,6 +32,7 @@ import { LobbyWaitingScreen } from "./LobbyWaitingScreen";
 import { useLobbyWaiting } from "../hooks/useLobbyWaiting";
 import CallEndedScreen from "./CallEndedScreen";
 import { observePublishedCameraTracks } from "../lib/backgroundProcessing";
+import { useVisualViewportBounds } from "../../../hooks/useVisualViewportBounds";
 
 function RoomContent({
   preJoinSettings,
@@ -183,6 +184,7 @@ export default function RoomPage() {
   const [callEnded, setCallEnded] = useState(false);
   const [preJoinSettings, setPreJoinSettings] =
     useState<PreJoinSettings | null>(null);
+  const roomViewport = useVisualViewportBounds();
 
   const [lobbyRequestId, setLobbyRequestId] = useState<number | null>(null);
   const [lobbyGuestAccessToken, setLobbyGuestAccessToken] = useState<string | null>(null);
@@ -192,6 +194,24 @@ export default function RoomPage() {
   >(null);
 
   const joinedRef = useRef(false);
+
+  useEffect(() => {
+    if (!preJoinDone || !token) return;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverscroll = document.documentElement.style.overscrollBehavior;
+    const previousBodyOverscroll = document.body.style.overscrollBehavior;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overscrollBehavior = "none";
+    document.body.style.overscrollBehavior = "none";
+    return () => {
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overscrollBehavior = previousHtmlOverscroll;
+      document.body.style.overscrollBehavior = previousBodyOverscroll;
+    };
+  }, [preJoinDone, token]);
 
   const handleJoinAttempt = useCallback(async (guestNameOverride?: string) => {
     if (!roomCode) return;
@@ -379,7 +399,15 @@ export default function RoomPage() {
       : (preJoinSettings?.micEnabled ?? true);
 
   return (
-    <div className="w-screen h-dvh bg-[var(--s0)] text-[var(--t1)] overflow-hidden">
+    <div
+      className="fixed max-w-full bg-[var(--s0)] text-[var(--t1)] overflow-hidden overscroll-none"
+      style={{
+        height: `${roomViewport.height}px`,
+        left: `${roomViewport.left}px`,
+        top: `${roomViewport.top}px`,
+        width: `${roomViewport.width}px`,
+      }}
+    >
       <LiveKitRoom
         token={token}
         serverUrl={livekitUrl}
@@ -415,7 +443,14 @@ export default function RoomPage() {
           useBackgroundStore.getState().setBackground("none");
           setCallEnded(true);
         }}
-        style={{ height: "100dvh", display: "flex", flexDirection: "column" }}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          maxWidth: "100%",
+          overflow: "hidden",
+          width: "100%",
+        }}
       >
         <div data-room-audio-root>
           <RoomAudioRenderer />

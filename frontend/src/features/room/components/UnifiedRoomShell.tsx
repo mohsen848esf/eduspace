@@ -173,13 +173,13 @@ export default function UnifiedRoomShell({
   return (
     <>
       <ChatListener roomCode={activeRoomCode} />
-      <div className="relative flex flex-col w-full h-full text-[var(--t1)]">
+      <div className="relative flex flex-col w-full max-w-full h-full min-w-0 min-h-0 overflow-hidden text-[var(--t1)]">
         <ConnectionStatus onLeave={onLeaveRequest} />
         {/* Topbar */}
         {isMobile ? <RoomMobileTopbar onLeave={onLeaveRequest} /> : <RoomTopbar onLeave={onLeaveRequest} />}
 
         {/* Middle Area */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 min-w-0 min-h-0 overflow-hidden">
           {/* Main Game/Video Container - stable in the React DOM tree */}
           <div
             className={cn(

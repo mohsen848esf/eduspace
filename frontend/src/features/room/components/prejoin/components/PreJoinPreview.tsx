@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, type SyntheticEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Mic,
@@ -18,6 +18,8 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { type BackgroundType } from "../../../hooks/useBackgroundBlur";
 import PreJoinEffectsPicker from "./PreJoinEffectsPicker";
+import { useIsMobile } from "@/hooks/useBreakpoint";
+import { useOrientation } from "@/hooks/useOrientation";
 
 export interface PreJoinPreviewProps {
   videoRefCallback: (el: HTMLVideoElement | null) => void;
@@ -67,9 +69,34 @@ export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
   const { t } = useTranslation("room");
   const { user } = useAuthStore();
   const [showEffectsFlyout, setShowEffectsFlyout] = useState(false);
+  const isMobileViewport = useIsMobile();
+  const orientation = useOrientation();
+  const forcePortraitPreview = isMobileViewport && orientation === "portrait";
+  const [videoAspectRatio, setVideoAspectRatio] = useState(() => {
+    const isPortraitMobile =
+      typeof window !== "undefined" &&
+      window.innerWidth < 768 &&
+      window.matchMedia?.("(orientation: portrait)").matches;
+    return isPortraitMobile ? 9 / 16 : 16 / 9;
+  });
 
   const isSpeaking = micEnabled && audioLevel > 15;
   const hasActiveEffect = selectedBg !== "none";
+  const displayedAspectRatio = forcePortraitPreview ? 9 / 16 : videoAspectRatio;
+  const isPortraitPreview = isMobileViewport && displayedAspectRatio < 1;
+
+  const handleVideoDimensions = (event: SyntheticEvent<HTMLVideoElement>) => {
+    if (!isMobileViewport) return;
+    const { videoWidth, videoHeight } = event.currentTarget;
+    if (videoWidth > 0 && videoHeight > 0) {
+      const nextAspectRatio = Math.min(16 / 9, Math.max(9 / 16, videoWidth / videoHeight));
+      setVideoAspectRatio((currentAspectRatio) =>
+        Math.abs(currentAspectRatio - nextAspectRatio) < 0.01
+          ? currentAspectRatio
+          : nextAspectRatio,
+      );
+    }
+  };
 
   const displayName =
     user?.full_name ||
@@ -79,7 +106,16 @@ export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
   const initial = displayName.charAt(0).toUpperCase();
 
   return (
-    <div className="relative w-full aspect-video bg-[var(--s2)] rounded-3xl overflow-hidden border border-[var(--b)] shadow-2xl flex items-center justify-center group">
+    <div
+      data-testid="prejoin-preview"
+      style={{
+        aspectRatio: isMobileViewport ? displayedAspectRatio : undefined,
+      }}
+      className={cn(
+        "relative mx-auto aspect-video bg-[var(--s2)] rounded-3xl overflow-hidden border border-[var(--b)] shadow-2xl flex items-center justify-center group transition-[width,aspect-ratio] duration-300",
+        isPortraitPreview ? "w-[min(82vw,38dvh)] max-w-[22rem]" : "w-full",
+      )}
+    >
       {/* 1. Camera Active Feed */}
       {camEnabled ? (
               <>
@@ -88,6 +124,9 @@ export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
             autoPlay
             muted
             playsInline
+            onLoadedMetadata={handleVideoDimensions}
+            onResize={handleVideoDimensions}
+            style={{ objectFit: "cover", objectPosition: "center" }}
             className={cn(
               "absolute inset-0 w-full h-full object-cover transition-transform duration-300",
               isMirrored ? "scale-x-[-1]" : "scale-x-100",
@@ -176,7 +215,10 @@ export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
       )}
 
       {/* 3. Audio Frequency Waveform (Bottom Start) */}
-      <div className="absolute bottom-4 start-4 z-30 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/15 shadow-lg">
+      <div className={cn(
+        "absolute start-4 z-30 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/15 shadow-lg",
+        isPortraitPreview ? "top-4" : "bottom-4",
+      )}>
         <Volume2 className={cn("w-3.5 h-3.5", micEnabled ? "text-[var(--green)]" : "text-white/40")} />
         <div className="flex items-end gap-0.5 h-3.5 w-12">
           {audioBars.slice(0, 8).map((bar, idx) => (
@@ -207,7 +249,7 @@ export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
 
       {/* 5. Live Floating Effects Flyout Menu (Overlaid directly above toolbar) */}
       {showEffectsFlyout && (
-        <div className="absolute bottom-20 inset-x-4 max-w-lg mx-auto z-40">
+        <div className={cn("absolute bottom-20 max-w-lg mx-auto z-40", isPortraitPreview ? "inset-x-2" : "inset-x-4")}>
           <PreJoinEffectsPicker
             selectedBg={selectedBg}
             onChangeBackground={onChangeBackground}
@@ -220,7 +262,10 @@ export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
       )}
 
       {/* 6. Floating Glassmorphism Controls (Bottom Center) */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 bg-black/70 backdrop-blur-xl px-4 py-2 rounded-2xl border border-white/20 shadow-2xl">
+      <div className={cn(
+        "absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center bg-black/70 backdrop-blur-xl py-2 rounded-2xl border border-white/20 shadow-2xl",
+        isPortraitPreview ? "gap-1.5 px-2" : "gap-2.5 px-4",
+      )}>
         {/* Mic Toggle */}
         <Tooltip content={
           isMicLocked
@@ -232,7 +277,8 @@ export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
             onClick={isMicLocked ? undefined : onToggleMic}
             aria-disabled={isMicLocked}
             className={cn(
-              "w-11 h-11 rounded-xl flex items-center justify-center transition-all",
+              "rounded-xl flex items-center justify-center transition-all",
+              isPortraitPreview ? "w-10 h-10" : "w-11 h-11",
               isMicLocked
                 ? "bg-white/10 text-white/40 cursor-not-allowed"
                 : micEnabled
@@ -261,7 +307,8 @@ export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
             onClick={isCamLocked ? undefined : onToggleCam}
             aria-disabled={isCamLocked}
             className={cn(
-              "w-11 h-11 rounded-xl flex items-center justify-center transition-all",
+              "rounded-xl flex items-center justify-center transition-all",
+              isPortraitPreview ? "w-10 h-10" : "w-11 h-11",
               isCamLocked
                 ? "bg-white/10 text-white/40 cursor-not-allowed"
                 : camEnabled
@@ -285,7 +332,8 @@ export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
             type="button"
             onClick={() => setShowEffectsFlyout((prev) => !prev)}
             className={cn(
-              "w-11 h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer relative",
+              "rounded-xl flex items-center justify-center transition-all cursor-pointer relative",
+              isPortraitPreview ? "w-10 h-10" : "w-11 h-11",
               showEffectsFlyout || hasActiveEffect
                 ? "bg-[var(--brand)] text-white shadow-lg shadow-[var(--brand)]/50 ring-2 ring-white/60"
                 : "bg-white/15 hover:bg-white/25 text-white"
@@ -303,7 +351,10 @@ export const PreJoinPreview: React.FC<PreJoinPreviewProps> = ({
           <button
             type="button"
             onClick={onOpenSettings}
-            className="w-11 h-11 rounded-xl bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-all cursor-pointer"
+            className={cn(
+              "rounded-xl bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-all cursor-pointer",
+              isPortraitPreview ? "w-10 h-10" : "w-11 h-11",
+            )}
           >
             <Settings className="w-5 h-5 text-white" />
           </button>

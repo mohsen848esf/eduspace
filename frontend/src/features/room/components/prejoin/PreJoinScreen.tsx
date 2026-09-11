@@ -123,10 +123,10 @@ export default function PreJoinScreen({
   };
 
   return (
-    <div className="min-h-screen bg-[var(--s0)] text-[var(--t1)] flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
-      <div className="w-full max-w-5xl mx-auto space-y-6">
+    <div className="min-h-[100dvh] md:min-h-screen bg-[var(--s0)] text-[var(--t1)] flex items-start md:items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
+      <div className="w-full max-w-5xl mx-auto space-y-4 md:space-y-6">
         {/* Main 2-Column Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 items-stretch">
           {/* Left / Top Hero Preview Stage (7 Cols) */}
           <div className="lg:col-span-7 flex flex-col justify-center">
             <PreJoinPreview

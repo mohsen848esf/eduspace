@@ -14,6 +14,8 @@ import SidebarLayout from "./layout/SidebarLayout";
 import AdjustViewModal from "./layout/AdjustViewModal";
 import TileView from "./layout/TileView";
 import { cn } from "../../../lib/utils";
+import { useBreakpoint } from "../../../hooks/useBreakpoint";
+import { useOrientation } from "../../../hooks/useOrientation";
 
 interface VideoGridProps {
   layout?: LayoutMode;
@@ -50,6 +52,9 @@ function FloatingSelfView({
   const originRef = useRef({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const breakpoint = useBreakpoint();
+  const orientation = useOrientation();
+  const forcePortraitCard = breakpoint === "mobile" && orientation === "portrait";
   const [videoAspectRatio, setVideoAspectRatio] = useState(() => {
     const cameraTrack = tracks.find(
       (track) =>
@@ -66,7 +71,8 @@ function FloatingSelfView({
       window.matchMedia?.("(orientation: portrait)").matches;
     return isPortraitMobile ? 9 / 16 : 16 / 9;
   });
-  const isPortraitVideo = videoAspectRatio < 1;
+  const displayedAspectRatio = forcePortraitCard ? 9 / 16 : videoAspectRatio;
+  const isPortraitVideo = displayedAspectRatio < 1;
 
   const handleVideoAspectRatioChange = useCallback((nextAspectRatio: number) => {
     const safeAspectRatio = Math.min(16 / 9, Math.max(9 / 16, nextAspectRatio));
@@ -133,7 +139,7 @@ function FloatingSelfView({
         cornerClasses[corner],
       )}
       style={{
-        aspectRatio: videoAspectRatio,
+        aspectRatio: displayedAspectRatio,
         transform: `translate3d(${offset.x}px, ${offset.y}px, 0)`,
       }}
       onPointerDown={onPointerDown}
