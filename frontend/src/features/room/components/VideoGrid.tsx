@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useHostControls } from "../hooks/useHostControls";
 import { useRoomStore } from "../store/roomStore";
 import { useCallTiles } from "../hooks/useCallTiles";
@@ -50,6 +50,32 @@ function FloatingSelfView({
   const originRef = useRef({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [videoAspectRatio, setVideoAspectRatio] = useState(() => {
+    const cameraTrack = tracks.find(
+      (track) =>
+        track.participant.identity === tile.participant.identity &&
+        track.source === "camera",
+    );
+    const dimensions = cameraTrack?.publication?.dimensions;
+    if (dimensions?.width && dimensions.height) {
+      return dimensions.width / dimensions.height;
+    }
+    const isPortraitMobile =
+      typeof window !== "undefined" &&
+      window.innerWidth < 768 &&
+      window.matchMedia?.("(orientation: portrait)").matches;
+    return isPortraitMobile ? 9 / 16 : 16 / 9;
+  });
+  const isPortraitVideo = videoAspectRatio < 1;
+
+  const handleVideoAspectRatioChange = useCallback((nextAspectRatio: number) => {
+    const safeAspectRatio = Math.min(16 / 9, Math.max(9 / 16, nextAspectRatio));
+    setVideoAspectRatio((currentAspectRatio) =>
+      Math.abs(currentAspectRatio - safeAspectRatio) < 0.01
+        ? currentAspectRatio
+        : safeAspectRatio,
+    );
+  }, []);
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if ((event.target as HTMLElement).closest("button")) return;
@@ -99,11 +125,17 @@ function FloatingSelfView({
       ref={rootRef}
       data-testid="floating-self-view"
       className={cn(
-        "absolute z-30 aspect-video w-[42vw] min-w-32 max-w-52 md:w-52 lg:w-60 touch-none overflow-hidden rounded-2xl shadow-2xl",
+        "absolute z-30 touch-none overflow-hidden rounded-2xl shadow-2xl",
+        isPortraitVideo
+          ? "w-[28vw] min-w-24 max-w-36 md:w-52 md:max-w-52 lg:w-60 lg:max-w-60"
+          : "w-[42vw] min-w-32 max-w-52 md:w-52 lg:w-60",
         dragging ? "cursor-grabbing scale-[1.03]" : "cursor-grab transition-[top,right,bottom,left,transform] duration-300 ease-out",
         cornerClasses[corner],
       )}
-      style={{ transform: `translate3d(${offset.x}px, ${offset.y}px, 0)` }}
+      style={{
+        aspectRatio: videoAspectRatio,
+        transform: `translate3d(${offset.x}px, ${offset.y}px, 0)`,
+      }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={finishDrag}
@@ -118,6 +150,7 @@ function FloatingSelfView({
         onToggleSelfView={onShowInTile}
         selfViewFloating
         compact
+        onVideoAspectRatioChange={handleVideoAspectRatioChange}
         className="h-full w-full ring-1 ring-inset ring-white/25"
       />
     </div>

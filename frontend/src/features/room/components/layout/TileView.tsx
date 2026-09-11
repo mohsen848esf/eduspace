@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type SyntheticEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
   VideoTrack,
@@ -65,6 +65,7 @@ export interface TileViewProps {
   selfViewFloating?: boolean;
   compact?: boolean;
   showActions?: boolean;
+  onVideoAspectRatioChange?: (aspectRatio: number) => void;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -84,6 +85,7 @@ export default function TileView({
   selfViewFloating = false,
   compact = false,
   showActions = true,
+  onVideoAspectRatioChange,
   className,
   style,
 }: TileViewProps) {
@@ -136,6 +138,13 @@ export default function TileView({
   // Screen share preserves the full frame; camera fills the tile.
   const fitClass =
     kind === "screen" ? "object-contain object-center" : "object-cover object-center";
+  const handleVideoDimensions = (event: SyntheticEvent<HTMLVideoElement>) => {
+    if (!onVideoAspectRatioChange || kind !== "camera") return;
+    const { videoWidth, videoHeight } = event.currentTarget;
+    if (videoWidth > 0 && videoHeight > 0) {
+      onVideoAspectRatioChange(videoWidth / videoHeight);
+    }
+  };
 
   return (
     <div
@@ -167,7 +176,13 @@ export default function TileView({
           <VideoTrack
             trackRef={primaryTrack}
             className={cn("block h-full w-full max-h-full max-w-full rounded-[inherit]", fitClass)}
-            style={isLocal && kind === "camera" ? { transform: "scaleX(-1)" } : undefined}
+            onLoadedMetadata={handleVideoDimensions}
+            onResize={handleVideoDimensions}
+            style={{
+              objectFit: kind === "screen" ? "contain" : "cover",
+              objectPosition: "center",
+              ...(isLocal && kind === "camera" ? { transform: "scaleX(-1)" } : {}),
+            }}
           />
         </div>
       ) : (

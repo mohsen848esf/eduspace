@@ -4,8 +4,8 @@ import type { Participant } from "livekit-client";
 import TileView from "../TileView";
 
 vi.mock("@livekit/components-react", () => ({
-  VideoTrack: ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
-    <video data-testid="tile-video" className={className} style={style} />
+  VideoTrack: ({ className, style, onResize, onLoadedMetadata }: React.VideoHTMLAttributes<HTMLVideoElement>) => (
+    <video data-testid="tile-video" className={className} style={style} onResize={onResize} onLoadedMetadata={onLoadedMetadata} />
   ),
   isTrackReference: () => true,
   useIsSpeaking: () => false,
@@ -61,7 +61,32 @@ describe("TileView media presentation", () => {
   it("keeps camera video filling its tile", () => {
     renderTile("camera");
 
-    expect(screen.getByTestId("tile-video")).toHaveClass("object-cover", "object-center");
+    const video = screen.getByTestId("tile-video");
+    expect(video).toHaveClass("object-cover", "object-center");
+    expect(video).toHaveStyle({ objectFit: "cover", objectPosition: "center" });
+  });
+
+  it("reports the intrinsic camera aspect ratio for a responsive self view", () => {
+    const onVideoAspectRatioChange = vi.fn();
+    render(
+      <TileView
+        tile={{ key: "viewer::camera", kind: "camera", participant }}
+        tracks={[{ participant, source: "camera", publication: { isMuted: false } }] as never}
+        localIdentity="viewer"
+        pinnedKey={null}
+        onTogglePin={vi.fn()}
+        onVideoAspectRatioChange={onVideoAspectRatioChange}
+      />,
+    );
+
+    const video = screen.getByTestId("tile-video");
+    Object.defineProperties(video, {
+      videoWidth: { configurable: true, value: 720 },
+      videoHeight: { configurable: true, value: 1280 },
+    });
+    fireEvent.resize(video);
+
+    expect(onVideoAspectRatioChange).toHaveBeenCalledWith(9 / 16);
   });
 
   it("shows only action buttons on hover without dimming or blurring the card", () => {
